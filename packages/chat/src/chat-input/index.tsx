@@ -68,6 +68,7 @@ export function ChatInput({
   queuedInputRecallItems = [],
   queuedInputRecallJoiner = DEFAULT_QUEUE_RECALL_JOINER,
   onQueuedInputRecall,
+  inputHistoryItems = [],
   onCancel,
   isLoading,
   allowSendWhileLoading,
@@ -132,6 +133,53 @@ export function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
+  const historyIndexRef = useRef<number | null>(null);
+
+  const exitHistoryMode = useCallback(() => {
+    historyIndexRef.current = null;
+  }, []);
+
+  const setContentFromHistory = useCallback(
+    (nextValue: string) => {
+      setContent(nextValue);
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current ?? internalTextareaRef.current;
+        if (!textarea) return;
+        const nextCursorPosition = nextValue.length;
+        textarea.focus();
+        textarea.setSelectionRange(nextCursorPosition, nextCursorPosition);
+      });
+    },
+    [setContent, textareaRef]
+  );
+
+  const recallInputHistory = useCallback(
+    (direction: "previous" | "next"): boolean => {
+      if (inputHistoryItems.length === 0) return false;
+
+      const currentIndex = historyIndexRef.current;
+      if (direction === "previous") {
+        const nextIndex = currentIndex === null
+          ? inputHistoryItems.length - 1
+          : Math.max(0, currentIndex - 1);
+        historyIndexRef.current = nextIndex;
+        setContentFromHistory(inputHistoryItems[nextIndex] ?? "");
+        return true;
+      }
+
+      if (currentIndex === null) return false;
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= inputHistoryItems.length) {
+        historyIndexRef.current = inputHistoryItems.length;
+        setContentFromHistory("");
+        return true;
+      }
+      historyIndexRef.current = nextIndex;
+      setContentFromHistory(inputHistoryItems[nextIndex] ?? "");
+      return true;
+    },
+    [inputHistoryItems, setContentFromHistory]
+  );
 
   // Hooks - use controlled attachments if provided
   const {
@@ -260,10 +308,11 @@ export function ChatInput({
   const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newContent = e.target.value;
+      exitHistoryMode();
       setContent(newContent);
       handleSlashContentChange(newContent);
     },
-    [handleSlashContentChange, setContent]
+    [exitHistoryMode, handleSlashContentChange, setContent]
   );
 
   useEffect(() => {
@@ -480,6 +529,10 @@ export function ChatInput({
         return;
       }
 
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
+        exitHistoryMode();
+      }
+
       if (handleSlashKeyDown(e)) {
         return;
       }
@@ -501,7 +554,21 @@ export function ChatInput({
             return;
           }
         }
-        onRecallQueuedInput?.(content);
+        if (!recallInputHistory("previous")) {
+          onRecallQueuedInput?.(content);
+        }
+        return;
+      }
+
+      if (e.key === "ArrowUp" && !isComposingInput && historyIndexRef.current !== null) {
+        e.preventDefault();
+        recallInputHistory("previous");
+        return;
+      }
+
+      if (e.key === "ArrowDown" && !isComposingInput && historyIndexRef.current !== null) {
+        e.preventDefault();
+        recallInputHistory("next");
         return;
       }
 
@@ -519,6 +586,7 @@ export function ChatInput({
     },
     [
       content,
+      exitHistoryMode,
       handleSlashKeyDown,
       isComposingEvent,
       isCompactLayout,
@@ -528,8 +596,71 @@ export function ChatInput({
       onQueuedInputRecall,
       queuedInputRecallItems,
       queuedInputRecallJoiner,
+      recallInputHistory,
       setContent,
       textareaRef,
+    ]
+  );
+
+  const handleCompactInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      exitHistoryMode();
+      setContent(event.target.value);
+    },
+    [exitHistoryMode, setContent]
+  );
+
+  const handleCompactKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const isComposingInput = isComposingEvent(e);
+      if (isComposingInput && e.key === "Enter") {
+        return;
+      }
+
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
+        exitHistoryMode();
+      }
+
+      if (e.key === "ArrowUp" && !isComposingInput && content.trim().length === 0) {
+        e.preventDefault();
+        if (!recallInputHistory("previous")) {
+          onRecallQueuedInput?.(content);
+        }
+        return;
+      }
+
+      if (e.key === "ArrowUp" && !isComposingInput && historyIndexRef.current !== null) {
+        e.preventDefault();
+        recallInputHistory("previous");
+        return;
+      }
+
+      if (e.key === "ArrowDown" && !isComposingInput && historyIndexRef.current !== null) {
+        e.preventDefault();
+        recallInputHistory("next");
+        return;
+      }
+
+      if (e.key === "Enter") {
+        if (e.shiftKey && onRequestExpand) {
+          e.preventDefault();
+          onRequestExpand();
+          return;
+        }
+        if (!e.shiftKey && !isComposingInput) {
+          e.preventDefault();
+          handleSend();
+        }
+      }
+    },
+    [
+      content,
+      exitHistoryMode,
+      handleSend,
+      isComposingEvent,
+      onRecallQueuedInput,
+      onRequestExpand,
+      recallInputHistory,
     ]
   );
 
@@ -730,25 +861,8 @@ export function ChatInput({
               ref={textareaRef as unknown as React.RefObject<HTMLInputElement | null>}
               type="text"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={(e) => {
-                const isComposingInput = isComposingEvent(e);
-                if (isComposingInput && e.key === "Enter") {
-                  return;
-                }
-
-                if (e.key === "Enter") {
-                  if (e.shiftKey && onRequestExpand) {
-                    e.preventDefault();
-                    onRequestExpand();
-                    return;
-                  }
-                  if (!e.shiftKey && !isComposingInput) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }
-              }}
+              onChange={handleCompactInputChange}
+              onKeyDown={handleCompactKeyDown}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
               onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLInputElement>}

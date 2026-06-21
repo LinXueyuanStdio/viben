@@ -22,6 +22,8 @@ import type {
   DuplicatePageResult,
   PublishPageParams,
   PublishPageResult,
+  PublishedPageStatusParams,
+  PublishedPageStatusResult,
   ListTemplatesResult,
 } from "../types/page";
 
@@ -50,6 +52,8 @@ export type {
   DuplicatePageResult,
   PublishPageParams,
   PublishPageResult,
+  PublishedPageStatusParams,
+  PublishedPageStatusResult,
   PageTemplate,
   ListTemplatesResult,
 } from "../types/page";
@@ -321,6 +325,33 @@ export async function publishPage(
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to publish page: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Check whether a static page has already been published.
+ */
+export async function getPublishedPageStatus(
+  baseUrl: string,
+  params: PublishedPageStatusParams
+): Promise<PublishedPageStatusResult> {
+  const response = await fetch(`${baseUrl}/api/page/publish-status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to check published page status: ${errorMessage}`,
       response.status
     );
   }

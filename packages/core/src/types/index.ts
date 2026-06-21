@@ -305,7 +305,6 @@ export type ProviderType =
   | "grok"
   | "nanobanana"
   | "imagerouter"
-  | "custom-image"
   | "fal"
   | "leonardo"
   | "minimax"

@@ -41,7 +41,6 @@ const PROVIDER_TYPES: ProviderType[] = [
   "grok",
   "nanobanana",
   "imagerouter",
-  "custom-image",
   "fal",
   "leonardo",
   "minimax",

@@ -17,7 +17,6 @@ export { DEFAULT_ALIASES } from "./models/known-models";
 // Re-export provider types
 export type {
   ProviderEntry,
-  ProvidersFile,
 } from "./providers/types";
 
 // Re-export model types

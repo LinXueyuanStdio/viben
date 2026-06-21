@@ -28,6 +28,19 @@ SET "user_slug" = left('user_' || replace("id", '-', ''), 30)
 WHERE "user_slug" IS NULL
   OR "user_slug" !~ '^[A-Za-z_][A-Za-z0-9_-]{2,29}$';
 --> statement-breakpoint
+WITH ranked_user_slugs AS (
+  SELECT
+    "id",
+    "user_slug",
+    row_number() OVER (PARTITION BY "user_slug" ORDER BY "created_at", "id") AS slug_rank
+  FROM "users"
+)
+UPDATE "users"
+SET "user_slug" = left('user_' || replace("users"."id", '-', ''), 30)
+FROM ranked_user_slugs
+WHERE "users"."id" = ranked_user_slugs."id"
+  AND ranked_user_slugs.slug_rank > 1;
+--> statement-breakpoint
 ALTER TABLE "users" ALTER COLUMN "user_slug" SET NOT NULL;
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "users_user_slug_unique" ON "users" USING btree ("user_slug");

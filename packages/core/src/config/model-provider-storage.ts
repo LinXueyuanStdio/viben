@@ -9,6 +9,12 @@ export interface UnifiedModelEntry {
   name: string;
   enabled?: boolean;
   config?: ModelConfigEntry;
+  category?: string;
+  surface?: string;
+  capabilities?: string[];
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
 }
 
 export interface UnifiedProviderEntry {
@@ -58,7 +64,44 @@ function normalizeModelConfig(value: unknown): ModelConfigEntry | undefined {
   if (!isRecord(value)) {
     return undefined;
   }
-  return value as ModelConfigEntry;
+  return {
+    temperature: typeof value.temperature === "number" ? value.temperature : undefined,
+    max_tokens:
+      typeof value.max_tokens === "number"
+        ? value.max_tokens
+        : typeof value.maxTokens === "number"
+          ? value.maxTokens
+          : undefined,
+    top_p:
+      typeof value.top_p === "number"
+        ? value.top_p
+        : typeof value.topP === "number"
+          ? value.topP
+          : undefined,
+    frequency_penalty:
+      typeof value.frequency_penalty === "number"
+        ? value.frequency_penalty
+        : typeof value.frequencyPenalty === "number"
+          ? value.frequencyPenalty
+          : undefined,
+    presence_penalty:
+      typeof value.presence_penalty === "number"
+        ? value.presence_penalty
+        : typeof value.presencePenalty === "number"
+          ? value.presencePenalty
+          : undefined,
+    provider: nonBlankString(value.provider),
+    category: nonBlankString(value.category) as ModelConfigEntry["category"],
+    surface: nonBlankString(value.surface) as ModelConfigEntry["surface"],
+    capabilities: Array.isArray(value.capabilities)
+      ? value.capabilities.filter((item): item is string => typeof item === "string")
+      : undefined,
+    duration_seconds:
+      typeof value.duration_seconds === "number" ? value.duration_seconds : undefined,
+    aspect_ratio: nonBlankString(value.aspect_ratio),
+    size: nonBlankString(value.size),
+    voice_id: nonBlankString(value.voice_id),
+  };
 }
 
 function normalizeModelEntry(id: string, value: unknown): UnifiedModelEntry {
@@ -70,6 +113,16 @@ function normalizeModelEntry(id: string, value: unknown): UnifiedModelEntry {
     const entry: UnifiedModelEntry = {
       name,
       enabled: typeof value.enabled === "boolean" ? value.enabled : true,
+      category: nonBlankString(value.category),
+      surface: nonBlankString(value.surface),
+      capabilities: Array.isArray(value.capabilities)
+        ? value.capabilities.filter((item): item is string => typeof item === "string")
+        : undefined,
+      description: nonBlankString(value.description),
+      context_window:
+        typeof value.context_window === "number" ? value.context_window : undefined,
+      max_output_tokens:
+        typeof value.max_output_tokens === "number" ? value.max_output_tokens : undefined,
     };
     const config = normalizeModelConfig(value.config);
     if (config) {
@@ -169,6 +222,12 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
         [modelId]: {
           name: entry.name ?? modelId,
           enabled: entry.enabled ?? true,
+          category: entry.category,
+          surface: entry.surface,
+          capabilities: entry.capabilities,
+          description: entry.description,
+          context_window: entry.context_window,
+          max_output_tokens: entry.max_output_tokens,
           ...(legacyConfig ? { config: legacyConfig } : {}),
         },
       };

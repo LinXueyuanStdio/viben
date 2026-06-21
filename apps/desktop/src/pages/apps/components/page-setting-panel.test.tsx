@@ -10,6 +10,7 @@ import { usePagePublishStore } from "@/stores/page-publish-store";
 
 const mocks = vi.hoisted(() => ({
   publishPage: vi.fn(),
+  getPublishedPageStatus: vi.fn(),
   openUrl: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -31,12 +32,13 @@ vi.mock("@/hooks/use-toast", () => ({
 
 vi.mock("@/stores/auth-store", () => ({
   useAuthStore: (selector: (state: {
-    user: { accessToken: string };
+    user: { accessToken: string; userSlug: string };
     isAuthenticated: boolean;
   }) => unknown) =>
     selector({
       user: {
         accessToken: "session-token",
+        userSlug: "alice",
       },
       isAuthenticated: true,
     }),
@@ -66,6 +68,7 @@ vi.mock("@/lib/gateway", () => ({
     content: "<html><body>Demo</body></html>",
   }),
   publishPage: mocks.publishPage,
+  getPublishedPageStatus: mocks.getPublishedPageStatus,
 }));
 
 vi.mock("@/components/ui/button", () => ({
@@ -86,8 +89,13 @@ describe("PageSettingPanel", () => {
     mocks.publishPage.mockResolvedValue({
       success: true,
       page_uid: "demo",
-      url: "/page/user-1/demo",
+      url: "/page/alice/demo",
       updated: false,
+    });
+    mocks.getPublishedPageStatus.mockResolvedValue({
+      success: true,
+      published: false,
+      url: null,
     });
   });
 
@@ -102,6 +110,36 @@ describe("PageSettingPanel", () => {
     );
 
     expect(screen.getByRole("button", { name: /Publish/i })).toBeTruthy();
+  });
+
+  it("loads published status when opening a static page", async () => {
+    mocks.getPublishedPageStatus.mockResolvedValue({
+      success: true,
+      published: true,
+      url: "/page/alice/demo",
+    });
+
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    await waitFor(() => {
+      expect(mocks.getPublishedPageStatus).toHaveBeenCalledWith(
+        "http://127.0.0.1:18790",
+        {
+          access_token: "session-token",
+          user_slug: "alice",
+          uid: "demo",
+        }
+      );
+    });
+    expect(await screen.findByText("/page/alice/demo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
   });
 
   it("does not show publish button for non-static pages", () => {
@@ -154,7 +192,7 @@ describe("PageSettingPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
 
     expect(await screen.findByText("https://viben-web.vercel.app")).toBeTruthy();
-    expect(screen.getByText("/page/user-1/demo")).toBeTruthy();
+    expect(screen.getByText("/page/alice/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Copy published URL/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Open published page/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /搜索引擎索引/i })).toBeTruthy();
@@ -183,7 +221,7 @@ describe("PageSettingPanel", () => {
 
     await waitFor(() => {
       expect(mocks.writeText).toHaveBeenCalledWith(
-        "https://viben-web.vercel.app/page/user-1/demo"
+        "https://viben-web.vercel.app/page/alice/demo"
       );
     });
   });
@@ -207,12 +245,20 @@ describe("PageSettingPanel", () => {
 
     await waitFor(() => {
       expect(mocks.openUrl).toHaveBeenCalledWith(
-        "https://viben-web.vercel.app/page/user-1/demo"
+        "https://viben-web.vercel.app/page/alice/demo"
       );
     });
   });
 
   it("clears published status when switching to another page", async () => {
+    mocks.getPublishedPageStatus.mockImplementation(
+      async (_baseUrl: string, params: { uid: string }) => ({
+        success: true,
+        published: params.uid === "demo",
+        url: params.uid === "demo" ? "/page/alice/demo" : null,
+      })
+    );
+
     const { rerender } = render(
       <PageSettingPanel
         workspacePath="/tmp/workspace"
@@ -222,8 +268,7 @@ describe("PageSettingPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
-    expect(await screen.findByText("/page/user-1/demo")).toBeTruthy();
+    expect(await screen.findByText("/page/alice/demo")).toBeTruthy();
 
     rerender(
       <PageSettingPanel
@@ -234,11 +279,21 @@ describe("PageSettingPanel", () => {
       />
     );
 
-    expect(screen.queryByText("/page/user-1/demo")).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByText("/page/alice/demo")).toBeNull();
+    });
     expect(screen.getByRole("button", { name: /Publish/i })).toBeTruthy();
   });
 
   it("restores the current page published status when switching back", async () => {
+    mocks.getPublishedPageStatus.mockImplementation(
+      async (_baseUrl: string, params: { uid: string }) => ({
+        success: true,
+        published: params.uid === "demo",
+        url: params.uid === "demo" ? "/page/alice/demo" : null,
+      })
+    );
+
     const { rerender } = render(
       <PageSettingPanel
         workspacePath="/tmp/workspace"
@@ -248,8 +303,7 @@ describe("PageSettingPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
-    expect(await screen.findByText("/page/user-1/demo")).toBeTruthy();
+    expect(await screen.findByText("/page/alice/demo")).toBeTruthy();
 
     rerender(
       <PageSettingPanel
@@ -259,7 +313,9 @@ describe("PageSettingPanel", () => {
         pageType="static"
       />
     );
-    expect(screen.queryByText("/page/user-1/demo")).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByText("/page/alice/demo")).toBeNull();
+    });
 
     rerender(
       <PageSettingPanel
@@ -270,7 +326,7 @@ describe("PageSettingPanel", () => {
       />
     );
 
-    expect(screen.getByText("/page/user-1/demo")).toBeTruthy();
+    expect(await screen.findByText("/page/alice/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
   });
 
@@ -324,11 +380,11 @@ describe("PageSettingPanel", () => {
     resolvePublish!({
       success: true,
       page_uid: "demo",
-      url: "/page/user-1/demo",
+      url: "/page/alice/demo",
       updated: false,
     });
 
-    expect(await screen.findByText("/page/user-1/demo")).toBeTruthy();
+    expect(await screen.findByText("/page/alice/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
   });
 
@@ -367,13 +423,13 @@ describe("PageSettingPanel", () => {
 
     const embedInput = screen.getByLabelText("嵌入代码") as HTMLTextAreaElement;
     expect(embedInput.value).toBe(
-      '<iframe src="https://viben-web.vercel.app/page/user-1/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
+      '<iframe src="https://viben-web.vercel.app/page/alice/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
     );
 
     fireEvent.click(screen.getByRole("button", { name: /复制代码/i }));
     await waitFor(() => {
       expect(mocks.writeText).toHaveBeenCalledWith(
-        '<iframe src="https://viben-web.vercel.app/page/user-1/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
+        '<iframe src="https://viben-web.vercel.app/page/alice/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
       );
     });
   });
@@ -403,13 +459,13 @@ describe("PageSettingPanel", () => {
       .mockResolvedValueOnce({
         success: true,
         page_uid: "demo",
-        url: "/page/user-1/demo",
+        url: "/page/alice/demo",
         updated: false,
       })
       .mockResolvedValueOnce({
         success: true,
         page_uid: "demo",
-        url: "/page/user-1/demo",
+        url: "/page/alice/demo",
         updated: true,
       });
 
@@ -432,7 +488,7 @@ describe("PageSettingPanel", () => {
     await waitFor(() => {
       expect(mocks.publishPage).toHaveBeenCalledTimes(2);
     });
-    expect(screen.getByText("/page/user-1/demo")).toBeTruthy();
+    expect(screen.getByText("/page/alice/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
   });
 
@@ -461,7 +517,7 @@ describe("PageSettingPanel", () => {
     });
 
     expect(screen.queryByText("Published")).toBeNull();
-    expect(screen.queryByText("/page/user-1/demo")).toBeNull();
+    expect(screen.queryByText("/page/alice/demo")).toBeNull();
     expect(screen.getByRole("button", { name: /Publish/i })).toBeTruthy();
   });
 });

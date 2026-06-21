@@ -28,9 +28,7 @@ export {
 // Config management
 export {
   ConfigManager,
-  ModelsConfigManager,
   configManager,
-  modelsConfigManager,
   getStateDir,
   getConfigPath,
   getModelsPath,
@@ -85,7 +83,6 @@ export {
   DEFAULT_BASE_URLS,
   ENV_VAR_NAMES,
   type ProviderEntry,
-  type ProvidersFile,
 } from "./providers";
 
 // Model management

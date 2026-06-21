@@ -95,7 +95,6 @@ import type { SnapPosition } from "@/stores/chat-position-store";
 import { DraggableExpandedHeader } from "./draggable-expanded-header";
 import { ChatWindowControls } from "./chat-window-controls";
 
-const DEFAULT_MODEL = "claude-sonnet-4-6";
 /** 浮动模式下的边距 */
 const FLOATING_MARGIN = 20;
 
@@ -357,17 +356,6 @@ function buildAcpCompactSummary(
   }
   if (latest.type === "error") return truncateText(latest.message ?? latest.content ?? t("chat.acp.needsAttention"), 120);
   return truncateText(latest.content ?? latest.message ?? t("chat.acp.working"), 120);
-}
-
-function buildModelOptions(currentModel: string) {
-  const models = [currentModel, DEFAULT_MODEL, "claude-opus-4-5", "claude-haiku-4-5"].filter(
-    (item): item is string => typeof item === "string" && item.trim().length > 0
-  );
-  return Array.from(new Set(models)).map((id) => ({
-    id,
-    name: id,
-    provider: id.includes("claude") ? "Anthropic" : undefined,
-  }));
 }
 
 export function AcpChat({ mode, onModeChange, contained = false, className, wsUrl, defaultCwd, enableFullResize = false, windowMode = false }: AcpChatProps) {
@@ -727,20 +715,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // 2. Provider 选项 (从 API 获取，已根据 executor 约束过滤)
   // providerOptions 来自 useAcpSession hook
 
-  // 3. Model 选项 (从 API 获取，已根据 executor 和 provider 过滤)
-  // 如果 API 没有返回数据，使用本地 fallback
-  const modelSelectorOptions = useMemo<SelectorOption[]>(() => {
-    if (modelOptions.length > 0) {
-      return modelOptions;
-    }
-    // Fallback: 使用静态模型列表
-    const fallbackModels = buildModelOptions(model);
-    return fallbackModels.map((m) => ({
-      id: m.id,
-      label: m.name,
-    }));
-  }, [modelOptions, model]);
-
   // TripleSelector 当前值
   const tripleSelectorValue = useMemo<TripleSelectorValue>(
     () => ({
@@ -803,7 +777,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       secondOptions={providerOptions}
       secondLabel={t("chat.provider", "Provider")}
       secondPlaceholder={t("chat.selectProvider", "Select provider...")}
-      thirdOptions={modelSelectorOptions}
+      thirdOptions={modelOptions}
       thirdLabel={t("chat.model", "Model")}
       thirdPlaceholder={t("chat.selectModel", "Select model...")}
       value={tripleSelectorValue}

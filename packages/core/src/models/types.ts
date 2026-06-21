@@ -3,32 +3,22 @@
  */
 export type { Model, ModelConfig, ModelAlias } from "../types";
 
+import type { UnifiedModelsFile } from "../config/model-provider-storage";
+
 /**
- * Models config file structure
+ * models.yaml stores provider entries keyed by provider_id.
  */
-export interface ModelsFile {
-  default?: string;
-  defaults?: {
-    llm?: string;
-    media?: Partial<Record<ModelSurface, string>>;
-  };
-  aliases: Record<string, string>;
-  configs: Record<string, ModelConfigEntry>;
-  /** Custom models added by user */
-  custom_models: Record<string, ModelEntry>;
-  /** List of disabled built-in model IDs */
-  disabled_models: string[];
-}
+export type ModelsFile = UnifiedModelsFile;
 
 /**
  * Model configuration entry (for inference parameters)
  */
 export interface ModelConfigEntry {
   temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  frequencyPenalty?: number;
-  presencePenalty?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
   provider?: string;
   category?: ModelCategory;
   surface?: ModelSurface;

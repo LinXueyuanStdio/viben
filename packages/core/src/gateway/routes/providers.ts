@@ -2,7 +2,7 @@
  * Provider routes
  *
  * Provides HTTP API for:
- * - Provider CRUD operations (stored in ~/.viben/providers.yaml)
+ * - Provider CRUD operations (stored in ~/.viben/models.yaml)
  * - Model discovery from provider APIs
  * - Provider-specific model management (enable/disable)
  */

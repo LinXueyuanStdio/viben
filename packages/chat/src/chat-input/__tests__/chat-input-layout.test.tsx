@@ -162,6 +162,70 @@ describe("ChatInput layout", () => {
     expect(onSend).not.toHaveBeenCalled();
   });
 
+  test("expanded input recalls sent input history from empty input and exits history state on editing", async () => {
+    const { ChatInput } = await import("../index");
+
+    render(
+      <ChatInput
+        defaultValue=""
+        onSend={() => {}}
+        inputHistoryItems={["first prompt", "second prompt"]}
+        layoutVariant="expanded"
+      />
+    );
+
+    const textbox = screen.getByRole("textbox");
+
+    fireEvent.keyDown(textbox, { key: "ArrowUp", code: "ArrowUp" });
+    expect(textbox).toHaveValue("second prompt");
+
+    fireEvent.keyDown(textbox, { key: "ArrowUp", code: "ArrowUp" });
+    expect(textbox).toHaveValue("first prompt");
+
+    fireEvent.keyDown(textbox, { key: "ArrowDown", code: "ArrowDown" });
+    expect(textbox).toHaveValue("second prompt");
+
+    fireEvent.keyDown(textbox, { key: "ArrowDown", code: "ArrowDown" });
+    expect(textbox).toHaveValue("");
+
+    fireEvent.keyDown(textbox, { key: "ArrowUp", code: "ArrowUp" });
+    expect(textbox).toHaveValue("second prompt");
+
+    fireEvent.keyDown(textbox, { key: "x", code: "KeyX" });
+    fireEvent.change(textbox, { target: { value: "second promptx" } });
+    expect(textbox).toHaveValue("second promptx");
+
+    fireEvent.keyDown(textbox, { key: "ArrowDown", code: "ArrowDown" });
+    expect(textbox).toHaveValue("second promptx");
+  });
+
+  test("compact input recalls sent input history from empty input", async () => {
+    const { ChatInput } = await import("../index");
+
+    render(
+      <ChatInput
+        defaultValue=""
+        onSend={() => {}}
+        inputHistoryItems={["first prompt", "second prompt"]}
+        layoutVariant="compact"
+      />
+    );
+
+    const input = screen.getByTestId("compact-chat-input-field");
+
+    fireEvent.keyDown(input, { key: "ArrowUp", code: "ArrowUp" });
+    expect(input).toHaveValue("second prompt");
+
+    fireEvent.keyDown(input, { key: "ArrowUp", code: "ArrowUp" });
+    expect(input).toHaveValue("first prompt");
+
+    fireEvent.keyDown(input, { key: "ArrowDown", code: "ArrowDown" });
+    expect(input).toHaveValue("second prompt");
+
+    fireEvent.keyDown(input, { key: "ArrowDown", code: "ArrowDown" });
+    expect(input).toHaveValue("");
+  });
+
   test("custom toolbar content can be provided directly as ReactNode", async () => {
     const { ChatInput } = await import("../index");
 

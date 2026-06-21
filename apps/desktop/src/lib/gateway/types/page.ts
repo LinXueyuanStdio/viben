@@ -212,3 +212,14 @@ export interface PublishPageResult extends PageResult {
   url?: string;
   updated?: boolean;
 }
+
+export interface PublishedPageStatusParams {
+  access_token: string;
+  user_slug: string;
+  uid: string;
+}
+
+export interface PublishedPageStatusResult extends PageResult {
+  published: boolean;
+  url?: string | null;
+}

@@ -13,6 +13,7 @@ interface PagePublishActions {
   startPublish: (key: string) => void;
   finishPublish: (key: string, url: string) => void;
   failPublish: (key: string, error: string) => void;
+  clearPublish: (key: string) => void;
   reset: () => void;
 }
 
@@ -72,6 +73,15 @@ export const usePagePublishStore = create<PagePublishStore>()((set) => ({
             },
           },
         };
+      }),
+    clearPublish: (key) =>
+      set((state) => {
+        if (!(key in state.entries)) {
+          return state;
+        }
+
+        const { [key]: _removed, ...entries } = state.entries;
+        return { entries };
       }),
     reset: () => set({ entries: {} }),
   },

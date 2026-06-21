@@ -119,10 +119,10 @@ function requireProviderId(
 function toModelConfig(body: SetModelConfigBody): ModelConfig {
   return {
     temperature: body.temperature,
-    maxTokens: body.max_tokens ?? body.maxTokens,
-    topP: body.top_p ?? body.topP,
-    frequencyPenalty: body.frequency_penalty ?? body.frequencyPenalty,
-    presencePenalty: body.presence_penalty ?? body.presencePenalty,
+    maxTokens: body.max_tokens,
+    topP: body.top_p,
+    frequencyPenalty: body.frequency_penalty,
+    presencePenalty: body.presence_penalty,
   };
 }
 
@@ -214,10 +214,6 @@ interface SetModelConfigBody {
   top_p?: number;
   frequency_penalty?: number;
   presence_penalty?: number;
-  maxTokens?: number;
-  topP?: number;
-  frequencyPenalty?: number;
-  presencePenalty?: number;
 }
 
 interface ProviderScopedQuery {
@@ -493,28 +489,36 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: { id: string }; Querystring: ProviderScopedQuery }>,
     reply: FastifyReply
   ) => {
     const { id } = request.params;
+    const { provider_id } = request.query;
 
     // First resolve any alias
     const resolvedId = await modelManager.resolveAlias(id);
-    const model = modelManager.getModelInfo(resolvedId);
+    const models = await findProviderScopedModels(resolvedId);
+    const model = getProviderScopedModel(models, provider_id);
 
     if (!model) {
+      if (!provider_id && models.length > 1) {
+        reply.code(400);
+        return { error: "Ambiguous model ID. Provide provider_id to disambiguate" };
+      }
       reply.code(404);
       return { error: `Model not found: ${id}` };
     }
 
     const [modelResponse, modelConfig] = await Promise.all([
       toSnakeCaseModel(model),
-      modelManager.getModelConfig(resolvedId),
+      model.provider_id
+        ? modelManager.getModelConfig(resolvedId, model.provider_id)
+        : Promise.resolve(null),
     ]);
 
     return {
       ...modelResponse,
-      config: modelConfig,
+      config: modelConfig ? toSnakeCaseConfig(modelConfig) : null,
     };
   });
 
@@ -719,19 +723,24 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
   // Delete/remove a model configuration
   fastify.delete("/api/models/:id", async (
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: { id: string }; Querystring: ProviderScopedQuery }>,
     reply: FastifyReply
   ) => {
     const { id } = request.params;
+    const { provider_id } = request.query;
+    if (!requireProviderId(provider_id, reply)) {
+      return { error: "Provider ID is required" };
+    }
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
 
       // Remove model config
-      await modelManager.removeModelConfig(resolvedId);
+      await modelManager.removeModelConfig(resolvedId, provider_id);
 
       return {
         success: true,
+        provider_id,
         deleted: id,
       };
     } catch (e) {

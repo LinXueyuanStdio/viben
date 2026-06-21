@@ -2,16 +2,24 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  findFirst: vi.fn(),
   findMany: vi.fn(),
+  notFound: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
+      users: {
+        findFirst: mocks.findFirst,
+      },
       publishedPages: {
         findMany: mocks.findMany,
       },
     },
+  },
+  users: {
+    id: 'id',
   },
   publishedPages: {
     userId: 'userId',
@@ -24,11 +32,19 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn((field, value) => ({ field, value })),
 }));
 
+vi.mock('next/navigation', () => ({
+  notFound: mocks.notFound,
+}));
+
 import UserPublishedPagesAlias from './page';
 
 describe('/[user_id]/page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.findFirst.mockResolvedValue({
+      id: 'user-1',
+      userSlug: 'alice',
+    });
   });
 
   it('renders the same published page list for the requested user', async () => {
@@ -46,13 +62,16 @@ describe('/[user_id]/page', () => {
     });
     render(element);
 
+    expect(mocks.findFirst).toHaveBeenCalledWith({
+      where: { field: 'id', value: 'user-1' },
+    });
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: { field: 'userId', value: 'user-1' },
       orderBy: [{ direction: 'desc', field: 'updatedAt' }],
     });
     expect(screen.getByRole('link', { name: /Demo Demo description/i })).toHaveAttribute(
       'href',
-      '/page/user-1/demo'
+      '/page/alice/demo'
     );
   });
 });

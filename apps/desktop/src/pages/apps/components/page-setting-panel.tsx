@@ -5,7 +5,7 @@
  * Displayed in the "Setting" tab of the workspace page view.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
@@ -30,7 +30,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
-import { publishPage, readFile, viewPage } from "@/lib/gateway";
+import {
+  getPublishedPageStatus,
+  publishPage,
+  readFile,
+  viewPage,
+} from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +122,7 @@ export function PageSettingPanel({
   const [seoTitle, setSeoTitle] = useState(pageName);
   const [seoDescription, setSeoDescription] = useState("");
   const accessToken = useAuthStore((state) => state.user?.accessToken);
+  const userSlug = useAuthStore((state) => state.user?.userSlug);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const publishKey = getPagePublishKey(workspacePath, pageUid);
   const publishEntry = usePagePublishStore((state) => state.entries[publishKey]);
@@ -129,6 +135,68 @@ export function PageSettingPanel({
   const embedCode = externalPublishedUrl ? buildEmbedCode(externalPublishedUrl) : "";
 
   const directoryPath = `pages/${pageUid}`;
+
+  useEffect(() => {
+    if (pageType !== "static") {
+      return;
+    }
+
+    if (!isAuthenticated || !accessToken || !userSlug) {
+      publishActions.clearPublish(publishKey);
+      return;
+    }
+
+    let cancelled = false;
+    const sessionAccessToken = accessToken;
+    const sessionUserSlug = userSlug;
+    const initialUpdatedAt =
+      usePagePublishStore.getState().entries[publishKey]?.updatedAt ?? null;
+
+    async function loadPublishedStatus() {
+      try {
+        const result = await getPublishedPageStatus(getGatewayUrl(), {
+          access_token: sessionAccessToken,
+          user_slug: sessionUserSlug,
+          uid: pageUid,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const currentUpdatedAt =
+          usePagePublishStore.getState().entries[publishKey]?.updatedAt ?? null;
+        if (currentUpdatedAt !== initialUpdatedAt) {
+          return;
+        }
+
+        if (result.success && result.published && result.url) {
+          publishActions.finishPublish(publishKey, result.url);
+          return;
+        }
+
+        publishActions.clearPublish(publishKey);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("[PageSettingPanel] load publish status failed:", error);
+        }
+      }
+    }
+
+    void loadPublishedStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    accessToken,
+    isAuthenticated,
+    pageType,
+    pageUid,
+    publishActions,
+    publishKey,
+    userSlug,
+  ]);
 
   const copyText = async (text: string, successMessage: string) => {
     try {

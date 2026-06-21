@@ -39,14 +39,20 @@ function modelFromEntry(
   providerId: string,
   provider: UnifiedProviderEntry
 ): Model {
-  const category = normalizeModelCategory(provider.category as ModelCategory | undefined);
+  const category = normalizeModelCategory(
+    (entry.category ?? provider.category) as ModelCategory | undefined
+  );
   return {
     id,
     name: entry.name,
     provider: provider.type,
     provider_id: providerId,
     category,
-    surface: normalizeModelSurface(undefined, category),
+    surface: normalizeModelSurface(entry.surface as ModelSurface | undefined, category),
+    capabilities: entry.capabilities,
+    description: entry.description,
+    contextLength: entry.context_window,
+    maxOutputTokens: entry.max_output_tokens,
     isDefault: false,
     enabled: entry.enabled ?? true,
   };
@@ -54,10 +60,22 @@ function modelFromEntry(
 
 function modelEntryFromOptions(options: {
   name: string;
+  category?: ModelCategory;
+  surface?: ModelSurface;
+  capabilities?: string[];
+  description?: string;
+  contextWindow?: number;
+  maxOutputTokens?: number;
 }): UnifiedModelEntry {
   return {
     name: options.name,
     enabled: true,
+    category: options.category,
+    surface: options.surface,
+    capabilities: options.capabilities,
+    description: options.description,
+    context_window: options.contextWindow,
+    max_output_tokens: options.maxOutputTokens,
   };
 }
 
@@ -73,11 +91,15 @@ function ensureProvider(
     throw new Error("Provider type is required");
   }
   const providers = getUnifiedProviders(config);
-  const provider = providers[providerId] ?? {
-    id: providerId,
-    type: providerType,
-    models: {},
-  };
+  const provider = providers[providerId];
+  if (!provider) {
+    throw new Error(`Provider not found: ${providerId}`);
+  }
+  if (provider.type !== providerType) {
+    throw new Error(
+      `Provider type mismatch for ${providerId}: expected ${provider.type}, got ${providerType}`
+    );
+  }
   provider.models = provider.models ?? {};
   config[providerId] = provider;
   return provider;
@@ -146,10 +168,10 @@ function requireModelInProvider(
 function modelConfigEntryFromModelConfig(modelConfig: ModelConfig): ModelConfigEntry {
   return {
     temperature: modelConfig.temperature,
-    maxTokens: modelConfig.maxTokens,
-    topP: modelConfig.topP,
-    frequencyPenalty: modelConfig.frequencyPenalty,
-    presencePenalty: modelConfig.presencePenalty,
+    max_tokens: modelConfig.maxTokens,
+    top_p: modelConfig.topP,
+    frequency_penalty: modelConfig.frequencyPenalty,
+    presence_penalty: modelConfig.presencePenalty,
     provider: modelConfig.provider,
     category: modelConfig.category,
     surface: modelConfig.surface,
@@ -309,6 +331,12 @@ export class ModelManager {
 
     const entry = modelEntryFromOptions({
       name: options.name,
+      category: options.category,
+      surface: options.surface,
+      capabilities: options.capabilities,
+      description: options.description,
+      contextWindow: options.contextWindow,
+      maxOutputTokens: options.maxOutputTokens,
     });
 
     provider.models = {
@@ -426,6 +454,15 @@ export class ModelManager {
     if (updates.name !== undefined) {
       entry.name = updates.name;
     }
+    if (updates.description !== undefined) {
+      entry.description = updates.description;
+    }
+    if (updates.contextWindow !== undefined) {
+      entry.context_window = updates.contextWindow;
+    }
+    if (updates.maxOutputTokens !== undefined) {
+      entry.max_output_tokens = updates.maxOutputTokens;
+    }
     found.provider.models = {
       ...(found.provider.models ?? {}),
       [id]: entry,
@@ -438,8 +475,11 @@ export class ModelManager {
       provider: found.provider.type,
       provider_id: found.providerId,
       description: updates.description,
-      contextLength: updates.contextWindow,
-      maxOutputTokens: updates.maxOutputTokens,
+      category: entry.category as ModelCategory | undefined,
+      surface: entry.surface as ModelSurface | undefined,
+      capabilities: entry.capabilities,
+      contextLength: entry.context_window,
+      maxOutputTokens: entry.max_output_tokens,
       isDefault: false,
       enabled: true,
     };
@@ -459,6 +499,7 @@ export class ModelManager {
     provider.models = {
       ...(provider.models ?? {}),
       [id]: {
+        ...(existing ?? {}),
         name: existing?.name ?? id,
         enabled: true,
       },
@@ -481,6 +522,7 @@ export class ModelManager {
     provider.models = {
       ...(provider.models ?? {}),
       [id]: {
+        ...(existing ?? {}),
         name: existing?.name ?? id,
         enabled: false,
       },

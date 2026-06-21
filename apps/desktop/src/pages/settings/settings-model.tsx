@@ -92,7 +92,6 @@ const PROVIDER_TYPES: ProviderType[] = [
   "grok",
   "nanobanana",
   "imagerouter",
-  "custom-image",
   "fal",
   "leonardo",
   "minimax",
@@ -127,7 +126,6 @@ function getDefaultCategory(type: ProviderType): ProviderCategory {
     "grok",
     "nanobanana",
     "imagerouter",
-    "custom-image",
     "fal",
     "leonardo",
     "minimax",
@@ -146,7 +144,6 @@ function getDefaultSurfaces(type: ProviderType): ProviderSurface[] {
   switch (type) {
     case "nanobanana":
     case "imagerouter":
-    case "custom-image":
     case "leonardo":
       return ["image"];
     case "fal":

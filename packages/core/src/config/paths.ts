@@ -21,13 +21,6 @@ export function getConfigPath(): string {
 }
 
 /**
- * Get the path to the providers config file
- */
-export function getProvidersPath(): string {
-  return join(getStateDir(), "providers.yaml");
-}
-
-/**
  * Get the path to the models config file
  */
 export function getModelsPath(): string {

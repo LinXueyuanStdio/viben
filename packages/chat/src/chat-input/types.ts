@@ -100,6 +100,11 @@ export interface ChatInputProps {
   queuedInputRecallJoiner?: string;
   /** Called after queued inputs are merged into the editor. Use this to clear/cancel the backing queue. */
   onQueuedInputRecall?: (items: QueuedInputRecallItem[], value: string) => void;
+  /**
+   * Previously sent input values, ordered oldest to newest.
+   * ArrowUp recalls the newest entry when the input is empty; ArrowUp/ArrowDown then navigate history.
+   */
+  inputHistoryItems?: string[];
 
   // === Toolbar Slots ===
   /** Top toolbar content. Shown when showTopToolbar is true. */

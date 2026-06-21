@@ -28,13 +28,13 @@ describe("page publish store", () => {
 
     usePagePublishStore.getState().actions.finishPublish(
       key,
-      "/page/user-1/demo"
+      "/page/alice/demo"
     );
     usePagePublishStore.getState().actions.startPublish(key);
 
     expect(usePagePublishStore.getState().entries[key]).toMatchObject({
       status: "publishing",
-      url: "/page/user-1/demo",
+      url: "/page/alice/demo",
       error: null,
     });
   });
@@ -44,14 +44,35 @@ describe("page publish store", () => {
 
     usePagePublishStore.getState().actions.finishPublish(
       key,
-      "/page/user-1/demo"
+      "/page/alice/demo"
     );
     usePagePublishStore.getState().actions.failPublish(key, "Publish failed");
 
     expect(usePagePublishStore.getState().entries[key]).toMatchObject({
       status: "failed",
-      url: "/page/user-1/demo",
+      url: "/page/alice/demo",
       error: "Publish failed",
+    });
+  });
+
+  it("clears a stale published entry for one page", () => {
+    const demoKey = getPagePublishKey("/tmp/workspace", "demo");
+    const otherKey = getPagePublishKey("/tmp/workspace", "other");
+
+    usePagePublishStore.getState().actions.finishPublish(
+      demoKey,
+      "/page/alice/demo"
+    );
+    usePagePublishStore.getState().actions.finishPublish(
+      otherKey,
+      "/page/alice/other"
+    );
+    usePagePublishStore.getState().actions.clearPublish(demoKey);
+
+    expect(usePagePublishStore.getState().entries[demoKey]).toBeUndefined();
+    expect(usePagePublishStore.getState().entries[otherKey]).toMatchObject({
+      status: "published",
+      url: "/page/alice/other",
     });
   });
 });

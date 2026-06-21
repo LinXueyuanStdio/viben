@@ -27,7 +27,6 @@ export const DEFAULT_BASE_URLS: Record<string, string> = {
   grok: "https://api.x.ai/v1",
   nanobanana: "https://generativelanguage.googleapis.com",
   imagerouter: "https://api.imagerouter.io/v1/openai",
-  "custom-image": "",
   fal: "https://fal.run",
   leonardo: "https://cloud.leonardo.ai/api/rest/v1",
   minimax: "https://api.minimaxi.chat/v1",
@@ -54,7 +53,6 @@ export const ENV_VAR_NAMES: Record<string, string | undefined> = {
   grok: "XAI_API_KEY",
   nanobanana: "GEMINI_API_KEY",
   imagerouter: "IMAGEROUTER_API_KEY",
-  "custom-image": undefined,
   fal: "FAL_KEY",
   leonardo: "LEONARDO_API_KEY",
   minimax: "MINIMAX_API_KEY",
@@ -88,16 +86,4 @@ export interface ProviderEntry {
   enabled: boolean;
   created_at: string;
   updated_at: string;
-}
-
-/**
- * Providers config file structure
- */
-export interface ProvidersFile {
-  default?: string;
-  defaults?: {
-    llm?: string;
-    media?: Partial<Record<string, string>>;
-  };
-  providers: Record<string, ProviderEntry>;
 }

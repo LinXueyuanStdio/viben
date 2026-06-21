@@ -1,8 +1,8 @@
 /**
  * Configuration management for Viben
  */
-import type { GlobalConfig, ModelsConfig } from "../types";
-import { getConfigPath, getModelsPath, getStateDir } from "./paths";
+import type { GlobalConfig } from "../types";
+import { getConfigPath, getStateDir } from "./paths";
 import { readYaml, writeYaml, ensureDir, fileExists } from "./yaml";
 
 export * from "./paths";
@@ -106,40 +106,5 @@ export class ConfigManager {
   }
 }
 
-/**
- * ModelsConfigManager handles models configuration
- */
-export class ModelsConfigManager {
-  private config: ModelsConfig | undefined;
-
-  /**
-   * Load the models configuration
-   */
-  async load(): Promise<ModelsConfig> {
-    if (this.config) {
-      return this.config;
-    }
-    this.config = await readYaml<ModelsConfig>(getModelsPath());
-    return this.config || { aliases: {}, configs: {} };
-  }
-
-  /**
-   * Save the models configuration
-   */
-  async save(config: ModelsConfig): Promise<void> {
-    await writeYaml(getModelsPath(), config);
-    this.config = config;
-  }
-
-  /**
-   * Reload configuration from disk
-   */
-  async reload(): Promise<ModelsConfig> {
-    this.config = undefined;
-    return this.load();
-  }
-}
-
 // Export singleton instances
 export const configManager = new ConfigManager();
-export const modelsConfigManager = new ModelsConfigManager();

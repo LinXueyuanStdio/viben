@@ -26,7 +26,6 @@ export type ProviderType =
   | "grok"
   | "nanobanana"
   | "imagerouter"
-  | "custom-image"
   | "fal"
   | "leonardo"
   | "minimax"
@@ -142,7 +141,6 @@ export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   grok: "https://api.x.ai/v1",
   nanobanana: "https://generativelanguage.googleapis.com",
   imagerouter: "https://api.imagerouter.io/v1/openai",
-  "custom-image": "",
   fal: "https://fal.run",
   leonardo: "https://cloud.leonardo.ai/api/rest/v1",
   minimax: "https://api.minimaxi.chat/v1",
@@ -167,7 +165,6 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   grok: "Grok",
   nanobanana: "Nano Banana",
   imagerouter: "ImageRouter",
-  "custom-image": "Custom Image",
   fal: "fal.ai",
   leonardo: "Leonardo AI",
   minimax: "MiniMax",

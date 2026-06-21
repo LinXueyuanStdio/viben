@@ -70,6 +70,7 @@ interface AuthState {
       id: string;
       email: string;
       username: string;
+      userSlug?: string;
       displayName: string;
       avatarUrl: string | null;
     };
@@ -215,6 +216,7 @@ export const useAuthStore = create<AuthState>()(
             id: data.user.id,
             email: data.user.email,
             username: data.user.username,
+            userSlug: data.user.userSlug ?? data.user.username,
             displayName: data.user.displayName,
             avatarUrl: data.user.avatarUrl,
             accessToken: data.accessToken,
