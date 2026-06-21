@@ -32,6 +32,7 @@ function getContext(cmd: Command): OutputContext {
  */
 const PROVIDER_TYPES: ProviderType[] = [
   "openai",
+  "openai-responses",
   "anthropic",
   "azure",
   "ollama",

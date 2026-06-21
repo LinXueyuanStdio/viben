@@ -268,8 +268,21 @@ export async function saveUnifiedModelsFile(file: UnifiedModelsFile): Promise<vo
     output[providerId] = {
       id: providerId,
       type: provider.type,
+      name: provider.name,
+      category: provider.category,
       base_url: provider.base_url,
       api_key: provider.api_key,
+      api_version: provider.api_version,
+      deployment: provider.deployment,
+      timeout: provider.timeout,
+      max_retries: provider.max_retries,
+      headers: provider.headers,
+      surfaces: provider.surfaces,
+      supports_custom_model: provider.supports_custom_model,
+      is_default: provider.is_default,
+      enabled: provider.enabled,
+      created_at: provider.created_at,
+      updated_at: provider.updated_at,
       models: provider.models ?? {},
     };
   }

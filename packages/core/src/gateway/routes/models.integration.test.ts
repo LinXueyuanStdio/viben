@@ -2,7 +2,7 @@
  * Model Routes Integration Tests
  *
  * These tests use real ModelManager instances with temporary directories
- * to verify actual file system operations and end-to-end route behavior.
+ * to verify provider-scoped models.yaml behavior end to end.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fastify from "fastify";
@@ -10,48 +10,86 @@ import type { FastifyInstance } from "fastify";
 import { createTempDir } from "../../test/helpers/temp-dir";
 import type { TempDirContext } from "../../test/helpers/temp-dir";
 
+const MODELS_YAML = `
+openai-main:
+  id: openai-main
+  type: openai
+  name: OpenAI Main
+  api_key: sk-openai
+  enabled: true
+  models:
+    gpt-4o:
+      name: GPT-4o
+      enabled: true
+anthropic-main:
+  id: anthropic-main
+  type: anthropic
+  name: Anthropic Main
+  api_key: sk-ant
+  enabled: true
+  models:
+    gpt-4o:
+      name: GPT-4o via Anthropic
+      enabled: true
+    claude-sonnet:
+      name: Claude Sonnet
+      enabled: true
+openai-disabled:
+  id: openai-disabled
+  type: openai
+  name: Disabled OpenAI
+  api_key: sk-disabled
+  enabled: false
+  models:
+    gpt-disabled:
+      name: Disabled GPT
+      enabled: true
+`;
+
 describe("Model Routes - Integration Tests", () => {
   let tempDir: TempDirContext;
   let app: FastifyInstance;
   let originalEnv: string | undefined;
 
   beforeEach(async () => {
-    // Save original env
     originalEnv = process.env.VIBEN_STATE_DIR;
-
-    // Create temp directory
     tempDir = await createTempDir("viben-models-integration-");
-
-    // Set the environment variable BEFORE importing the modules
     process.env.VIBEN_STATE_DIR = tempDir.root;
+    await tempDir.writeFile("models.yaml", MODELS_YAML);
 
-    // Dynamically import to get fresh module with new env
-    const { registerModelRoutes } = await import("./models");
+    const [{ registerModelRoutes }, { modelManager }, { providerManager }] = await Promise.all([
+      import("./models"),
+      import("../../models"),
+      import("../../providers"),
+    ]);
+    await Promise.all([modelManager.reload(), providerManager.reload()]);
 
-    // Create a new Fastify instance
     app = fastify({ logger: false });
     registerModelRoutes(app);
     await app.ready();
   });
 
   afterEach(async () => {
-    // Cleanup
     if (app) {
       await app.close();
     }
     if (tempDir) {
       await tempDir.cleanup();
     }
-    // Restore environment variable
     if (originalEnv !== undefined) {
       process.env.VIBEN_STATE_DIR = originalEnv;
     } else {
       delete process.env.VIBEN_STATE_DIR;
     }
+    const [{ modelManager }, { providerManager }] = await Promise.all([
+      import("../../models"),
+      import("../../providers"),
+    ]);
+    await Promise.all([modelManager.reload(), providerManager.reload()]);
   });
 
   describe("GET /api/models", () => {
-    it("should return real model list with known models", async () => {
+    it("returns configured provider-scoped models only", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/api/models",
@@ -60,162 +98,148 @@ describe("Model Routes - Integration Tests", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      // Should have models array
-      expect(body.models).toBeDefined();
-      expect(Array.isArray(body.models)).toBe(true);
-
-      // Should include known models (from KNOWN_MODELS)
-      expect(body.models.length).toBeGreaterThan(0);
-
-      // Check structure of a model
-      const firstModel = body.models[0];
-      expect(firstModel).toHaveProperty("id");
-      expect(firstModel).toHaveProperty("name");
-      expect(firstModel).toHaveProperty("provider");
-      expect(firstModel).toHaveProperty("enabled");
-      expect(firstModel).toHaveProperty("is_available");
-
-      // Should have total count
-      expect(body.total).toBe(body.models.length);
+      expect(body.models).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "gpt-4o",
+            provider_id: "openai-main",
+            provider_type: "openai",
+            is_available: true,
+          }),
+          expect.objectContaining({
+            id: "gpt-4o",
+            provider_id: "anthropic-main",
+            provider_type: "anthropic",
+            is_available: true,
+          }),
+          expect.objectContaining({
+            id: "gpt-disabled",
+            provider_id: "openai-disabled",
+            provider_type: "openai",
+            is_available: false,
+          }),
+        ])
+      );
+      expect(body.total).toBe(3);
     });
 
-    it("should include workspace_path in response", async () => {
+    it("filters by provider_id", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/api/models?workspace_path=/test/path",
+        url: "/api/models?provider_id=anthropic-main&workspace_path=/test/path",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.workspace_path).toBe("/test/path");
+      expect(body.models).toHaveLength(2);
+      expect(body.models.every((model: { provider_id: string }) => model.provider_id === "anthropic-main")).toBe(true);
     });
   });
 
   describe("POST /api/models", () => {
-    it("should create a new custom model and persist to file", async () => {
-      const newModel = {
-        id: "custom-model-1",
-        name: "Custom Model 1",
-        provider: "custom-provider",
-        description: "A test custom model",
-        context_window: 32000,
-        max_output_tokens: 4096,
-      };
-
+    it("requires provider_id", async () => {
       const response = await app.inject({
         method: "POST",
         url: "/api/models",
-        payload: newModel,
+        payload: {
+          id: "missing-provider",
+          name: "Missing Provider",
+          provider: "openai",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
+    });
+
+    it("creates a model under the specified provider and persists provider-map YAML", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/models",
+        payload: {
+          id: "manual-image",
+          name: "Manual Image",
+          provider_id: "openai-main",
+          category: "media",
+          surface: "image",
+          capabilities: ["t2i"],
+          description: "A manually configured image model",
+          context_window: 32000,
+          max_output_tokens: 4096,
+        },
       });
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.id).toBe("custom-model-1");
-      expect(body.name).toBe("Custom Model 1");
-      expect(body.provider_type).toBe("custom-provider");
+      expect(body).toMatchObject({
+        id: "manual-image",
+        name: "Manual Image",
+        provider_id: "openai-main",
+        provider_type: "openai",
+        category: "media",
+        surface: "image",
+      });
 
-      // Verify file was created
-      const fileExists = await tempDir.exists("models.yaml");
-      expect(fileExists).toBe(true);
-
-      // Read the file and verify content
       const content = await tempDir.readFile("models.yaml");
-      expect(content).toContain("custom-model-1");
-      expect(content).toContain("Custom Model 1");
-    });
-
-    it("should set model as default when set_as_default is true", async () => {
-      const newModel = {
-        id: "default-custom-model",
-        name: "Default Custom Model",
-        provider: "test-provider",
-        set_as_default: true,
-      };
-
-      const createResponse = await app.inject({
-        method: "POST",
-        url: "/api/models",
-        payload: newModel,
-      });
-
-      expect(createResponse.statusCode).toBe(201);
-
-      // Check default was set
-      const defaultResponse = await app.inject({
-        method: "GET",
-        url: "/api/models/default",
-      });
-
-      expect(defaultResponse.statusCode).toBe(200);
-      const defaultBody = JSON.parse(defaultResponse.body);
-      expect(defaultBody.default_model_id).toBe("default-custom-model");
+      expect(content).toContain("openai-main:");
+      expect(content).toContain("manual-image:");
+      expect(content).toContain("name: Manual Image");
+      expect(content).toContain("enabled: true");
+      expect(content).not.toContain("__viben");
+      expect(content).not.toContain("fallbacks:");
+      expect(content).not.toContain("providers.yaml");
     });
   });
 
   describe("GET /api/models/:id", () => {
-    it("should return a known model by ID", async () => {
-      // gpt-4o is a known model
+    it("returns 400 when model_id matches multiple providers without provider_id", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/api/models/gpt-4o",
       });
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.id).toBe("gpt-4o");
-      expect(body.provider_type).toBe("openai");
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provide provider_id");
     });
 
-    it("should return 404 for non-existent model", async () => {
+    it("uses provider_id to disambiguate duplicate model IDs", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/models/gpt-4o?provider_id=anthropic-main",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).toMatchObject({
+        id: "gpt-4o",
+        name: "GPT-4o via Anthropic",
+        provider_id: "anthropic-main",
+        provider_type: "anthropic",
+      });
+    });
+
+    it("returns 404 for non-existent model", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/api/models/non-existent-model-xyz",
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("not found");
+      expect(JSON.parse(response.body).error).toContain("not found");
     });
   });
 
-  describe("Default Model Management", () => {
-    it("should set and get default model", async () => {
-      // Set default
-      const setResponse = await app.inject({
-        method: "PUT",
-        url: "/api/models/default",
-        payload: { model_id: "gpt-4o" },
-      });
-
-      expect(setResponse.statusCode).toBe(200);
-      const setBody = JSON.parse(setResponse.body);
-      expect(setBody.success).toBe(true);
-      expect(setBody.default_model_id).toBe("gpt-4o");
-
-      // Get default
-      const getResponse = await app.inject({
-        method: "GET",
-        url: "/api/models/default",
-      });
-
-      expect(getResponse.statusCode).toBe(200);
-      const getBody = JSON.parse(getResponse.body);
-      expect(getBody.default_model_id).toBe("gpt-4o");
-    });
-  });
-
-  describe("Model Aliases", () => {
-    it("should create and list aliases", async () => {
-      // Create alias
+  describe("Model Aliases And Fallbacks", () => {
+    it("does not persist custom aliases", async () => {
       const createResponse = await app.inject({
         method: "POST",
         url: "/api/models/aliases",
-        payload: { alias: "best-model", model: "claude-3-5-sonnet-20241022" },
+        payload: { alias: "best-model", model: "claude-sonnet" },
       });
 
       expect(createResponse.statusCode).toBe(201);
 
-      // List aliases
       const listResponse = await app.inject({
         method: "GET",
         url: "/api/models/aliases",
@@ -223,205 +247,179 @@ describe("Model Routes - Integration Tests", () => {
 
       expect(listResponse.statusCode).toBe(200);
       const body = JSON.parse(listResponse.body);
-      expect(body.aliases["best-model"]).toBe("claude-3-5-sonnet-20241022");
+      expect(body.aliases["best-model"]).toBeUndefined();
     });
 
-    it("should delete an alias", async () => {
-      // Create alias first
-      await app.inject({
-        method: "POST",
-        url: "/api/models/aliases",
-        payload: { alias: "temp-alias", model: "gpt-4o" },
-      });
-
-      // Delete alias
-      const deleteResponse = await app.inject({
-        method: "DELETE",
-        url: "/api/models/aliases/temp-alias",
-      });
-
-      expect(deleteResponse.statusCode).toBe(200);
-      const body = JSON.parse(deleteResponse.body);
-      expect(body.success).toBe(true);
-      expect(body.deleted).toBe("temp-alias");
-    });
-  });
-
-  describe("Fallback Chain", () => {
-    it("should manage fallback chain", async () => {
-      // Add fallback
-      const addResponse = await app.inject({
-        method: "POST",
-        url: "/api/models/fallbacks",
-        payload: { model: "gpt-4o" },
-      });
-
-      expect(addResponse.statusCode).toBe(201);
-      const addBody = JSON.parse(addResponse.body);
-      expect(addBody.fallbacks).toContain("gpt-4o");
-
-      // Get fallbacks
-      const getResponse = await app.inject({
+    it("has no fallback API", async () => {
+      const response = await app.inject({
         method: "GET",
         url: "/api/models/fallbacks",
       });
 
-      expect(getResponse.statusCode).toBe(200);
-      const getBody = JSON.parse(getResponse.body);
-      expect(getBody.fallbacks).toContain("gpt-4o");
-
-      // Set fallbacks
-      const setResponse = await app.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: { fallbacks: ["claude-3-5-sonnet-20241022", "gpt-4o"] },
-      });
-
-      expect(setResponse.statusCode).toBe(200);
-      const setBody = JSON.parse(setResponse.body);
-      expect(setBody.fallbacks).toEqual(["claude-3-5-sonnet-20241022", "gpt-4o"]);
-
-      // Remove fallback
-      const removeResponse = await app.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks/gpt-4o",
-      });
-
-      expect(removeResponse.statusCode).toBe(200);
-      const removeBody = JSON.parse(removeResponse.body);
-      expect(removeBody.fallbacks).not.toContain("gpt-4o");
-    });
-
-    it("should clear all fallbacks", async () => {
-      // Add some fallbacks
-      await app.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: { fallbacks: ["model-1", "model-2"] },
-      });
-
-      // Clear fallbacks
-      const response = await app.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.fallbacks).toEqual([]);
+      expect(response.statusCode).toBe(404);
     });
   });
 
   describe("Model Enable/Disable", () => {
-    it("should disable and enable a known model", async () => {
-      // Disable model
+    it("disables and enables a model scoped by provider_id", async () => {
       const disableResponse = await app.inject({
         method: "POST",
-        url: "/api/models/gpt-4o/disable",
+        url: "/api/models/gpt-4o/disable?provider_id=openai-main",
       });
 
       expect(disableResponse.statusCode).toBe(200);
-      const disableBody = JSON.parse(disableResponse.body);
-      expect(disableBody.enabled).toBe(false);
+      expect(JSON.parse(disableResponse.body)).toMatchObject({
+        provider_id: "openai-main",
+        model_id: "gpt-4o",
+        enabled: false,
+      });
 
-      // Enable model
+      const afterDisable = await app.inject({
+        method: "GET",
+        url: "/api/models/gpt-4o?provider_id=openai-main",
+      });
+      expect(JSON.parse(afterDisable.body).enabled).toBe(false);
+
       const enableResponse = await app.inject({
         method: "POST",
-        url: "/api/models/gpt-4o/enable",
+        url: "/api/models/gpt-4o/enable?provider_id=openai-main",
       });
 
       expect(enableResponse.statusCode).toBe(200);
-      const enableBody = JSON.parse(enableResponse.body);
-      expect(enableBody.enabled).toBe(true);
+      expect(JSON.parse(enableResponse.body)).toMatchObject({
+        provider_id: "openai-main",
+        model_id: "gpt-4o",
+        enabled: true,
+      });
     });
   });
 
   describe("Model Configuration", () => {
-    it("should set and get model configuration", async () => {
-      const config = {
-        temperature: 0.8,
-        maxTokens: 2048,
-        topP: 0.95,
-      };
-
-      // Set config
+    it("sets, returns, and persists snake_case model configuration per provider", async () => {
       const setResponse = await app.inject({
         method: "PUT",
-        url: "/api/models/claude-3-5-sonnet-20241022/config",
-        payload: config,
+        url: "/api/models/claude-sonnet/config",
+        payload: {
+          provider_id: "anthropic-main",
+          temperature: 0.8,
+          max_tokens: 2048,
+          top_p: 0.95,
+        },
       });
 
       expect(setResponse.statusCode).toBe(200);
       const setBody = JSON.parse(setResponse.body);
-      expect(setBody.success).toBe(true);
-      expect(setBody.config.temperature).toBe(0.8);
+      expect(setBody.config).toMatchObject({
+        temperature: 0.8,
+        max_tokens: 2048,
+        top_p: 0.95,
+      });
+      expect(setBody.config.maxTokens).toBeUndefined();
 
-      // Get config
       const getResponse = await app.inject({
         method: "GET",
-        url: "/api/models/claude-3-5-sonnet-20241022/config",
+        url: "/api/models/claude-sonnet/config?provider_id=anthropic-main",
       });
 
       expect(getResponse.statusCode).toBe(200);
-      const getBody = JSON.parse(getResponse.body);
-      expect(getBody.config.temperature).toBe(0.8);
-      expect(getBody.config.maxTokens).toBe(2048);
+      expect(JSON.parse(getResponse.body).config).toMatchObject({
+        temperature: 0.8,
+        max_tokens: 2048,
+        top_p: 0.95,
+      });
+
+      const content = await tempDir.readFile("models.yaml");
+      expect(content).toContain("config:");
+      expect(content).toContain("max_tokens: 2048");
+      expect(content).not.toContain("maxTokens");
     });
 
-    it("should delete model configuration", async () => {
-      // First set a config
-      await app.inject({
+    it("requires provider_id for model configuration writes", async () => {
+      const response = await app.inject({
         method: "PUT",
-        url: "/api/models/gpt-4o/config",
+        url: "/api/models/claude-sonnet/config",
         payload: { temperature: 0.5 },
       });
 
-      // Delete config
-      const deleteResponse = await app.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o/config",
-      });
-
-      expect(deleteResponse.statusCode).toBe(200);
-      const body = JSON.parse(deleteResponse.body);
-      expect(body.success).toBe(true);
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
     });
-  });
 
-  describe("File System Verification", () => {
-    it("should persist changes to models.yaml file", async () => {
-      // Create a custom model
+    it("deletes model configuration for a specific provider", async () => {
       await app.inject({
-        method: "POST",
-        url: "/api/models",
+        method: "PUT",
+        url: "/api/models/gpt-4o/config",
         payload: {
-          id: "persisted-model",
-          name: "Persisted Model",
-          provider: "test",
+          provider_id: "openai-main",
+          temperature: 0.5,
         },
       });
 
-      // Set default
-      await app.inject({
-        method: "PUT",
-        url: "/api/models/default",
-        payload: { model_id: "persisted-model" },
+      const deleteResponse = await app.inject({
+        method: "DELETE",
+        url: "/api/models/gpt-4o/config?provider_id=openai-main",
       });
 
-      // Add fallbacks
-      await app.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: { fallbacks: ["fallback-1", "fallback-2"] },
+      expect(deleteResponse.statusCode).toBe(200);
+      expect(JSON.parse(deleteResponse.body)).toMatchObject({
+        success: true,
+        provider_id: "openai-main",
+        deleted: "gpt-4o",
       });
 
-      // Verify file content
-      const content = await tempDir.readFile("models.yaml");
+      const getResponse = await app.inject({
+        method: "GET",
+        url: "/api/models/gpt-4o/config?provider_id=openai-main",
+      });
+      expect(getResponse.statusCode).toBe(404);
+    });
+  });
 
-      expect(content).toContain("persisted-model");
-      expect(content).toContain("Persisted Model");
-      expect(content).toContain("default:");
-      expect(content).toContain("fallbacks:");
+  describe("DELETE /api/models/:id", () => {
+    it("requires provider_id", async () => {
+      const response = await app.inject({
+        method: "DELETE",
+        url: "/api/models/claude-sonnet",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
+    });
+
+    it("deletes only the provider-scoped model configuration", async () => {
+      await app.inject({
+        method: "PUT",
+        url: "/api/models/gpt-4o/config",
+        payload: {
+          provider_id: "openai-main",
+          temperature: 0.4,
+        },
+      });
+
+      const deleteResponse = await app.inject({
+        method: "DELETE",
+        url: "/api/models/gpt-4o?provider_id=openai-main",
+      });
+
+      expect(deleteResponse.statusCode).toBe(200);
+      expect(JSON.parse(deleteResponse.body)).toMatchObject({
+        success: true,
+        provider_id: "openai-main",
+        deleted: "gpt-4o",
+      });
+
+      const openaiResponse = await app.inject({
+        method: "GET",
+        url: "/api/models/gpt-4o?provider_id=openai-main",
+      });
+      expect(openaiResponse.statusCode).toBe(200);
+      expect(JSON.parse(openaiResponse.body).config).toBeNull();
+
+      const anthropicResponse = await app.inject({
+        method: "GET",
+        url: "/api/models/gpt-4o?provider_id=anthropic-main",
+      });
+      expect(anthropicResponse.statusCode).toBe(200);
     });
   });
 });

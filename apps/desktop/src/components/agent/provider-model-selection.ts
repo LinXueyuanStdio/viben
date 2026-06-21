@@ -16,7 +16,7 @@ export interface ModelLike {
   id: string;
   name: string;
   provider_type?: string;
-  provider_id?: string;
+  provider_id: string;
   is_available?: boolean;
 }
 
