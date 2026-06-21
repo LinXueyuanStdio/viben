@@ -90,6 +90,26 @@ export interface CodexConfig {
   model?: string;
   /** API key */
   api_key?: string;
+  /** Codex app-server command */
+  command?: string;
+  /** Codex app-server arguments */
+  args?: string[];
+  /** Codex model provider name passed to app-server config */
+  model_provider?: string;
+  /** Provider base URL passed to app-server config */
+  base_url?: string;
+  /** Codex reasoning effort */
+  reasoning_effort?: "low" | "medium" | "high";
+  /** Codex personality */
+  personality?: string;
+  /** Codex sandbox mode */
+  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  /** Codex approval policy */
+  approval_policy?: string;
+  /** Initialization timeout in milliseconds */
+  init_timeout_ms?: number;
+  /** Skip permission prompts */
+  dangerously_skip_permissions?: boolean;
 }
 
 /**
@@ -182,7 +202,7 @@ export function getDefaultConfig(agentType: ExecutorType): ExecutorConfig {
     case "GEMINI":
       return { type: "GEMINI", config: {} };
     case "CODEX":
-      return { type: "CODEX", config: {} };
+      return { type: "CODEX", config: { command: "codex", args: ["app-server"] } };
     case "OPENCODE":
       return { type: "OPENCODE", config: {} };
     case "CURSOR_AGENT":

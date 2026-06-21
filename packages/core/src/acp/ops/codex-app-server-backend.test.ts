@@ -91,6 +91,46 @@ describe("CodexAppServerBackendAdapter", () => {
     await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
   });
 
+  it("quotes Codex provider config keys that are not TOML bare keys", async () => {
+    const proc = createProcess();
+    let spawnedArgs: string[] | undefined;
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: (definition) => {
+        spawnedArgs = definition.args;
+        return proc;
+      },
+    });
+
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection: createConnection(),
+      agentConfig: {
+        executor_type: "CODEX",
+        model: "deepseek-v4-flash",
+        executor_config: {
+          model_provider: "本地-openai",
+          base_url: "http://localhost:8777/v1",
+        },
+      },
+    });
+
+    await waitForWrite(proc, "initialize");
+    expect(spawnedArgs).toEqual([
+      "app-server",
+      "-c",
+      'model_provider="本地-openai"',
+      "-c",
+      'model_providers."本地-openai".base_url="http://localhost:8777/v1"',
+    ]);
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+
+    await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
+  });
+
   it("initializes app-server and starts a Codex thread", async () => {
     const proc = createProcess();
     const sandboxPolicy = { type: "workspaceWrite", networkAccess: false };

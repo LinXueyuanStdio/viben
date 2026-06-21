@@ -1257,7 +1257,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
                 </DropdownMenuItem>
               ) : null}
               {connected && !sessionId ? (
-                <DropdownMenuItem onClick={createSession} className="gap-2">
+                <DropdownMenuItem onClick={() => { void createSession(); }} className="gap-2">
                   <FolderPlus className="size-4" />
                   {t("chat.newSession")}
                 </DropdownMenuItem>

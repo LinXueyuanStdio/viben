@@ -51,6 +51,7 @@ import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { WorkspaceSkill } from "@/types";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
+import { CodexConfigSection } from "./codex-config-section";
 import { OpenClawConfigSection } from "./openclaw-config-section";
 import { McpConfigEditor } from "./mcp-config-editor";
 
@@ -293,6 +294,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
 
     // Check if executor is Claude Code
     const isClaudeCode = executorType === "CLAUDE_CODE";
+    const isCodex = executorType === "CODEX";
 
     const content = (
       <div className={cn("space-y-6", embedded ? "px-4 pb-4 pt-0" : "p-4")}>
@@ -442,6 +444,14 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               {/* OpenClaw Options */}
               {executorType === "OPENCLAW" && (
                 <OpenClawConfigSection
+                  config={props.executorConfig}
+                  onConfigChange={props.onExecutorConfigChange}
+                />
+              )}
+
+              {/* Codex App Server Options */}
+              {isCodex && (
+                <CodexConfigSection
                   config={props.executorConfig}
                   onConfigChange={props.onExecutorConfigChange}
                 />

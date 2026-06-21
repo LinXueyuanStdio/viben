@@ -288,13 +288,17 @@ function codexArgs(agentConfig: AgentConfigPayload | undefined, baseArgs: string
     args.push("-c", `model_provider=${tomlString(modelProvider)}`);
   }
   if (modelProvider && baseUrl) {
-    args.push("-c", `model_providers.${modelProvider}.base_url=${tomlString(baseUrl)}`);
+    args.push("-c", `model_providers.${tomlKey(modelProvider)}.base_url=${tomlString(baseUrl)}`);
   }
   return args;
 }
 
 function tomlString(value: string): string {
   return JSON.stringify(value);
+}
+
+function tomlKey(value: string): string {
+  return /^[A-Za-z0-9_-]+$/.test(value) ? value : JSON.stringify(value);
 }
 
 function threadMethod(context: AcpBackendStartContext): string {

@@ -409,6 +409,74 @@ describe("AcpSessionManager", () => {
     }
   });
 
+  it("overlays inline agent config on top of file frontmatter before starting the ACP backend", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-agent-config-merge-test-"));
+    try {
+      const configPath = path.join(tempDir, "AGENTS.md");
+      await writeFile(
+        configPath,
+        [
+          "---",
+          "name: File Codex Agent",
+          "model: gpt-5-codex",
+          "provider: openai",
+          "executor_type: CODEX",
+          "executor_config:",
+          "  command: /usr/local/bin/codex",
+          "  args:",
+          "    - app-server",
+          "  init_timeout_ms: 15000",
+          "---",
+          "You are a coding agent from the file.",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+      const adapter = new CapturingBackendAdapter();
+      const manager = new AcpSessionManager(adapter);
+      const connection = createConnection();
+
+      const session = await manager.createSession(
+        {
+          cwd: "/tmp",
+          mcpServers: [],
+          agent_config_path: configPath,
+          agent_config: {
+            model: "deepseek-v4-flash",
+            provider: "hexin",
+            executor_config: {
+              model_provider: "hexin",
+              base_url: "http://localhost:8777/v1",
+              reasoning_effort: "low",
+            },
+          },
+        },
+        connection
+      );
+      await manager.prompt({
+        sessionId: session.sessionId,
+        prompt: [{ type: "text", text: "hello" }],
+      });
+
+      expect(adapter.startContext?.agentConfig).toMatchObject({
+        name: "File Codex Agent",
+        executor_type: "CODEX",
+        model: "deepseek-v4-flash",
+        provider: "hexin",
+        executor_config: {
+          command: "/usr/local/bin/codex",
+          args: ["app-server"],
+          init_timeout_ms: 15000,
+          model_provider: "hexin",
+          base_url: "http://localhost:8777/v1",
+          reasoning_effort: "low",
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("resolves OpenClaw as a built-in ACP backend", () => {
     expect(resolveBuiltinAcpBackend("OPENCLAW")).toMatchObject({
       executorType: "OPENCLAW",

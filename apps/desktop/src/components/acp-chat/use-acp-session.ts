@@ -34,6 +34,7 @@ import { useModels } from "@/hooks/use-models";
 import { useProviders } from "@/hooks/use-providers";
 import type { AgentInfo } from "@/lib/gateway";
 import { filterModelsByExecutor, getAllowedProviders, type ProviderId } from "@/lib/executor-constraints";
+import { buildAcpAgentConfig } from "./acp-agent-config";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
@@ -88,54 +89,11 @@ import { isClientSideBashTool } from "@/lib/action-system/client-side-bash";
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
-const CLIENT_SIDE_MCP_SERVER = "client_side";
 
 export interface AcpSessionItem {
   id: string;
   title: string;
   subtitle?: string;
-}
-
-function mergeAgentMcpServers(servers: AgentInfo["mcp_servers"] | undefined): unknown[] {
-  const entries = Array.isArray(servers) ? [...servers] : [];
-  return entries.includes(CLIENT_SIDE_MCP_SERVER) ? entries : [...entries, CLIENT_SIDE_MCP_SERVER];
-}
-
-function executorBoolean(config: Record<string, unknown> | undefined, key: string): boolean | undefined {
-  return config ? readBoolean(config[key]) : undefined;
-}
-
-function executorString(config: Record<string, unknown> | undefined, key: string): string | undefined {
-  return config ? readString(config[key]) : undefined;
-}
-
-export function buildAcpAgentConfig(params: {
-  agent?: AgentInfo;
-  executorType: string;
-  model: string;
-  providerId: string | null;
-}): AgentConfigPayload {
-  const { agent, executorType, model, providerId } = params;
-  const selectedModel = model.trim() || agent?.model || undefined;
-  const executorConfig = agent?.executor_config;
-  return {
-    name: agent?.name,
-    executor_type: agent?.executor_type ?? executorType,
-    provider: providerId ?? agent?.provider,
-    model: selectedModel,
-    system_prompt: agent?.system_prompt,
-    append_prompt: agent?.append_prompt,
-    temperature: agent?.temperature,
-    max_tokens: agent?.max_tokens,
-    executor_config: executorConfig,
-    approval_mode: agent?.approval_mode,
-    dangerously_skip_permissions: executorBoolean(executorConfig, "dangerously_skip_permissions"),
-    permission_mode: agent?.approval_mode === "bypass"
-      ? "bypass"
-      : executorString(executorConfig, "permission_mode") ?? "default",
-    mcp_servers: mergeAgentMcpServers(agent?.mcp_servers),
-    skills: agent?.skills,
-  };
 }
 
 // Re-export types from store
@@ -293,12 +251,44 @@ function readSessionAvailableCommands(value: unknown): SlashCommand[] | null {
   return parsed.length > 0 ? parsed : null;
 }
 
-function readBoolean(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
+function summarizeAgentConfigForLog(config: AgentConfigPayload | undefined): Record<string, unknown> | null {
+  if (!config) return null;
+  return {
+    name: config.name,
+    executorType: config.executor_type,
+    provider: config.provider,
+    model: config.model,
+    approvalMode: config.approval_mode,
+    permissionMode: config.permission_mode,
+    dangerouslySkipPermissions: config.dangerously_skip_permissions,
+    mcpServerCount: Array.isArray(config.mcp_servers) ? config.mcp_servers.length : 0,
+    skillCount: Array.isArray(config.skills) ? config.skills.length : 0,
+    hasSystemPrompt: Boolean(config.system_prompt),
+    hasAppendPrompt: Boolean(config.append_prompt),
+    executorConfig: summarizeExecutorConfigForLog(config.executor_config),
+  };
 }
 
-function readString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+function summarizeExecutorConfigForLog(config: Record<string, unknown> | undefined): Record<string, unknown> | null {
+  if (!config) return null;
+  return {
+    id: readRecordString(config, "id"),
+    command: readRecordString(config, "command"),
+    argsCount: Array.isArray(config.args) ? config.args.length : undefined,
+    modelProvider: readRecordString(config, "model_provider") ?? readRecordString(config, "modelProvider"),
+    baseUrl: readRecordString(config, "base_url") ?? readRecordString(config, "baseUrl"),
+    approvalPolicy: readRecordString(config, "approval_policy") ?? readRecordString(config, "approvalPolicy"),
+    sandbox: readRecordString(config, "sandbox"),
+    hasSandboxPolicy: typeof config.sandbox_policy === "object" && config.sandbox_policy !== null,
+    reasoningEffort: readRecordString(config, "reasoning_effort") ?? readRecordString(config, "reasoningEffort"),
+    personality: readRecordString(config, "personality"),
+    initTimeoutMs: typeof config.init_timeout_ms === "number" ? config.init_timeout_ms : undefined,
+  };
+}
+
+function readRecordString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 function selectInitialPermissionOption(options: Array<{ kind?: string; optionId?: string; name?: string }>): { kind?: string; optionId?: string; name?: string } | undefined {
@@ -523,8 +513,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       executorType,
       model,
       providerId: selectedProviderId,
+      providers,
     });
-  }, [executorType, model, selectedAgent, selectedProviderId]);
+  }, [executorType, model, providers, selectedAgent, selectedProviderId]);
   const acpSandboxConfig = useMemo(
     () => sandboxConfig.enabled
       ? { enabled: true, provider: sandboxConfig.provider }
@@ -1097,6 +1088,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         executorType: sessionAgent?.executor_type ?? executorType,
         model,
         providerId: selectedProviderId,
+        providers,
       });
       console.log("[ACP] Creating session with agent config", {
         requestedAgentId: agentId,
@@ -1134,7 +1126,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
-  }, [acpSandboxConfig, allAgents, cwd, ensureClient, executorType, initializeResult, model, selectedAgent, selectedAgentId, selectedProviderId, setActiveSessionId, setError, setExecutorType, setInitializeResult, setSessionOrder, setSessionsById, setStoreSelectedAgentId, wsUrl]);
+  }, [acpSandboxConfig, allAgents, cwd, ensureClient, executorType, initializeResult, model, providers, selectedAgent, selectedAgentId, selectedProviderId, setActiveSessionId, setError, setExecutorType, setInitializeResult, setSessionOrder, setSessionsById, setStoreSelectedAgentId, wsUrl]);
 
   const loadSession = useCallback(
     async (loadSessionId: string) => {
@@ -1147,14 +1139,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         if (!initializeResult) {
           setInitializeResult(await client.initialize());
         }
-        const session = await client.loadSession({
-          session_id: id,
-          cwd,
-          agent_config_path: selectedAgent?.config_path,
-          agent_dir: selectedAgent?.agent_dir,
-          agent_config: buildAgentConfig(),
-          sandbox_config: acpSandboxConfig,
-        });
+        const agentConfig = buildAgentConfig();
         console.log("[ACP] Loading session with selected agent config", {
           sessionId: id,
           selectedAgentId,
@@ -1163,7 +1148,15 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           agentDir: selectedAgent?.agent_dir,
           cwd,
           sandbox: acpSandboxConfig,
-          agentConfig: summarizeAgentConfigForLog(buildAgentConfig()),
+          agentConfig: summarizeAgentConfigForLog(agentConfig),
+        });
+        const session = await client.loadSession({
+          session_id: id,
+          cwd,
+          agent_config_path: selectedAgent?.config_path,
+          agent_dir: selectedAgent?.agent_dir,
+          agent_config: agentConfig,
+          sandbox_config: acpSandboxConfig,
         });
         const loadedId = readSessionId(session) ?? id;
         setSessionsById((current) => ({
@@ -1181,7 +1174,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(loadError instanceof Error ? loadError.message : String(loadError));
       }
     },
-    [buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl, selectedAgent, acpSandboxConfig, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]
+    [acpSandboxConfig, buildAgentConfig, cwd, ensureClient, initializeResult, selectedAgent, selectedAgentId, setActiveSessionId, setError, setInitializeResult, setSessionOrder, setSessionsById, wsUrl]
   );
 
   const disconnect = useCallback(() => {

@@ -9,6 +9,7 @@
  * - Session messages (rollout and UI messages)
  */
 import type { FastifyInstance } from "fastify";
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -51,6 +52,15 @@ async function resolveAgentDir(agentId: string, workspacePath?: string): Promise
   }
 
   return undefined;
+}
+
+function isCommandAvailable(command: string): boolean {
+  try {
+    execFileSync("which", [command], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ============================================================================
@@ -929,7 +939,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           }
           case "CODEX": {
             const codexDir = join(homeDir, ".codex");
-            if (existsSync(codexDir)) {
+            if (isCommandAvailable("codex")) {
+              availability = { type: "INSTALLATION_FOUND" };
+            } else if (existsSync(codexDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;

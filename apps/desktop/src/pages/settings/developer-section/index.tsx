@@ -8,10 +8,8 @@ import {
   CheckCircle2,
   Bug,
   FileText,
-  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -35,8 +33,6 @@ export function DeveloperSection() {
     setPreferredIDE,
     preferredTerminal,
     setPreferredTerminal,
-    dangerouslySkipPermissions,
-    setDangerouslySkipPermissions,
   } = useAppStore();
 
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
@@ -186,35 +182,6 @@ export function DeveloperSection() {
             </SelectContent>
           </Select>
         </SettingsItem>
-      </div>
-
-      {/* YOLO Mode */}
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-amber-200">
-                {t("settings.developer.yoloMode")}
-              </h3>
-              <p className="text-xs text-amber-400/80">
-                {t("settings.developer.yoloModeDescription")}
-              </p>
-            </div>
-          </div>
-          <Switch
-            checked={dangerouslySkipPermissions ?? false}
-            onCheckedChange={setDangerouslySkipPermissions}
-          />
-        </div>
-        {dangerouslySkipPermissions && (
-          <p className="text-xs text-amber-500 font-medium flex items-center gap-1 mt-3">
-            <AlertTriangle className="h-3 w-3" />
-            {t("settings.developer.yoloModeWarning")}
-          </p>
-        )}
       </div>
 
       {/* Debug & Logs */}

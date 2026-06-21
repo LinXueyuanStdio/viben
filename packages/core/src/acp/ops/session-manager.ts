@@ -864,7 +864,36 @@ async function resolveAgentConfig(
   if (!agentConfigPath) return inlineConfig ?? null;
 
   const loaded = await loadAgentConfigFromPath(agentConfigPath);
-  return loaded ?? inlineConfig ?? null;
+  if (!loaded) return inlineConfig ?? null;
+  if (!inlineConfig) return loaded;
+  return mergeAgentConfig(loaded, inlineConfig);
+}
+
+function mergeAgentConfig(
+  base: AgentConfigPayload,
+  override: AgentConfigPayload
+): AgentConfigPayload {
+  const merged: AgentConfigPayload = { ...base };
+  for (const [key, value] of Object.entries(override) as Array<[keyof AgentConfigPayload, unknown]>) {
+    if (value !== undefined) {
+      (merged as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  if (isRecord(base.executor_config) || isRecord(override.executor_config)) {
+    merged.executor_config = {
+      ...(isRecord(base.executor_config) ? base.executor_config : {}),
+      ...(isRecord(override.executor_config) ? definedRecord(override.executor_config) : {}),
+    };
+  }
+
+  return merged;
+}
+
+function definedRecord(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([, value]) => value !== undefined)
+  );
 }
 
 async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigPayload | null> {
