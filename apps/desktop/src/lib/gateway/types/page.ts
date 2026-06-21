@@ -193,3 +193,22 @@ export interface DuplicatePageParams {
 export interface DuplicatePageResult extends PageResult {
   page?: PageConfig;
 }
+
+// =============================================================================
+// Publish Types
+// =============================================================================
+
+export interface PublishPageParams {
+  access_token: string;
+  uid: string;
+  title: string;
+  icon?: IconData | null;
+  description?: string | null;
+  html: string;
+}
+
+export interface PublishPageResult extends PageResult {
+  page_uid?: string;
+  url?: string;
+  updated?: boolean;
+}

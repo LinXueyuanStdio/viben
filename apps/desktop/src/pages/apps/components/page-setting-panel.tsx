@@ -10,10 +10,10 @@ import { useTranslation } from "react-i18next";
 import { Download, FolderOpen, Info, Package, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
-import { readFile, viewPage } from "@/lib/gateway";
+import { publishPage, readFile, viewPage } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { getApiClient, useAuthStore } from "@/stores/auth-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ============================================================================
 // Types
@@ -96,9 +96,8 @@ export function PageSettingPanel({
 
       const entryPath = `${workspacePath}/pages/${pageUid}/${page.file}`;
       const { content } = await readFile(baseUrl, entryPath);
-      const client = getApiClient();
-      client.setAccessToken(accessToken);
-      const result = await client.pages.publish({
+      const result = await publishPage(baseUrl, {
+        access_token: accessToken,
         uid: page.uid,
         title: page.name,
         icon: page.icon ?? null,

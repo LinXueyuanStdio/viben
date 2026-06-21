@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 import type { FastifyInstance } from "fastify";
+import { VibenClient, ApiError } from "@viben/api-client";
 import {
   // CRUD operations
   listPages,
@@ -40,6 +41,7 @@ import {
   PAGE_TYPES,
   PAGE_PERMISSIONS,
 } from "../../page/ops";
+import { proxyFetch } from "../../http";
 import type {
   PageConfig,
   PageType,
@@ -59,6 +61,7 @@ import type {
 } from "../../page/ops";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+const VIBEN_WEB_URL = "https://viben-web.vercel.app";
 
 function readPageSdkAsset(filename: string): string {
   const mapping: Record<string, string> = {
@@ -226,6 +229,17 @@ const errorResponseSchema = {
   },
 } as const;
 
+const publishPageResponseSchema = {
+  type: "object",
+  properties: {
+    success: { type: "boolean" },
+    page_uid: { type: "string", nullable: true },
+    url: { type: "string", nullable: true },
+    updated: { type: "boolean", nullable: true },
+    error: { type: "string", nullable: true },
+  },
+} as const;
+
 // ============================================================================
 // Route Registration
 // ============================================================================
@@ -319,6 +333,81 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     }
 
     return result;
+  });
+
+  // ============================================================================
+  // POST /api/page/publish - Publish a static page through viben-web
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      access_token: string;
+      uid: string;
+      title: string;
+      icon?: IconData | null;
+      description?: string | null;
+      html: string;
+    };
+  }>("/api/page/publish", {
+    schema: {
+      description: "Publish a static page to viben-web through proxy-aware api-client",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          access_token: { type: "string", description: "Viben web access token" },
+          uid: { type: "string", description: "Page uid" },
+          title: { type: "string", description: "Page title" },
+          icon: iconDataSchema,
+          description: { type: "string", nullable: true },
+          html: { type: "string", description: "Static HTML content" },
+        },
+        required: ["access_token", "uid", "title", "html"],
+      },
+      response: {
+        200: publishPageResponseSchema,
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        403: errorResponseSchema,
+        500: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { access_token, uid, title, icon, description, html } = request.body;
+
+    if (!access_token.trim()) {
+      reply.code(401);
+      return { success: false, error: "access_token is required" };
+    }
+
+    if (!uid.trim() || !title.trim() || !html) {
+      reply.code(400);
+      return { success: false, error: "uid, title, and html are required" };
+    }
+
+    try {
+      const client = new VibenClient({
+        baseUrl: VIBEN_WEB_URL,
+        apiKey: access_token,
+        fetch: proxyFetch,
+      });
+      return await client.pages.publish({
+        uid,
+        title,
+        icon: icon ?? null,
+        description: description ?? null,
+        html,
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        reply.code(error.status || 500);
+        return { success: false, error: error.message };
+      }
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to publish page",
+      };
+    }
   });
 
   // ============================================================================

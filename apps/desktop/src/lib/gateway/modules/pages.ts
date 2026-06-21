@@ -20,6 +20,8 @@ import type {
   ReorderPagesResult,
   DuplicatePageParams,
   DuplicatePageResult,
+  PublishPageParams,
+  PublishPageResult,
   ListTemplatesResult,
 } from "../types/page";
 
@@ -46,6 +48,8 @@ export type {
   ReorderPagesResult,
   DuplicatePageParams,
   DuplicatePageResult,
+  PublishPageParams,
+  PublishPageResult,
   PageTemplate,
   ListTemplatesResult,
 } from "../types/page";
@@ -283,6 +287,40 @@ export async function duplicatePage(
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to duplicate page: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// Publish Page
+// =============================================================================
+
+/**
+ * Publish a static page through Gateway.
+ *
+ * The Gateway forwards to viben-web via packages/api-client and proxyFetch, so
+ * the desktop app does not access viben-web directly.
+ */
+export async function publishPage(
+  baseUrl: string,
+  params: PublishPageParams
+): Promise<PublishPageResult> {
+  const response = await fetch(`${baseUrl}/api/page/publish`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to publish page: ${errorMessage}`,
       response.status
     );
   }

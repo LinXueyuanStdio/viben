@@ -7,8 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PageSettingPanel } from "./page-setting-panel";
 import type { ButtonHTMLAttributes } from "react";
 
-const publish = vi.fn();
-const setAccessToken = vi.fn();
+const mocks = vi.hoisted(() => ({
+  publishPage: vi.fn(),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -34,12 +35,6 @@ vi.mock("@/stores/auth-store", () => ({
       },
       isAuthenticated: true,
     }),
-  getApiClient: () => ({
-    setAccessToken,
-    pages: {
-      publish,
-    },
-  }),
 }));
 
 vi.mock("@/lib/gateway/config", () => ({
@@ -61,6 +56,7 @@ vi.mock("@/lib/gateway", () => ({
   readFile: vi.fn().mockResolvedValue({
     content: "<html><body>Demo</body></html>",
   }),
+  publishPage: mocks.publishPage,
 }));
 
 vi.mock("@/components/ui/button", () => ({
@@ -72,7 +68,7 @@ vi.mock("@/components/ui/button", () => ({
 describe("PageSettingPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    publish.mockResolvedValue({
+    mocks.publishPage.mockResolvedValue({
       success: true,
       page_uid: "demo",
       url: "/page/demo",
@@ -119,8 +115,8 @@ describe("PageSettingPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
 
     await waitFor(() => {
-      expect(setAccessToken).toHaveBeenCalledWith("session-token");
-      expect(publish).toHaveBeenCalledWith({
+      expect(mocks.publishPage).toHaveBeenCalledWith("http://127.0.0.1:18790", {
+        access_token: "session-token",
         uid: "demo",
         title: "Demo",
         icon: { type: "lucide", value: "file-text" },
