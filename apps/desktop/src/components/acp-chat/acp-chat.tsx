@@ -759,8 +759,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         const isAgentId = agentOptions.some((a) => a.id === value.first);
         if (isAgentId) {
           setSelectedAgentId(value.first);
+          return;
         } else {
           setExecutorType(value.first);
+          return;
         }
       }
       // 2. Provider 变更

@@ -1,68 +1,68 @@
 {
-  "generatedAt": "2026-06-09T17:44:08.076494+00:00",
+  "generatedAt": "2026-06-22T06:31:23.006025+00:00",
   "summary": {
-    "totalLines": 1713210,
-    "totalFiles": 7316,
-    "totalModules": 28,
-    "codeLines": 1067803,
-    "docLines": 396265,
-    "configLines": 249142
+    "totalLines": 1821968,
+    "totalFiles": 8411,
+    "totalModules": 30,
+    "codeLines": 1102937,
+    "docLines": 451697,
+    "configLines": 267334
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 552473,
-      "files": 2532,
+      "lines": 577083,
+      "files": 2709,
       "color": "#3178C6"
     },
     {
       "lang": "Markdown",
       "ext": "md",
-      "lines": 372842,
-      "files": 1810,
+      "lines": 428274,
+      "files": 2628,
       "color": "#083FA1"
     },
     {
       "lang": "TSX",
       "ext": "tsx",
-      "lines": 258302,
-      "files": 1174,
+      "lines": 274974,
+      "files": 1264,
       "color": "#61DAFB"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 197460,
-      "files": 694,
+      "lines": 214861,
+      "files": 708,
       "color": "#F59E0B"
     },
     {
       "lang": "HTML",
       "ext": "html",
-      "lines": 165071,
-      "files": 410,
+      "lines": 162733,
+      "files": 407,
       "color": "#E34F26"
     },
     {
       "lang": "YAML",
       "ext": "yaml",
-      "lines": 41795,
-      "files": 38,
+      "lines": 42800,
+      "files": 42,
       "color": "#CB171E"
     },
     {
       "lang": "Python",
       "ext": "py",
-      "lines": 37599,
-      "files": 145,
+      "lines": 33154,
+      "files": 146,
       "color": "#3776AB"
     },
     {
       "lang": "CSS",
       "ext": "css",
-      "lines": 32068,
-      "files": 259,
+      "lines": 32464,
+      "files": 261,
       "color": "#1572B6"
     },
     {
@@ -75,35 +75,35 @@
     {
       "lang": "JavaScript",
       "ext": "js",
-      "lines": 13729,
-      "files": 111,
+      "lines": 13358,
+      "files": 116,
       "color": "#F7DF1E"
     },
     {
       "lang": "Bash",
       "ext": "sh",
-      "lines": 8578,
-      "files": 46,
+      "lines": 9221,
+      "files": 50,
       "color": "#89E051"
     },
     {
       "lang": "Rust",
       "ext": "rs",
-      "lines": 4041,
-      "files": 10,
+      "lines": 4617,
+      "files": 12,
       "color": "#DEA584"
     },
     {
       "lang": "TOML",
       "ext": "toml",
-      "lines": 2605,
+      "lines": 2607,
       "files": 20,
       "color": "#9C4121"
     },
     {
       "lang": "PowerShell",
       "ext": "powershell",
-      "lines": 902,
+      "lines": 921,
       "files": 3,
       "color": "#6B7280"
     },
@@ -118,14 +118,14 @@
   "modules": [
     {
       "name": "apps/desktop",
-      "lines": 341198,
-      "files": 927,
+      "lines": 355013,
+      "files": 990,
       "color": "#F59E0B"
     },
     {
       "name": "packages/core",
-      "lines": 259279,
-      "files": 860,
+      "lines": 269750,
+      "files": 929,
       "color": "#3B82F6"
     },
     {
@@ -136,45 +136,51 @@
     },
     {
       "name": "infra/Yoopta-Editor",
-      "lines": 122442,
-      "files": 1025,
+      "lines": 122437,
+      "files": 1020,
       "color": "#84CC16"
     },
     {
       "name": "apps/web",
-      "lines": 75384,
-      "files": 326,
+      "lines": 76651,
+      "files": 341,
       "color": "#10B981"
     },
     {
       "name": "packages/chat",
-      "lines": 64966,
-      "files": 462,
+      "lines": 66718,
+      "files": 467,
       "color": "#8B5CF6"
     },
     {
       "name": "apps/docs",
-      "lines": 59634,
-      "files": 262,
+      "lines": 59478,
+      "files": 258,
       "color": "#8B5CF6"
     },
     {
-      "name": "packages/presentation",
-      "lines": 47913,
-      "files": 139,
-      "color": "#A855F7"
+      "name": "packages/client-sdk",
+      "lines": 54476,
+      "files": 794,
+      "color": "#6B7280"
     },
     {
-      "name": "backend/browse-mcp",
-      "lines": 10151,
-      "files": 49,
-      "color": "#EF4444"
+      "name": "packages/presentation",
+      "lines": 49026,
+      "files": 152,
+      "color": "#A855F7"
     },
     {
       "name": "packages/pet",
       "lines": 10031,
       "files": 62,
       "color": "#6B7280"
+    },
+    {
+      "name": "backend/browse-mcp",
+      "lines": 9248,
+      "files": 49,
+      "color": "#EF4444"
     },
     {
       "name": "packages/kanban",
@@ -190,25 +196,25 @@
     },
     {
       "name": "backend/plugins",
-      "lines": 3290,
+      "lines": 2654,
       "files": 16,
       "color": "#F97316"
     },
     {
       "name": "packages/browse-sdk",
-      "lines": 2516,
+      "lines": 2558,
       "files": 24,
       "color": "#6B7280"
     },
     {
       "name": "backend/wakeword",
-      "lines": 2295,
-      "files": 16,
+      "lines": 2038,
+      "files": 17,
       "color": "#22D3EE"
     },
     {
       "name": "packages/ui",
-      "lines": 1963,
+      "lines": 2009,
       "files": 29,
       "color": "#06B6D4"
     },
@@ -220,14 +226,20 @@
     },
     {
       "name": "packages/api-client",
-      "lines": 1328,
-      "files": 6,
+      "lines": 1433,
+      "files": 7,
       "color": "#EF4444"
     },
     {
       "name": "packages/kernel-sdk",
       "lines": 1232,
       "files": 15,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/page-sdk",
+      "lines": 938,
+      "files": 8,
       "color": "#6B7280"
     },
     {
@@ -244,7 +256,7 @@
     },
     {
       "name": "apps/cli",
-      "lines": 608,
+      "lines": 587,
       "files": 7,
       "color": "#EC4899"
     },
@@ -288,50 +300,50 @@
   "desktopDirs": [
     {
       "name": "i18n",
-      "lines": 117960,
+      "lines": 118358,
       "files": 22,
       "color": "#6B7280"
     },
     {
       "name": "components",
-      "lines": 78890,
-      "files": 331,
+      "lines": 88540,
+      "files": 368,
       "color": "#8B5CF6"
     },
     {
       "name": "pages",
-      "lines": 70329,
-      "files": 208,
+      "lines": 73127,
+      "files": 221,
       "color": "#3B82F6"
     },
     {
       "name": "hooks",
-      "lines": 27925,
-      "files": 96,
+      "lines": 27044,
+      "files": 97,
       "color": "#10B981"
     },
     {
       "name": "lib",
-      "lines": 24741,
-      "files": 120,
+      "lines": 25477,
+      "files": 125,
       "color": "#F59E0B"
     },
     {
       "name": "stores",
-      "lines": 6344,
-      "files": 24,
+      "lines": 6683,
+      "files": 29,
       "color": "#EC4899"
     },
     {
       "name": "navigation",
-      "lines": 3039,
+      "lines": 3037,
       "files": 18,
       "color": "#6B7280"
     },
     {
       "name": "types",
-      "lines": 2465,
-      "files": 11,
+      "lines": 2566,
+      "files": 12,
       "color": "#6366F1"
     },
     {
@@ -342,7 +354,7 @@
     },
     {
       "name": "index.css",
-      "lines": 744,
+      "lines": 832,
       "files": 1,
       "color": "#6B7280"
     }
@@ -350,25 +362,25 @@
   "apps": [
     {
       "name": "desktop",
-      "lines": 341198,
-      "files": 927,
+      "lines": 355013,
+      "files": 990,
       "color": "#F59E0B"
     },
     {
       "name": "web",
-      "lines": 75384,
-      "files": 326,
+      "lines": 76651,
+      "files": 341,
       "color": "#10B981"
     },
     {
       "name": "docs",
-      "lines": 59634,
-      "files": 262,
+      "lines": 59478,
+      "files": 258,
       "color": "#8B5CF6"
     },
     {
       "name": "cli",
-      "lines": 608,
+      "lines": 587,
       "files": 7,
       "color": "#EC4899"
     }
@@ -376,17 +388,17 @@
   "density": [
     {
       "name": "apps/desktop",
-      "density": 368.1,
+      "density": 358.6,
       "color": "#F59E0B"
     },
     {
       "name": "packages/presentation",
-      "density": 344.7,
+      "density": 322.5,
       "color": "#A855F7"
     },
     {
       "name": "packages/core",
-      "density": 301.5,
+      "density": 290.4,
       "color": "#3B82F6"
     },
     {
@@ -395,23 +407,23 @@
       "color": "#6B7280"
     },
     {
-      "name": "apps/web",
-      "density": 231.2,
-      "color": "#10B981"
-    },
-    {
       "name": "apps/docs",
-      "density": 227.6,
+      "density": 230.5,
       "color": "#8B5CF6"
     },
     {
+      "name": "apps/web",
+      "density": 224.8,
+      "color": "#10B981"
+    },
+    {
       "name": "backend/browse-mcp",
-      "density": 207.2,
+      "density": 188.7,
       "color": "#EF4444"
     },
     {
       "name": "backend/plugins",
-      "density": 205.6,
+      "density": 165.9,
       "color": "#F97316"
     },
     {
@@ -420,19 +432,19 @@
       "color": "#6B7280"
     },
     {
-      "name": "backend/wakeword",
-      "density": 143.4,
-      "color": "#22D3EE"
-    },
-    {
       "name": "packages/chat",
-      "density": 140.6,
+      "density": 142.9,
       "color": "#8B5CF6"
     },
     {
       "name": "infra/Yoopta-Editor",
-      "density": 119.5,
+      "density": 120.0,
       "color": "#84CC16"
+    },
+    {
+      "name": "backend/wakeword",
+      "density": 119.9,
+      "color": "#22D3EE"
     },
     {
       "name": "packages/kanban",
@@ -441,7 +453,7 @@
     },
     {
       "name": "packages/browse-sdk",
-      "density": 104.8,
+      "density": 106.6,
       "color": "#6B7280"
     },
     {
@@ -451,8 +463,13 @@
     },
     {
       "name": "packages/ui",
-      "density": 67.7,
+      "density": 69.3,
       "color": "#06B6D4"
+    },
+    {
+      "name": "packages/client-sdk",
+      "density": 68.6,
+      "color": "#6B7280"
     },
     {
       "name": "packages/os",
@@ -463,17 +480,17 @@
   "categories": [
     {
       "label": "源代码",
-      "lines": 1067803,
+      "lines": 1102937,
       "color": "#3B82F6"
     },
     {
       "label": "文档",
-      "lines": 396265,
+      "lines": 451697,
       "color": "#8B5CF6"
     },
     {
       "label": "配置",
-      "lines": 249142,
+      "lines": 267334,
       "color": "#F59E0B"
     }
   ],
@@ -489,13 +506,8 @@
       "ext": "ts"
     },
     {
-      "path": "packages/presentation/example/src/App.tsx",
-      "lines": 4362,
-      "ext": "tsx"
-    },
-    {
       "path": "packages/core/examples/acp-client/src/App.tsx",
-      "lines": 3502,
+      "lines": 3555,
       "ext": "tsx"
     },
     {
@@ -504,14 +516,14 @@
       "ext": "ts"
     },
     {
-      "path": "apps/desktop/src/lib/gateway/client.ts",
-      "lines": 3030,
-      "ext": "ts"
-    },
-    {
       "path": "resources/design-templates/open-design-landing-deck/example.html",
       "lines": 2900,
       "ext": "html"
+    },
+    {
+      "path": "apps/desktop/src/lib/gateway/client.ts",
+      "lines": 2867,
+      "ext": "ts"
     },
     {
       "path": "e2e/ui/app-restoration.test.ts",
@@ -535,7 +547,7 @@
     },
     {
       "path": "apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts",
-      "lines": 2451,
+      "lines": 2456,
       "ext": "ts"
     },
     {
@@ -577,57 +589,14 @@
       "path": "packages/kernel/src/plugins/telegram/adapter.ts",
       "lines": 2077,
       "ext": "ts"
+    },
+    {
+      "path": "apps/desktop/src/components/file-browser/index.tsx",
+      "lines": 2075,
+      "ext": "tsx"
     }
   ],
   "commitActivity": [
-    {
-      "date": "2025-06-11",
-      "count": 0
-    },
-    {
-      "date": "2025-06-12",
-      "count": 0
-    },
-    {
-      "date": "2025-06-13",
-      "count": 0
-    },
-    {
-      "date": "2025-06-14",
-      "count": 0
-    },
-    {
-      "date": "2025-06-15",
-      "count": 0
-    },
-    {
-      "date": "2025-06-16",
-      "count": 0
-    },
-    {
-      "date": "2025-06-17",
-      "count": 0
-    },
-    {
-      "date": "2025-06-18",
-      "count": 0
-    },
-    {
-      "date": "2025-06-19",
-      "count": 0
-    },
-    {
-      "date": "2025-06-20",
-      "count": 0
-    },
-    {
-      "date": "2025-06-21",
-      "count": 0
-    },
-    {
-      "date": "2025-06-22",
-      "count": 0
-    },
     {
       "date": "2025-06-23",
       "count": 0
@@ -2038,44 +2007,97 @@
     },
     {
       "date": "2026-06-10",
-      "count": 1
+      "count": 15
+    },
+    {
+      "date": "2026-06-11",
+      "count": 23
+    },
+    {
+      "date": "2026-06-12",
+      "count": 15
+    },
+    {
+      "date": "2026-06-13",
+      "count": 15
+    },
+    {
+      "date": "2026-06-14",
+      "count": 44
+    },
+    {
+      "date": "2026-06-15",
+      "count": 32
+    },
+    {
+      "date": "2026-06-16",
+      "count": 44
+    },
+    {
+      "date": "2026-06-17",
+      "count": 19
+    },
+    {
+      "date": "2026-06-18",
+      "count": 4
+    },
+    {
+      "date": "2026-06-19",
+      "count": 26
+    },
+    {
+      "date": "2026-06-20",
+      "count": 14
+    },
+    {
+      "date": "2026-06-21",
+      "count": 27
+    },
+    {
+      "date": "2026-06-22",
+      "count": 5
     }
   ],
   "fileChurn": [
     {
       "path": "apps/desktop/src/i18n/locales/zh-CN.json",
-      "changes": 67,
-      "lastChanged": "2026-06-06"
+      "changes": 61,
+      "lastChanged": "2026-06-21"
     },
     {
       "path": "apps/desktop/src/i18n/locales/en.json",
-      "changes": 63,
-      "lastChanged": "2026-06-06"
-    },
-    {
-      "path": "apps/desktop/package.json",
-      "changes": 54,
-      "lastChanged": "2026-06-06"
-    },
-    {
-      "path": "packages/chat/example/src/App.tsx",
-      "changes": 52,
-      "lastChanged": "2026-06-08"
+      "changes": 58,
+      "lastChanged": "2026-06-21"
     },
     {
       "path": ".github/workflows/release-all.yml",
-      "changes": 47,
-      "lastChanged": "2026-06-01"
+      "changes": 57,
+      "lastChanged": "2026-06-19"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "changes": 55,
+      "lastChanged": "2026-06-15"
+    },
+    {
+      "path": "packages/chat/example/src/App.tsx",
+      "changes": 53,
+      "lastChanged": "2026-06-12"
     },
     {
       "path": "packages/core/examples/acp-client/src/App.tsx",
-      "changes": 42,
-      "lastChanged": "2026-06-08"
+      "changes": 48,
+      "lastChanged": "2026-06-14"
     },
     {
       "path": "packages/core/package.json",
-      "changes": 37,
-      "lastChanged": "2026-06-06"
+      "changes": 45,
+      "lastChanged": "2026-06-19"
+    },
+    {
+      "path": "apps/desktop/src-tauri/src/lib.rs",
+      "changes": 39,
+      "lastChanged": "2026-06-20"
     },
     {
       "path": ".github/workflows/release-mobile.yml",
@@ -2083,14 +2105,19 @@
       "lastChanged": "2026-06-03"
     },
     {
-      "path": "apps/desktop/src-tauri/src/lib.rs",
-      "changes": 36,
-      "lastChanged": "2026-06-06"
+      "path": "apps/desktop/src/components/acp-chat/acp-chat.tsx",
+      "changes": 35,
+      "lastChanged": "2026-06-22"
     },
     {
       "path": "apps/desktop/src/components/layout/sidebar.tsx",
+      "changes": 34,
+      "lastChanged": "2026-06-21"
+    },
+    {
+      "path": "packages/core/src/acp/ops/session-manager.ts",
       "changes": 31,
-      "lastChanged": "2026-05-29"
+      "lastChanged": "2026-06-22"
     },
     {
       "path": "apps/desktop/src/components/overlay/chat-popup.tsx",
@@ -2098,43 +2125,33 @@
       "lastChanged": "2026-06-06"
     },
     {
-      "path": "packages/core/src/cli/commands/task.ts",
-      "changes": 27,
-      "lastChanged": "2026-04-06"
+      "path": "apps/desktop/src/App.tsx",
+      "changes": 28,
+      "lastChanged": "2026-06-17"
     },
     {
-      "path": "README.md",
-      "changes": 26,
-      "lastChanged": "2026-05-20"
-    },
-    {
-      "path": "packages/chat/src/message-list.tsx",
-      "changes": 26,
-      "lastChanged": "2026-06-08"
-    },
-    {
-      "path": "apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts",
-      "changes": 24,
-      "lastChanged": "2026-06-06"
+      "path": "packages/chat/src/chat-app.tsx",
+      "changes": 28,
+      "lastChanged": "2026-06-19"
     }
   ],
   "codeFreshness": [
     {
       "label": "<1月",
-      "files": 3644,
-      "lines": 1457970,
+      "files": 3829,
+      "lines": 1055731,
       "color": "#10B981"
     },
     {
       "label": "1-3月",
-      "files": 1508,
-      "lines": 446718,
+      "files": 1352,
+      "lines": 388188,
       "color": "#3B82F6"
     },
     {
       "label": "3-6月",
-      "files": 948,
-      "lines": 157334,
+      "files": 1073,
+      "lines": 192782,
       "color": "#F59E0B"
     },
     {
@@ -2145,35 +2162,35 @@
     },
     {
       "label": ">1年",
-      "files": 1021,
-      "lines": 122379,
+      "files": 1016,
+      "lines": 122374,
       "color": "#EF4444"
     }
   ],
   "fileSizeDistribution": [
     {
       "range": "0-50",
-      "files": 2218,
+      "files": 3070,
       "color": "#10B981"
     },
     {
       "range": "50-100",
-      "files": 1377,
+      "files": 1457,
       "color": "#3B82F6"
     },
     {
       "range": "100-200",
-      "files": 1473,
+      "files": 1555,
       "color": "#F59E0B"
     },
     {
       "range": "200-500",
-      "files": 1505,
+      "files": 1558,
       "color": "#F97316"
     },
     {
       "range": "500+",
-      "files": 743,
+      "files": 771,
       "color": "#EF4444"
     }
   ],
@@ -2182,7 +2199,7 @@
       {
         "id": "apps/cli",
         "label": "CLI",
-        "lines": 608,
+        "lines": 587,
         "files": 7,
         "color": "#EC4899",
         "layer": "apps"
@@ -2190,31 +2207,31 @@
       {
         "id": "apps/desktop",
         "label": "Desktop",
-        "lines": 341198,
-        "files": 927,
+        "lines": 355013,
+        "files": 990,
         "color": "#F59E0B",
         "layer": "apps"
       },
       {
         "id": "apps/docs",
         "label": "Docs",
-        "lines": 59634,
-        "files": 262,
+        "lines": 59478,
+        "files": 258,
         "color": "#8B5CF6",
         "layer": "apps"
       },
       {
         "id": "apps/web",
         "label": "Web",
-        "lines": 75384,
-        "files": 326,
+        "lines": 76651,
+        "files": 341,
         "color": "#10B981",
         "layer": "apps"
       },
       {
         "id": "backend/browse-mcp",
         "label": "Browse MCP",
-        "lines": 10151,
+        "lines": 9248,
         "files": 49,
         "color": "#EF4444",
         "layer": "backend"
@@ -2222,31 +2239,31 @@
       {
         "id": "backend/wakeword",
         "label": "Wakeword",
-        "lines": 2295,
-        "files": 16,
+        "lines": 2038,
+        "files": 17,
         "color": "#22D3EE",
         "layer": "backend"
       },
       {
         "id": "infra/Yoopta-Editor",
         "label": "Yoopta Editor",
-        "lines": 122442,
-        "files": 1025,
+        "lines": 122437,
+        "files": 1020,
         "color": "#84CC16",
         "layer": "infra"
       },
       {
         "id": "packages/api-client",
         "label": "API Client",
-        "lines": 1328,
-        "files": 6,
+        "lines": 1433,
+        "files": 7,
         "color": "#EF4444",
         "layer": "packages"
       },
       {
         "id": "packages/browse-sdk",
         "label": "Browse Sdk",
-        "lines": 2516,
+        "lines": 2558,
         "files": 24,
         "color": "#6B7280",
         "layer": "packages"
@@ -2254,16 +2271,16 @@
       {
         "id": "packages/chat",
         "label": "Chat",
-        "lines": 64966,
-        "files": 462,
+        "lines": 66718,
+        "files": 467,
         "color": "#8B5CF6",
         "layer": "packages"
       },
       {
         "id": "packages/core",
         "label": "Core",
-        "lines": 259279,
-        "files": 860,
+        "lines": 269750,
+        "files": 929,
         "color": "#3B82F6",
         "layer": "packages"
       },
@@ -2308,6 +2325,14 @@
         "layer": "packages"
       },
       {
+        "id": "packages/page-sdk",
+        "label": "Page Sdk",
+        "lines": 938,
+        "files": 8,
+        "color": "#6B7280",
+        "layer": "packages"
+      },
+      {
         "id": "packages/pet",
         "label": "Pet",
         "lines": 10031,
@@ -2318,15 +2343,15 @@
       {
         "id": "packages/presentation",
         "label": "Presentation",
-        "lines": 47913,
-        "files": 139,
+        "lines": 49026,
+        "files": 152,
         "color": "#A855F7",
         "layer": "packages"
       },
       {
         "id": "packages/ui",
         "label": "UI",
-        "lines": 1963,
+        "lines": 2009,
         "files": 29,
         "color": "#06B6D4",
         "layer": "packages"
@@ -2380,6 +2405,10 @@
       {
         "from": "packages/core",
         "to": "packages/browse-sdk"
+      },
+      {
+        "from": "packages/core",
+        "to": "packages/page-sdk"
       },
       {
         "from": "packages/kanban",
