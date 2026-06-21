@@ -6,7 +6,6 @@
  * - Default model management (get, set)
  * - Model aliases (list, create, delete)
  * - Model configuration (get, set, delete)
- * - Fallback chain management (get, set, add, remove, clear)
  * - Model enable/disable
  * - Reload configuration
  * - Error handling (404, 400)
@@ -35,15 +34,13 @@ vi.mock("../../models", () => ({
     getAliases: vi.fn(),
     createAlias: vi.fn(),
     removeAlias: vi.fn(),
-    getFallbacks: vi.fn(),
-    setFallbacks: vi.fn(),
-    addFallback: vi.fn(),
-    removeFallback: vi.fn(),
-    clearFallbacks: vi.fn(),
     getModelsByProvider: vi.fn(),
+    getModelsByProviderId: vi.fn(),
     reload: vi.fn(),
     getModel: vi.fn(),
+    getModelForProvider: vi.fn(),
     createModel: vi.fn(),
+    updateModelForProvider: vi.fn(),
     enableModel: vi.fn(),
     disableModel: vi.fn(),
   },
@@ -806,208 +803,6 @@ describe("Model Routes", () => {
   });
 
   // ============================================================================
-  // GET /api/models/fallbacks - Get fallback chain
-  // ============================================================================
-
-  describe("GET /api/models/fallbacks", () => {
-    it("should return the fallback chain", async () => {
-      const mockFallbacks = ["claude-sonnet", "gpt-4o", "gemini-pro"];
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(mockFallbacks);
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/fallbacks",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.fallbacks).toEqual(mockFallbacks);
-      expect(modelManager.getFallbacks).toHaveBeenCalled();
-    });
-
-    it("should return empty array when no fallbacks exist", async () => {
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([]);
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/fallbacks",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.fallbacks).toEqual([]);
-    });
-  });
-
-  // ============================================================================
-  // PUT /api/models/fallbacks - Set fallback chain
-  // ============================================================================
-
-  describe("PUT /api/models/fallbacks", () => {
-    it("should set the fallback chain", async () => {
-      vi.mocked(modelManager.setFallbacks).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: { fallbacks: ["claude-sonnet", "gpt-4o"] },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.fallbacks).toEqual(["claude-sonnet", "gpt-4o"]);
-      expect(modelManager.setFallbacks).toHaveBeenCalledWith(["claude-sonnet", "gpt-4o"]);
-    });
-
-    it("should return 400 when fallbacks is not an array", async () => {
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: { fallbacks: "not-an-array" },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Fallbacks must be an array");
-    });
-
-    it("should return 400 when setFallbacks fails", async () => {
-      vi.mocked(modelManager.setFallbacks).mockRejectedValue(new Error("Invalid model in fallbacks"));
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: { fallbacks: ["nonexistent"] },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Invalid model in fallbacks");
-    });
-  });
-
-  // ============================================================================
-  // POST /api/models/fallbacks - Add to fallback chain
-  // ============================================================================
-
-  describe("POST /api/models/fallbacks", () => {
-    it("should add a model to the fallback chain", async () => {
-      vi.mocked(modelManager.addFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["claude-sonnet", "gpt-4o"]);
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models/fallbacks",
-        payload: { model: "gpt-4o" },
-      });
-
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.model).toBe("gpt-4o");
-      expect(body.fallbacks).toEqual(["claude-sonnet", "gpt-4o"]);
-      expect(modelManager.addFallback).toHaveBeenCalledWith("gpt-4o");
-    });
-
-    it("should return 400 when model is missing", async () => {
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models/fallbacks",
-        payload: {},
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Model is required");
-    });
-
-    it("should return 400 when addFallback fails", async () => {
-      vi.mocked(modelManager.addFallback).mockRejectedValue(new Error("Model not found"));
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models/fallbacks",
-        payload: { model: "nonexistent" },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Model not found");
-    });
-  });
-
-  // ============================================================================
-  // DELETE /api/models/fallbacks/:model - Remove from fallback chain
-  // ============================================================================
-
-  describe("DELETE /api/models/fallbacks/:model", () => {
-    it("should remove a model from the fallback chain", async () => {
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["claude-sonnet"]);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.removed).toBe("gpt-4o");
-      expect(body.fallbacks).toEqual(["claude-sonnet"]);
-      expect(modelManager.removeFallback).toHaveBeenCalledWith("gpt-4o");
-    });
-
-    it("should return 400 when removeFallback fails", async () => {
-      vi.mocked(modelManager.removeFallback).mockRejectedValue(new Error("Model not in fallbacks"));
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks/nonexistent",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Model not in fallbacks");
-    });
-  });
-
-  // ============================================================================
-  // DELETE /api/models/fallbacks - Clear fallback chain
-  // ============================================================================
-
-  describe("DELETE /api/models/fallbacks", () => {
-    it("should clear the fallback chain", async () => {
-      vi.mocked(modelManager.clearFallbacks).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.fallbacks).toEqual([]);
-      expect(modelManager.clearFallbacks).toHaveBeenCalled();
-    });
-
-    it("should return 400 when clearFallbacks fails", async () => {
-      vi.mocked(modelManager.clearFallbacks).mockRejectedValue(new Error("Failed to clear"));
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Failed to clear");
-    });
-  });
-
-  // ============================================================================
   // POST /api/models/reload - Reload configuration
   // ============================================================================
 
@@ -1271,7 +1066,6 @@ describe("Model Routes", () => {
     it("should delete model configuration", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("custom-model");
       vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
         method: "DELETE",
@@ -1283,7 +1077,6 @@ describe("Model Routes", () => {
       expect(body.success).toBe(true);
       expect(body.deleted).toBe("custom-model");
       expect(modelManager.removeModelConfig).toHaveBeenCalledWith("custom-model");
-      expect(modelManager.removeFallback).toHaveBeenCalledWith("custom-model");
     });
 
     it("should return 400 when deletion fails", async () => {

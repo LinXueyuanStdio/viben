@@ -3,9 +3,7 @@
  */
 import { getModelsPath } from "./paths";
 import { fileExists, readYaml, writeYaml } from "./yaml";
-import type { ModelConfigEntry, ModelEntry, ModelSurface } from "../models/types";
-
-export const MODELS_METADATA_KEY = "__viben";
+import type { ModelConfigEntry, ModelEntry } from "../models/types";
 
 export interface UnifiedModelEntry {
   name: string;
@@ -27,29 +25,14 @@ export interface UnifiedProviderEntry {
   headers?: Record<string, string>;
   surfaces?: string[];
   supports_custom_model?: boolean;
+  is_default?: boolean;
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;
   name?: string;
 }
 
-export interface UnifiedModelsMetadata {
-  aliases?: Record<string, string>;
-  fallbacks?: string[];
-  fallbacks_by_surface?: Partial<Record<ModelSurface, string[]>>;
-  configs?: Record<string, ModelConfigEntry>;
-  default_provider?: string;
-  default_model?: string;
-  defaults?: {
-    llm?: string;
-    media?: Partial<Record<ModelSurface, string>>;
-  };
-  disabled_models?: string[];
-}
-
-export type UnifiedModelsFile = Record<string, UnifiedProviderEntry> & {
-  [MODELS_METADATA_KEY]?: UnifiedModelsMetadata;
-};
+export type UnifiedModelsFile = Record<string, UnifiedProviderEntry>;
 
 const LEGACY_MODELS_KEYS = new Set([
   "default",
@@ -117,7 +100,7 @@ function normalizeProviderEntry(id: string, value: unknown): UnifiedProviderEntr
   const apiKey = nonBlankString(value.api_key) ?? nonBlankString(value.apiKey);
 
   return {
-    id: nonBlankString(value.id) ?? providerId,
+    id: providerId,
     type,
     name,
     base_url: nonBlankString(value.base_url),
@@ -130,6 +113,7 @@ function normalizeProviderEntry(id: string, value: unknown): UnifiedProviderEntr
     headers: isRecord(value.headers) ? value.headers as Record<string, string> : undefined,
     surfaces: Array.isArray(value.surfaces) ? value.surfaces.filter((item): item is string => typeof item === "string") : undefined,
     supports_custom_model: typeof value.supports_custom_model === "boolean" ? value.supports_custom_model : undefined,
+    is_default: typeof value.is_default === "boolean" ? value.is_default : undefined,
     enabled: typeof value.enabled === "boolean" ? value.enabled : undefined,
     created_at: nonBlankString(value.created_at),
     updated_at: nonBlankString(value.updated_at),
@@ -138,6 +122,12 @@ function normalizeProviderEntry(id: string, value: unknown): UnifiedProviderEntr
 }
 
 function ensureProvider(file: UnifiedModelsFile, providerId: string, providerType: string): UnifiedProviderEntry {
+  if (!providerId) {
+    throw new Error("Provider ID is required");
+  }
+  if (!providerType) {
+    throw new Error("Provider type is required");
+  }
   const existing = normalizeProviderEntry(providerId, file[providerId]) ?? {
     id: providerId,
     type: providerType,
@@ -158,34 +148,11 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
     return file;
   }
 
-  const metadata: UnifiedModelsMetadata = {};
-  if (typeof raw.default === "string") {
-    metadata.default_model = raw.default;
-  }
-  if (isRecord(raw.defaults)) {
-    metadata.defaults = raw.defaults as UnifiedModelsMetadata["defaults"];
-  }
-  if (isRecord(raw.aliases)) {
-    metadata.aliases = raw.aliases as Record<string, string>;
-  }
-  if (Array.isArray(raw.fallbacks)) {
-    metadata.fallbacks = raw.fallbacks.filter((item): item is string => typeof item === "string");
-  }
-  if (isRecord(raw.fallbacks_by_surface)) {
-    metadata.fallbacks_by_surface = raw.fallbacks_by_surface as Partial<Record<ModelSurface, string[]>>;
-  }
-  if (isRecord(raw.configs)) {
-    metadata.configs = raw.configs as Record<string, ModelConfigEntry>;
-  } else if (isRecord(raw.model_config)) {
-    metadata.configs = raw.model_config as Record<string, ModelConfigEntry>;
-  }
-  if (Array.isArray(raw.disabled_models)) {
-    metadata.disabled_models = raw.disabled_models.filter((item): item is string => typeof item === "string");
-  }
-
-  if (isRecord(raw[MODELS_METADATA_KEY])) {
-    Object.assign(metadata, raw[MODELS_METADATA_KEY]);
-  }
+  const legacyConfigs = isRecord(raw.configs)
+    ? raw.configs as Record<string, ModelConfigEntry>
+    : isRecord(raw.model_config)
+      ? raw.model_config as Record<string, ModelConfigEntry>
+      : {};
 
   if (isRecord(raw.custom_models)) {
     for (const [modelId, modelEntry] of Object.entries(raw.custom_models)) {
@@ -196,15 +163,20 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
       const providerId = entry.provider_id;
       if (!providerId) continue;
       const provider = ensureProvider(file, providerId, providerType);
+      const legacyConfig = legacyConfigs[`${providerId}:${modelId}`] ?? legacyConfigs[modelId];
       provider.models = {
         ...(provider.models ?? {}),
-        [modelId]: { name: entry.name ?? modelId, enabled: entry.enabled ?? true },
+        [modelId]: {
+          name: entry.name ?? modelId,
+          enabled: entry.enabled ?? true,
+          ...(legacyConfig ? { config: legacyConfig } : {}),
+        },
       };
     }
   }
 
   for (const [providerId, providerValue] of Object.entries(raw)) {
-    if (providerId === MODELS_METADATA_KEY || LEGACY_MODELS_KEYS.has(providerId)) {
+    if (LEGACY_MODELS_KEYS.has(providerId)) {
       continue;
     }
     const provider = normalizeProviderEntry(providerId, providerValue);
@@ -213,9 +185,6 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
     }
   }
 
-  if (Object.keys(metadata).length > 0) {
-    file[MODELS_METADATA_KEY] = metadata;
-  }
   return file;
 }
 
@@ -229,10 +198,11 @@ export async function saveUnifiedModelsFile(file: UnifiedModelsFile): Promise<vo
   const output = {} as UnifiedModelsFile;
   for (const [providerId, provider] of Object.entries(getUnifiedProviders(normalized))) {
     output[providerId] = {
-      id: provider.id,
+      id: providerId,
       type: provider.type,
       base_url: provider.base_url,
       api_key: provider.api_key,
+      is_default: provider.is_default,
       models: provider.models ?? {},
     };
   }
@@ -242,7 +212,7 @@ export async function saveUnifiedModelsFile(file: UnifiedModelsFile): Promise<vo
 export function getUnifiedProviders(file: UnifiedModelsFile): Record<string, UnifiedProviderEntry> {
   const providers: Record<string, UnifiedProviderEntry> = {};
   for (const [providerId, providerValue] of Object.entries(file)) {
-    if (providerId === MODELS_METADATA_KEY || LEGACY_MODELS_KEYS.has(providerId)) continue;
+    if (LEGACY_MODELS_KEYS.has(providerId)) continue;
     const provider = normalizeProviderEntry(providerId, providerValue);
     if (provider) {
       providers[providerId] = provider;

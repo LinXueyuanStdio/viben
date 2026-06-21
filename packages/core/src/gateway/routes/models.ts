@@ -3,7 +3,6 @@
  *
  * Provides HTTP API for:
  * - Model CRUD operations (stored in ~/.viben/models.yaml)
- * - Model aliases management
  * - Default model management
  * - Model configuration
  */
@@ -158,8 +157,8 @@ async function toSnakeCaseModel(model: Model): Promise<ModelResponse> {
     id: model.id,
     name: model.name,
     provider_type: model.provider,
-    provider_id: model.provider_id ?? model.provider,
-    provider_name: model.provider_id ?? model.provider,
+    provider_id: model.provider_id ?? "",
+    provider_name: model.provider_id ?? "",
     category: model.category,
     surface: model.surface,
     capabilities: model.capabilities,
@@ -219,14 +218,6 @@ interface SetModelConfigBody {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
-}
-
-interface SetFallbacksBody {
-  fallbacks: string[];
-}
-
-interface AddFallbackBody {
-  model: string;
 }
 
 interface ProviderScopedQuery {
@@ -344,105 +335,6 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to delete alias" };
-    }
-  });
-
-  // ========================================================================
-  // Fallback Chain Management (MUST be registered before :id routes)
-  // ========================================================================
-
-  // Get the fallback chain
-  fastify.get("/api/models/fallbacks", async () => {
-    const fallbacks = await modelManager.getFallbacks();
-    return { fallbacks };
-  });
-
-  // Set the fallback chain
-  fastify.put("/api/models/fallbacks", async (
-    request: FastifyRequest<{ Body: SetFallbacksBody }>,
-    reply: FastifyReply
-  ) => {
-    const { fallbacks } = request.body;
-
-    if (!Array.isArray(fallbacks)) {
-      reply.code(400);
-      return { error: "Fallbacks must be an array" };
-    }
-
-    try {
-      await modelManager.setFallbacks(fallbacks);
-      return {
-        success: true,
-        fallbacks,
-      };
-    } catch (e) {
-      reply.code(400);
-      return { error: e instanceof Error ? e.message : "Failed to set fallbacks" };
-    }
-  });
-
-  // Add a model to the fallback chain
-  fastify.post("/api/models/fallbacks", async (
-    request: FastifyRequest<{ Body: AddFallbackBody }>,
-    reply: FastifyReply
-  ) => {
-    const { model } = request.body;
-
-    if (!model) {
-      reply.code(400);
-      return { error: "Model is required" };
-    }
-
-    try {
-      await modelManager.addFallback(model);
-      const fallbacks = await modelManager.getFallbacks();
-      reply.code(201);
-      return {
-        success: true,
-        model,
-        fallbacks,
-      };
-    } catch (e) {
-      reply.code(400);
-      return { error: e instanceof Error ? e.message : "Failed to add fallback" };
-    }
-  });
-
-  // Remove a model from the fallback chain
-  fastify.delete("/api/models/fallbacks/:model", async (
-    request: FastifyRequest<{ Params: { model: string } }>,
-    reply: FastifyReply
-  ) => {
-    const { model } = request.params;
-
-    try {
-      await modelManager.removeFallback(model);
-      const fallbacks = await modelManager.getFallbacks();
-      return {
-        success: true,
-        removed: model,
-        fallbacks,
-      };
-    } catch (e) {
-      reply.code(400);
-      return { error: e instanceof Error ? e.message : "Failed to remove fallback" };
-    }
-  });
-
-  // Clear the fallback chain
-  fastify.delete("/api/models/fallbacks", async (
-    _request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
-    try {
-      await modelManager.clearFallbacks();
-      return {
-        success: true,
-        fallbacks: [],
-      };
-    } catch (e) {
-      reply.code(400);
-      return { error: e instanceof Error ? e.message : "Failed to clear fallbacks" };
     }
   });
 
@@ -731,14 +623,14 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      // Check if model already exists
-      const existingModel = modelManager.getModelInfo(id);
+      const provider = await providerManager.getProvider(config.provider_id);
+      if (!provider) {
+        reply.code(400);
+        return { error: `Provider not found: ${config.provider_id}` };
+      }
+      const existingModel = await modelManager.getModelForProvider(config.provider_id, id);
 
       if (existingModel) {
-        if (existingModel.provider_id && existingModel.provider_id !== config.provider_id) {
-          reply.code(404);
-          return { error: `Model not found for provider: ${config.provider_id}` };
-        }
         // Model exists, set its config
         const modelConfig: ModelConfig = {
           temperature: undefined,
@@ -746,12 +638,6 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         };
         await modelManager.setModelConfig(id, modelConfig, config.provider_id);
       } else {
-        const provider = await providerManager.getProvider(config.provider_id);
-        if (!provider) {
-          reply.code(400);
-          return { error: `Provider not found: ${config.provider_id}` };
-        }
-
         // Create a configured model under the selected provider.
         await modelManager.createModel({
           id,
@@ -775,7 +661,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
       // Reload to get updated model
       await modelManager.reload();
-      const model = modelManager.getModelInfo(id);
+      const model = await modelManager.getModelForProvider(config.provider_id, id);
 
       reply.code(201);
       if (model) {
@@ -823,7 +709,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
       // Reload to get updated model
       await modelManager.reload();
-      const updatedModel = modelManager.getModelInfo(resolvedId);
+      const updatedModel = await modelManager.getModelForProvider(updates.provider_id, resolvedId);
       return toSnakeCaseModel(updatedModel ?? model);
     } catch (e) {
       reply.code(400);
@@ -843,9 +729,6 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
       // Remove model config
       await modelManager.removeModelConfig(resolvedId);
-
-      // Also remove from fallbacks if present
-      await modelManager.removeFallback(resolvedId);
 
       return {
         success: true,

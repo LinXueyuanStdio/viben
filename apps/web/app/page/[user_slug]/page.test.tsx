@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  findUser: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -11,10 +12,17 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
+      users: {
+        findFirst: mocks.findUser,
+      },
       publishedPages: {
         findMany: mocks.findMany,
       },
     },
+  },
+  users: {
+    id: 'id',
+    userSlug: 'userSlug',
   },
   publishedPages: {
     userId: 'userId',
@@ -33,9 +41,13 @@ vi.mock('next/navigation', () => ({
 
 import UserPublishedPages from './page';
 
-describe('/page/[user_id]', () => {
+describe('/page/[user_slug]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.findUser.mockResolvedValue({
+      id: 'user-1',
+      userSlug: 'alice',
+    });
   });
 
   it('lists published pages for the requested user', async () => {
@@ -49,17 +61,32 @@ describe('/page/[user_id]', () => {
     ]);
 
     const element = await UserPublishedPages({
-      params: Promise.resolve({ user_id: 'user-1' }),
+      params: Promise.resolve({ user_slug: 'alice' }),
     });
     render(element);
 
+    expect(mocks.findUser).toHaveBeenCalledWith({
+      where: { field: 'userSlug', value: 'alice' },
+    });
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: { field: 'userId', value: 'user-1' },
       orderBy: [{ direction: 'desc', field: 'updatedAt' }],
     });
     expect(screen.getByRole('link', { name: /Demo Demo description/i })).toHaveAttribute(
       'href',
-      '/page/user-1/demo'
+      '/page/alice/demo'
     );
+  });
+
+  it('returns not found when the slug does not match a user', async () => {
+    mocks.findUser.mockResolvedValue(null);
+
+    await expect(
+      UserPublishedPages({
+        params: Promise.resolve({ user_slug: 'missing' }),
+      })
+    ).rejects.toThrow('NEXT_NOT_FOUND');
+
+    expect(mocks.findMany).not.toHaveBeenCalled();
   });
 });

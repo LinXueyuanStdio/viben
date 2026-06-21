@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         page_uid: uid,
-        url: `/page/${encodeURIComponent(session.userId)}/${encodeURIComponent(uid)}`,
+        url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
         updated: true,
       });
     }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       page_uid: uid,
-      url: `/page/${encodeURIComponent(session.userId)}/${encodeURIComponent(uid)}`,
+      url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
       updated: false,
     });
   } catch (error) {

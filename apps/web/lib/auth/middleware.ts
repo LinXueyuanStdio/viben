@@ -20,6 +20,7 @@ export async function authMiddleware(request: NextRequest) {
   // Add session to request headers for downstream use
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', session.userId);
+  requestHeaders.set('x-user-slug', session.userSlug);
   requestHeaders.set('x-user-role', session.role);
 
   return NextResponse.next({
@@ -41,6 +42,7 @@ export async function requireAuth(request: NextRequest): Promise<Session> {
         return {
           userId: user.id,
           username: user.username,
+          userSlug: user.userSlug,
           email: user.email,
           role: user.role as Session['role'],
           expiresAt: 0,

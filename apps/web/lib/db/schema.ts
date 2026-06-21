@@ -23,6 +23,7 @@ export const users = pgTable(
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     email: text('email').notNull().unique(),
     username: text('username').notNull().unique(),
+    userSlug: text('user_slug').notNull().unique(),
     displayName: text('display_name').notNull(),
     avatarUrl: text('avatar_url'),
     bio: text('bio'),
@@ -51,6 +52,7 @@ export const users = pgTable(
   },
   (table) => [
     index('users_username_idx').on(table.username),
+    index('users_user_slug_idx').on(table.userSlug),
     index('users_email_idx').on(table.email),
   ]
 );

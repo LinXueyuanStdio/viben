@@ -5,11 +5,18 @@ import type {
 } from "@/hooks/use-models";
 import type { Provider, ProviderSurface } from "@/hooks/use-providers";
 
-export interface SettingsModel extends DiscoveredModel {
+type ModelCapabilities = {
+  chat?: boolean;
+  code?: boolean;
+  vision?: boolean;
+  tools?: boolean;
+};
+
+export interface SettingsModel extends Omit<DiscoveredModel, "capabilities"> {
   source: "discovered" | "manual";
   surface?: ModelSurface;
   enabled: boolean;
-  capabilities?: string[];
+  capabilities?: ModelCapabilities;
 }
 
 function isDiscoveredModelForProviderSurface(
@@ -36,6 +43,7 @@ function normalizeConfiguredModel(model: ProviderModelResponse): SettingsModel {
     max_output_tokens: model.max_output_tokens,
     source: "manual",
     enabled: model.enabled,
+    capabilities: model.capabilities,
   };
 }
 
@@ -63,6 +71,7 @@ export function buildProviderModelList({
       ...model,
       source: "discovered",
       enabled: configuredModel?.enabled ?? false,
+      capabilities: configuredModel?.capabilities ?? model.capabilities,
     };
   });
 

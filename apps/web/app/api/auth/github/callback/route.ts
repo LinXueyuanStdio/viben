@@ -8,6 +8,7 @@ import { setSessionCookie } from '@/lib/auth/cookies';
 import { encryptSession } from '@/lib/auth/jwe';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri } from '@/lib/auth/desktop-redirect';
 import { generateId } from '@/lib/utils';
+import { normalizeUserSlug } from '@/lib/utils/user-slug';
 import { eq, and } from 'drizzle-orm';
 
 interface GitHubUser {
@@ -127,6 +128,7 @@ export async function GET(request: NextRequest) {
           id: userId,
           email: primaryEmail,
           username: githubUser.login,
+          userSlug: normalizeUserSlug(githubUser.login, userId),
           displayName: githubUser.name || githubUser.login,
           avatarUrl: githubUser.avatar_url,
           githubUsername: githubUser.login,
@@ -160,6 +162,7 @@ export async function GET(request: NextRequest) {
       const desktopAccessToken = await encryptSession({
         userId: user.id,
         username: user.username,
+        userSlug: user.userSlug,
         email: user.email,
         role: user.role as 'user' | 'developer' | 'admin',
         avatarUrl: user.avatarUrl ?? undefined,
@@ -174,6 +177,7 @@ export async function GET(request: NextRequest) {
           id: user.id,
           email: user.email,
           username: user.username,
+          userSlug: user.userSlug,
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
         },
@@ -194,6 +198,7 @@ export async function GET(request: NextRequest) {
     await setSessionCookie({
       userId: user.id,
       username: user.username,
+      userSlug: user.userSlug,
       email: user.email,
       role: user.role as 'user' | 'developer' | 'admin',
       avatarUrl: user.avatarUrl ?? undefined,

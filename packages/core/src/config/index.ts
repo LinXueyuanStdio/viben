@@ -1,8 +1,8 @@
 /**
  * Configuration management for Viben
  */
-import type { GlobalConfig, ProvidersConfig, ModelsConfig } from "../types";
-import { getConfigPath, getProvidersPath, getModelsPath, getStateDir } from "./paths";
+import type { GlobalConfig, ModelsConfig } from "../types";
+import { getConfigPath, getModelsPath, getStateDir } from "./paths";
 import { readYaml, writeYaml, ensureDir, fileExists } from "./yaml";
 
 export * from "./paths";
@@ -107,40 +107,6 @@ export class ConfigManager {
 }
 
 /**
- * ProvidersConfigManager handles providers configuration
- */
-export class ProvidersConfigManager {
-  private config: ProvidersConfig | undefined;
-
-  /**
-   * Load the providers configuration
-   */
-  async load(): Promise<ProvidersConfig> {
-    if (this.config) {
-      return this.config;
-    }
-    this.config = await readYaml<ProvidersConfig>(getProvidersPath());
-    return this.config || { providers: [] };
-  }
-
-  /**
-   * Save the providers configuration
-   */
-  async save(config: ProvidersConfig): Promise<void> {
-    await writeYaml(getProvidersPath(), config);
-    this.config = config;
-  }
-
-  /**
-   * Reload configuration from disk
-   */
-  async reload(): Promise<ProvidersConfig> {
-    this.config = undefined;
-    return this.load();
-  }
-}
-
-/**
  * ModelsConfigManager handles models configuration
  */
 export class ModelsConfigManager {
@@ -176,5 +142,4 @@ export class ModelsConfigManager {
 
 // Export singleton instances
 export const configManager = new ConfigManager();
-export const providersConfigManager = new ProvidersConfigManager();
 export const modelsConfigManager = new ModelsConfigManager();

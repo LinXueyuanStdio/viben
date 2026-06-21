@@ -6,7 +6,7 @@ describe('PublishedPageList', () => {
   it('renders page cards with preview frames linked to the nested public page route', () => {
     render(
       <PublishedPageList
-        userId="user-1"
+        userSlug="alice"
         pages={[
           {
             uid: 'demo',
@@ -27,19 +27,19 @@ describe('PublishedPageList', () => {
     expect(screen.getByRole('heading', { name: 'Published pages' })).toBeInTheDocument();
 
     const demoLink = screen.getByRole('link', { name: /Demo Demo description/i });
-    expect(demoLink).toHaveAttribute('href', '/page/user-1/demo');
+    expect(demoLink).toHaveAttribute('href', '/page/alice/demo');
     expect(screen.getByTitle('Preview: Demo')).toHaveAttribute(
       'srcDoc',
       '<!doctype html><html><body><h1>Demo HTML</h1></body></html>'
     );
 
     const notesLink = screen.getByRole('link', { name: /Notes/i });
-    expect(notesLink).toHaveAttribute('href', '/page/user-1/notes');
+    expect(notesLink).toHaveAttribute('href', '/page/alice/notes');
     expect(screen.getByTitle('Preview: Notes')).toBeInTheDocument();
   });
 
   it('renders an empty state for users without published pages', () => {
-    render(<PublishedPageList userId="user-1" pages={[]} />);
+    render(<PublishedPageList userSlug="alice" pages={[]} />);
 
     expect(screen.getByText('No published pages yet.')).toBeInTheDocument();
   });

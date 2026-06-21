@@ -229,6 +229,12 @@ export interface ProviderModelResponse {
   provider: string;
   description?: string;
   enabled: boolean;
+  capabilities?: {
+    chat?: boolean;
+    code?: boolean;
+    vision?: boolean;
+    tools?: boolean;
+  };
   context_window?: number;
   max_output_tokens?: number;
   input_price?: number;

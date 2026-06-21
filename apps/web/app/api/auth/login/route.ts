@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     await setSessionCookie({
       userId: user.id,
       username: user.username,
+      userSlug: user.userSlug,
       email: user.email,
       role: user.role as 'user' | 'developer' | 'admin',
       avatarUrl: user.avatarUrl ?? undefined,

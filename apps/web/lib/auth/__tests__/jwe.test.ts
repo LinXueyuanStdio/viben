@@ -7,6 +7,7 @@ import { encryptSession, decryptSession } from '../jwe';
 const mockSession = {
   userId: 'user-123',
   username: 'testuser',
+  userSlug: 'testuser',
   email: 'test@example.com',
   role: 'user' as const,
 };
@@ -14,6 +15,7 @@ const mockSession = {
 const mockAdminSession = {
   userId: 'admin-123',
   username: 'adminuser',
+  userSlug: 'adminuser',
   email: 'admin@example.com',
   role: 'admin' as const,
 };
@@ -49,6 +51,7 @@ describe('decryptSession', () => {
     expect(decrypted).not.toBeNull();
     expect(decrypted?.userId).toBe(mockSession.userId);
     expect(decrypted?.username).toBe(mockSession.username);
+    expect(decrypted?.userSlug).toBe(mockSession.userSlug);
     expect(decrypted?.email).toBe(mockSession.email);
     expect(decrypted?.role).toBe(mockSession.role);
   });
@@ -99,6 +102,7 @@ describe('decryptSession', () => {
 
     expect(decrypted?.userId).toBe('admin-123');
     expect(decrypted?.username).toBe('adminuser');
+    expect(decrypted?.userSlug).toBe('adminuser');
     expect(decrypted?.email).toBe('admin@example.com');
     expect(decrypted?.role).toBe('admin');
   });
@@ -115,6 +119,7 @@ describe('session roundtrip', () => {
     const token2 = await encryptSession({
       userId: decrypted1!.userId,
       username: decrypted1!.username,
+      userSlug: decrypted1!.userSlug,
       email: decrypted1!.email,
       role: decrypted1!.role,
     });

@@ -5,11 +5,9 @@ import type { Model, ModelConfig } from "../types";
 import {
   getUnifiedProviders,
   loadUnifiedModelsFile,
-  MODELS_METADATA_KEY,
   saveUnifiedModelsFile,
   type UnifiedModelsFile,
   type UnifiedModelEntry,
-  type UnifiedModelsMetadata,
   type UnifiedProviderEntry,
 } from "../config/model-provider-storage";
 import type {
@@ -35,38 +33,11 @@ function normalizeModelSurface(
   return category === "llm" ? "chat" : undefined;
 }
 
-function emptyMetadata(): Required<Pick<UnifiedModelsMetadata, "aliases" | "fallbacks" | "configs" | "disabled_models">> & UnifiedModelsMetadata {
-  return {
-    aliases: { ...DEFAULT_ALIASES },
-    fallbacks: [],
-    fallbacks_by_surface: {},
-    configs: {},
-    disabled_models: [],
-  };
-}
-
-function getMetadata(config: UnifiedModelsFile): Required<Pick<UnifiedModelsMetadata, "aliases" | "fallbacks" | "configs" | "disabled_models">> & UnifiedModelsMetadata {
-  const metadata = {
-    ...emptyMetadata(),
-    ...(config[MODELS_METADATA_KEY] ?? {}),
-  };
-  metadata.aliases = {
-    ...DEFAULT_ALIASES,
-    ...(config[MODELS_METADATA_KEY]?.aliases ?? {}),
-  };
-  return metadata;
-}
-
-function removeMetadata(config: UnifiedModelsFile): void {
-  delete config[MODELS_METADATA_KEY];
-}
-
 function modelFromEntry(
   id: string,
   entry: UnifiedModelEntry,
   providerId: string,
-  provider: UnifiedProviderEntry,
-  defaultModelId: string | undefined
+  provider: UnifiedProviderEntry
 ): Model {
   const category = normalizeModelCategory(provider.category as ModelCategory | undefined);
   return {
@@ -76,7 +47,7 @@ function modelFromEntry(
     provider_id: providerId,
     category,
     surface: normalizeModelSurface(undefined, category),
-    isDefault: defaultModelId === id,
+    isDefault: false,
     enabled: entry.enabled ?? true,
   };
 }
@@ -172,16 +143,6 @@ function requireModelInProvider(
   return found;
 }
 
-function legacyConfigForModel(
-  metadata: UnifiedModelsMetadata,
-  modelId: string,
-  providerId?: string
-): ModelConfig | null {
-  const configs = metadata.configs ?? {};
-  const providerScoped = providerId ? configs[`${providerId}:${modelId}`] : undefined;
-  return providerScoped ?? configs[modelId] ?? null;
-}
-
 function modelConfigEntryFromModelConfig(modelConfig: ModelConfig): ModelConfigEntry {
   return {
     temperature: modelConfig.temperature,
@@ -243,13 +204,12 @@ export class ModelManager {
    */
   async listModels(): Promise<Model[]> {
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
     const providers = getUnifiedProviders(config);
     const models: Model[] = [];
 
     for (const [providerId, provider] of Object.entries(providers)) {
       for (const [id, entry] of Object.entries(provider.models ?? {})) {
-        models.push(modelFromEntry(id, entry, providerId, provider, metadata.default_model));
+        models.push(modelFromEntry(id, entry, providerId, provider));
       }
     }
 
@@ -274,14 +234,16 @@ export class ModelManager {
 
   async listModelsFiltered(filters: {
     provider?: string;
+    provider_id?: string;
     category?: ModelCategory;
     surface?: ModelSurface;
   }): Promise<Model[]> {
     let models = await this.listModels();
+    if (filters.provider_id) {
+      models = models.filter((m) => m.provider_id === filters.provider_id);
+    }
     if (filters.provider) {
-      models = models.filter((m) =>
-        m.provider === filters.provider || m.provider_id === filters.provider
-      );
+      models = models.filter((m) => m.provider === filters.provider);
     }
     if (filters.category) {
       models = models.filter((m) => normalizeModelCategory(m.category) === filters.category);
@@ -297,11 +259,10 @@ export class ModelManager {
    */
   async getModel(id: string): Promise<Model | null> {
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
     const found = requireSingleModelMatch(config, id);
 
     if (found) {
-      return modelFromEntry(id, found.entry, found.providerId, found.provider, metadata.default_model);
+      return modelFromEntry(id, found.entry, found.providerId, found.provider);
     }
 
     return null;
@@ -316,13 +277,7 @@ export class ModelManager {
     if (!found) {
       return null;
     }
-    return modelFromEntry(
-      id,
-      found.entry,
-      found.providerId,
-      found.provider,
-      getMetadata(config).default_model
-    );
+    return modelFromEntry(id, found.entry, found.providerId, found.provider);
   }
 
   /**
@@ -477,7 +432,6 @@ export class ModelManager {
     };
     config[found.providerId] = found.provider;
 
-    const metadata = getMetadata(config);
     return {
       id,
       name: entry.name,
@@ -486,7 +440,7 @@ export class ModelManager {
       description: updates.description,
       contextLength: updates.contextWindow,
       maxOutputTokens: updates.maxOutputTokens,
-      isDefault: metadata.default_model === id,
+      isDefault: false,
       enabled: true,
     };
   }
@@ -540,8 +494,7 @@ export class ModelManager {
    * Get the default model
    */
   async getDefault(): Promise<string | undefined> {
-    const config = await this.loadConfig();
-    return getMetadata(config).default_model;
+    return undefined;
   }
 
   /**
@@ -552,12 +505,8 @@ export class ModelManager {
   }
 
   async getDefaultForSurface(surface: ModelSurface): Promise<string | undefined> {
-    const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    if (surface === "chat") {
-      return metadata.defaults?.llm ?? metadata.default_model;
-    }
-    return metadata.defaults?.media?.[surface];
+    void surface;
+    return undefined;
   }
 
   async setDefaultForSurface(surface: ModelSurface, model: string): Promise<void> {
@@ -573,8 +522,7 @@ export class ModelManager {
    * Get all model aliases
    */
   async getAliases(): Promise<Record<string, string>> {
-    const config = await this.loadConfig();
-    return { ...getMetadata(config).aliases };
+    return { ...DEFAULT_ALIASES };
   }
 
   /**
@@ -597,56 +545,14 @@ export class ModelManager {
    * Returns the input if it's not an alias
    */
   async resolveAlias(aliasOrModel: string): Promise<string> {
-    const config = await this.loadConfig();
-    return getMetadata(config).aliases[aliasOrModel] || aliasOrModel;
+    return DEFAULT_ALIASES[aliasOrModel] || aliasOrModel;
   }
 
   /**
    * Resolve alias synchronously (uses cached config)
    */
   resolveAliasSync(aliasOrModel: string): string {
-    if (!this.config) {
-      return DEFAULT_ALIASES[aliasOrModel] || aliasOrModel;
-    }
-    return getMetadata(this.config).aliases[aliasOrModel] || aliasOrModel;
-  }
-
-  // ========================================================================
-  // Fallbacks
-  // ========================================================================
-
-  /**
-   * Get the fallback chain
-   */
-  async getFallbacks(): Promise<string[]> {
-    return [];
-  }
-
-  /**
-   * Add a model to the fallback chain
-   */
-  async addFallback(model: string): Promise<void> {
-    void model;
-  }
-
-  /**
-   * Remove a model from the fallback chain
-   */
-  async removeFallback(model: string): Promise<void> {
-    void model;
-  }
-
-  /**
-   * Clear the fallback chain
-   */
-  async clearFallbacks(): Promise<void> {
-  }
-
-  /**
-   * Reorder fallbacks
-   */
-  async setFallbacks(fallbacks: string[]): Promise<void> {
-    void fallbacks;
+    return DEFAULT_ALIASES[aliasOrModel] || aliasOrModel;
   }
 
   // ========================================================================
@@ -661,13 +567,12 @@ export class ModelManager {
       return this.getModelConfigForProvider(providerId, model);
     }
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const resolved = metadata.aliases[model] || model;
+    const resolved = DEFAULT_ALIASES[model] || model;
     const found = requireSingleModelMatch(config, resolved);
     if (!found) {
-      return legacyConfigForModel(metadata, resolved);
+      return null;
     }
-    return found.entry.config ?? legacyConfigForModel(metadata, resolved, found.providerId);
+    return found.entry.config ?? null;
   }
 
   /**
@@ -678,13 +583,12 @@ export class ModelManager {
     model: string
   ): Promise<ModelConfig | null> {
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const resolved = metadata.aliases[model] || model;
+    const resolved = DEFAULT_ALIASES[model] || model;
     const found = findModelInProvider(config, providerId, resolved);
     if (!found) {
-      return legacyConfigForModel(metadata, resolved, providerId);
+      return null;
     }
-    return found.entry.config ?? legacyConfigForModel(metadata, resolved, providerId);
+    return found.entry.config ?? null;
   }
 
   /**
@@ -699,14 +603,12 @@ export class ModelManager {
       return this.setModelConfigForProvider(providerId, model, modelConfig);
     }
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const resolved = metadata.aliases[model] || model;
+    const resolved = DEFAULT_ALIASES[model] || model;
     const found = requireSingleModelMatch(config, resolved);
     if (!found) {
       throw new Error(`Model not found: ${resolved}`);
     }
     this.setModelConfigEntry(config, found, resolved, modelConfig);
-    removeMetadata(config);
 
     await this.saveConfig(config);
   }
@@ -720,11 +622,9 @@ export class ModelManager {
     modelConfig: ModelConfig
   ): Promise<void> {
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const resolved = metadata.aliases[model] || model;
+    const resolved = DEFAULT_ALIASES[model] || model;
     const found = requireModelInProvider(config, providerId, resolved);
     this.setModelConfigEntry(config, found, resolved, modelConfig);
-    removeMetadata(config);
     await this.saveConfig(config);
   }
 
@@ -736,8 +636,7 @@ export class ModelManager {
       return this.removeModelConfigForProvider(providerId, model);
     }
     const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const resolved = metadata.aliases[model] || model;
+    const resolved = DEFAULT_ALIASES[model] || model;
     const found = requireSingleModelMatch(config, resolved);
     if (found) {
       const entry = { ...found.entry };
@@ -748,7 +647,6 @@ export class ModelManager {
       };
       config[found.providerId] = found.provider;
     }
-    removeMetadata(config);
     await this.saveConfig(config);
   }
 
@@ -757,7 +655,7 @@ export class ModelManager {
    */
   async removeModelConfigForProvider(providerId: string, model: string): Promise<void> {
     const config = await this.loadConfig();
-    const resolved = getMetadata(config).aliases[model] || model;
+    const resolved = DEFAULT_ALIASES[model] || model;
     const found = requireModelInProvider(config, providerId, resolved);
     const entry = { ...found.entry };
     delete entry.config;
@@ -766,7 +664,6 @@ export class ModelManager {
       [resolved]: entry,
     };
     config[found.providerId] = found.provider;
-    removeMetadata(config);
     await this.saveConfig(config);
   }
 
@@ -811,8 +708,7 @@ export class ModelManager {
       resolved,
       found.entry,
       found.providerId,
-      found.provider,
-      getMetadata(this.config).default_model
+      found.provider
     );
   }
 }

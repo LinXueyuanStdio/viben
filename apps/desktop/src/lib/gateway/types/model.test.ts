@@ -1,4 +1,4 @@
-import { describe, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import type { CreateModelOptions, ProviderType } from "./model";
 
 describe("gateway model types", () => {
@@ -7,9 +7,17 @@ describe("gateway model types", () => {
   });
 
   it("matches supported core provider types", () => {
-    expectTypeOf("openai-responses").toExtend<ProviderType>();
-    expectTypeOf("custom-image").toExtend<ProviderType>();
-    expectTypeOf("deepseek").not.toExtend<ProviderType>();
-    expectTypeOf("custom").not.toExtend<ProviderType>();
+    const openaiResponsesProvider: ProviderType = "openai-responses";
+    const customImageProvider: ProviderType = "custom-image";
+
+    expect(openaiResponsesProvider).toBe("openai-responses");
+    expect(customImageProvider).toBe("custom-image");
+
+    // @ts-expect-error deepseek is a stale fallback, not a core provider type.
+    const deepseekProvider: ProviderType = "deepseek";
+    // @ts-expect-error custom is a stale fallback, not a core provider type.
+    const customProvider: ProviderType = "custom";
+    void deepseekProvider;
+    void customProvider;
   });
 });

@@ -4,7 +4,6 @@
 import {
   getUnifiedProviders,
   loadUnifiedModelsFile,
-  MODELS_METADATA_KEY,
   saveUnifiedModelsFile,
   type UnifiedModelsFile,
   type UnifiedProviderEntry,
@@ -88,6 +87,7 @@ function providerEntryFromUnified(entry: UnifiedProviderEntry): ProviderEntry {
     headers: entry.headers,
     surfaces: entry.surfaces,
     supports_custom_model: entry.supports_custom_model,
+    is_default: entry.is_default,
     enabled: entry.enabled ?? true,
     created_at: entry.created_at ?? now,
     updated_at: entry.updated_at ?? now,
@@ -95,14 +95,18 @@ function providerEntryFromUnified(entry: UnifiedProviderEntry): ProviderEntry {
 }
 
 function getDefaultProviderId(config: UnifiedModelsFile): string | undefined {
-  return config[MODELS_METADATA_KEY]?.default_provider;
+  const providers = getUnifiedProviders(config);
+  return Object.entries(providers).find(([, provider]) => provider.is_default === true)?.[0];
 }
 
 function setDefaultProviderId(config: UnifiedModelsFile, id: string | undefined): void {
-  config[MODELS_METADATA_KEY] = {
-    ...(config[MODELS_METADATA_KEY] ?? {}),
-    default_provider: id,
-  };
+  const providers = getUnifiedProviders(config);
+  for (const [providerId, provider] of Object.entries(providers)) {
+    config[providerId] = {
+      ...provider,
+      is_default: id !== undefined && providerId === id,
+    };
+  }
 }
 
 function providerFromEntry(
@@ -247,16 +251,12 @@ export class ProviderManager {
       headers: entry.headers,
       surfaces: entry.surfaces,
       supports_custom_model: entry.supports_custom_model,
+      is_default: options.setAsDefault || Object.keys(providers).length === 0,
       enabled: entry.enabled,
       created_at: entry.created_at,
       updated_at: entry.updated_at,
       models: {},
     };
-
-    // Set as default if requested or if it's the first provider
-    if (options.setAsDefault || Object.keys(providers).length === 0) {
-      setDefaultProviderId(config, id);
-    }
 
     await this.saveConfig(config);
 
@@ -274,7 +274,7 @@ export class ProviderManager {
       headers: entry.headers,
       surfaces: entry.surfaces as ProviderSurface[],
       supportsCustomModel: entry.supports_custom_model,
-      isDefault: getDefaultProviderId(config) === id,
+      isDefault: Boolean(config[id]?.is_default),
       enabled: true,
       created_at: now,
       updated_at: now,
@@ -338,6 +338,7 @@ export class ProviderManager {
       headers: updated.headers,
       surfaces: updated.surfaces,
       supports_custom_model: updated.supports_custom_model,
+      is_default: provider.is_default,
       enabled: updated.enabled,
       created_at: updated.created_at,
       updated_at: updated.updated_at,

@@ -70,7 +70,23 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe(
-        'Username can only contain letters, numbers, underscores, and hyphens'
+        'Username must start with a letter or underscore and contain only letters, numbers, underscores, and hyphens'
+      );
+    }
+  });
+
+  it('should reject username that starts with a number', () => {
+    const invalidData = {
+      email: 'test@example.com',
+      username: '1testuser',
+      password: 'password123',
+      displayName: 'Test User',
+    };
+    const result = registerSchema.safeParse(invalidData);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        'Username must start with a letter or underscore and contain only letters, numbers, underscores, and hyphens'
       );
     }
   });

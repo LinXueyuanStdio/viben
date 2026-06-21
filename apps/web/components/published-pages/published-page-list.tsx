@@ -8,18 +8,18 @@ interface PublishedPageListItem {
 }
 
 interface PublishedPageListProps {
-  userId: string;
+  userSlug: string;
   pages: PublishedPageListItem[];
 }
 
 const iframeSandbox = 'allow-scripts allow-forms allow-popups allow-modals allow-downloads';
 
-export function PublishedPageList({ userId, pages }: PublishedPageListProps) {
+export function PublishedPageList({ userSlug, pages }: PublishedPageListProps) {
   return (
     <main className="min-h-screen bg-background px-4 py-10 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <header className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-muted-foreground">{userId}</p>
+          <p className="text-sm font-medium text-muted-foreground">{userSlug}</p>
           <h1 className="text-3xl font-semibold tracking-normal">Published pages</h1>
         </header>
 
@@ -32,7 +32,7 @@ export function PublishedPageList({ userId, pages }: PublishedPageListProps) {
             {pages.map((page) => (
               <Link
                 key={page.uid}
-                href={`/page/${encodeURIComponent(userId)}/${encodeURIComponent(page.uid)}`}
+                href={`/page/${encodeURIComponent(userSlug)}/${encodeURIComponent(page.uid)}`}
                 className="group flex min-h-[320px] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground transition-colors duration-200 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="aspect-[4/3] overflow-hidden border-b border-border bg-muted">

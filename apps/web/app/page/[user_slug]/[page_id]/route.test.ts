@@ -1,16 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  findFirst: vi.fn(),
+  findPublishedPage: vi.fn(),
+  findUser: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
+      users: {
+        findFirst: mocks.findUser,
+      },
       publishedPages: {
-        findFirst: mocks.findFirst,
+        findFirst: mocks.findPublishedPage,
       },
     },
+  },
+  users: {
+    id: 'id',
+    userSlug: 'userSlug',
   },
   publishedPages: {
     uid: 'uid',
@@ -25,13 +33,17 @@ vi.mock('drizzle-orm', () => ({
 
 import { GET } from './route';
 
-describe('GET /page/[user_id]/[page_id]', () => {
+describe('GET /page/[user_slug]/[page_id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.findUser.mockResolvedValue({
+      id: 'user-1',
+      userSlug: 'alice',
+    });
   });
 
   it('returns the stored HTML document directly', async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.findPublishedPage.mockResolvedValue({
       uid: 'demo',
       userId: 'user-1',
       title: 'Demo',
@@ -40,9 +52,9 @@ describe('GET /page/[user_id]/[page_id]', () => {
     });
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/user-1/demo'),
+      new Request('https://viben-web.vercel.app/page/alice/demo'),
       {
-        params: Promise.resolve({ user_id: 'user-1', page_id: 'demo' }),
+        params: Promise.resolve({ user_slug: 'alice', page_id: 'demo' }),
       }
     );
 
@@ -51,7 +63,10 @@ describe('GET /page/[user_id]/[page_id]', () => {
     expect(await response.text()).toBe(
       '<!doctype html><html><body><h1>Demo HTML</h1></body></html>'
     );
-    expect(mocks.findFirst).toHaveBeenCalledWith({
+    expect(mocks.findUser).toHaveBeenCalledWith({
+      where: { field: 'userSlug', value: 'alice' },
+    });
+    expect(mocks.findPublishedPage).toHaveBeenCalledWith({
       where: {
         type: 'and',
         conditions: [
@@ -63,16 +78,35 @@ describe('GET /page/[user_id]/[page_id]', () => {
   });
 
   it('returns 404 when no page exists for the user and page id', async () => {
-    mocks.findFirst.mockResolvedValue(null);
+    mocks.findPublishedPage.mockResolvedValue(null);
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/user-1/missing'),
+      new Request('https://viben-web.vercel.app/page/alice/missing'),
       {
-        params: Promise.resolve({ user_id: 'user-1', page_id: 'missing' }),
+        params: Promise.resolve({ user_slug: 'alice', page_id: 'missing' }),
       }
     );
 
     expect(response.status).toBe(404);
     expect(await response.text()).toBe('Not found');
+  });
+
+  it('returns 404 when no user exists for the slug', async () => {
+    mocks.findUser.mockResolvedValue(null);
+    mocks.findPublishedPage.mockResolvedValue({
+      uid: 'demo',
+      userId: 'user-1',
+      html: '<html></html>',
+    });
+
+    const response = await GET(
+      new Request('https://viben-web.vercel.app/page/missing/demo'),
+      {
+        params: Promise.resolve({ user_slug: 'missing', page_id: 'demo' }),
+      }
+    );
+
+    expect(response.status).toBe(404);
+    expect(mocks.findPublishedPage).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { db, users, oauthConnections } from '@/lib/db';
 import { encryptSession } from '@/lib/auth/jwe';
 import { generateId } from '@/lib/utils';
+import { normalizeUserSlug } from '@/lib/utils/user-slug';
 import { eq, and } from 'drizzle-orm';
 
 interface GitHubUser {
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
           id: userId,
           email: primaryEmail,
           username: githubUser.login,
+          userSlug: normalizeUserSlug(githubUser.login, userId),
           displayName: githubUser.name || githubUser.login,
           avatarUrl: githubUser.avatar_url,
           githubUsername: githubUser.login,
@@ -168,6 +170,7 @@ export async function POST(request: NextRequest) {
     const accessToken = await encryptSession({
       userId: user.id,
       username: user.username,
+      userSlug: user.userSlug,
       email: user.email,
       role: user.role as 'user' | 'developer' | 'admin',
       avatarUrl: user.avatarUrl ?? undefined,
@@ -181,6 +184,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         username: user.username,
+        userSlug: user.userSlug,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
       },

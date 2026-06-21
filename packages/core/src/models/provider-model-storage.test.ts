@@ -206,7 +206,6 @@ providers:
     await modelManager.createAlias("fast", "gpt-5.1");
     await modelManager.setDefault("gpt-5.1");
     await modelManager.setDefaultForSurface("chat", "gpt-5.1");
-    await modelManager.setFallbacks(["gpt-5.1"]);
     await modelManager.enableModel("gpt-5.1", provider.type, provider.id);
 
     const config = parse(await tempDir.readFile("models.yaml"));

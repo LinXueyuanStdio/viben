@@ -15,6 +15,7 @@ import type {
   ApiKeyProvidersResponse,
   DiscoverModelsResponse,
   ProviderEnabledModelsResponse,
+  ProviderModelResponse,
 } from "../types";
 
 // ============================================================================

@@ -3,6 +3,7 @@ import { db, users } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/password';
 import { setSessionCookie } from '@/lib/auth/cookies';
 import { generateId } from '@/lib/utils';
+import { normalizeUserSlug } from '@/lib/utils/user-slug';
 import { registerSchema } from '@/lib/validations/user';
 import { ZodError } from 'zod';
 
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       id: userId,
       email,
       username,
+      userSlug: normalizeUserSlug(username, userId),
       displayName,
       passwordHash,
       role: 'developer',
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
     await setSessionCookie({
       userId,
       username,
+      userSlug: normalizeUserSlug(username, userId),
       email,
       role: 'developer',
     });

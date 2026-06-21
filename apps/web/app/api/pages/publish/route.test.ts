@@ -66,6 +66,7 @@ describe('POST /api/pages/publish', () => {
     mocks.requireAuth.mockResolvedValue({
       userId: 'user-1',
       username: 'alice',
+      userSlug: 'alice',
       email: 'alice@example.com',
       role: 'developer',
       expiresAt: Date.now() + 3600000,
@@ -90,7 +91,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
-      url: '/page/user-1/demo',
+      url: '/page/alice/demo',
       updated: false,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -122,7 +123,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
-      url: '/page/user-1/demo',
+      url: '/page/alice/demo',
       updated: true,
     });
     expect(mocks.updateSet).toHaveBeenCalledWith({
@@ -156,6 +157,7 @@ describe('POST /api/pages/publish', () => {
     mocks.requireAuth.mockResolvedValue({
       userId: 'user-2',
       username: 'bob',
+      userSlug: 'bob_builder',
       email: 'bob@example.com',
       role: 'developer',
       expiresAt: Date.now() + 3600000,
@@ -172,7 +174,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
-      url: '/page/user-2/demo',
+      url: '/page/bob_builder/demo',
       updated: false,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({

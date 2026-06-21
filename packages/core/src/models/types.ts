@@ -13,8 +13,6 @@ export interface ModelsFile {
     media?: Partial<Record<ModelSurface, string>>;
   };
   aliases: Record<string, string>;
-  fallbacks: string[];
-  fallbacks_by_surface?: Partial<Record<ModelSurface, string[]>>;
   configs: Record<string, ModelConfigEntry>;
   /** Custom models added by user */
   custom_models: Record<string, ModelEntry>;
@@ -69,4 +67,3 @@ export interface ModelEntry {
   created_at: string;
   updated_at: string;
 }
-

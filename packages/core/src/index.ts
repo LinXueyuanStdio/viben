@@ -28,14 +28,11 @@ export {
 // Config management
 export {
   ConfigManager,
-  ProvidersConfigManager,
   ModelsConfigManager,
   configManager,
-  providersConfigManager,
   modelsConfigManager,
   getStateDir,
   getConfigPath,
-  getProvidersPath,
   getModelsPath,
   getAgentsDir,
   getAgentDir,

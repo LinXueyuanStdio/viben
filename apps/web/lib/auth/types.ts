@@ -1,6 +1,7 @@
 export interface Session {
   userId: string;
   username: string;
+  userSlug: string;
   email: string;
   // Expanded roles: 'admin' is legacy, treated as 'super_admin'
   role: 'user' | 'developer' | 'admin' | 'super_admin' | 'moderator' | 'support';
