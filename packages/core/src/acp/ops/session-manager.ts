@@ -287,6 +287,14 @@ export class AcpSessionManager {
     if (!Array.isArray(request.prompt) || request.prompt.length === 0) {
       throw new Error("session/prompt/steer requires prompt");
     }
+    const prompt = promptBlocksToText(request.prompt);
+    if (!prompt.trim()) {
+      throw new Error("session/prompt/steer requires prompt");
+    }
+    await this.inputHistory.addEntry(createInputHistoryEntry(prompt, {
+      source: "desktop_acp_chat",
+      session_id: session.id,
+    }));
 
     const record = await this.steerPromptStore.create({
       session_id: session.id,

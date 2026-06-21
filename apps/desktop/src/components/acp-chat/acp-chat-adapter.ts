@@ -439,7 +439,11 @@ function appendTextChunk(current: AgentMessage[], type: "text" | "thinking", tex
     }
   }
   const previous = current[current.length - 1];
-  if (previous?.type === type && previous.content !== undefined && (!messageId || previous.id === messageId)) {
+  if (
+    previous?.type === type &&
+    previous.content !== undefined &&
+    (type === "thinking" || !messageId || previous.id === messageId)
+  ) {
     return [...current.slice(0, -1), { ...previous, content: appendOrReplaceFullText(previous.content, text) }];
   }
   return [...current, { id: messageId ?? createStepId(type), type, content: text, timestamp: Date.now() }];
