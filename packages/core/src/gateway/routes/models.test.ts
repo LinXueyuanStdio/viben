@@ -52,11 +52,13 @@ vi.mock("../../models", () => ({
 vi.mock("../../providers", () => ({
   providerManager: {
     listProviders: vi.fn().mockResolvedValue([]),
+    getProvider: vi.fn(),
   },
 }));
 
 // Import the mocked modelManager
 import { modelManager } from "../../models";
+import { providerManager } from "../../providers";
 
 // Sample test data
 const mockModels: Model[] = [
@@ -256,6 +258,17 @@ describe("Model Routes", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(providerManager.getProvider).mockResolvedValue({
+      id: "openai-main",
+      type: "openai",
+      category: "llm",
+      name: "OpenAI Main",
+      surfaces: ["chat"],
+      isDefault: false,
+      enabled: true,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    });
     fastify = createMockFastify();
     registerModelRoutes(fastify as never);
   });
@@ -920,9 +933,10 @@ describe("Model Routes", () => {
   describe("POST /api/models", () => {
     it("should create a new model", async () => {
       const newModel = createMockModel({
-        id: "custom-model",
-        name: "Custom Model",
-        provider: "custom",
+        id: "gpt-custom",
+        name: "GPT Custom",
+        provider: "openai",
+        provider_id: "openai-main",
       });
 
       vi.mocked(modelManager.getModelInfo).mockReturnValueOnce(undefined).mockReturnValueOnce(newModel);
@@ -935,7 +949,7 @@ describe("Model Routes", () => {
         payload: {
           id: "custom-model",
           name: "Custom Model",
-          provider: "custom",
+          provider_id: "openai-main",
           context_window: 100000,
           max_output_tokens: 4096,
         },
@@ -943,8 +957,13 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.id).toBe("custom-model");
-      expect(modelManager.createModel).toHaveBeenCalled();
+      expect(body.id).toBe("gpt-custom");
+      expect(modelManager.createModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "openai",
+          provider_id: "openai-main",
+        })
+      );
     });
 
     it("should update existing model config", async () => {
@@ -978,7 +997,7 @@ describe("Model Routes", () => {
         url: "/api/models",
         payload: {
           name: "Custom Model",
-          provider: "custom",
+          provider_id: "openai-main",
         },
       });
 
@@ -990,6 +1009,8 @@ describe("Model Routes", () => {
     it("should set model as default when set_as_default is true", async () => {
       const newModel = createMockModel({
         id: "custom-model",
+        provider: "openai",
+        provider_id: "openai-main",
         isDefault: true,
       });
 
@@ -1003,7 +1024,7 @@ describe("Model Routes", () => {
         payload: {
           id: "custom-model",
           name: "Custom Model",
-          provider: "custom",
+          provider_id: "openai-main",
           set_as_default: true,
         },
       });
@@ -1011,6 +1032,8 @@ describe("Model Routes", () => {
       expect(response.statusCode).toBe(201);
       expect(modelManager.createModel).toHaveBeenCalledWith(
         expect.objectContaining({
+          provider: "openai",
+          provider_id: "openai-main",
           setAsDefault: true,
         })
       );

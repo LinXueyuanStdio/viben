@@ -507,10 +507,10 @@ describe("Provider CLI Commands", () => {
         );
       });
 
-      it("should create custom provider with auto-generated name and base-url", async () => {
+      it("should create openai-responses provider with auto-generated name and base-url", async () => {
         const mockProvider = createMockProvider({
-          id: "custom-1234567890",
-          type: "custom",
+          id: "openai-responses-1234567890",
+          type: "openai-responses",
           apiKey: "sk-test",
           base_url: "https://api.example.com/v1",
         });
@@ -521,7 +521,7 @@ describe("Provider CLI Commands", () => {
           "provider",
           "create",
           "-t",
-          "custom",
+          "openai-responses",
           "--api-key",
           "sk-test",
           "--base-url",
@@ -530,18 +530,18 @@ describe("Provider CLI Commands", () => {
 
         expect(providerManager.createProvider).toHaveBeenCalledWith(
           expect.objectContaining({
-            type: "custom",
+            type: "openai-responses",
             apiKey: "sk-test",
             base_url: "https://api.example.com/v1",
-            name: expect.stringMatching(/^custom-\d+$/),
+            name: expect.stringMatching(/^openai-responses-\d+$/),
           })
         );
       });
 
-      it("should default to custom type when only api-key is provided", async () => {
+      it("should default to openai type when only api-key is provided", async () => {
         const mockProvider = createMockProvider({
-          id: "custom-1234567890",
-          type: "custom",
+          id: "openai-1234567890",
+          type: "openai",
           apiKey: "sk-test",
         });
 
@@ -551,9 +551,9 @@ describe("Provider CLI Commands", () => {
 
         expect(providerManager.createProvider).toHaveBeenCalledWith(
           expect.objectContaining({
-            type: "custom",
+            type: "openai",
             apiKey: "sk-test",
-            name: expect.stringMatching(/^custom-\d+$/),
+            name: expect.stringMatching(/^openai-\d+$/),
           })
         );
       });

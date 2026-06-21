@@ -18,7 +18,8 @@ import {
   ANTHROPIC_DEFAULT_HAIKU_MODEL_ENV,
   ANTHROPIC_DEFAULT_OPUS_MODEL_ENV,
   ANTHROPIC_DEFAULT_SONNET_MODEL_ENV,
-  ANTHROPIC_MODEL_ENV,
+  CLAUDE_CODE_MODEL_ENV_KEYS,
+  CLAUDE_CODE_PROVIDER_ENV_KEYS,
   readEnvRecord,
 } from "./provider-model-selection";
 
@@ -49,10 +50,9 @@ const QUICK_ENV_FIELDS = [
 ] as const;
 
 const HIDDEN_CUSTOM_ENV = new Set<string>([
-  ANTHROPIC_MODEL_ENV,
-  ...MODEL_ENV_FIELDS.map((field) => field.key),
+  ...CLAUDE_CODE_MODEL_ENV_KEYS,
+  ...CLAUDE_CODE_PROVIDER_ENV_KEYS,
   ...QUICK_ENV_FIELDS.map((field) => field.key),
-  "CLAUDE_CODE_SUBAGENT_MODEL",
 ]);
 
 export function ClaudeCodeConfigSection({
@@ -84,11 +84,13 @@ export function ClaudeCodeConfigSection({
 
   const addCustomEnv = () => {
     const key = newEnvName.trim();
-    if (!key) return;
+    if (!key || HIDDEN_CUSTOM_ENV.has(key)) return;
     onEnvChange({ ...env, [key]: newEnvValue });
     setNewEnvName("");
     setNewEnvValue("");
   };
+
+  const isReservedEnvName = HIDDEN_CUSTOM_ENV.has(newEnvName.trim());
 
   const customEnvEntries = Object.entries(env)
     .filter(([key]) => !HIDDEN_CUSTOM_ENV.has(key))
@@ -252,12 +254,17 @@ export function ClaudeCodeConfigSection({
             size="sm"
             className="h-8"
             onClick={addCustomEnv}
-            disabled={!newEnvName.trim()}
+            disabled={!newEnvName.trim() || isReservedEnvName}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add
           </Button>
         </div>
+        {isReservedEnvName && (
+          <p className="text-xs text-muted-foreground">
+            This environment variable is controlled by the provider/model selectors.
+          </p>
+        )}
       </div>
     </div>
   );

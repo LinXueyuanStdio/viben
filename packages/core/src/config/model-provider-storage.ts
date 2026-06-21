@@ -189,7 +189,7 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
   if (isRecord(raw.custom_models)) {
     for (const [modelId, modelEntry] of Object.entries(raw.custom_models)) {
       if (!isRecord(modelEntry)) continue;
-      const entry = modelEntry as ModelEntry;
+      const entry = modelEntry as unknown as ModelEntry;
       const providerType = entry.provider;
       if (!providerType) continue;
       const providerId = entry.provider_id;
@@ -224,10 +224,12 @@ function mergeLegacyProviders(file: UnifiedModelsFile, legacy: ProvidersFile | u
   }
 
   for (const [providerId, providerEntry] of Object.entries(legacy.providers ?? {})) {
+    const type = providerEntry.provider_type ?? providerEntry.type;
+    if (!type) continue;
     const existingModels = normalizeProviderEntry(providerId, file[providerId])?.models ?? {};
     file[providerId] = {
       id: providerId,
-      type: providerEntry.provider_type ?? providerEntry.type ?? "",
+      type,
       name: providerEntry.name,
       base_url: providerEntry.base_url,
       api_key: providerEntry.api_key,

@@ -33,7 +33,7 @@ vi.mock("../http", () => ({
 function createMockProvider(overrides: Partial<Provider>): Provider {
   const provider = {
     id: "test-provider",
-    type: "custom" as ProviderType,
+    type: "openai" as ProviderType,
     category: "llm" as const,
     name: "Test Provider",
     surfaces: ["chat" as const],
@@ -508,12 +508,12 @@ describe("discoverModels", () => {
     });
   });
 
-  describe("Custom provider", () => {
-    it("should try OpenAI-compatible endpoint for custom provider with baseUrl", async () => {
+  describe("OpenAI-compatible provider variants", () => {
+    it("should try OpenAI-compatible endpoint for openai-responses provider with baseUrl", async () => {
       const mockProvider = createMockProvider({
-        id: "custom-1",
-        type: "custom",
-        name: "Custom LLM",
+        id: "responses-1",
+        type: "openai-responses",
+        name: "Responses LLM",
         apiKey: "custom-key",
         base_url: "http://custom-llm.local/v1",
       });
@@ -528,30 +528,15 @@ describe("discoverModels", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await discoverModels("custom-1");
+      const result = await discoverModels("responses-1");
 
-      expect(result.providerId).toBe("custom-1");
-      expect(result.providerType).toBe("custom");
+      expect(result.providerId).toBe("responses-1");
+      expect(result.providerType).toBe("openai-responses");
       expect(result.models).toHaveLength(2);
       expect(mockFetch).toHaveBeenCalledWith(
         "http://custom-llm.local/v1/models",
         expect.any(Object)
       );
-    });
-
-    it("should return empty models for custom provider without baseUrl", async () => {
-      const mockProvider = createMockProvider({
-        id: "custom-2",
-        type: "custom",
-        name: "Custom No URL",
-      });
-
-      vi.mocked(providerManager.getProvider).mockResolvedValue(mockProvider);
-
-      const result = await discoverModels("custom-2");
-
-      expect(result.models).toEqual([]);
-      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 
@@ -562,7 +547,7 @@ describe("discoverModels", () => {
       const result = await discoverModels("nonexistent");
 
       expect(result.providerId).toBe("nonexistent");
-      expect(result.providerType).toBe("custom");
+      expect(result.providerType).toBe("openai");
       expect(result.models).toEqual([]);
       expect(result.error).toBe("Provider not found: nonexistent");
     });

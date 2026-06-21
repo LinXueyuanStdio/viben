@@ -66,7 +66,11 @@ function normalizeSurfaces(
 }
 
 function providerTypeFromEntry(entry: ProviderEntry): ProviderType {
-  return (entry.provider_type ?? entry.type) as ProviderType;
+  const type = entry.provider_type ?? entry.type;
+  if (!type) {
+    throw new Error("Provider type is required");
+  }
+  return type as ProviderType;
 }
 
 function providerEntryFromUnified(entry: UnifiedProviderEntry): ProviderEntry {
@@ -197,6 +201,10 @@ export class ProviderManager {
    * Create a new provider
    */
   async createProvider(options: CreateProviderOptions): Promise<Provider> {
+    if (!options.type) {
+      throw new Error("Provider type is required");
+    }
+
     const config = await this.loadConfig();
     const id = this.generateProviderId(options.name);
     const providers = getUnifiedProviders(config);
@@ -290,6 +298,9 @@ export class ProviderManager {
     const entry = providerEntryFromUnified(provider);
     const now = new Date().toISOString();
     const updatedType = updates.type || providerTypeFromEntry(entry);
+    if (!updatedType) {
+      throw new Error("Provider type is required");
+    }
     const category = normalizeProviderCategory(
       updates.category ?? entry.category,
       updatedType

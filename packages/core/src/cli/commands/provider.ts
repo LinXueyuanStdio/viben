@@ -51,7 +51,6 @@ const PROVIDER_TYPES: ProviderType[] = [
   "aihubmix",
   "suno",
   "udio",
-  "custom",
 ];
 
 const PROVIDER_CATEGORIES: ProviderCategory[] = ["llm", "media"];
@@ -193,8 +192,8 @@ export function registerProviderCommand(program: Command): void {
     ) {
       const ctx = getContext(this);
       try {
-        // Validate provider type (default to custom if not provided)
-        const type = (options.type || "custom") as ProviderType;
+        // Validate provider type (default to openai if not provided)
+        const type = (options.type || "openai") as ProviderType;
         if (!PROVIDER_TYPES.includes(type)) {
           throw new Error(
             `Invalid provider type: ${type}. Valid types: ${PROVIDER_TYPES.join(", ")}`
