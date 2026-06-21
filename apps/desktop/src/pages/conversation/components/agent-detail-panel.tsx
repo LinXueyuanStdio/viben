@@ -69,7 +69,7 @@ export interface AgentDetailData {
   path?: string;
   description?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   temperature?: number;
   max_tokens?: number;
@@ -531,9 +531,9 @@ export function AgentDetailPanel({
                       {providerConstraintHint}
                     </p>
                   )}
-                  {!providerConstraintHint && agent.provider && (
+                  {!providerConstraintHint && agent.provider_id && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("agentDetail.providerLabel", "Provider: {{provider}}", { provider: agent.provider })}
+                      {t("agentDetail.providerLabel", "Provider: {{provider}}", { provider: agent.provider_id })}
                     </p>
                   )}
                 </div>

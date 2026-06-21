@@ -1,11 +1,7 @@
-import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
-  notFound: vi.fn(() => {
-    throw new Error('NEXT_NOT_FOUND');
-  }),
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -27,18 +23,14 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn((field, value) => ({ field, value })),
 }));
 
-vi.mock('next/navigation', () => ({
-  notFound: mocks.notFound,
-}));
+import { GET } from './route';
 
-import PublishedPage from './page';
-
-describe('/page/[user_id]/[page_id]', () => {
+describe('GET /page/[user_id]/[page_id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('queries by user id and page id before rendering the sandboxed iframe', async () => {
+  it('returns the stored HTML document directly', async () => {
     mocks.findFirst.mockResolvedValue({
       uid: 'demo',
       userId: 'user-1',
@@ -47,11 +39,18 @@ describe('/page/[user_id]/[page_id]', () => {
       html: '<!doctype html><html><body><h1>Demo HTML</h1></body></html>',
     });
 
-    const element = await PublishedPage({
-      params: Promise.resolve({ user_id: 'user-1', page_id: 'demo' }),
-    });
-    render(element);
+    const response = await GET(
+      new Request('https://viben-web.vercel.app/page/user-1/demo'),
+      {
+        params: Promise.resolve({ user_id: 'user-1', page_id: 'demo' }),
+      }
+    );
 
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/html');
+    expect(await response.text()).toBe(
+      '<!doctype html><html><body><h1>Demo HTML</h1></body></html>'
+    );
     expect(mocks.findFirst).toHaveBeenCalledWith({
       where: {
         type: 'and',
@@ -61,26 +60,19 @@ describe('/page/[user_id]/[page_id]', () => {
         ],
       },
     });
-
-    const iframe = screen.getByTitle('Demo');
-    expect(iframe).toHaveAttribute(
-      'srcDoc',
-      '<!doctype html><html><body><h1>Demo HTML</h1></body></html>'
-    );
-    expect(iframe).toHaveAttribute(
-      'sandbox',
-      'allow-scripts allow-forms allow-popups allow-modals allow-downloads'
-    );
   });
 
-  it('returns not found when no page exists for the user and page id', async () => {
+  it('returns 404 when no page exists for the user and page id', async () => {
     mocks.findFirst.mockResolvedValue(null);
 
-    await expect(
-      PublishedPage({
+    const response = await GET(
+      new Request('https://viben-web.vercel.app/page/user-1/missing'),
+      {
         params: Promise.resolve({ user_id: 'user-1', page_id: 'missing' }),
-      })
-    ).rejects.toThrow('NEXT_NOT_FOUND');
-    expect(mocks.notFound).toHaveBeenCalled();
+      }
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('Not found');
   });
 });

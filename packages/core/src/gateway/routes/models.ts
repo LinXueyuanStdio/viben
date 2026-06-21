@@ -501,7 +501,9 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
           properties: {
             id: { type: "string" },
             name: { type: "string" },
-            provider: { type: "string" },
+            provider_type: { type: "string" },
+            provider_id: { type: "string" },
+            provider_name: { type: "string" },
             description: { type: "string" },
             context_window: { type: "number" },
             max_output_tokens: { type: "number" },

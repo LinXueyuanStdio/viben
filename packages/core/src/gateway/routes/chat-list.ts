@@ -43,7 +43,7 @@ interface ChatListItem {
   session_count?: number;
   // Agent-specific
   model?: string;
-  provider?: string;
+  provider_id?: string;
 }
 
 /**
@@ -279,7 +279,7 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
             workspace_path: globalPath,
             icon_type: "viben",
             model: agent.model,
-            provider: agent.provider,
+            provider_id: agent.provider_id,
             is_global: true,
             session_count: 0, // Would need to check session store
             metadata: {

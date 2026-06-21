@@ -112,7 +112,7 @@ describe("Model Routes - Integration Tests", () => {
       const body = JSON.parse(response.body);
       expect(body.id).toBe("custom-model-1");
       expect(body.name).toBe("Custom Model 1");
-      expect(body.provider).toBe("custom-provider");
+      expect(body.provider_type).toBe("custom-provider");
 
       // Verify file was created
       const fileExists = await tempDir.exists("models.yaml");
@@ -163,7 +163,7 @@ describe("Model Routes - Integration Tests", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.id).toBe("gpt-4o");
-      expect(body.provider).toBe("openai");
+      expect(body.provider_type).toBe("openai");
     });
 
     it("should return 404 for non-existent model", async () => {

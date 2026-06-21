@@ -195,7 +195,7 @@ export function registerAgentCommand(program: Command): void {
             name,
             description: options.description,
             model: options.model,
-            provider: options.provider,
+            provider_id: options.provider,
             executor_type: options.executorType,
             system_prompt: options.systemPrompt,
             append_prompt: options.appendPrompt,
@@ -219,7 +219,7 @@ export function registerAgentCommand(program: Command): void {
               Name: agent.name,
               Executor: agent.executorType || "-",
               Model: agent.model || "-",
-              Provider: agent.provider || "-",
+              Provider: agent.provider_id || "-",
               Path: agent.path || "-",
             });
           }
@@ -279,7 +279,7 @@ export function registerAgentCommand(program: Command): void {
         // Build updates object
         const updates: Partial<AgentConfig> = {};
         if (options.model !== undefined) updates.model = options.model;
-        if (options.provider !== undefined) updates.provider = options.provider;
+        if (options.provider !== undefined) updates.provider_id = options.provider;
         if (options.executorType !== undefined) updates.executorType = options.executorType as Agent["executorType"];
         if (options.description !== undefined) updates.description = options.description;
         if (options.systemPrompt !== undefined) updates.systemPrompt = options.systemPrompt;
@@ -346,7 +346,7 @@ export function registerAgentCommand(program: Command): void {
             Description: agentData.description || "-",
             Executor: agentData.executorType || "-",
             Model: agentData.model || "-",
-            Provider: agentData.provider || "-",
+            Provider: agentData.provider_id || "-",
             Temperature:
               agentData.temperature !== undefined
                 ? String(agentData.temperature)
@@ -469,7 +469,7 @@ export function registerAgentCommand(program: Command): void {
               name: agentData.name,
               description: agentData.description || "",
               model: agentData.model || "",
-              provider: agentData.provider || "",
+              provider_id: agentData.provider_id || "",
               executorType: agentData.executorType || "",
               temperature:
                 agentData.temperature !== undefined

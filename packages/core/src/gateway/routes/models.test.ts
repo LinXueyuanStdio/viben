@@ -305,7 +305,7 @@ describe("Model Routes", () => {
       expect(body.models[0].max_output_tokens).toBe(8192);
       expect(body.models[0].is_default).toBe(true);
       expect(body.models[0].enabled).toBe(true);
-      expect(body.models[1].provider).toBe("openai");
+      expect(body.models[1].provider_type).toBe("openai");
       expect(body.models[1].provider_id).toBe("openai-default");
     });
 
@@ -382,7 +382,7 @@ describe("Model Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.id).toBe("claude-sonnet");
       expect(body.name).toBe("Claude Sonnet");
-      expect(body.provider).toBe("anthropic");
+      expect(body.provider_type).toBe("anthropic");
       expect(body.context_window).toBe(200000);
       expect(body.max_output_tokens).toBe(8192);
       expect(body.is_default).toBe(true);

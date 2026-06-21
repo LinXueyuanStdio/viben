@@ -222,7 +222,7 @@ interface SSEMessageData {
 export interface AgentConfig {
   name?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;

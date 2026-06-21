@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   openUrl: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  writeText: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -77,6 +78,11 @@ describe("PageSettingPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     usePagePublishStore.getState().actions.reset();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mocks.writeText,
+      },
+    });
     mocks.publishPage.mockResolvedValue({
       success: true,
       page_uid: "demo",
@@ -147,9 +153,39 @@ describe("PageSettingPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
 
-    expect(await screen.findByText("Published")).toBeTruthy();
+    expect(await screen.findByText("https://viben-web.vercel.app")).toBeTruthy();
     expect(screen.getByText("/page/user-1/demo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Copy published URL/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Open published page/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /搜索引擎索引/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /嵌入此页面/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /分享到社交平台/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /在浏览器打开/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
+  });
+
+  it("copies the full published page URL", async () => {
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+
+    const copyButton = await screen.findByRole("button", {
+      name: /Copy published URL/i,
+    });
+    fireEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(mocks.writeText).toHaveBeenCalledWith(
+        "https://viben-web.vercel.app/page/user-1/demo"
+      );
+    });
   });
 
   it("opens the published page in the browser", async () => {
@@ -165,7 +201,7 @@ describe("PageSettingPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
 
     const openButton = await screen.findByRole("button", {
-      name: /Open in Browser/i,
+      name: /在浏览器打开/i,
     });
     fireEvent.click(openButton);
 
@@ -187,7 +223,7 @@ describe("PageSettingPanel", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
-    expect(await screen.findByText("Published")).toBeTruthy();
+    expect(await screen.findByText("/page/user-1/demo")).toBeTruthy();
 
     rerender(
       <PageSettingPanel
@@ -198,7 +234,6 @@ describe("PageSettingPanel", () => {
       />
     );
 
-    expect(screen.queryByText("Published")).toBeNull();
     expect(screen.queryByText("/page/user-1/demo")).toBeNull();
     expect(screen.getByRole("button", { name: /Publish/i })).toBeTruthy();
   });
@@ -295,6 +330,72 @@ describe("PageSettingPanel", () => {
 
     expect(await screen.findByText("/page/user-1/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
+  });
+
+  it("shows the search indexing panel", async () => {
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /搜索引擎索引/i }));
+
+    expect(screen.getByRole("button", { name: /Back to publish settings/i })).toBeTruthy();
+    expect(screen.getByText("SEO 预览")).toBeTruthy();
+    expect(screen.getByLabelText("链接标题")).toBeTruthy();
+    expect(screen.getByLabelText("描述")).toBeTruthy();
+    expect(screen.getByRole("switch", { name: /可在网络上被发现/i })).toBeTruthy();
+  });
+
+  it("shows the embed panel and copies iframe code", async () => {
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /嵌入此页面/i }));
+
+    const embedInput = screen.getByLabelText("嵌入代码");
+    expect(embedInput).toHaveValue(
+      '<iframe src="https://viben-web.vercel.app/page/user-1/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /复制代码/i }));
+    await waitFor(() => {
+      expect(mocks.writeText).toHaveBeenCalledWith(
+        '<iframe src="https://viben-web.vercel.app/page/user-1/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
+      );
+    });
+  });
+
+  it("shows the social sharing panel", async () => {
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /分享到社交平台/i }));
+
+    expect(screen.getByRole("button", { name: /分享到 X/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /分享到 Whatsapp/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /分享到 Facebook/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /分享到 Linkin/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /分享到 电子邮件/i })).toBeTruthy();
   });
 
   it("updates the published state when publishing again", async () => {

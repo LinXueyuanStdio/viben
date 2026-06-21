@@ -63,8 +63,8 @@ export interface UnifiedAgent {
   skillsConfigFile?: string | null;
   /** 模型 */
   model?: string;
-  /** 提供商 */
-  provider?: string;
+  /** Provider instance ID */
+  provider_id?: string;
   /** 系统提示词 */
   systemPrompt?: string;
   /** 追加提示词 */
@@ -149,7 +149,7 @@ export function vibenAgentToUnified(agent: AgentInfo): UnifiedAgent {
     workspacePath: agent.workspace_path,
     configPath: agent.config_path,
     model: agent.model,
-    provider: agent.provider,
+    provider_id: agent.provider_id,
     systemPrompt: agent.system_prompt,
     appendPrompt: agent.append_prompt,
     temperature: agent.temperature,

@@ -217,7 +217,7 @@ export function useWorkspaceChat() {
     path: detailAgentData.config_path,
     description: detailAgentData.description,
     model: detailAgentData.model,
-    provider: detailAgentData.provider,
+    provider_id: detailAgentData.provider_id,
     system_prompt: detailAgentData.system_prompt,
     temperature: detailAgentData.temperature,
     max_tokens: detailAgentData.max_tokens,
@@ -426,7 +426,7 @@ export function useWorkspaceChat() {
   const currentAgentConfig = currentAgent ? {
     name: currentAgent.name,
     model: currentAgent.model,
-    provider: currentAgent.provider,
+    provider_id: currentAgent.provider_id,
     system_prompt: currentAgent.system_prompt,
     append_prompt: currentAgent.append_prompt,
     temperature: currentAgent.temperature,
@@ -853,7 +853,7 @@ export function useWorkspaceChat() {
       const agent = agents.find((a) => a.id === selectedAgentId);
       const agentConfigSnapshot = agent ? {
         id: agent.id, name: agent.name, description: agent.description,
-        model: agent.model, provider: agent.provider, system_prompt: agent.system_prompt,
+        model: agent.model, provider_id: agent.provider_id, system_prompt: agent.system_prompt,
         temperature: agent.temperature, max_tokens: agent.max_tokens,
         approval_mode: agent.approval_mode,
       } : undefined;
@@ -964,7 +964,7 @@ export function useWorkspaceChat() {
       const agent = agents.find((a) => a.id === selectedAgentId);
       const agentConfigSnapshot = agent ? {
         id: agent.id, name: agent.name, description: agent.description,
-        model: agent.model, provider: agent.provider, system_prompt: agent.system_prompt,
+        model: agent.model, provider_id: agent.provider_id, system_prompt: agent.system_prompt,
         temperature: agent.temperature, max_tokens: agent.max_tokens,
         approval_mode: agent.approval_mode,
       } : undefined;

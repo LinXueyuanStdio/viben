@@ -34,7 +34,7 @@ export interface UseConversationReturn {
     id: string;
     name: string;
     model?: string;
-    provider?: string;
+    provider_id?: string;
     system_prompt?: string;
     append_prompt?: string;
     temperature?: number;
@@ -126,7 +126,7 @@ export function useConversation(
       id: agentDetail.id,
       name: agentDetail.name,
       model: agentDetail.model,
-      provider: agentDetail.provider,
+      provider_id: agentDetail.provider_id,
       system_prompt: agentDetail.system_prompt,
       append_prompt: agentDetail.append_prompt,
       temperature: agentDetail.temperature,
