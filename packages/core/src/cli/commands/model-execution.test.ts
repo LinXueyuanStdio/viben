@@ -160,6 +160,45 @@ async function createExecutionTestContext(): Promise<ExecutionTestContext> {
   };
 }
 
+const OPENAI_MODEL_CONFIG = `
+openai-main:
+  id: openai-main
+  type: openai
+  base_url: https://api.openai.com/v1
+  api_key: sk-test
+  models:
+    gpt-4o:
+      name: GPT-4o
+      enabled: true
+      config:
+        temperature: 0.7
+        max_tokens: 4096
+    gpt-4o-mini:
+      name: GPT-4o Mini
+      enabled: true
+`;
+
+const MULTI_PROVIDER_CONFIG = `
+openai-main:
+  id: openai-main
+  type: openai
+  base_url: https://api.openai.com/v1
+  api_key: sk-test
+  models:
+    gpt-4o:
+      name: GPT-4o
+      enabled: true
+anthropic-main:
+  id: anthropic-main
+  type: anthropic
+  base_url: https://api.anthropic.com/v1
+  api_key: sk-ant
+  models:
+    claude-sonnet:
+      name: Claude Sonnet
+      enabled: true
+`;
+
 // =============================================================================
 // Execution Tests
 // =============================================================================
@@ -180,32 +219,23 @@ describe("model command execution", () => {
   // ===========================================================================
 
   describe("model list", () => {
-    it("should list built-in models without config file", async () => {
+    it("should show no models without config file", async () => {
       await ctx.run(["model", "list"]);
 
-      // Should display built-in models like gpt-4o
-      expect(ctx.console.hasLog("gpt-4o")).toBe(true);
+      expect(ctx.console.hasLog("No models found")).toBe(true);
     });
 
     it("should list models from config when models.yaml exists", async () => {
-      await ctx.writeConfig(
-        `
-default: gpt-4o
-aliases:
-  fast: gpt-4o-mini
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       await ctx.run(["model", "list"]);
 
-      // Should show default model indicator
       expect(ctx.console.hasLog("gpt-4o")).toBe(true);
     });
 
     it("should return JSON output with models list", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
+
       const result = (await ctx.runJson(["model", "list"])) as {
         success: boolean;
         data: { models: Array<{ id: string }> };
@@ -219,6 +249,8 @@ disabled_models: []
     });
 
     it("should filter models by provider", async () => {
+      await ctx.writeConfig(MULTI_PROVIDER_CONFIG);
+
       const result = (await ctx.runJson(["model", "list", "--provider", "anthropic"])) as {
         success: boolean;
         data: { models: Array<{ provider: string }> };
@@ -229,6 +261,13 @@ disabled_models: []
     });
 
     it("should create and list media models by surface", async () => {
+      await ctx.writeConfig(`
+fal-media:
+  id: fal-media
+  type: fal
+  models: {}
+`);
+
       await ctx.run([
         "model",
         "create",
@@ -268,7 +307,7 @@ disabled_models: []
       expect(result?.data?.models).toContainEqual(
         expect.objectContaining({
           id: "fal-custom-image",
-          provider: "fal-media",
+          provider: "fal",
           category: "media",
           surface: "image",
           capabilities: ["t2i"],
@@ -287,34 +326,21 @@ disabled_models: []
   // ===========================================================================
 
   describe("model set-default", () => {
-    it("should set default model in config file", async () => {
+    it("should not write default metadata to models.yaml", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
       await ctx.run(["model", "set-default", "-n", "gpt-4o-mini"]);
 
-      // Verify config file was created/updated
-      const exists = await ctx.tempDir.exists("models.yaml");
-      expect(exists).toBe(true);
-
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("default: gpt-4o-mini");
+      expect(content).not.toContain("default:");
     });
 
     it("should resolve alias and set actual model as default", async () => {
-      // Write initial config with alias
-      await ctx.writeConfig(
-        `
-aliases:
-  fast: gpt-4o-mini
-fallbacks: []
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
-      await ctx.run(["model", "set-default", "-n", "fast"]);
+      await ctx.run(["model", "set-default", "-n", "gpt4"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("default: gpt-4o-mini");
+      expect(content).not.toContain("default:");
 
       // Should show message about alias resolution
       expect(ctx.console.hasLog("resolved from alias")).toBe(true);
@@ -331,6 +357,8 @@ disabled_models: []
     });
 
     it("should set default model for a media surface", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
+
       const result = (await ctx.runJson([
         "model",
         "set-default",
@@ -350,9 +378,7 @@ disabled_models: []
       });
 
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("defaults:");
-      expect(content).toContain("media:");
-      expect(content).toContain("image: gpt-image-2");
+      expect(content).not.toContain("defaults:");
     });
   });
 
@@ -362,6 +388,8 @@ disabled_models: []
 
   describe("model show", () => {
     it("should show details of known model", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
+
       await ctx.run(["model", "show", "-n", "gpt-4o"]);
 
       expect(ctx.console.hasLog("gpt-4o")).toBe(true);
@@ -369,18 +397,7 @@ disabled_models: []
     });
 
     it("should show custom configuration if present", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks: []
-configs:
-  gpt-4o:
-    temperature: 0.7
-    maxTokens: 4096
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       await ctx.run(["model", "show", "-n", "gpt-4o"]);
 
@@ -389,6 +406,8 @@ disabled_models: []
     });
 
     it("should return JSON with model details", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
+
       const result = (await ctx.runJson(["model", "show", "-n", "gpt-4o"])) as {
         success: boolean;
         data: { model: { id: string; provider: string } };
@@ -413,92 +432,58 @@ disabled_models: []
       expect(ctx.console.hasLog("claude")).toBe(true);
     });
 
-    it("should list custom aliases from config", async () => {
-      await ctx.writeConfig(
-        `
+    it("should ignore legacy custom aliases from config", async () => {
+      await ctx.writeConfig(`
 aliases:
   mymodel: gpt-4o-mini
-  fast: gpt-4o-mini
-fallbacks: []
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+openai-main:
+  id: openai-main
+  type: openai
+  models: {}
+`);
 
       await ctx.run(["model", "alias", "list"]);
 
-      expect(ctx.console.hasLog("mymodel")).toBe(true);
-      expect(ctx.console.hasLog("fast")).toBe(true);
+      expect(ctx.console.hasLog("mymodel")).toBe(false);
+      expect(ctx.console.hasLog("gpt4")).toBe(true);
     });
   });
 
   describe("model alias create", () => {
-    it("should create a new alias in config", async () => {
+    it("should not write aliases to config", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
       await ctx.run(["model", "alias", "create", "-n", "myfast", "-m", "gpt-4o-mini"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("myfast: gpt-4o-mini");
+      expect(content).not.toContain("myfast:");
     });
 
-    it("should update an existing alias", async () => {
-      await ctx.writeConfig(
-        `
-aliases:
-  myfast: gpt-4o
-fallbacks: []
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+    it("should not update legacy aliases", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       await ctx.run(["model", "alias", "create", "-n", "myfast", "-m", "gpt-4o-mini"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("myfast: gpt-4o-mini");
-      expect(content).not.toContain("myfast: gpt-4o\n");
+      expect(content).not.toContain("myfast:");
     });
   });
 
   describe("model alias remove", () => {
-    it("should remove an alias from config", async () => {
-      await ctx.writeConfig(
-        `
-aliases:
-  myfast: gpt-4o-mini
-  other: gpt-4o
-fallbacks: []
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+    it("should not write alias metadata", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       await ctx.run(["model", "alias", "remove", "-n", "myfast"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
       expect(content).not.toContain("myfast:");
-      expect(content).toContain("other:");
     });
   });
 
   describe("model alias resolve", () => {
     it("should resolve alias to model ID", async () => {
-      await ctx.writeConfig(
-        `
-aliases:
-  myalias: gpt-4o-mini
-fallbacks: []
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.run(["model", "alias", "resolve", "-n", "gpt4"]);
 
-      await ctx.run(["model", "alias", "resolve", "-n", "myalias"]);
-
-      expect(ctx.console.hasLog("myalias -> gpt-4o-mini")).toBe(true);
+      expect(ctx.console.hasLog("gpt4 -> gpt-4o")).toBe(true);
     });
 
     it("should indicate when input is not an alias", async () => {
@@ -522,25 +507,34 @@ disabled_models: []
 
   describe("model config show", () => {
     it("should show message when no custom config", async () => {
+      await ctx.writeConfig(`
+openai-main:
+  id: openai-main
+  type: openai
+  models:
+    gpt-4o:
+      name: GPT-4o
+      enabled: true
+`);
       await ctx.run(["model", "config", "show", "-n", "gpt-4o"]);
 
       expect(ctx.console.hasLog("No custom configuration")).toBe(true);
     });
 
     it("should show custom configuration", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks: []
-configs:
-  gpt-4o:
-    temperature: 0.7
-    maxTokens: 4096
-    topP: 0.9
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(`
+openai-main:
+  id: openai-main
+  type: openai
+  models:
+    gpt-4o:
+      name: GPT-4o
+      enabled: true
+      config:
+        temperature: 0.7
+        max_tokens: 4096
+        top_p: 0.9
+`);
 
       await ctx.run(["model", "config", "show", "-n", "gpt-4o"]);
 
@@ -552,6 +546,7 @@ disabled_models: []
 
   describe("model config set", () => {
     it("should set temperature config", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
       await ctx.run(["model", "config", "set", "-n", "gpt-4o", "--temperature", "0.7"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
@@ -559,13 +554,15 @@ disabled_models: []
     });
 
     it("should set max-tokens config", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
       await ctx.run(["model", "config", "set", "-n", "gpt-4o", "--max-tokens", "8192"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("maxTokens: 8192");
+      expect(content).toContain("max_tokens: 8192");
     });
 
     it("should set multiple config options", async () => {
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
       await ctx.run([
         "model",
         "config",
@@ -582,53 +579,42 @@ disabled_models: []
 
       const content = await ctx.tempDir.readFile("models.yaml");
       expect(content).toContain("temperature: 0.8");
-      expect(content).toContain("maxTokens: 4096");
-      expect(content).toContain("topP: 0.95");
+      expect(content).toContain("max_tokens: 4096");
+      expect(content).toContain("top_p: 0.95");
     });
 
     it("should merge with existing configuration", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks: []
-configs:
-  gpt-4o:
-    temperature: 0.5
-    maxTokens: 2048
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(`
+openai-main:
+  id: openai-main
+  type: openai
+  models:
+    gpt-4o:
+      name: GPT-4o
+      enabled: true
+      config:
+        temperature: 0.5
+        max_tokens: 2048
+`);
 
       await ctx.run(["model", "config", "set", "-n", "gpt-4o", "--top-p", "0.9"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
       expect(content).toContain("temperature: 0.5");
-      expect(content).toContain("maxTokens: 2048");
-      expect(content).toContain("topP: 0.9");
+      expect(content).toContain("max_tokens: 2048");
+      expect(content).toContain("top_p: 0.9");
     });
   });
 
   describe("model config remove", () => {
     it("should remove model configuration", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks: []
-configs:
-  gpt-4o:
-    temperature: 0.7
-  gpt-4o-mini:
-    temperature: 0.5
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       await ctx.run(["model", "config", "remove", "-n", "gpt-4o"]);
 
       const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).not.toContain("gpt-4o:");
+      expect(content).toContain("gpt-4o:");
+      expect(content).not.toContain("temperature: 0.7");
       expect(content).toContain("gpt-4o-mini:");
     });
   });
@@ -639,34 +625,16 @@ disabled_models: []
 
   describe("model status", () => {
     it("should show model status summary", async () => {
-      await ctx.writeConfig(
-        `
-default: gpt-4o
-aliases:
-  fast: gpt-4o-mini
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       await ctx.run(["model", "status"]);
 
       expect(ctx.console.hasLog("Model Status")).toBe(true);
-      expect(ctx.console.hasLog("gpt-4o")).toBe(true);
+      expect(ctx.console.hasLog("Known Models")).toBe(true);
     });
 
     it("should return JSON with status details", async () => {
-      await ctx.writeConfig(
-        `
-default: gpt-4o
-aliases:
-  fast: gpt-4o-mini
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
+      await ctx.writeConfig(OPENAI_MODEL_CONFIG);
 
       const result = (await ctx.runJson(["model", "status"])) as {
         success: boolean;
@@ -677,7 +645,7 @@ disabled_models: []
       };
 
       expect(result?.success).toBe(true);
-      expect(result?.data?.default).toBe("gpt-4o");
+      expect(result?.data?.default).toBeUndefined();
       expect("fallbackCount" in (result?.data ?? {})).toBe(false);
     });
   });
@@ -688,6 +656,7 @@ disabled_models: []
 
   describe("model providers", () => {
     it("should list available providers", async () => {
+      await ctx.writeConfig(MULTI_PROVIDER_CONFIG);
       await ctx.run(["model", "providers"]);
 
       expect(ctx.console.hasLog("Available Providers")).toBe(true);
@@ -696,6 +665,8 @@ disabled_models: []
     });
 
     it("should return JSON with provider info", async () => {
+      await ctx.writeConfig(MULTI_PROVIDER_CONFIG);
+
       const result = (await ctx.runJson(["model", "providers"])) as {
         success: boolean;
         data: { providers: Array<{ provider: string; modelCount: number }> };

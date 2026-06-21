@@ -150,10 +150,12 @@ export async function updateModel(
  */
 export async function deleteModel(
   baseUrl: string,
-  modelId: string
+  modelId: string,
+  providerId: string
 ): Promise<void> {
+  const params = new URLSearchParams({ provider_id: providerId });
   const response = await fetch(
-    `${baseUrl}/api/models/${encodeURIComponent(modelId)}`,
+    `${baseUrl}/api/models/${encodeURIComponent(modelId)}?${params}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -252,10 +254,12 @@ export async function setDefaultModel(
  */
 export async function enableModel(
   baseUrl: string,
-  modelId: string
+  modelId: string,
+  providerId: string
 ): Promise<void> {
+  const params = new URLSearchParams({ provider_id: providerId });
   const response = await fetch(
-    `${baseUrl}/api/models/${encodeURIComponent(modelId)}/enable`,
+    `${baseUrl}/api/models/${encodeURIComponent(modelId)}/enable?${params}`,
     {
       method: "POST",
       headers: { Accept: "application/json" },
@@ -276,10 +280,12 @@ export async function enableModel(
  */
 export async function disableModel(
   baseUrl: string,
-  modelId: string
+  modelId: string,
+  providerId: string
 ): Promise<void> {
+  const params = new URLSearchParams({ provider_id: providerId });
   const response = await fetch(
-    `${baseUrl}/api/models/${encodeURIComponent(modelId)}/disable`,
+    `${baseUrl}/api/models/${encodeURIComponent(modelId)}/disable?${params}`,
     {
       method: "POST",
       headers: { Accept: "application/json" },

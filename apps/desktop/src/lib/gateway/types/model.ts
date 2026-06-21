@@ -77,15 +77,27 @@ export interface CreateProviderOptions {
   type: ProviderType;
   category?: ProviderCategory;
   name: string;
+  api_key?: string;
+  base_url?: string;
+  api_version?: string;
+  max_retries?: number;
+  supports_custom_model?: boolean;
+  set_as_default?: boolean;
+  /** @deprecated use api_key */
   apiKey?: string;
+  /** @deprecated use base_url */
   baseUrl?: string;
+  /** @deprecated use api_version */
   apiVersion?: string;
   deployment?: string;
   timeout?: number;
+  /** @deprecated use max_retries */
   maxRetries?: number;
   headers?: Record<string, string>;
   surfaces?: ProviderSurface[];
+  /** @deprecated use supports_custom_model */
   supportsCustomModel?: boolean;
+  /** @deprecated use set_as_default */
   setAsDefault?: boolean;
 }
 
@@ -94,14 +106,24 @@ export interface ProviderUpdate {
   type?: ProviderType;
   category?: ProviderCategory;
   name?: string;
+  api_key?: string;
+  base_url?: string;
+  api_version?: string;
+  max_retries?: number;
+  supports_custom_model?: boolean;
+  /** @deprecated use api_key */
   apiKey?: string;
+  /** @deprecated use base_url */
   baseUrl?: string;
+  /** @deprecated use api_version */
   apiVersion?: string;
   deployment?: string;
   timeout?: number;
+  /** @deprecated use max_retries */
   maxRetries?: number;
   headers?: Record<string, string>;
   surfaces?: ProviderSurface[];
+  /** @deprecated use supports_custom_model */
   supportsCustomModel?: boolean;
 }
 
@@ -162,6 +184,7 @@ export interface CreateModelOptions {
 
 /** Options for updating a model */
 export interface ModelUpdate {
+  provider_id: string;
   name?: string;
   description?: string;
   context_window?: number;

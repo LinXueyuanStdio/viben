@@ -183,6 +183,27 @@ function modelConfigEntryFromModelConfig(modelConfig: ModelConfig): ModelConfigE
   };
 }
 
+function modelConfigFromEntry(entry: ModelConfigEntry | undefined): ModelConfig | null {
+  if (!entry) {
+    return null;
+  }
+  return {
+    temperature: entry.temperature,
+    maxTokens: entry.max_tokens,
+    topP: entry.top_p,
+    frequencyPenalty: entry.frequency_penalty,
+    presencePenalty: entry.presence_penalty,
+    provider: entry.provider,
+    category: entry.category,
+    surface: entry.surface,
+    capabilities: entry.capabilities,
+    duration_seconds: entry.duration_seconds,
+    aspect_ratio: entry.aspect_ratio,
+    size: entry.size,
+    voice_id: entry.voice_id,
+  };
+}
+
 /**
  * ModelManager handles model configuration and aliases
  */
@@ -614,7 +635,7 @@ export class ModelManager {
     if (!found) {
       return null;
     }
-    return found.entry.config ?? null;
+    return modelConfigFromEntry(found.entry.config);
   }
 
   /**
@@ -630,7 +651,7 @@ export class ModelManager {
     if (!found) {
       return null;
     }
-    return found.entry.config ?? null;
+    return modelConfigFromEntry(found.entry.config);
   }
 
   /**

@@ -5,6 +5,11 @@ import { CallToolResultSchema, type CallToolResult } from "@modelcontextprotocol
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
+import {
+  createInputHistoryEntry,
+  inputHistoryService,
+  type InputHistoryService,
+} from "../../services/input-history";
 import { sessionStoreService } from "../../services/session-store";
 import { logger as globalLogger } from "../../telemetry";
 import type {
@@ -111,13 +116,16 @@ export class AcpSessionManager {
   private sessions = new Map<string, AcpSession>();
   private backendAdapter: AcpBackendAdapter;
   private steerPromptStore: AcpSteerPromptStore;
+  private inputHistory: InputHistoryService;
 
   constructor(
     backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter(),
-    steerPromptStore: AcpSteerPromptStore = createDefaultAcpSteerPromptStore()
+    steerPromptStore: AcpSteerPromptStore = createDefaultAcpSteerPromptStore(),
+    inputHistory: InputHistoryService = inputHistoryService
   ) {
     this.backendAdapter = backendAdapter;
     this.steerPromptStore = steerPromptStore;
+    this.inputHistory = inputHistory;
   }
 
   getSession(sessionId: string): AcpSessionSummary | undefined {
@@ -558,6 +566,10 @@ export class AcpSessionManager {
     if (!prompt.trim()) {
       throw new Error("Prompt is required");
     }
+    await this.inputHistory.addEntry(createInputHistoryEntry(prompt, {
+      source: "desktop_acp_chat",
+      session_id: session.id,
+    }));
     await this.persistUiMessage(session, {
       type: "user",
       content: prompt,

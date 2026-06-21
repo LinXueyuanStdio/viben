@@ -419,7 +419,7 @@ export interface Model {
   name: string;
   provider: string;
   /** Provider instance ID (e.g. "deepseek-openai") */
-  provider_id?: string;
+  provider_id: string;
   category?: "llm" | "media";
   surface?: "chat" | "image" | "video" | "music" | "speech" | "sfx";
   capabilities?: string[];

@@ -1204,8 +1204,8 @@ export class GatewayClient {
   /**
    * Delete model
    */
-  async deleteModel(modelId: string): Promise<void> {
-    return deleteModel(this.baseUrl, modelId);
+  async deleteModel(modelId: string, providerId: string): Promise<void> {
+    return deleteModel(this.baseUrl, modelId, providerId);
   }
 
   /**
@@ -1232,15 +1232,15 @@ export class GatewayClient {
   /**
    * Enable model
    */
-  async enableModel(modelId: string): Promise<void> {
-    return enableModel(this.baseUrl, modelId);
+  async enableModel(modelId: string, providerId: string): Promise<void> {
+    return enableModel(this.baseUrl, modelId, providerId);
   }
 
   /**
    * Disable model
    */
-  async disableModel(modelId: string): Promise<void> {
-    return disableModel(this.baseUrl, modelId);
+  async disableModel(modelId: string, providerId: string): Promise<void> {
+    return disableModel(this.baseUrl, modelId, providerId);
   }
 
   // ==========================================================================

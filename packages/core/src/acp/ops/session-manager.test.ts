@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { PromptRequest, PromptResponse } from "@agentclientprotocol/sdk";
+import { InputHistoryService } from "../../services/input-history";
 import { resolveBuiltinAcpBackend } from "./backend-adapter";
 import { AcpSessionManager } from "./session-manager";
 import { InMemoryAcpSteerPromptStore } from "./steer-prompt-store";
@@ -322,6 +323,29 @@ describe("AcpSessionManager", () => {
     });
 
     expect(adapter.startContext?.request.mcpServers).toEqual(mcpServers);
+  });
+
+  it("stores normal user prompts in input history when ACP prompt runs", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-input-history-test-"));
+    try {
+      const inputHistory = new InputHistoryService(tempDir);
+      const adapter = new CapturingBackendAdapter();
+      const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore(), inputHistory);
+      const connection = createConnection();
+
+      const session = await manager.createSession(
+        { cwd: "/tmp", mcpServers: [] },
+        connection
+      );
+      await manager.prompt({
+        sessionId: session.sessionId,
+        prompt: [{ type: "text", text: "remember this prompt" }],
+      });
+
+      await expect(inputHistory.listText()).resolves.toEqual(["remember this prompt"]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("passes session sandbox_config through to the ACP backend", async () => {

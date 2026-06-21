@@ -491,6 +491,20 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     return filterSelectorProviders(providers, allowedProviderIds);
   }, [providers, allowedProviderIds]);
 
+  const selectedAgentProviderId = selectedAgent?.provider_id?.trim() || null;
+  const selectedAgentModelId = selectedAgent?.model?.trim() || null;
+  const selectedAgentDefaultsKey = selectedAgent
+    ? [selectedAgent.id, selectedAgentProviderId ?? "", selectedAgentModelId ?? ""].join("|")
+    : null;
+  const preferredAgentProvider = useMemo(() => {
+    if (selectedAgentProviderId) {
+      const configuredProvider = filteredProviders.find((provider) => provider.id === selectedAgentProviderId);
+      if (configuredProvider) return configuredProvider;
+    }
+    return filteredProviders.find((provider) => provider.is_default) ?? filteredProviders[0] ?? null;
+  }, [filteredProviders, selectedAgentProviderId]);
+  const preferredAgentProviderId = preferredAgentProvider?.id ?? null;
+
   const selectedProviderForModels = useMemo(
     () => filteredProviders.find((provider) => provider.id === selectedProviderId),
     [filteredProviders, selectedProviderId]
@@ -509,6 +523,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   // Track previous values for detecting changes
   const prevExecutorTypeRef = useRef(executorType);
   const prevProviderIdRef = useRef(selectedProviderId);
+  const appliedAgentProviderDefaultsRef = useRef<string | null>(null);
+  const appliedAgentModelDefaultsRef = useRef<string | null>(null);
 
   // Split agents into global vs workspace groups
   const globalAgents = useMemo(
@@ -618,6 +634,20 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     }
   }, [agentsLoading, allAgents, selectedAgent, workspaceAgents, globalAgents, setStoreSelectedAgentId, setExecutorType]);
 
+  // Prefer the selected agent's configured provider when the agent changes.
+  useEffect(() => {
+    if (!selectedAgentDefaultsKey || appliedAgentProviderDefaultsRef.current === selectedAgentDefaultsKey) {
+      return;
+    }
+    if (!preferredAgentProviderId) {
+      return;
+    }
+    appliedAgentProviderDefaultsRef.current = selectedAgentDefaultsKey;
+    if (selectedProviderId !== preferredAgentProviderId) {
+      setSelectedProviderId(preferredAgentProviderId);
+    }
+  }, [preferredAgentProviderId, selectedAgentDefaultsKey, selectedProviderId, setSelectedProviderId]);
+
   // Auto-select default provider on initial load or when executor changes
   useEffect(() => {
     if (prevExecutorTypeRef.current !== effectiveExecutorType) {
@@ -637,6 +667,26 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     if (prevProviderIdRef.current !== selectedProviderId) {
       prevProviderIdRef.current = selectedProviderId;
     }
+
+    if (
+      selectedAgentDefaultsKey &&
+      appliedAgentModelDefaultsRef.current !== selectedAgentDefaultsKey
+    ) {
+      if (preferredAgentProviderId && selectedProviderId !== preferredAgentProviderId) {
+        return;
+      }
+      if (filteredModels.length === 0) {
+        return;
+      }
+      appliedAgentModelDefaultsRef.current = selectedAgentDefaultsKey;
+      if (selectedAgentModelId && filteredModels.some((m) => m.id === selectedAgentModelId)) {
+        if (model !== selectedAgentModelId) {
+          setModel(selectedAgentModelId);
+        }
+        return;
+      }
+    }
+
     // Select default model if none selected or current is invalid
     const currentModelValid = model && filteredModels.some((m) => m.id === model);
     if (!currentModelValid && filteredModels.length > 0) {
@@ -646,7 +696,15 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setModel(newModelId);
       }
     }
-  }, [selectedProviderId, filteredModels, model, setModel]);
+  }, [
+    selectedAgentDefaultsKey,
+    selectedAgentModelId,
+    preferredAgentProviderId,
+    selectedProviderId,
+    filteredModels,
+    model,
+    setModel,
+  ]);
 
   // Handle agent selection - also update executor type
   const handleSetSelectedAgentId = useCallback((id: string | null) => {

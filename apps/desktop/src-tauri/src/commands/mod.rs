@@ -8,8 +8,6 @@ pub mod cli_installer;
 #[cfg(desktop)]
 pub mod gateway;
 #[cfg(desktop)]
-pub mod input_history;
-#[cfg(desktop)]
 pub mod oauth;
 #[cfg(desktop)]
 pub mod screenshot;

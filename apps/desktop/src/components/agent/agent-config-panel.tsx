@@ -717,7 +717,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   <SelectContent>
                     {Object.entries(
                       models.reduce<Record<string, ModelOption[]>>((groups, m) => {
-                        const key = m.provider_id || m.provider_type || "Other";
+                        const key = m.provider_id;
                         (groups[key] ??= []).push(m);
                         return groups;
                       }, {})

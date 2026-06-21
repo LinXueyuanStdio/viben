@@ -502,7 +502,7 @@ export function AgentDetailPanel({
                         {agentModel ? (
                           <div className="flex items-center gap-2">
                             <span>{agentModel.name}</span>
-                            <span className="text-xs text-muted-foreground">({agentModel.provider_id ?? agentModel.provider_type})</span>
+                            <span className="text-xs text-muted-foreground">({agentModel.provider_id})</span>
                           </div>
                         ) : (
                           t("settingsAgents.selectModel")
@@ -519,7 +519,7 @@ export function AgentDetailPanel({
                           <SelectItem key={model.id} value={model.id}>
                             <div className="flex items-center gap-2">
                               <span>{model.name}</span>
-                              <span className="text-xs text-muted-foreground">({model.provider_id ?? model.provider_type})</span>
+                              <span className="text-xs text-muted-foreground">({model.provider_id})</span>
                             </div>
                           </SelectItem>
                         ))

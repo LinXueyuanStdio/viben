@@ -487,6 +487,7 @@ describe("Model Routes", () => {
         id: "claude-sonnet",
         name: "Claude Sonnet",
         provider: "anthropic",
+        provider_id: "anthropic-main",
         contextLength: 200000,
         maxOutputTokens: 8192,
         isDefault: true,
@@ -494,7 +495,6 @@ describe("Model Routes", () => {
       });
 
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
       vi.mocked(modelManager.listModels).mockResolvedValue([mockModel]);
       vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
 
@@ -512,13 +512,17 @@ describe("Model Routes", () => {
       expect(body.max_output_tokens).toBe(8192);
       expect(body.is_default).toBe(true);
       expect(body.enabled).toBe(true);
-      expect(body.config).toEqual(mockModelConfig);
+      expect(body.config).toEqual({
+        temperature: 0.7,
+        max_tokens: 4096,
+        top_p: 0.9,
+      });
       expect(modelManager.resolveAlias).toHaveBeenCalledWith("claude-sonnet");
     });
 
     it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(undefined);
+      vi.mocked(modelManager.listModels).mockResolvedValue([]);
 
       const response = await fastify.inject({
         method: "GET",
@@ -538,7 +542,7 @@ describe("Model Routes", () => {
       });
 
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
+      vi.mocked(modelManager.listModels).mockResolvedValue([mockModel]);
       vi.mocked(modelManager.getModelConfig).mockResolvedValue(null);
 
       const response = await fastify.inject({
@@ -1065,14 +1069,15 @@ describe("Model Routes", () => {
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: "/api/models/custom-model",
+        url: "/api/models/custom-model?provider_id=openai-main",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
+      expect(body.provider_id).toBe("openai-main");
       expect(body.deleted).toBe("custom-model");
-      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("custom-model");
+      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("custom-model", "openai-main");
     });
 
     it("should return 400 when deletion fails", async () => {
@@ -1081,7 +1086,7 @@ describe("Model Routes", () => {
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: "/api/models/nonexistent",
+        url: "/api/models/nonexistent?provider_id=openai-main",
       });
 
       expect(response.statusCode).toBe(400);

@@ -364,7 +364,7 @@ openai-main:
     expect(config["openai-main"].apiKey).toBeUndefined();
     expect(config["openai-main"].models["gpt-5.1"].config).toEqual({
       temperature: 0.6,
-      maxTokens: 4096,
+      max_tokens: 4096,
     });
   });
 });

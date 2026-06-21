@@ -78,7 +78,7 @@ export interface UseModelsReturn {
   /** Update a model */
   updateModel: (id: string, updates: ModelUpdate) => Promise<ModelResponse>;
   /** Remove a model */
-  removeModel: (id: string) => Promise<void>;
+  removeModel: (id: string, providerId: string) => Promise<void>;
 
   // Default model management
   /** Set the default model */
@@ -86,9 +86,9 @@ export interface UseModelsReturn {
 
   // Enable/disable
   /** Enable a model */
-  enableModel: (id: string) => Promise<void>;
+  enableModel: (id: string, providerId: string) => Promise<void>;
   /** Disable a model */
-  disableModel: (id: string) => Promise<void>;
+  disableModel: (id: string, providerId: string) => Promise<void>;
 
   // Provider model discovery
   /** Discover models available from a provider via API */
@@ -255,14 +255,14 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
   );
 
   const removeModel = useCallback(
-    async (id: string): Promise<void> => {
+    async (id: string, providerId: string): Promise<void> => {
       setError(null);
       try {
         const client = getGatewayClient();
-        await client.deleteModel(id);
+        await client.deleteModel(id, providerId);
         // Refresh models after deletion
         await loadModels();
-        emitModelProviderDataChanged({ scope: "models" });
+        emitModelProviderDataChanged({ scope: "models", provider_id: providerId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -292,14 +292,14 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
 
   // Enable/disable
   const enableModel = useCallback(
-    async (id: string): Promise<void> => {
+    async (id: string, providerId: string): Promise<void> => {
       setError(null);
       try {
         const client = getGatewayClient();
-        await client.enableModel(id);
+        await client.enableModel(id, providerId);
         // Refresh models after enabling
         await loadModels();
-        emitModelProviderDataChanged({ scope: "models" });
+        emitModelProviderDataChanged({ scope: "models", provider_id: providerId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -310,14 +310,14 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
   );
 
   const disableModel = useCallback(
-    async (id: string): Promise<void> => {
+    async (id: string, providerId: string): Promise<void> => {
       setError(null);
       try {
         const client = getGatewayClient();
-        await client.disableModel(id);
+        await client.disableModel(id, providerId);
         // Refresh models after disabling
         await loadModels();
-        emitModelProviderDataChanged({ scope: "models" });
+        emitModelProviderDataChanged({ scope: "models", provider_id: providerId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
