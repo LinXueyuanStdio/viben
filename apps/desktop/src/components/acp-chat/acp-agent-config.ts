@@ -70,7 +70,7 @@ function withCodexProviderConfig(
   }
   if (!config) return undefined;
   const {
-    model_provider,
+    provider_id,
     base_url,
     provider_name,
     wire_api,
@@ -78,7 +78,7 @@ function withCodexProviderConfig(
     experimental_bearer_token,
     ...rest
   } = config;
-  void model_provider;
+  void provider_id;
   void base_url;
   void provider_name;
   void wire_api;

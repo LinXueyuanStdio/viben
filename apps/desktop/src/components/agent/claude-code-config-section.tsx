@@ -117,6 +117,7 @@ export function ClaudeCodeConfigSection({
         emptyProvidersText="Configure an enabled Anthropic-compatible provider first."
         onProviderChange={onProviderChange}
         onModelChange={onModelChange}
+        showBaseUrl
       />
 
       <div className="space-y-1.5">

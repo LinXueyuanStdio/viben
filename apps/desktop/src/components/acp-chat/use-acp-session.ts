@@ -275,7 +275,7 @@ function summarizeExecutorConfigForLog(config: Record<string, unknown> | undefin
     id: readRecordString(config, "id"),
     command: readRecordString(config, "command"),
     argsCount: Array.isArray(config.args) ? config.args.length : undefined,
-    modelProvider: readRecordString(config, "model_provider"),
+    providerId: readRecordString(config, "provider_id"),
     baseUrl: readRecordString(config, "base_url"),
     approvalPolicy: readRecordString(config, "approval_policy"),
     sandbox: readRecordString(config, "sandbox"),

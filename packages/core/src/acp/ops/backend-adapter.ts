@@ -33,6 +33,7 @@ import {
 } from "./client-side-mcp-constants";
 import { CodexAppServerBackendAdapter } from "./codex-app-server-backend";
 import { AcpPromptError, normalizeAcpError } from "./errors";
+import { providerManager } from "../../providers";
 import type {
   AcpAgentCapabilities,
   AcpConfigOption,
@@ -42,6 +43,7 @@ import type {
   AcpSandboxConfig,
   AgentConfigPayload,
 } from "../types";
+import type { Provider } from "../../types";
 
 const log = globalLogger.child({ module: "acp-backend-adapter" });
 const require = createRequire(import.meta.url);
@@ -354,6 +356,14 @@ interface AcpBackendResolutionDiagnostics {
   localBinExists?: boolean;
   pathEnv?: string;
   installHint?: string;
+}
+
+interface ClaudeProviderDetails {
+  id: string;
+  type?: string;
+  name?: string;
+  base_url?: string;
+  api_key?: string;
 }
 
 export interface AcpBackendStartContext {
@@ -912,21 +922,7 @@ async function prepareClaudeConfigDir(context: AcpBackendStartContext): Promise<
   await fs.promises.mkdir(dir, { recursive: true });
 
   const sourceSettings = await readJsonObject(path.join(os.homedir(), ".claude", "settings.json"));
-  const sourcePermissions = isRecord(sourceSettings.permissions) ? sourceSettings.permissions : {};
-  const requestedMode = normalizeClaudePermissionMode(context.agentConfig?.permission_mode);
-  const defaultMode = requestedMode ?? normalizeClaudePermissionMode(sourcePermissions.defaultMode) ?? "default";
-
-  const settings: Record<string, unknown> = {
-    permissions: {
-      defaultMode,
-    },
-  };
-  if (isRecord(sourceSettings.env)) {
-    settings.env = sourceSettings.env;
-  }
-  if (typeof sourceSettings.model === "string") {
-    settings.model = sourceSettings.model;
-  }
+  const settings = await buildClaudeAcpSettings(sourceSettings, context.agentConfig);
 
   await fs.promises.writeFile(
     path.join(dir, "settings.json"),
@@ -938,12 +934,74 @@ async function prepareClaudeConfigDir(context: AcpBackendStartContext): Promise<
     {
       outerSessionId: context.outerSessionId,
       claudeConfigDir: dir,
-      permissionMode: defaultMode,
+      permissionMode: (settings.permissions as Record<string, unknown> | undefined)?.defaultMode,
     },
     "Prepared isolated Claude ACP settings"
   );
 
   return dir;
+}
+
+export async function buildClaudeAcpSettings(
+  sourceSettings: Record<string, unknown>,
+  agentConfig: AgentConfigPayload | undefined,
+  lookupProvider: ((providerId: string) => Promise<ClaudeProviderDetails | null | undefined>) | undefined = undefined
+): Promise<Record<string, unknown> & { env?: Record<string, string> }> {
+  const sourcePermissions = isRecord(sourceSettings.permissions) ? sourceSettings.permissions : {};
+  const requestedMode = normalizeClaudePermissionMode(agentConfig?.permission_mode);
+  const defaultMode = requestedMode ?? normalizeClaudePermissionMode(sourcePermissions.defaultMode) ?? "default";
+  const executorConfig = getExecutorConfig(agentConfig);
+  const env = {
+    ...envRecordFromValue(sourceSettings.env),
+    ...envRecordFromValue(executorConfig.env),
+  };
+  const providerId = claudeProviderId(agentConfig);
+  const provider = providerId
+    ? (lookupProvider
+        ? await lookupProvider(providerId)
+        : providerToClaudeDetails(await providerManager.getProvider(providerId)))
+    : undefined;
+  if (provider?.base_url) {
+    env.ANTHROPIC_BASE_URL = provider.base_url;
+  }
+  if (provider?.api_key) {
+    env.ANTHROPIC_AUTH_TOKEN = provider.api_key;
+    delete env.ANTHROPIC_API_KEY;
+  }
+  if (agentConfig?.model) {
+    env.ANTHROPIC_MODEL = agentConfig.model;
+  }
+
+  const settings: Record<string, unknown> & { env?: Record<string, string> } = {
+    permissions: {
+      defaultMode,
+    },
+  };
+  if (Object.keys(env).length > 0) {
+    settings.env = env;
+  }
+  if (typeof agentConfig?.model === "string" && agentConfig.model.trim()) {
+    settings.model = agentConfig.model;
+  } else if (typeof sourceSettings.model === "string") {
+    settings.model = sourceSettings.model;
+  }
+  return settings;
+}
+
+function claudeProviderId(agentConfig: AgentConfigPayload | undefined): string | undefined {
+  const config = getExecutorConfig(agentConfig);
+  return stringFromRecord(config, "provider_id") ?? agentConfig?.provider_id;
+}
+
+function providerToClaudeDetails(provider: Provider | null): ClaudeProviderDetails | undefined {
+  if (!provider) return undefined;
+  return {
+    id: provider.id,
+    type: provider.type,
+    name: provider.name,
+    base_url: provider.base_url,
+    api_key: provider.apiKey,
+  };
 }
 
 function normalizeClaudePermissionMode(value: unknown): string | undefined {

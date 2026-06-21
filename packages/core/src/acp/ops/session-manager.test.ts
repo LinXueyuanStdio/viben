@@ -445,7 +445,7 @@ describe("AcpSessionManager", () => {
             model: "deepseek-v4-flash",
             provider_id: "hexin",
             executor_config: {
-              model_provider: "hexin",
+              provider_id: "hexin",
               base_url: "http://localhost:8777/v1",
               reasoning_effort: "low",
             },
@@ -489,7 +489,7 @@ describe("AcpSessionManager", () => {
           "executor_type: CODEX",
           "executor_config:",
           "  command: /usr/local/bin/codex",
-          "  model_provider: old-openai",
+          "  provider_id: old-openai",
           "  base_url: http://localhost:8777/v1",
           "  provider_name: Old OpenAI",
           "  wire_api: responses",
@@ -536,7 +536,7 @@ describe("AcpSessionManager", () => {
         },
       });
       expect(adapter.startContext?.agentConfig?.executor_config).not.toMatchObject({
-        model_provider: expect.anything(),
+        provider_id: expect.anything(),
         base_url: expect.anything(),
         provider_name: expect.anything(),
         wire_api: expect.anything(),

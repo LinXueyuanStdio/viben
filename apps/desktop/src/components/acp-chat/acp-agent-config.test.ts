@@ -59,7 +59,7 @@ describe("buildAcpAgentConfig", () => {
         mcp_server_count: 0,
         skill_count: 0,
         executor_config: {
-          model_provider: "hexin",
+          provider_id: "hexin",
           base_url: "http://localhost:8777/v1",
         },
       },

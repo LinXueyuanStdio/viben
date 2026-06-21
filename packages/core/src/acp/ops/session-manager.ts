@@ -896,7 +896,7 @@ function mergeAgentConfig(
 }
 
 const CODEX_PROVIDER_CONFIG_KEYS = [
-  "model_provider",
+  "provider_id",
   "base_url",
   "provider_name",
   "wire_api",
@@ -1086,7 +1086,7 @@ function summarizeExecutorConfig(config: Record<string, unknown> | undefined): R
     id: readConfigString(config, "id"),
     command: readConfigString(config, "command"),
     argsCount: Array.isArray(config.args) ? config.args.length : undefined,
-    modelProvider: readConfigString(config, "model_provider"),
+    providerId: readConfigString(config, "provider_id"),
     baseUrl: readConfigString(config, "base_url"),
     approvalPolicy: readConfigString(config, "approval_policy"),
     sandbox: readConfigString(config, "sandbox"),

@@ -57,7 +57,7 @@ interface CodexProviderDetails {
   name?: string;
   type?: string;
   base_url?: string;
-  apiKey?: string;
+  api_key?: string;
 }
 
 interface ActiveTurn {
@@ -287,8 +287,8 @@ async function resolveCodexDefinitionAsync(
     ...envRecord(override?.env),
     ...envRecord(config.env),
   };
-  if (provider?.apiKey && !env.OPENAI_API_KEY) {
-    env.OPENAI_API_KEY = provider.apiKey;
+  if (provider?.api_key && !env.OPENAI_API_KEY) {
+    env.OPENAI_API_KEY = provider.api_key;
   }
   return {
     id: readString(config.id) ?? override?.id ?? "codex",
@@ -320,7 +320,7 @@ function providerToCodexDetails(provider: Provider | null): CodexProviderDetails
     name: provider.name,
     type: provider.type,
     base_url: provider.base_url,
-    apiKey: provider.apiKey,
+    api_key: provider.apiKey,
   };
 }
 
@@ -336,7 +336,7 @@ function codexArgs(
     ?? provider?.name
     ?? providerId;
   const wireApi = readString(config.wire_api) ?? "responses";
-  const envKey = readString(config.env_key) ?? (provider?.apiKey ? "OPENAI_API_KEY" : undefined);
+  const envKey = readString(config.env_key) ?? (provider?.api_key ? "OPENAI_API_KEY" : undefined);
   const args = [...baseArgs];
   if (providerId) {
     args.push("-c", `model_provider=${tomlString(providerId)}`);
@@ -365,7 +365,7 @@ function codexArgs(
 
 function codexProviderId(agentConfig: AgentConfigPayload | undefined): string | undefined {
   const config = asRecord(agentConfig?.executor_config);
-  return readString(agentConfig?.provider_id) ?? readString(config.model_provider);
+  return readString(agentConfig?.provider_id) ?? readString(config.provider_id);
 }
 
 function tomlString(value: string): string {

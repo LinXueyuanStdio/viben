@@ -68,7 +68,7 @@ describe("CodexAppServerBackendAdapter", () => {
         model: "gpt-5.5",
         executor_config: {
           args: ["app-server", "--listen", "stdio://"],
-          model_provider: "hexin",
+          provider_id: "hexin",
           base_url: "http://localhost:8777/v1",
           env_key: "HEXIN_API_KEY",
         },
@@ -109,7 +109,7 @@ describe("CodexAppServerBackendAdapter", () => {
             name: "DeepSeek",
             type: "openai",
             base_url: "https://api.deepseek.com",
-            apiKey: "sk-deepseek",
+            api_key: "sk-deepseek",
           }
         : null,
       spawnProcess: (definition) => {
@@ -164,7 +164,7 @@ describe("CodexAppServerBackendAdapter", () => {
             name: "本地 openai",
             type: "openai",
             base_url: "http://localhost:8777/v1",
-            apiKey: "sk-local",
+            api_key: "sk-local",
           }
         : null,
       spawnProcess: (definition) => {
