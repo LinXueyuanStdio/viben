@@ -849,7 +849,9 @@ describe("Model Routes", () => {
         provider_id: "openai-main",
       });
 
-      vi.mocked(modelManager.getModelInfo).mockReturnValueOnce(undefined).mockReturnValueOnce(newModel);
+      vi.mocked(modelManager.getModelForProvider)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newModel);
       vi.mocked(modelManager.createModel).mockResolvedValue(undefined);
       vi.mocked(modelManager.reload).mockResolvedValue(undefined);
 
@@ -857,8 +859,8 @@ describe("Model Routes", () => {
         method: "POST",
         url: "/api/models",
         payload: {
-          id: "custom-model",
-          name: "Custom Model",
+          id: "gpt-custom",
+          name: "GPT Custom",
           provider_id: "openai-main",
           context_window: 100000,
           max_output_tokens: 4096,
@@ -883,7 +885,7 @@ describe("Model Routes", () => {
         provider_id: "anthropic-main",
       });
 
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(existingModel);
+      vi.mocked(modelManager.getModelForProvider).mockResolvedValue(existingModel);
       vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
       vi.mocked(modelManager.reload).mockResolvedValue(undefined);
 
@@ -907,12 +909,6 @@ describe("Model Routes", () => {
     });
 
     it("should require provider_id when updating an existing model config", async () => {
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(createMockModel({
-        id: "claude-sonnet",
-        name: "Claude Sonnet",
-        provider_id: "anthropic-main",
-      }));
-
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models",

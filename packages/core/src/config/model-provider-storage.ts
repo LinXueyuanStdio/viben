@@ -181,6 +181,15 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
     }
     const provider = normalizeProviderEntry(providerId, providerValue);
     if (provider) {
+      for (const [modelId, modelEntry] of Object.entries(provider.models ?? {})) {
+        const legacyConfig = legacyConfigs[`${providerId}:${modelId}`] ?? legacyConfigs[modelId];
+        if (legacyConfig && !modelEntry.config) {
+          provider.models[modelId] = {
+            ...modelEntry,
+            config: legacyConfig,
+          };
+        }
+      }
       file[providerId] = provider;
     }
   }
@@ -202,7 +211,6 @@ export async function saveUnifiedModelsFile(file: UnifiedModelsFile): Promise<vo
       type: provider.type,
       base_url: provider.base_url,
       api_key: provider.api_key,
-      is_default: provider.is_default,
       models: provider.models ?? {},
     };
   }

@@ -4,6 +4,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { getGatewayClient } from "@/lib/gateway";
 import type { ProviderResponse } from "@/lib/gateway";
+import {
+  emitModelProviderDataChanged,
+  shouldRefreshProviderList,
+  subscribeModelProviderDataChanged,
+} from "./model-provider-events";
 
 // ============================================================================
 // Types (matching Rust viben-core types)
@@ -249,6 +254,7 @@ export function useProviders(): UseProvidersReturn {
       const provider = transformProviderResponse(response);
       // Refresh list to get updated state
       await refresh();
+      emitModelProviderDataChanged({ scope: "all", provider_id: provider.id });
       return provider;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -281,6 +287,7 @@ export function useProviders(): UseProvidersReturn {
       setProviders((prev) =>
         prev.map((p) => (p.id === id ? provider : p))
       );
+      emitModelProviderDataChanged({ scope: "all", provider_id: id });
       return provider;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -307,6 +314,7 @@ export function useProviders(): UseProvidersReturn {
         const response = await client.getDefaultProvider();
         setDefaultProviderId(response.default_provider_id);
       }
+      emitModelProviderDataChanged({ scope: "all", provider_id: id });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -328,6 +336,7 @@ export function useProviders(): UseProvidersReturn {
           is_default: p.id === id,
         }))
       );
+      emitModelProviderDataChanged({ scope: "providers", provider_id: id });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -344,6 +353,7 @@ export function useProviders(): UseProvidersReturn {
       setProviders((prev) =>
         prev.map((p) => (p.id === id ? { ...p, enabled: true } : p))
       );
+      emitModelProviderDataChanged({ scope: "all", provider_id: id });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -360,6 +370,7 @@ export function useProviders(): UseProvidersReturn {
       setProviders((prev) =>
         prev.map((p) => (p.id === id ? { ...p, enabled: false } : p))
       );
+      emitModelProviderDataChanged({ scope: "all", provider_id: id });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -402,6 +413,14 @@ export function useProviders(): UseProvidersReturn {
   // Initial load
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    return subscribeModelProviderDataChanged((detail) => {
+      if (shouldRefreshProviderList(detail)) {
+        void refresh();
+      }
+    });
   }, [refresh]);
 
   return {

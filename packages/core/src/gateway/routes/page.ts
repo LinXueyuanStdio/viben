@@ -240,6 +240,16 @@ const publishPageResponseSchema = {
   },
 } as const;
 
+const publishPageStatusResponseSchema = {
+  type: "object",
+  properties: {
+    success: { type: "boolean" },
+    published: { type: "boolean" },
+    url: { type: "string", nullable: true },
+    error: { type: "string", nullable: true },
+  },
+} as const;
+
 // ============================================================================
 // Route Registration
 // ============================================================================
@@ -406,6 +416,77 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to publish page",
+      };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/page/publish-status - Check a published page by public slug URL
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      access_token: string;
+      user_slug: string;
+      uid: string;
+    };
+  }>("/api/page/publish-status", {
+    schema: {
+      description: "Check whether a static page is published on viben-web",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          access_token: { type: "string", description: "Viben web access token" },
+          user_slug: { type: "string", description: "Public user slug" },
+          uid: { type: "string", description: "Page uid" },
+        },
+        required: ["access_token", "user_slug", "uid"],
+      },
+      response: {
+        200: publishPageStatusResponseSchema,
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        500: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { access_token, user_slug, uid } = request.body;
+
+    if (!access_token.trim()) {
+      reply.code(401);
+      return { success: false, error: "access_token is required" };
+    }
+
+    if (!user_slug.trim() || !uid.trim()) {
+      reply.code(400);
+      return { success: false, error: "user_slug and uid are required" };
+    }
+
+    const url = `/page/${encodeURIComponent(user_slug)}/${encodeURIComponent(uid)}`;
+
+    try {
+      const response = await proxyFetch(`${VIBEN_WEB_URL}${url}`, {
+        method: "HEAD",
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
+
+      if (response.status === 404) {
+        return { success: true, published: false, url: null };
+      }
+
+      if (!response.ok) {
+        reply.code(response.status || 500);
+        return { success: false, error: `Publish status check failed: HTTP ${response.status}` };
+      }
+
+      return { success: true, published: true, url };
+    } catch (error) {
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to check publish status",
       };
     }
   });

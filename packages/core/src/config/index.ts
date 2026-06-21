@@ -120,7 +120,7 @@ export class ModelsConfigManager {
       return this.config;
     }
     this.config = await readYaml<ModelsConfig>(getModelsPath());
-    return this.config || { aliases: {}, fallbacks: [], configs: {} };
+    return this.config || { aliases: {}, configs: {} };
   }
 
   /**

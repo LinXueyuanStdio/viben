@@ -728,6 +728,7 @@ export class VibenClient {
       id: response.user.id,
       email: response.user.email,
       username: response.user.username,
+      userSlug: response.user.userSlug,
       displayName: response.user.displayName,
       avatarUrl: response.user.avatarUrl,
       accessToken: response.accessToken,

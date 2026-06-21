@@ -530,7 +530,6 @@ export interface ProvidersConfig {
 export interface ModelsConfig {
   default?: string;
   aliases: Record<string, string>;
-  fallbacks: string[];
   configs: Record<string, ModelConfig>;
 }
 

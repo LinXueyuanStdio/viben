@@ -67,7 +67,7 @@ export const ENV_VAR_NAMES: Record<string, string | undefined> = {
 };
 
 /**
- * Provider file structure in providers.yaml (snake_case to match YAML)
+ * Provider entry structure in models.yaml (snake_case to match YAML)
  */
 export interface ProviderEntry {
   /** Legacy configs may use type; write path normalizes to provider_type. */
@@ -84,6 +84,7 @@ export interface ProviderEntry {
   headers?: Record<string, string>;
   surfaces?: string[];
   supports_custom_model?: boolean;
+  is_default?: boolean;
   enabled: boolean;
   created_at: string;
   updated_at: string;

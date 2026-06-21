@@ -15,6 +15,11 @@
 import { useState, useEffect, useCallback } from "react";
 import i18n from "@/i18n";
 import {
+  emitModelProviderDataChanged,
+  shouldRefreshModelList,
+  subscribeModelProviderDataChanged,
+} from "./model-provider-events";
+import {
   getGatewayClient,
   type WorkspaceModel,
   type ModelResponse,
@@ -41,6 +46,7 @@ export interface UseModelsOptions {
   providerId?: string;
   category?: ModelCategory;
   surface?: ModelSurface;
+  enabled?: boolean;
 }
 
 export interface UseModelsReturn {
@@ -121,6 +127,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
   const providerId = options?.providerId;
   const category = options?.category;
   const surface = options?.surface;
+  const enabled = options?.enabled ?? true;
 
   const [models, setModels] = useState<WorkspaceModel[]>([]);
   const [defaultModelId, setDefaultModelIdState] = useState<string | null>(null);
@@ -130,6 +137,15 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
 
   // Load models and default
   const loadModels = useCallback(async () => {
+    if (!enabled) {
+      setModels([]);
+      setTotal(0);
+      setDefaultModelIdState(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -164,12 +180,21 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
     providerId,
     category,
     surface,
+    enabled,
   ]);
 
   // Load on mount and when options change
   useEffect(() => {
     loadModels();
   }, [loadModels]);
+
+  useEffect(() => {
+    return subscribeModelProviderDataChanged((detail) => {
+      if (shouldRefreshModelList(detail, providerId)) {
+        void loadModels();
+      }
+    });
+  }, [loadModels, providerId]);
 
   // Read operations
   const getAvailableModels = useCallback(() => {
@@ -199,6 +224,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         const result = await client.createModel(createOptions);
         // Refresh models after creation
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models", provider_id: createOptions.provider_id });
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -217,6 +243,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         const result = await client.updateModel(id, updates);
         // Refresh models after update
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models" });
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -235,6 +262,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         await client.deleteModel(id);
         // Refresh models after deletion
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models" });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -252,6 +280,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         const client = getGatewayClient();
         await client.setDefaultModel(id, defaultSurface ?? surface);
         setDefaultModelIdState(id);
+        emitModelProviderDataChanged({ scope: "models" });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -270,6 +299,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         await client.enableModel(id);
         // Refresh models after enabling
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models" });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -287,6 +317,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         await client.disableModel(id);
         // Refresh models after disabling
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models" });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -348,6 +379,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         await client.enableProviderModel(providerId, modelId);
         // Refresh models after enabling
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models", provider_id: providerId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -365,6 +397,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         await client.disableProviderModel(providerId, modelId);
         // Refresh models after disabling
         await loadModels();
+        emitModelProviderDataChanged({ scope: "models", provider_id: providerId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);

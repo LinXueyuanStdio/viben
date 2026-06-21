@@ -308,6 +308,7 @@ export interface UserSession {
   id: string;
   email: string;
   username: string;
+  userSlug: string;
   displayName: string;
   avatarUrl: string | null;
   accessToken: string;
@@ -332,6 +333,7 @@ export interface AuthResponse {
     id: string;
     email: string;
     username: string;
+    userSlug: string;
     displayName: string;
     avatarUrl: string | null;
   };

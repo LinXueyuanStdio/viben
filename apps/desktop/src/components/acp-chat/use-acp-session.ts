@@ -33,7 +33,8 @@ import { useAgents } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
 import { useProviders } from "@/hooks/use-providers";
 import type { AgentInfo } from "@/lib/gateway";
-import { filterModelsByExecutor, getAllowedProviders, type ProviderId } from "@/lib/executor-constraints";
+import { filterModelsByExecutor, getAllowedProviders } from "@/lib/executor-constraints";
+import { filterSelectorProviders } from "@/components/agent/provider-model-selection";
 import { buildAcpAgentConfig } from "./acp-agent-config";
 import {
   AcpWebSocketClient,
@@ -470,17 +471,39 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     includeGlobal: true,
   });
 
+  const selectedAgent = useMemo(
+    () => allAgents.find((a) => a.id === selectedAgentId),
+    [allAgents, selectedAgentId]
+  );
+  const effectiveExecutorType = selectedAgent?.executor_type ?? executorType;
+
   const {
     providers,
     loading: providersLoading,
     error: providersError,
   } = useProviders();
 
+  const allowedProviderIds = useMemo(() => {
+    return getAllowedProviders(effectiveExecutorType);
+  }, [effectiveExecutorType]);
+
+  const filteredProviders = useMemo(() => {
+    return filterSelectorProviders(providers, allowedProviderIds);
+  }, [providers, allowedProviderIds]);
+
+  const selectedProviderForModels = useMemo(
+    () => filteredProviders.find((provider) => provider.id === selectedProviderId),
+    [filteredProviders, selectedProviderId]
+  );
+
   const {
     models: allModels,
     loading: modelsLoading,
     error: modelsError,
-  } = useModels();
+  } = useModels({
+    providerId: selectedProviderForModels?.id,
+    enabled: Boolean(selectedProviderForModels),
+  });
   const sandboxConfig = useChatConfigStore((state) => state.sandboxConfig);
 
   // Track previous values for detecting changes
@@ -497,11 +520,6 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     [allAgents]
   );
 
-  // Get selected agent
-  const selectedAgent = useMemo(
-    () => allAgents.find((a) => a.id === selectedAgentId),
-    [allAgents, selectedAgentId]
-  );
   const agentSelectionReady = useMemo(
     () => !agentsLoading && (allAgents.length === 0 || Boolean(selectedAgent)),
     [agentsLoading, allAgents.length, selectedAgent]
@@ -510,12 +528,12 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return buildAcpAgentConfig({
       agent: selectedAgent,
-      executorType,
+      executorType: effectiveExecutorType,
       model,
       providerId: selectedProviderId,
       providers,
     });
-  }, [executorType, model, providers, selectedAgent, selectedProviderId]);
+  }, [effectiveExecutorType, model, providers, selectedAgent, selectedProviderId]);
   const acpSandboxConfig = useMemo(
     () => sandboxConfig.enabled
       ? { enabled: true, provider: sandboxConfig.provider }
@@ -547,22 +565,6 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     return options;
   }, [workspaceAgents, globalAgents]);
 
-  // Get allowed providers based on executor type
-  const allowedProviderIds = useMemo(() => {
-    return getAllowedProviders(executorType);
-  }, [executorType]);
-
-  // Filter providers based on executor constraints
-  const filteredProviders = useMemo(() => {
-    const enabledProviders = providers.filter((p) => p.enabled);
-    if (!allowedProviderIds || allowedProviderIds.length === 0) {
-      return enabledProviders;
-    }
-    return enabledProviders.filter((p) =>
-      allowedProviderIds.includes(p.provider_type as ProviderId)
-    );
-  }, [providers, allowedProviderIds]);
-
   // Provider selector options
   const providerOptions = useMemo<SelectorOption[]>(() => {
     return filteredProviders.map((p) => ({
@@ -576,24 +578,20 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   // Filter models by executor type
   const modelsFilteredByExecutor = useMemo(() => {
     const availableModels = allModels.filter((m) => m.is_available);
-    return filterModelsByExecutor(availableModels, executorType);
-  }, [allModels, executorType]);
+    return filterModelsByExecutor(availableModels, effectiveExecutorType);
+  }, [allModels, effectiveExecutorType]);
 
   // Further filter models by selected provider
   const filteredModels = useMemo(() => {
     if (!selectedProviderId) {
-      return modelsFilteredByExecutor;
-    }
-    const selectedProvider = filteredProviders.find((p) => p.id === selectedProviderId);
-    if (!selectedProvider) {
-      return modelsFilteredByExecutor;
+      return [];
     }
     return modelsFilteredByExecutor.filter((m) => {
       const modelProviderId = m.provider_id.toLowerCase();
-      const providerId = selectedProvider.id.toLowerCase();
+      const providerId = selectedProviderId.toLowerCase();
       return modelProviderId === providerId;
     });
-  }, [modelsFilteredByExecutor, selectedProviderId, filteredProviders]);
+  }, [modelsFilteredByExecutor, selectedProviderId]);
 
   // Model selector options
   const modelOptions = useMemo<SelectorOption[]>(() => {
@@ -622,8 +620,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   // Auto-select default provider on initial load or when executor changes
   useEffect(() => {
-    if (prevExecutorTypeRef.current !== executorType) {
-      prevExecutorTypeRef.current = executorType;
+    if (prevExecutorTypeRef.current !== effectiveExecutorType) {
+      prevExecutorTypeRef.current = effectiveExecutorType;
     }
     // Select default provider if none selected or current is invalid
     const currentProviderValid = selectedProviderId && filteredProviders.some((p) => p.id === selectedProviderId);
@@ -632,7 +630,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       const newProviderId = defaultProvider?.id ?? filteredProviders[0]?.id ?? null;
       setSelectedProviderId(newProviderId);
     }
-  }, [executorType, filteredProviders, selectedProviderId, setSelectedProviderId]);
+  }, [effectiveExecutorType, filteredProviders, selectedProviderId, setSelectedProviderId]);
 
   // Auto-select default model on initial load or when provider changes
   useEffect(() => {

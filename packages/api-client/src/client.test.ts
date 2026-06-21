@@ -11,7 +11,7 @@ describe('VibenClient pages API', () => {
       json: async () => ({
         success: true,
         page_uid: 'demo',
-        url: '/page/user-1/demo',
+        url: '/page/alice/demo',
         updated: false,
       }),
     });
@@ -35,7 +35,7 @@ describe('VibenClient pages API', () => {
     expect(result).toEqual({
       success: true,
       page_uid: 'demo',
-      url: '/page/user-1/demo',
+      url: '/page/alice/demo',
       updated: false,
     });
     expect(fetchMock).toHaveBeenCalledWith(
