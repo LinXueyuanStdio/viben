@@ -47,7 +47,7 @@ export function applyAcpUiStep(current: AgentMessage[], step: AcpUiStep): AgentM
     case "tool_result_delta":
       return appendToolResultDelta(current, step.message);
     default:
-      return [...current, step.message];
+      return appendDistinctMessage(current, step.message);
   }
 }
 
@@ -200,7 +200,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         message: {
           id: createStepId("status"),
           type: "status_update",
-          content: readString(update.currentModeId) ?? "unknown",
+          content: readableStatusText(readString(update.currentModeId) ?? "unknown"),
           timestamp: Date.now(),
         },
       }];
@@ -217,8 +217,28 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
           timestamp: Date.now(),
         },
       }];
+    case "codex_event":
+      return [{
+        kind: "message",
+        message: {
+          id: createStepId("codex-event"),
+          type: "status_update",
+          content: codexEventToStatus(update),
+          timestamp: Date.now(),
+        },
+      }];
+    case "codex_item":
+      return codexItemToUiSteps(update);
     default:
-      return systemTextToUiSteps(`ACP update: ${safeJson(update)}`);
+      return [{
+        kind: "message",
+        message: {
+          id: createStepId("status"),
+          type: "status_update",
+          content: readableStatusText(readString(update.sessionUpdate) ?? "ACP update"),
+          timestamp: Date.now(),
+        },
+      }];
   }
 }
 
@@ -470,6 +490,23 @@ function appendToolOutput(previous: AgentMessage["output"], next: AgentMessage["
   if (previous === undefined) return next;
   if (next === undefined) return previous;
   return `${outputToText(previous)}${outputToText(next)}`;
+}
+
+function appendDistinctMessage(current: AgentMessage[], message: AgentMessage): AgentMessage[] {
+  const previous = current[current.length - 1];
+  if (isDuplicateNotice(previous, message)) return current;
+  return [...current, message];
+}
+
+function isDuplicateNotice(previous: AgentMessage | undefined, next: AgentMessage): boolean {
+  if (!previous || previous.type !== next.type) return false;
+  if (next.type === "status_update") {
+    return Boolean(previous.content && previous.content === next.content);
+  }
+  if (next.type === "error") {
+    return Boolean(previous.message && previous.message === next.message);
+  }
+  return false;
 }
 
 function outputToText(output: AgentMessage["output"]): string {
@@ -745,9 +782,164 @@ function blockToTextContentBlock(value: unknown): ContentBlock {
 
 function diagnosticToText(value: unknown): string {
   if (value === undefined || value === null) return "Unknown ACP error";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return readableErrorText(value);
   if (value instanceof Error) return value.message;
-  return safeJson(value);
+  if (!isRecord(value)) return readableErrorText(String(value));
+  return readableErrorText(
+    readString(value.message) ??
+    readString(value.details) ??
+    readString(value.stderr) ??
+    readString(value.name) ??
+    "ACP request failed"
+  );
+}
+
+function codexItemToUiSteps(update: Record<string, unknown>): AcpUiStep[] {
+  const itemType = readString(update.itemType) ?? readString(update.title) ?? readString(asRecordOrEmpty(update.rawItem).type);
+  const itemId = readString(update.itemId) ?? readString(asRecordOrEmpty(update.rawItem).id);
+  const rawItem = asRecordOrEmpty(update.rawItem);
+
+  if (itemType === "agentMessage") {
+    const text = codexItemText(update, rawItem);
+    if (text) {
+      return messageStep("text_chunk", {
+        id: itemId ?? createStepId("codex-message"),
+        type: "text",
+        content: text,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  if (itemType === "reasoning" || itemType === "plan") {
+    const text = codexItemText(update, rawItem);
+    if (text) {
+      return messageStep("thinking_chunk", {
+        id: itemId ?? createStepId("codex-thinking"),
+        type: "thinking",
+        content: text,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  return [{
+    kind: "message",
+    message: {
+      id: itemId ?? createStepId("codex-item"),
+      type: "status_update",
+      content: codexItemStatus(itemType),
+      timestamp: Date.now(),
+    },
+  }];
+}
+
+function codexItemText(update: Record<string, unknown>, rawItem: Record<string, unknown>): string | undefined {
+  const contentText = contentBlockToText(update.content);
+  const rawText = readString(rawItem.text) ?? readString(rawItem.content) ?? readString(rawItem.summary);
+  return firstNonJsonText(rawText, contentText);
+}
+
+function firstNonJsonText(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    if (!value?.trim()) continue;
+    if (looksLikeJson(value)) continue;
+    return value;
+  }
+  return undefined;
+}
+
+function codexItemStatus(itemType: string | undefined): string {
+  switch (itemType) {
+    case "userMessage":
+      return "User message received";
+    case "commandExecution":
+      return "Codex command updated";
+    case "fileChange":
+      return "Codex file changes updated";
+    case "webSearch":
+      return "Codex web search updated";
+    case "mcpToolCall":
+      return "Codex MCP tool updated";
+    case "dynamicToolCall":
+      return "Codex tool updated";
+    case "collabToolCall":
+      return "Codex collaboration updated";
+    case "exitedReviewMode":
+      return "Codex review completed";
+    default:
+      return itemType ? `Codex ${humanizeIdentifier(itemType)} updated` : "Codex updated";
+  }
+}
+
+function codexEventToStatus(update: Record<string, unknown>): string {
+  const method = readString(update.method) ?? readString(update.event) ?? readString(update.name);
+  if (!method) return "Codex updated";
+  switch (method) {
+    case "thread/started":
+      return "Codex thread started";
+    case "thread/archived":
+      return "Codex thread archived";
+    case "thread/unarchived":
+      return "Codex thread restored";
+    case "thread/deleted":
+      return "Codex thread deleted";
+    case "thread/closed":
+      return "Codex thread closed";
+    case "thread/status/changed":
+      return "Codex thread status changed";
+    case "turn/started":
+      return "Codex turn started";
+    case "turn/completed":
+      return "Codex turn completed";
+    case "item/reasoning/summaryPartAdded":
+      return "Codex reasoning updated";
+    default:
+      return `Codex ${humanizeIdentifier(method)} updated`;
+  }
+}
+
+function readableStatusText(value: string): string {
+  const normalized = value.trim();
+  if (/^reconnecting\.{0,3}$/i.test(normalized)) return "Codex is reconnecting...";
+  if (/stream disconnected before completion/i.test(normalized)) {
+    return "Codex connection dropped before the response completed";
+  }
+  return normalized;
+}
+
+function readableErrorText(value: string): string {
+  const normalized = value.trim();
+  if (/stream disconnected before completion/i.test(normalized)) {
+    return "Codex connection dropped before the response completed. Start a new turn or reconnect the session.";
+  }
+  if (/^reconnecting\.{0,3}$/i.test(normalized)) return "Codex is reconnecting...";
+  return stripStackTrace(normalized) || "ACP request failed";
+}
+
+function stripStackTrace(value: string): string {
+  return value
+    .split("\n")
+    .filter((line) => !/^\s+at\s+/.test(line))
+    .join("\n")
+    .trim();
+}
+
+function humanizeIdentifier(value: string): string {
+  return value
+    .replace(/[/_.-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim()
+    .toLowerCase();
+}
+
+function looksLikeJson(value: string): boolean {
+  const trimmed = value.trim();
+  return (trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"));
+}
+
+function asRecordOrEmpty(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
 }
 
 function safeJson(value: unknown): string {

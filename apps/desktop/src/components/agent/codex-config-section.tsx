@@ -30,8 +30,6 @@ const APPROVAL_POLICIES = [
 export function CodexConfigSection({ config = {}, onConfigChange }: CodexConfigSectionProps) {
   const command = readString(config.command) ?? "codex";
   const argsText = arrayToText(config.args, "app-server");
-  const modelProvider = readString(config.model_provider) ?? "";
-  const baseUrl = readString(config.base_url) ?? "";
   const reasoningEffort = readString(config.reasoning_effort) ?? "";
   const personality = readString(config.personality) ?? "";
   const sandbox = readString(config.sandbox) ?? "";
@@ -50,9 +48,14 @@ export function CodexConfigSection({ config = {}, onConfigChange }: CodexConfigS
   };
 
   return (
-    <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Codex App Server
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Codex App Server
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Advanced
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -73,26 +76,6 @@ export function CodexConfigSection({ config = {}, onConfigChange }: CodexConfigS
             onChange={(e) => update("args", textToArray(e.target.value))}
             placeholder="app-server"
             className="h-8 text-sm font-mono"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label className="text-sm font-normal">Model Provider</Label>
-          <Input
-            value={modelProvider}
-            onChange={(e) => update("model_provider", e.target.value.trim() || undefined)}
-            placeholder="openai"
-            className="h-8 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label className="text-sm font-normal">Base URL</Label>
-          <Input
-            value={baseUrl}
-            onChange={(e) => update("base_url", e.target.value.trim() || undefined)}
-            placeholder="https://api.openai.com/v1"
-            className="h-8 text-sm"
           />
         </div>
 

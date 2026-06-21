@@ -120,4 +120,89 @@ describe("ACP chat adapter", () => {
       content: "hello world",
     });
   });
+
+  it("maps Codex user message items to a readable status step instead of raw JSON", () => {
+    const steps = acpSessionUpdateToUiSteps({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "codex_item",
+        itemId: "item-user",
+        itemType: "userMessage",
+        title: "userMessage",
+        content: {
+          type: "text",
+          text: JSON.stringify({
+            id: "item-user",
+            type: "userMessage",
+            text: "Please inspect the workspace",
+          }, null, 2),
+        },
+        rawItem: {
+          id: "item-user",
+          type: "userMessage",
+          text: "Please inspect the workspace",
+        },
+      },
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      kind: "message",
+      message: {
+        type: "status_update",
+        content: "User message received",
+      },
+    });
+    expect(JSON.stringify(steps)).not.toContain("\"type\":\"userMessage\"");
+    expect(JSON.stringify(steps)).not.toContain("Please inspect the workspace");
+  });
+
+  it("maps Codex event updates to readable status steps instead of raw JSON", () => {
+    const steps = acpSessionUpdateToUiSteps({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "codex_event",
+        method: "thread/status/changed",
+        params: { status: "busy", thread: { id: "thr-1" } },
+      },
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      kind: "message",
+      message: {
+        type: "status_update",
+        content: "Codex thread status changed",
+      },
+    });
+    expect(JSON.stringify(steps)).not.toContain("thr-1");
+    expect(JSON.stringify(steps)).not.toContain("\"params\"");
+  });
+
+  it("sanitizes Codex app-server disconnect errors without exposing stack or command JSON", () => {
+    const steps = acpSessionUpdateToUiSteps({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "error",
+        error: {
+          message: "stream disconnected before completion",
+          raw: {
+            stack: "Error: stream disconnected before completion\n    at internal",
+            command: "codex app-server",
+          },
+        },
+      },
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      kind: "message",
+      message: {
+        type: "error",
+        message: "Codex connection dropped before the response completed. Start a new turn or reconnect the session.",
+      },
+    });
+    expect(JSON.stringify(steps)).not.toContain("stack");
+    expect(JSON.stringify(steps)).not.toContain("codex app-server");
+  });
 });

@@ -10,7 +10,7 @@
  *
  * Supports scroll-to-section functionality via ref.
  */
-import React, { useRef, useImperativeHandle, useState } from "react";
+import React, { useEffect, useRef, useImperativeHandle, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Brain,
@@ -29,6 +29,7 @@ import {
   ShieldOff,
   ShieldCheck,
   ShieldAlert,
+  TerminalSquare,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,6 +50,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { WorkspaceSkill } from "@/types";
+import { useModels } from "@/hooks/use-models";
+import { useProviders, PROVIDER_TYPE_LABELS } from "@/hooks/use-providers";
+import type { Provider } from "@/hooks/use-providers";
+import { filterModelsByExecutor, getAllowedProviders, type ProviderId } from "@/lib/executor-constraints";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import { CodexConfigSection } from "./codex-config-section";
@@ -183,6 +188,15 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       onEnvVariablesChange,
       embedded = false,
     } = props;
+    const { providers } = useProviders();
+    const { models: globalModels } = useModels({
+      workspacePath: workspacePath || undefined,
+      includeGlobal: true,
+      category: "llm",
+      surface: "chat",
+    });
+    const isClaudeCode = executorType === "CLAUDE_CODE";
+    const isCodex = executorType === "CODEX";
 
     // Section refs for scroll-to functionality
     const promptsRef = useRef<HTMLDivElement>(null);
@@ -245,6 +259,99 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       onEnvVariablesChange(envVariables.filter((v) => v !== envVar));
     };
 
+    const executorConfig = props.executorConfig ?? {};
+    const selectedCodexProviderId = readConfigString(executorConfig.model_provider)
+      ?? readConfigString(executorConfig.modelProvider)
+      ?? "";
+    const codexAllowedProviderIds = useMemo(() => getAllowedProviders("CODEX") ?? [], []);
+    const codexProviders = useMemo(
+      () => {
+        const enabledProviders = providers.filter((provider) => provider.enabled);
+        const filteredProviders = codexAllowedProviderIds.length === 0
+          ? enabledProviders
+          : enabledProviders.filter((provider) =>
+              codexAllowedProviderIds.includes(provider.provider_type as ProviderId)
+            );
+        return filteredProviders
+          .filter((provider) => provider.category === "llm" || provider.surfaces.includes("chat"))
+        .sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name)),
+      },
+      [codexAllowedProviderIds, providers]
+    );
+    const selectedCodexProvider = useMemo(
+      () => codexProviders.find((provider) => provider.id === selectedCodexProviderId)
+        ?? codexProviders.find((provider) => provider.is_default)
+        ?? codexProviders[0],
+      [codexProviders, selectedCodexProviderId]
+    );
+    const selectedCodexProviderKey = selectedCodexProvider?.id ?? "";
+    const selectedCodexBaseUrl = readConfigString(executorConfig.base_url)
+      ?? readConfigString(executorConfig.baseUrl);
+    const codexModelsFilteredByExecutor = useMemo(() => {
+      const availableModels = globalModels.filter((candidate) => candidate.is_available);
+      return filterModelsByExecutor(availableModels, "CODEX");
+    }, [globalModels]);
+    const codexModels = useMemo(() => {
+      if (!selectedCodexProvider) return [];
+      return codexModelsFilteredByExecutor.filter(
+        (candidate) => candidate.provider_id.toLowerCase() === selectedCodexProvider.provider_type.toLowerCase()
+      );
+    }, [codexModelsFilteredByExecutor, selectedCodexProvider]);
+    const selectedCodexModel = codexModels.some((candidate) => candidate.id === model)
+      ? model
+      : "";
+
+    const updateExecutorConfig = (updates: Record<string, unknown>) => {
+      props.onExecutorConfigChange?.(compactConfig({
+        ...executorConfig,
+        ...updates,
+      }));
+    };
+
+    const handleCodexProviderChange = (providerId: string) => {
+      const provider = codexProviders.find((candidate) => candidate.id === providerId);
+      updateExecutorConfig({
+        model_provider: providerId,
+        base_url: provider?.base_url,
+      });
+
+      const nextModel = codexModelsFilteredByExecutor.find((candidate) =>
+        provider ? candidate.provider_id.toLowerCase() === provider.provider_type.toLowerCase() : false
+      );
+      if (nextModel && nextModel.id !== model) {
+        onModelChange(nextModel.id);
+      }
+    };
+
+    const handleCodexModelChange = (modelId: string) => {
+      if (selectedCodexProvider && !selectedCodexProviderId) {
+        updateExecutorConfig({
+          model_provider: selectedCodexProvider.id,
+          base_url: selectedCodexProvider.base_url,
+        });
+      }
+      onModelChange(modelId);
+    };
+
+    useEffect(() => {
+      if (!isCodex || !selectedCodexProvider) return;
+      if (
+        selectedCodexProviderId !== selectedCodexProvider.id ||
+        selectedCodexBaseUrl !== selectedCodexProvider.base_url
+      ) {
+        updateExecutorConfig({
+          model_provider: selectedCodexProvider.id,
+          base_url: selectedCodexProvider.base_url,
+        });
+      }
+    }, [isCodex, selectedCodexBaseUrl, selectedCodexProvider, selectedCodexProviderId]);
+
+    useEffect(() => {
+      if (!isCodex || codexModels.length === 0) return;
+      if (codexModels.some((candidate) => candidate.id === model)) return;
+      onModelChange(codexModels[0].id);
+    }, [codexModels, isCodex, model, onModelChange]);
+
     // Get availability status display
     const getAvailabilityDisplay = () => {
       if (checkingAvailability) {
@@ -267,9 +374,11 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
           );
         case "INSTALLATION_FOUND":
           return (
-            <span className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
-              <AlertCircle className="h-3 w-3" />
-              {t("settingsAgents.notLoggedIn")}
+            <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+              <Check className="h-3 w-3" />
+              {isCodex
+                ? t("settingsAgents.codexAvailable", { defaultValue: "Codex app-server available" })
+                : t("settingsAgents.installed", { defaultValue: "Installed" })}
             </span>
           );
         case "NOT_FOUND":
@@ -291,10 +400,6 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       { name: "agent_name", value: agentName || "-" },
       { name: "current_date", value: new Date().toISOString().split("T")[0] },
     ];
-
-    // Check if executor is Claude Code
-    const isClaudeCode = executorType === "CLAUDE_CODE";
-    const isCodex = executorType === "CODEX";
 
     const content = (
       <div className={cn("space-y-6", embedded ? "px-4 pb-4 pt-0" : "p-4")}>
@@ -366,19 +471,49 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   value={executorType}
                   onValueChange={(value) => onExecutorTypeChange(value as ExecutorType)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settingsAgents.selectExecutor")} />
+                  <SelectTrigger className="h-auto min-h-10 items-start whitespace-normal py-2 [&>span]:line-clamp-none">
+                    {(() => {
+                      const selected = executors.find((executor) => executor.id === executorType);
+                      return selected ? (
+                        <div className="flex min-w-0 flex-1 items-start gap-2 text-left">
+                          <TerminalSquare className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="break-words font-medium leading-snug">{selected.name}</span>
+                              <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
+                                {selected.id}
+                              </Badge>
+                            </div>
+                            {selected.description && (
+                              <div className="break-words text-xs leading-snug text-muted-foreground">
+                                {selected.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">{t("settingsAgents.selectExecutor")}</span>
+                      );
+                    })()}
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="w-[360px]">
                     {executors.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        <span className="flex items-center gap-2">
-                          {e.name}
+                      <SelectItem key={e.id} value={e.id} className="py-2">
+                        <span className="flex min-w-0 items-start gap-2">
+                          <TerminalSquare className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          <span className="flex min-w-0 flex-col gap-0.5">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className="truncate font-medium">{e.name}</span>
+                              <span className="shrink-0 rounded border px-1.5 py-0 text-[10px] text-muted-foreground">
+                                {e.id}
+                              </span>
+                            </span>
                           {e.description && (
-                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                              <span className="line-clamp-2 text-xs text-muted-foreground">
                               {e.description}
                             </span>
                           )}
+                          </span>
                         </span>
                       </SelectItem>
                     ))}
@@ -449,6 +584,18 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                 />
               )}
 
+              {/* Codex Provider + Model Selection */}
+              {isCodex && (
+                <CodexProviderModelSelector
+                  providers={codexProviders}
+                  selectedProviderId={selectedCodexProviderKey}
+                  models={codexModels}
+                  selectedModel={selectedCodexModel}
+                  onProviderChange={handleCodexProviderChange}
+                  onModelChange={handleCodexModelChange}
+                />
+              )}
+
               {/* Codex App Server Options */}
               {isCodex && (
                 <CodexConfigSection
@@ -458,6 +605,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               )}
 
               {/* Model Selection */}
+              {!isCodex && (
               <div className="space-y-2">
                 <Label>{t("settingsAgents.model")}</Label>
                 {providerConstraintHint && (
@@ -489,6 +637,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   </SelectContent>
                 </Select>
               </div>
+              )}
 
               {/* Temperature */}
               <div className="space-y-2">
@@ -851,3 +1000,144 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
 );
 
 AgentConfigPanel.displayName = "AgentConfigPanel";
+
+interface CodexProviderModelSelectorProps {
+  providers: Provider[];
+  selectedProviderId: string;
+  models: ModelOption[];
+  selectedModel: string;
+  onProviderChange: (providerId: string) => void;
+  onModelChange: (modelId: string) => void;
+}
+
+function CodexProviderModelSelector({
+  providers,
+  selectedProviderId,
+  models,
+  selectedModel,
+  onProviderChange,
+  onModelChange,
+}: CodexProviderModelSelectorProps) {
+  const selectedProvider = providers.find((provider) => provider.id === selectedProviderId);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <Label>Codex 模型</Label>
+        <span className="text-xs text-muted-foreground">OpenAI-compatible</span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.9fr)_minmax(220px,1.1fr)]">
+        <div className="space-y-1">
+          <span className="text-xs text-muted-foreground">Provider</span>
+          <Select
+            value={selectedProviderId}
+            onValueChange={onProviderChange}
+            disabled={providers.length === 0}
+          >
+            <SelectTrigger className="h-auto min-h-10 items-start whitespace-normal py-2 [&>span]:line-clamp-none">
+              {selectedProvider ? (
+                <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="break-words font-medium leading-snug">{selectedProvider.name}</span>
+                    {selectedProvider.is_default && (
+                      <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
+                        Default
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="break-all text-xs leading-snug text-muted-foreground">
+                    {PROVIDER_TYPE_LABELS[selectedProvider.provider_type] ?? selectedProvider.provider_type}
+                    {selectedProvider.base_url ? ` · ${selectedProvider.base_url}` : ""}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">选择 provider</span>
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((provider) => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium">{provider.name}</span>
+                      {provider.is_default && (
+                        <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
+                          Default
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {PROVIDER_TYPE_LABELS[provider.provider_type] ?? provider.provider_type}
+                      {provider.base_url ? ` · ${provider.base_url}` : ""}
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-xs text-muted-foreground">Model</span>
+          <Select
+            value={selectedModel}
+            onValueChange={onModelChange}
+            disabled={!selectedProvider || models.length === 0}
+          >
+            <SelectTrigger className="h-auto min-h-10 items-start whitespace-normal py-2 [&>span]:line-clamp-none">
+              {selectedModel ? (
+                <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                  <div className="break-all font-medium leading-snug">
+                    {models.find((candidate) => candidate.id === selectedModel)?.name ?? selectedModel}
+                  </div>
+                  <div className="break-all text-xs leading-snug text-muted-foreground">
+                    {selectedModel}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">
+                  {selectedProvider ? "选择模型" : "先选择 provider"}
+                </span>
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {models.map((candidate) => (
+                <SelectItem key={candidate.id} value={candidate.id}>
+                  <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
+                    <span className="truncate font-medium">{candidate.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">{candidate.id}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {providers.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Configure an enabled OpenAI-compatible provider first.
+        </p>
+      )}
+      {selectedProvider && models.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No enabled chat models for {selectedProvider.name}.
+        </p>
+      )}
+      {selectedProvider?.base_url && (
+        <p className="truncate text-xs text-muted-foreground">
+          Base URL: <span className="font-mono">{selectedProvider.base_url}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function readConfigString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function compactConfig(config: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(config).filter(([, value]) => value !== undefined && value !== "")
+  );
+}

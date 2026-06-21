@@ -18,6 +18,9 @@ export type ProviderId =
   | "azure"
   | "ollama"
   | "openrouter"
+  | "volcengine"
+  | "grok"
+  | "aihubmix"
   | "custom";
 
 /**
@@ -29,8 +32,8 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   // Claude Code only works with Anthropic models
   CLAUDE_CODE: ["anthropic"],
 
-  // Codex (OpenAI's tool) only works with OpenAI models
-  CODEX: ["openai"],
+  // Codex app-server works with OpenAI-compatible model providers
+  CODEX: ["openai", "azure", "openrouter", "ollama", "volcengine", "grok", "aihubmix", "custom"],
 
   // Gemini only works with Google models
   GEMINI: ["google"],
