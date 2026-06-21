@@ -22,6 +22,10 @@ function executorString(config: Record<string, unknown> | undefined, key: string
   return config ? readString(config[key]) : undefined;
 }
 
+export function getAcpAgentProviderId(agent?: AgentInfo): string | undefined {
+  return readString(agent?.provider_id) ?? executorString(agent?.executor_config, "provider_id");
+}
+
 export function buildAcpAgentConfig(params: {
   agent?: AgentInfo;
   executorType: string;
@@ -31,7 +35,7 @@ export function buildAcpAgentConfig(params: {
 }): AgentConfigPayload {
   const { agent, executorType, model, providerId } = params;
   const selectedModel = model.trim() || agent?.model || undefined;
-  const providerIdValue = providerId ?? agent?.provider_id;
+  const providerIdValue = providerId ?? getAcpAgentProviderId(agent);
   const executorConfig = withCodexProviderConfig(
     agent?.executor_config,
     agent?.executor_type ?? executorType,

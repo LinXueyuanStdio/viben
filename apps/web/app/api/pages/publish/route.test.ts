@@ -200,4 +200,23 @@ describe('POST /api/pages/publish', () => {
       error: 'icon must be an object with string type and value',
     });
   });
+
+  it('returns database error details for unexpected publish failures', async () => {
+    mocks.insertValues.mockRejectedValue(
+      new Error('duplicate key value violates unique constraint "published_pages_user_id_uid_idx"')
+    );
+
+    const response = await POST(requestWithBody({
+      uid: 'demo',
+      title: 'Demo',
+      html: '<html><body>Demo</body></html>',
+    }));
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to publish page',
+      details:
+        'duplicate key value violates unique constraint "published_pages_user_id_uid_idx"',
+    });
+  });
 });

@@ -85,14 +85,49 @@ export async function parseErrorMessage(response: Response): Promise<string> {
   let errorMessage = response.statusText;
   try {
     const errorBody = await response.json();
-    errorMessage =
-      errorBody?.error?.message ||
-      errorBody?.message ||
-      JSON.stringify(errorBody);
+    const primaryMessage = getErrorBodyMessage(errorBody, "primary");
+    const detailsMessage = getErrorBodyMessage(errorBody?.details, "details");
+
+    if (primaryMessage && detailsMessage && primaryMessage !== detailsMessage) {
+      errorMessage = `${primaryMessage}: ${detailsMessage}`;
+    } else {
+      errorMessage =
+        primaryMessage ||
+        detailsMessage ||
+        JSON.stringify(errorBody);
+    }
   } catch {
     // Keep statusText as fallback
   }
   return errorMessage;
+}
+
+function getErrorBodyMessage(
+  value: unknown,
+  mode: "primary" | "details"
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value !== "object") {
+    return String(value);
+  }
+
+  const body = value as Record<string, unknown>;
+  if (mode === "details") {
+    return getErrorBodyMessage(body.details, "details") ||
+      getErrorBodyMessage(body.error, "primary") ||
+      getErrorBodyMessage(body.message, "primary");
+  }
+
+  return getErrorBodyMessage(body.error, "primary") ||
+    getErrorBodyMessage(body.message, "primary") ||
+    getErrorBodyMessage(body.details, "details");
 }
 
 // ============================================================================

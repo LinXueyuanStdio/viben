@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAcpAgentConfig } from "./acp-agent-config";
+import { buildAcpAgentConfig, getAcpAgentProviderId } from "./acp-agent-config";
 
 describe("buildAcpAgentConfig", () => {
   it("passes only selected provider id and model for Codex sessions", () => {
@@ -74,6 +74,33 @@ describe("buildAcpAgentConfig", () => {
     })).toMatchObject({
       provider_id: "openai-default",
       executor_config: undefined,
+    });
+  });
+
+  it("reads provider id from executor_config when top-level provider id is absent", () => {
+    const agent = {
+      id: "claude-agent",
+      name: "DeepSeek ClaudeCode",
+      executor_type: "CLAUDE_CODE",
+      source: "workspace",
+      workspace_path: "/workspace",
+      mcp_server_count: 0,
+      skill_count: 0,
+      model: "deepseek-v4-pro[1m]",
+      executor_config: {
+        provider_id: "deepseek-anthropic",
+      },
+    } as const;
+
+    expect(getAcpAgentProviderId(agent)).toBe("deepseek-anthropic");
+    expect(buildAcpAgentConfig({
+      agent,
+      executorType: "CLAUDE_CODE",
+      model: "",
+      providerId: null,
+    })).toMatchObject({
+      provider_id: "deepseek-anthropic",
+      model: "deepseek-v4-pro[1m]",
     });
   });
 });

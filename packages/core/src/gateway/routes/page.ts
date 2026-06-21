@@ -63,6 +63,13 @@ import type {
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const VIBEN_WEB_URL = "https://viben-web.vercel.app";
 
+function getUnknownErrorDetails(error: unknown): unknown {
+  if (error && typeof error === "object" && "details" in error) {
+    return (error as { details?: unknown }).details;
+  }
+  return undefined;
+}
+
 function readPageSdkAsset(filename: string): string {
   const mapping: Record<string, string> = {
     "viben-page-sdk.js": "@viben/page-sdk/assets/viben-page-sdk.js",
@@ -226,6 +233,7 @@ const errorResponseSchema = {
   properties: {
     success: { type: "boolean" },
     error: { type: "string" },
+    details: {},
   },
 } as const;
 
@@ -410,12 +418,13 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     } catch (error) {
       if (error instanceof ApiError) {
         reply.code(error.status || 500);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, details: error.details };
       }
       reply.code(500);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to publish page",
+        details: getUnknownErrorDetails(error),
       };
     }
   });

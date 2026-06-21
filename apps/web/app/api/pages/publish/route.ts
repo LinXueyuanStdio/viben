@@ -16,6 +16,22 @@ function isIconPayload(value: unknown): value is IconPayload {
   return typeof icon.type === 'string' && typeof icon.value === 'string';
 }
 
+function getErrorDetails(error: unknown): string | undefined {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
@@ -95,7 +111,10 @@ export async function POST(request: NextRequest) {
     }
     console.error('Publish page error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Failed to publish page',
+        details: getErrorDetails(error),
+      },
       { status: 500 }
     );
   }

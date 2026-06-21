@@ -35,7 +35,7 @@ import { useProviders } from "@/hooks/use-providers";
 import type { AgentInfo } from "@/lib/gateway";
 import { filterModelsByExecutor, getAllowedProviders } from "@/lib/executor-constraints";
 import { filterSelectorProviders } from "@/components/agent/provider-model-selection";
-import { buildAcpAgentConfig } from "./acp-agent-config";
+import { buildAcpAgentConfig, getAcpAgentProviderId } from "./acp-agent-config";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
@@ -491,7 +491,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     return filterSelectorProviders(providers, allowedProviderIds);
   }, [providers, allowedProviderIds]);
 
-  const selectedAgentProviderId = selectedAgent?.provider_id?.trim() || null;
+  const selectedAgentProviderId = getAcpAgentProviderId(selectedAgent) ?? null;
   const selectedAgentModelId = selectedAgent?.model?.trim() || null;
   const selectedAgentDefaultsKey = selectedAgent
     ? [selectedAgent.id, selectedAgentProviderId ?? "", selectedAgentModelId ?? ""].join("|")

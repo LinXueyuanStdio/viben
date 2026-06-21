@@ -107,6 +107,41 @@ describe("Page publish route", () => {
     expect(mocks.publish).not.toHaveBeenCalled();
   });
 
+  it("includes viben-web error details when publish fails", async () => {
+    const error = new Error("Failed to publish page") as Error & {
+      status: number;
+      details: unknown;
+    };
+    error.name = "ApiError";
+    error.status = 500;
+    error.details = {
+      error: "Failed to publish page",
+      details: "column users.user_slug does not exist",
+    };
+    mocks.publish.mockRejectedValue(error);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/page/publish",
+      payload: {
+        access_token: "session-token",
+        uid: "demo",
+        title: "Demo",
+        html: "<html><body>Demo</body></html>",
+      },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(JSON.parse(response.body)).toEqual({
+      success: false,
+      error: "Failed to publish page",
+      details: {
+        error: "Failed to publish page",
+        details: "column users.user_slug does not exist",
+      },
+    });
+  });
+
   it("checks published status with user slug through proxyFetch", async () => {
     const response = await app.inject({
       method: "POST",
