@@ -633,25 +633,22 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         };
         await modelManager.setModelConfig(id, modelConfig);
       } else {
-        const provider = config.provider_id
-          ? await providerManager.getProvider(config.provider_id)
-          : null;
-        if (config.provider_id && !provider) {
+        if (!config.provider_id) {
           reply.code(400);
-          return { error: `Provider not found: ${config.provider_id}` };
+          return { error: "Provider ID is required" };
         }
 
-        const providerType = config.provider ?? provider?.type;
-        if (!providerType) {
+        const provider = await providerManager.getProvider(config.provider_id);
+        if (!provider) {
           reply.code(400);
-          return { error: "Provider type is required" };
+          return { error: `Provider not found: ${config.provider_id}` };
         }
 
         // Create a configured model under the selected provider.
         await modelManager.createModel({
           id,
           name: config.name || id,
-          provider: providerType,
+          provider: provider.type,
           provider_id: config.provider_id,
           category: config.category,
           surface: config.surface,

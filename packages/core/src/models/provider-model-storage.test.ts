@@ -41,14 +41,13 @@ describe("provider and model unified YAML storage", () => {
     expect(await tempDir.exists("models.yaml")).toBe(true);
 
     const config = parse(await tempDir.readFile("models.yaml"));
-    expect(config[provider.id]).toMatchObject({
-      provider_name: "OpenAI Responses",
-      provider_type: "openai-responses",
+    expect(config[provider.id]).toEqual({
+      id: provider.id,
+      type: "openai-responses",
       base_url: "https://api.openai.com/v1",
       api_key: "sk-test",
       models: {
         "gpt-5.1": {
-          model_name: "gpt-5.1",
           name: "gpt-5.1",
           enabled: true,
         },
@@ -61,7 +60,7 @@ describe("provider and model unified YAML storage", () => {
     await expect(providerManager.getProvider(provider.id)).resolves.toMatchObject({
       id: provider.id,
       type: "openai-responses",
-      name: "OpenAI Responses",
+      apiKey: "sk-test",
     });
     await expect(modelManager.getModelsByProviderId(provider.id)).resolves.toEqual([
       expect.objectContaining({
@@ -93,12 +92,12 @@ describe("provider and model unified YAML storage", () => {
     await modelManager.enableModel("gpt-5.1", secondProvider.type, secondProvider.id);
 
     const config = parse(await tempDir.readFile("models.yaml"));
-    expect(config[firstProvider.id].models["gpt-5.1"]).toMatchObject({
-      model_name: "gpt-5.1",
+    expect(config[firstProvider.id].models["gpt-5.1"]).toEqual({
+      name: "gpt-5.1",
       enabled: true,
     });
-    expect(config[secondProvider.id].models["gpt-5.1"]).toMatchObject({
-      model_name: "gpt-5.1",
+    expect(config[secondProvider.id].models["gpt-5.1"]).toEqual({
+      name: "gpt-5.1",
       enabled: true,
     });
 
@@ -122,13 +121,14 @@ describe("provider and model unified YAML storage", () => {
     await tempDir.writeFile(
       "models.yaml",
       `anthropic-main:
-  provider_name: Anthropic Main
-  provider_type: anthropic
+  id: anthropic-main
+  type: anthropic
   base_url: https://api.anthropic.com/v1
   api_key: sk-ant
   models:
     claude-sonnet-4-5:
-      model_name: Claude Sonnet 4.5
+      name: Claude Sonnet 4.5
+      enabled: true
 `
     );
 
@@ -138,7 +138,6 @@ describe("provider and model unified YAML storage", () => {
     await expect(providerManager.getProvider("anthropic-main")).resolves.toMatchObject({
       id: "anthropic-main",
       type: "anthropic",
-      name: "Anthropic Main",
       apiKey: "sk-ant",
     });
     await expect(modelManager.getModel("claude-sonnet-4-5")).resolves.toMatchObject({
@@ -154,8 +153,8 @@ describe("provider and model unified YAML storage", () => {
     await tempDir.writeFile(
       "models.yaml",
       `openai-main:
-  provider_name: OpenAI Main
-  provider_type: openai
+  id: openai-main
+  type: openai
   apiKey: sk-camel
   models: {}
 `

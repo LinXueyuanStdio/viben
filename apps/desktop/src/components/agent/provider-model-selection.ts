@@ -37,7 +37,6 @@ export const ANTHROPIC_DEFAULT_SONNET_MODEL_ENV = "ANTHROPIC_DEFAULT_SONNET_MODE
 export const ANTHROPIC_DEFAULT_HAIKU_MODEL_ENV = "ANTHROPIC_DEFAULT_HAIKU_MODEL";
 export const ANTHROPIC_DEFAULT_OPUS_MODEL_ENV = "ANTHROPIC_DEFAULT_OPUS_MODEL";
 export const CLAUDE_CODE_SUBAGENT_MODEL_ENV = "CLAUDE_CODE_SUBAGENT_MODEL";
-export const PROVIDER_OWNED_CLAUDE_ENV_KEYS = new Set(["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]);
 
 export function filterSelectorProviders<T extends ProviderLike>(
   providers: T[],
@@ -70,21 +69,35 @@ export function buildClaudeCodeProviderSwitch({
   providerId,
   providerModels,
 }: ClaudeCodeProviderSwitchInput): ClaudeCodeProviderSwitchResult {
-  const sonnetModel = pickPreferredModel(providerModels, "sonnet");
-  const haikuModel = pickPreferredModel(providerModels, "haiku");
-  const opusModel = pickPreferredModel(providerModels, "opus");
+  const currentEnv = readEnvRecord(config.env);
   const providerModelIds = new Set(providerModels.map((model) => model.id));
   const nextCurrentModel = providerModelIds.has(currentModel)
     ? currentModel
-    : sonnetModel ?? providerModels[0]?.id ?? "";
+    : pickPreferredModel(providerModels, "sonnet") ?? providerModels[0]?.id ?? "";
+  const sonnetModel = pickValidProviderModel(
+    currentEnv[ANTHROPIC_DEFAULT_SONNET_MODEL_ENV],
+    providerModelIds
+  ) ?? pickPreferredModel(providerModels, "sonnet");
+  const haikuModel = pickValidProviderModel(
+    currentEnv[ANTHROPIC_DEFAULT_HAIKU_MODEL_ENV],
+    providerModelIds
+  ) ?? pickPreferredModel(providerModels, "haiku");
+  const opusModel = pickValidProviderModel(
+    currentEnv[ANTHROPIC_DEFAULT_OPUS_MODEL_ENV],
+    providerModelIds
+  ) ?? pickPreferredModel(providerModels, "opus");
+  const subagentModel = pickValidProviderModel(
+    currentEnv[CLAUDE_CODE_SUBAGENT_MODEL_ENV],
+    providerModelIds
+  ) ?? haikuModel;
 
   const env = {
-    ...removeEnvKeys(readEnvRecord(config.env), PROVIDER_OWNED_CLAUDE_ENV_KEYS),
+    ...currentEnv,
     ...(nextCurrentModel ? { [ANTHROPIC_MODEL_ENV]: nextCurrentModel } : {}),
     ...(sonnetModel ? { [ANTHROPIC_DEFAULT_SONNET_MODEL_ENV]: sonnetModel } : {}),
     ...(haikuModel ? { [ANTHROPIC_DEFAULT_HAIKU_MODEL_ENV]: haikuModel } : {}),
     ...(opusModel ? { [ANTHROPIC_DEFAULT_OPUS_MODEL_ENV]: opusModel } : {}),
-    ...(haikuModel ? { [CLAUDE_CODE_SUBAGENT_MODEL_ENV]: haikuModel } : {}),
+    ...(subagentModel ? { [CLAUDE_CODE_SUBAGENT_MODEL_ENV]: subagentModel } : {}),
   };
 
   return {
@@ -95,6 +108,10 @@ export function buildClaudeCodeProviderSwitch({
       env: Object.keys(env).length > 0 ? env : undefined,
     }),
   };
+}
+
+function pickValidProviderModel(value: string | undefined, providerModelIds: Set<string>): string | undefined {
+  return value && providerModelIds.has(value) ? value : undefined;
 }
 
 export function readConfigString(value: unknown): string | undefined {
@@ -109,13 +126,6 @@ export function readEnvRecord(value: unknown): Record<string, string> {
         typeof entry[0] === "string" && typeof entry[1] === "string"
     )
   );
-}
-
-export function removeEnvKeys(
-  env: Record<string, string>,
-  keys: ReadonlySet<string>
-): Record<string, string> {
-  return Object.fromEntries(Object.entries(env).filter(([key]) => !keys.has(key)));
 }
 
 export function compactConfig(config: Record<string, unknown>): Record<string, unknown> {

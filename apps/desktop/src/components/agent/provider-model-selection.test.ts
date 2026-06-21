@@ -107,8 +107,6 @@ describe("provider model selection", () => {
           ANTHROPIC_DEFAULT_SONNET_MODEL: "gpt-5.1",
           ANTHROPIC_DEFAULT_HAIKU_MODEL: "gpt-5.1",
           ANTHROPIC_DEFAULT_OPUS_MODEL: "gpt-5.1",
-          ANTHROPIC_BASE_URL: "https://old.example.com",
-          ANTHROPIC_AUTH_TOKEN: "old-token",
           CUSTOM_FLAG: "1",
         },
       },

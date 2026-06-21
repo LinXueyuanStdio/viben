@@ -14,6 +14,7 @@ import {
   handleCommandError,
 } from "../lib";
 import { modelManager, DEFAULT_ALIASES } from "../../models";
+import { providerManager } from "../../providers";
 import type { ModelCategory, ModelSurface } from "../../models";
 
 const MODEL_CATEGORIES: ModelCategory[] = ["llm", "media"];
@@ -316,10 +317,16 @@ export function registerModelCommand(program: Command): void {
       try {
         const category = parseCategory(options.category);
         const surface = parseSurface(options.surface);
+        const provider = await providerManager.getProvider(options.provider);
+        if (!provider) {
+          throw new Error(`Provider not found: ${options.provider}`);
+        }
+
         const created = await modelManager.createModel({
           id: options.name,
           name: options.displayName ?? options.name,
-          provider: options.provider,
+          provider: provider.type,
+          provider_id: provider.id,
           category,
           surface,
           capabilities: options.capability,

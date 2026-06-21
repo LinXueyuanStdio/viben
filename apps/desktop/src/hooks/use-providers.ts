@@ -30,8 +30,7 @@ export type ProviderType =
   | "senseaudio"
   | "aihubmix"
   | "suno"
-  | "udio"
-  | "custom";
+  | "udio";
 
 export type ProviderCategory = "llm" | "media";
 
@@ -148,7 +147,6 @@ export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   aihubmix: "https://aihubmix.com/v1",
   suno: "",
   udio: "",
-  custom: "",
 };
 
 // Provider type display names
@@ -174,7 +172,6 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   aihubmix: "AIHubMix",
   suno: "Suno",
   udio: "Udio",
-  custom: "Custom",
 };
 
 // ============================================================================

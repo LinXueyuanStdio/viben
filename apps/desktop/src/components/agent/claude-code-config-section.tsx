@@ -52,8 +52,6 @@ const HIDDEN_CUSTOM_ENV = new Set<string>([
   ANTHROPIC_MODEL_ENV,
   ...MODEL_ENV_FIELDS.map((field) => field.key),
   ...QUICK_ENV_FIELDS.map((field) => field.key),
-  "ANTHROPIC_BASE_URL",
-  "ANTHROPIC_AUTH_TOKEN",
   "CLAUDE_CODE_SUBAGENT_MODEL",
 ]);
 
@@ -201,7 +199,7 @@ export function ClaudeCodeConfigSection({
             <Label className="text-sm font-normal">{field.label}</Label>
             <Input
               value={env[field.key] ?? ""}
-              type={field.secret ? "password" : "text"}
+              type="text"
               onChange={(event) => updateEnv(field.key, event.target.value)}
               placeholder={field.placeholder}
               className="h-8 text-sm font-mono"

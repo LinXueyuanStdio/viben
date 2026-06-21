@@ -8,16 +8,29 @@ import type { ModelConfigEntry, ModelEntry, ModelSurface } from "../models/types
 
 export const MODELS_METADATA_KEY = "__viben";
 
-export interface UnifiedModelEntry extends Partial<ModelEntry> {
-  model_name?: string;
-  is_default?: boolean;
+export interface UnifiedModelEntry {
+  name: string;
+  enabled?: boolean;
 }
 
-export interface UnifiedProviderEntry extends Partial<Omit<ProviderEntry, "name">> {
-  provider_name?: string;
+export interface UnifiedProviderEntry {
+  id: string;
+  type: string;
+  base_url?: string;
+  api_key?: string;
+  models: Record<string, UnifiedModelEntry>;
+  category?: string;
+  api_version?: string;
+  deployment?: string;
+  timeout?: number;
+  max_retries?: number;
+  headers?: Record<string, string>;
+  surfaces?: string[];
+  supports_custom_model?: boolean;
+  enabled?: boolean;
+  created_at?: string;
+  updated_at?: string;
   name?: string;
-  is_default?: boolean;
-  models?: Record<string, UnifiedModelEntry | string>;
 }
 
 export interface UnifiedModelsMetadata {
@@ -54,21 +67,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function normalizeModelEntry(id: string, value: UnifiedModelEntry | string): UnifiedModelEntry {
+function normalizeModelEntry(id: string, value: unknown): UnifiedModelEntry {
   if (typeof value === "string") {
+    return { name: value, enabled: true };
+  }
+  if (isRecord(value)) {
+    const name = typeof value.name === "string"
+      ? value.name
+      : typeof value.model_name === "string"
+        ? value.model_name
+        : id;
     return {
-      model_name: value,
-      name: value,
-      enabled: true,
+      name,
+      enabled: typeof value.enabled === "boolean" ? value.enabled : true,
     };
   }
-
-  return {
-    ...value,
-    model_name: value.model_name ?? value.name ?? id,
-    name: value.name ?? value.model_name ?? id,
-    enabled: value.enabled ?? true,
-  };
+  return { name: id, enabled: true };
 }
 
 function normalizeProviderEntry(id: string, value: unknown): UnifiedProviderEntry | undefined {
@@ -79,46 +93,54 @@ function normalizeProviderEntry(id: string, value: unknown): UnifiedProviderEntr
   const rawModels = isRecord(value.models) ? value.models : {};
   const models: Record<string, UnifiedModelEntry> = {};
   for (const [modelId, modelValue] of Object.entries(rawModels)) {
-    if (typeof modelValue === "string" || isRecord(modelValue)) {
-      models[modelId] = normalizeModelEntry(modelId, modelValue as UnifiedModelEntry | string);
-    }
+    models[modelId] = normalizeModelEntry(modelId, modelValue);
   }
 
-  const providerName = typeof value.provider_name === "string"
+  const name = typeof value.provider_name === "string"
     ? value.provider_name
     : typeof value.name === "string"
       ? value.name
       : id;
-  const providerType = typeof value.provider_type === "string"
-    ? value.provider_type
-    : typeof value.type === "string"
-      ? value.type
-      : id;
+  const type = typeof value.type === "string"
+    ? value.type
+    : typeof value.provider_type === "string"
+      ? value.provider_type
+      : undefined;
+  if (!type) {
+    return undefined;
+  }
   const apiKey = typeof value.api_key === "string"
     ? value.api_key
     : typeof value.apiKey === "string"
       ? value.apiKey
       : undefined;
 
-  const entry: UnifiedProviderEntry = {
-    ...(value as UnifiedProviderEntry),
-    provider_name: providerName,
-    name: typeof value.name === "string" ? value.name : providerName,
-    provider_type: providerType,
+  return {
+    id: typeof value.id === "string" ? value.id : id,
+    type,
+    name,
+    base_url: typeof value.base_url === "string" ? value.base_url : undefined,
     api_key: apiKey,
-    enabled: typeof value.enabled === "boolean" ? value.enabled : true,
+    category: typeof value.category === "string" ? value.category : undefined,
+    api_version: typeof value.api_version === "string" ? value.api_version : undefined,
+    deployment: typeof value.deployment === "string" ? value.deployment : undefined,
+    timeout: typeof value.timeout === "number" ? value.timeout : undefined,
+    max_retries: typeof value.max_retries === "number" ? value.max_retries : undefined,
+    headers: isRecord(value.headers) ? value.headers as Record<string, string> : undefined,
+    surfaces: Array.isArray(value.surfaces) ? value.surfaces.filter((item): item is string => typeof item === "string") : undefined,
+    supports_custom_model: typeof value.supports_custom_model === "boolean" ? value.supports_custom_model : undefined,
+    enabled: typeof value.enabled === "boolean" ? value.enabled : undefined,
+    created_at: typeof value.created_at === "string" ? value.created_at : undefined,
+    updated_at: typeof value.updated_at === "string" ? value.updated_at : undefined,
     models,
   };
-  delete (entry as Record<string, unknown>).apiKey;
-  return entry;
 }
 
 function ensureProvider(file: UnifiedModelsFile, providerId: string, providerType: string): UnifiedProviderEntry {
   const existing = normalizeProviderEntry(providerId, file[providerId]) ?? {
-    provider_name: providerId,
+    id: providerId,
+    type: providerType,
     name: providerId,
-    provider_type: providerType,
-    enabled: true,
     models: {},
   };
 
@@ -170,16 +192,12 @@ function normalizeModelsYaml(raw: unknown): UnifiedModelsFile {
       const entry = modelEntry as ModelEntry;
       const providerType = entry.provider;
       if (!providerType) continue;
-      const providerId = entry.provider_id ?? providerType;
+      const providerId = entry.provider_id;
+      if (!providerId) continue;
       const provider = ensureProvider(file, providerId, providerType);
       provider.models = {
         ...(provider.models ?? {}),
-        [modelId]: {
-          ...entry,
-          model_name: entry.name ?? modelId,
-          name: entry.name ?? modelId,
-          is_default: metadata.default_model === modelId,
-        },
+        [modelId]: { name: entry.name ?? modelId, enabled: entry.enabled ?? true },
       };
     }
   }
@@ -208,10 +226,22 @@ function mergeLegacyProviders(file: UnifiedModelsFile, legacy: ProvidersFile | u
   for (const [providerId, providerEntry] of Object.entries(legacy.providers ?? {})) {
     const existingModels = normalizeProviderEntry(providerId, file[providerId])?.models ?? {};
     file[providerId] = {
-      ...providerEntry,
-      provider_name: providerEntry.name,
+      id: providerId,
+      type: providerEntry.provider_type ?? providerEntry.type ?? "",
       name: providerEntry.name,
-      is_default: legacy.default === providerId,
+      base_url: providerEntry.base_url,
+      api_key: providerEntry.api_key,
+      category: providerEntry.category,
+      api_version: providerEntry.api_version,
+      deployment: providerEntry.deployment,
+      timeout: providerEntry.timeout,
+      max_retries: providerEntry.max_retries,
+      headers: providerEntry.headers,
+      surfaces: providerEntry.surfaces,
+      supports_custom_model: providerEntry.supports_custom_model,
+      enabled: providerEntry.enabled,
+      created_at: providerEntry.created_at,
+      updated_at: providerEntry.updated_at,
       models: existingModels,
     };
   }
@@ -238,7 +268,20 @@ export async function loadUnifiedModelsFile(): Promise<UnifiedModelsFile> {
 
 export async function saveUnifiedModelsFile(file: UnifiedModelsFile): Promise<void> {
   const normalized = normalizeModelsYaml(file);
-  await writeYaml(getModelsPath(), normalized);
+  const output = {} as UnifiedModelsFile;
+  for (const [providerId, provider] of Object.entries(getUnifiedProviders(normalized))) {
+    output[providerId] = {
+      id: provider.id,
+      type: provider.type,
+      base_url: provider.base_url,
+      api_key: provider.api_key,
+      models: provider.models ?? {},
+    };
+  }
+  if (normalized[MODELS_METADATA_KEY]) {
+    output[MODELS_METADATA_KEY] = normalized[MODELS_METADATA_KEY];
+  }
+  await writeYaml(getModelsPath(), output);
 }
 
 export function getUnifiedProviders(file: UnifiedModelsFile): Record<string, UnifiedProviderEntry> {

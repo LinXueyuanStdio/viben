@@ -5,7 +5,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { PROVIDER_TYPE_LABELS } from "@/hooks/use-providers";
 import type { Provider } from "@/hooks/use-providers";

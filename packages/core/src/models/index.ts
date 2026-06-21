@@ -14,7 +14,6 @@ import {
 } from "../config/model-provider-storage";
 import type {
   ModelCategory,
-  ModelConfigEntry,
   ModelSurface,
 } from "./types";
 import { DEFAULT_ALIASES } from "./known-models";
@@ -71,54 +70,25 @@ function modelFromEntry(
   provider: UnifiedProviderEntry,
   defaultModelId: string | undefined
 ): Model {
-  const providerType = provider.provider_type ?? provider.type ?? entry.provider ?? providerId;
-  const category = normalizeModelCategory(entry.category);
+  const category = normalizeModelCategory(provider.category as ModelCategory | undefined);
   return {
     id,
-    name: entry.model_name ?? entry.name ?? id,
-    provider: providerType,
+    name: entry.name,
+    provider: provider.type,
     provider_id: providerId,
     category,
-    surface: normalizeModelSurface(entry.surface, category),
-    capabilities: entry.capabilities,
-    description: entry.description,
-    contextLength: entry.context_window,
-    maxOutputTokens: entry.max_output_tokens,
-    isDefault: entry.is_default ?? defaultModelId === id,
+    surface: normalizeModelSurface(undefined, category),
+    isDefault: defaultModelId === id,
     enabled: entry.enabled ?? true,
-    created_at: entry.created_at,
-    updated_at: entry.updated_at,
   };
 }
 
 function modelEntryFromOptions(options: {
   name: string;
-  provider: string;
-  provider_id?: string;
-  category?: ModelCategory;
-  surface?: ModelSurface;
-  capabilities?: string[];
-  description?: string;
-  contextWindow?: number;
-  maxOutputTokens?: number;
-  enabled?: boolean;
 }): UnifiedModelEntry {
-  const category = normalizeModelCategory(options.category);
-  const now = new Date().toISOString();
   return {
-    model_name: options.name,
     name: options.name,
-    provider: options.provider,
-    provider_id: options.provider_id,
-    category,
-    surface: normalizeModelSurface(options.surface, category),
-    capabilities: options.capabilities,
-    description: options.description,
-    context_window: options.contextWindow,
-    max_output_tokens: options.maxOutputTokens,
-    enabled: options.enabled ?? true,
-    created_at: now,
-    updated_at: now,
+    enabled: true,
   };
 }
 
@@ -129,10 +99,8 @@ function ensureProvider(
 ): UnifiedProviderEntry {
   const providers = getUnifiedProviders(config);
   const provider = providers[providerId] ?? {
-    provider_name: providerId,
-    name: providerId,
-    provider_type: providerType,
-    enabled: true,
+    id: providerId,
+    type: providerType,
     models: {},
   };
   provider.models = provider.models ?? {};
@@ -155,7 +123,7 @@ function findModelInProviders(
   for (const providerId of orderedProviderIds) {
     const provider = providers[providerId];
     const model = provider.models?.[id];
-    if (model && typeof model !== "string") {
+    if (model) {
       return { providerId, provider, entry: model };
     }
   }
@@ -201,7 +169,7 @@ export class ModelManager {
   // ========================================================================
 
   /**
-   * List all available models (from custom_models only)
+   * List all configured models.
    */
   async listModels(): Promise<Model[]> {
     const config = await this.loadConfig();
@@ -211,7 +179,6 @@ export class ModelManager {
 
     for (const [providerId, provider] of Object.entries(providers)) {
       for (const [id, entry] of Object.entries(provider.models ?? {})) {
-        if (typeof entry === "string") continue;
         models.push(modelFromEntry(id, entry, providerId, provider, metadata.default_model));
       }
     }
@@ -271,7 +238,7 @@ export class ModelManager {
   }
 
   /**
-   * Create a custom model
+   * Create a configured model under a provider instance.
    */
   async createModel(options: {
     id: string;
@@ -287,7 +254,10 @@ export class ModelManager {
     setAsDefault?: boolean;
   }): Promise<Model> {
     const config = await this.loadConfig();
-    const providerId = options.provider_id ?? options.provider;
+    if (!options.provider_id) {
+      throw new Error("Provider ID is required");
+    }
+    const providerId = options.provider_id;
     const provider = ensureProvider(config, providerId, options.provider);
 
     if (provider.models?.[options.id]) {
@@ -296,15 +266,6 @@ export class ModelManager {
 
     const entry = modelEntryFromOptions({
       name: options.name,
-      provider: options.provider,
-      provider_id: options.provider_id,
-      category: options.category,
-      surface: options.surface,
-      capabilities: options.capabilities,
-      description: options.description,
-      contextWindow: options.contextWindow,
-      maxOutputTokens: options.maxOutputTokens,
-      enabled: true,
     });
 
     provider.models = {
@@ -322,19 +283,17 @@ export class ModelManager {
 
     return {
       id: options.id,
-      name: entry.name ?? options.id,
-      provider: entry.provider ?? options.provider,
-      provider_id: entry.provider_id ?? providerId,
-      category: entry.category,
-      surface: entry.surface,
-      capabilities: entry.capabilities,
-      description: entry.description,
-      contextLength: entry.context_window,
-      maxOutputTokens: entry.max_output_tokens,
+      name: entry.name,
+      provider: options.provider,
+      provider_id: providerId,
+      category: options.category,
+      surface: options.surface,
+      capabilities: options.capabilities,
+      description: options.description,
+      contextLength: options.contextWindow,
+      maxOutputTokens: options.maxOutputTokens,
       isDefault,
-      enabled: entry.enabled,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
+      enabled: true,
     };
   }
 
@@ -379,23 +338,11 @@ export class ModelManager {
       throw new Error(`Model not found: ${id}`);
     }
 
-    const entry = found.entry;
-    const now = new Date().toISOString();
+    const entry = { ...found.entry };
 
     if (updates.name !== undefined) {
       entry.name = updates.name;
-      entry.model_name = updates.name;
     }
-    if (updates.description !== undefined) {
-      entry.description = updates.description;
-    }
-    if (updates.contextWindow !== undefined) {
-      entry.context_window = updates.contextWindow;
-    }
-    if (updates.maxOutputTokens !== undefined) {
-      entry.max_output_tokens = updates.maxOutputTokens;
-    }
-    entry.updated_at = now;
     found.provider.models = {
       ...(found.provider.models ?? {}),
       [id]: entry,
@@ -407,16 +354,14 @@ export class ModelManager {
     const metadata = getMetadata(config);
     return {
       id,
-      name: entry.name ?? entry.model_name ?? id,
-      provider: found.provider.provider_type ?? found.provider.type ?? entry.provider ?? found.providerId,
+      name: entry.name,
+      provider: found.provider.type,
       provider_id: found.providerId,
-      description: entry.description,
-      contextLength: entry.context_window,
-      maxOutputTokens: entry.max_output_tokens,
+      description: updates.description,
+      contextLength: updates.contextWindow,
+      maxOutputTokens: updates.maxOutputTokens,
       isDefault: metadata.default_model === id,
-      enabled: entry.enabled,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
+      enabled: true,
     };
   }
 
@@ -425,25 +370,20 @@ export class ModelManager {
    */
   async enableModel(id: string, providerType: string, providerId?: string): Promise<void> {
     const config = await this.loadConfig();
-    const actualProviderId = providerId ?? providerType;
-    const provider = ensureProvider(config, actualProviderId, providerType);
+    if (!providerId) {
+      throw new Error("Provider ID is required");
+    }
+    const provider = ensureProvider(config, providerId, providerType);
     const existing = provider.models?.[id];
-    const now = new Date().toISOString();
 
     provider.models = {
       ...(provider.models ?? {}),
       [id]: {
-        ...(typeof existing === "string" ? { name: existing, model_name: existing } : existing),
-        name: typeof existing === "string" ? existing : existing?.name ?? existing?.model_name ?? id,
-        model_name: typeof existing === "string" ? existing : existing?.model_name ?? existing?.name ?? id,
-        provider: providerType,
-        provider_id: actualProviderId,
+        name: existing?.name ?? id,
         enabled: true,
-        created_at: typeof existing === "string" ? now : existing?.created_at ?? now,
-        updated_at: now,
       },
     };
-    config[actualProviderId] = provider;
+    config[providerId] = provider;
 
     await this.saveConfig(config);
   }
@@ -453,25 +393,19 @@ export class ModelManager {
    */
   async disableModel(id: string, providerType: string, providerId?: string): Promise<void> {
     const config = await this.loadConfig();
-    const actualProviderId = providerId ?? providerType;
-    const provider = ensureProvider(config, actualProviderId, providerType);
+    if (!providerId) {
+      throw new Error("Provider ID is required");
+    }
+    const provider = ensureProvider(config, providerId, providerType);
     const existing = provider.models?.[id];
-    const now = new Date().toISOString();
-
     provider.models = {
       ...(provider.models ?? {}),
       [id]: {
-        ...(typeof existing === "string" ? { name: existing, model_name: existing } : existing),
-        name: typeof existing === "string" ? existing : existing?.name ?? existing?.model_name ?? id,
-        model_name: typeof existing === "string" ? existing : existing?.model_name ?? existing?.name ?? id,
-        provider: providerType,
-        provider_id: actualProviderId,
+        name: existing?.name ?? id,
         enabled: false,
-        created_at: typeof existing === "string" ? now : existing?.created_at ?? now,
-        updated_at: now,
       },
     };
-    config[actualProviderId] = provider;
+    config[providerId] = provider;
 
     await this.saveConfig(config);
   }
@@ -688,7 +622,7 @@ export class ModelManager {
   // ========================================================================
 
   /**
-   * Get model info synchronously (from cached custom models)
+   * Get model info synchronously from cached configured models.
    */
   getModelInfo(model: string): Model | undefined {
     const resolved = this.resolveAliasSync(model);

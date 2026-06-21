@@ -70,11 +70,11 @@ function providerTypeFromEntry(entry: ProviderEntry): ProviderType {
 }
 
 function providerEntryFromUnified(entry: UnifiedProviderEntry): ProviderEntry {
+  const now = new Date().toISOString();
   return {
-    type: entry.type,
-    provider_type: entry.provider_type ?? entry.type ?? "openai",
+    provider_type: entry.type,
     category: entry.category,
-    name: entry.provider_name ?? entry.name ?? entry.provider_type ?? "Provider",
+    name: entry.name ?? entry.id,
     api_key: entry.api_key,
     base_url: entry.base_url,
     api_version: entry.api_version,
@@ -85,8 +85,8 @@ function providerEntryFromUnified(entry: UnifiedProviderEntry): ProviderEntry {
     surfaces: entry.surfaces,
     supports_custom_model: entry.supports_custom_model,
     enabled: entry.enabled ?? true,
-    created_at: entry.created_at ?? new Date().toISOString(),
-    updated_at: entry.updated_at ?? new Date().toISOString(),
+    created_at: entry.created_at ?? now,
+    updated_at: entry.updated_at ?? now,
   };
 }
 
@@ -226,9 +226,22 @@ export class ProviderManager {
     };
 
     config[id] = {
-      ...entry,
-      provider_name: entry.name,
+      id,
+      type: entry.provider_type,
       name: entry.name,
+      base_url: entry.base_url,
+      api_key: entry.api_key,
+      category: entry.category,
+      api_version: entry.api_version,
+      deployment: entry.deployment,
+      timeout: entry.timeout,
+      max_retries: entry.max_retries,
+      headers: entry.headers,
+      surfaces: entry.surfaces,
+      supports_custom_model: entry.supports_custom_model,
+      enabled: entry.enabled,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
       models: {},
     };
 
@@ -301,9 +314,22 @@ export class ProviderManager {
 
     config[id] = {
       ...provider,
-      ...updated,
-      provider_name: updated.name,
+      id,
+      type: updated.provider_type,
       name: updated.name,
+      base_url: updated.base_url,
+      api_key: updated.api_key,
+      category: updated.category,
+      api_version: updated.api_version,
+      deployment: updated.deployment,
+      timeout: updated.timeout,
+      max_retries: updated.max_retries,
+      headers: updated.headers,
+      surfaces: updated.surfaces,
+      supports_custom_model: updated.supports_custom_model,
+      enabled: updated.enabled,
+      created_at: updated.created_at,
+      updated_at: updated.updated_at,
     };
     await this.saveConfig(config);
 

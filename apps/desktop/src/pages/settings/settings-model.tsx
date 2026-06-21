@@ -97,7 +97,6 @@ const PROVIDER_TYPES: ProviderType[] = [
   "aihubmix",
   "suno",
   "udio",
-  "custom",
 ];
 
 const MEDIA_SURFACES: ProviderSurface[] = [

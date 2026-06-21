@@ -20,8 +20,7 @@ export type ProviderId =
   | "openrouter"
   | "volcengine"
   | "grok"
-  | "aihubmix"
-  | "custom";
+  | "aihubmix";
 
 /**
  * Mapping of executor types to their allowed provider IDs.
@@ -33,7 +32,7 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   CLAUDE_CODE: ["anthropic"],
 
   // Codex app-server works with OpenAI-compatible model providers
-  CODEX: ["openai", "azure", "openrouter", "ollama", "volcengine", "grok", "aihubmix", "custom"],
+  CODEX: ["openai", "azure", "openrouter", "ollama", "volcengine", "grok", "aihubmix"],
 
   // Gemini only works with Google models
   GEMINI: ["google"],
@@ -44,8 +43,8 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   // Amp supports multiple providers
   AMP: ["anthropic", "openai"],
 
-  // Qwen Code works with OpenAI-compatible APIs and custom
-  QWEN_CODE: ["openai", "ollama", "custom"],
+  // Qwen Code works with OpenAI-compatible APIs
+  QWEN_CODE: ["openai", "ollama"],
 
   // GitHub Copilot uses OpenAI
   COPILOT: ["openai"],

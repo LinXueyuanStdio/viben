@@ -31,8 +31,7 @@ export type ProviderType =
   | "senseaudio"
   | "aihubmix"
   | "suno"
-  | "udio"
-  | "custom";
+  | "udio";
 
 export type ProviderCategory = "llm" | "media";
 
