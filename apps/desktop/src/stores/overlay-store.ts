@@ -122,7 +122,7 @@ interface OverlayActions {
 }
 
 const initialState: OverlayState = {
-  visible: false,
+  visible: true,
   opacity: 1,
   configLoaded: false,
 

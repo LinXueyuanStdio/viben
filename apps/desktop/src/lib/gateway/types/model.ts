@@ -174,7 +174,7 @@ export interface ModelUpdate {
 export interface ModelResponse {
   id: string;
   name: string;
-  provider: string;
+  provider_type: string;
   provider_id: string;
   provider_name: string;
   category?: ModelCategory;

@@ -171,7 +171,7 @@ export interface Agent {
   /** List of tool names this agent can use */
   tools: string[];
   model?: string;
-  provider?: string;
+  provider_id?: string;
   systemPrompt?: string;
   /** Text appended to prompts */
   appendPrompt?: string;
@@ -206,7 +206,7 @@ export interface AgentConfig {
   description?: string;
   tools?: string[];
   model?: string;
-  provider?: string;
+  provider_id?: string;
   systemPrompt?: string;
   appendPrompt?: string;
   temperature?: number;
@@ -254,7 +254,7 @@ export interface CreateAgentOptions {
   description?: string;
   tools?: string[];
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;
@@ -277,7 +277,7 @@ export interface AgentUpdate {
   description?: string;
   tools?: string[];
   model?: string;
-  provider?: string;
+  provider_id?: string;
   systemPrompt?: string;
   appendPrompt?: string;
   temperature?: number;

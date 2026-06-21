@@ -678,7 +678,7 @@ export function WorkspaceAgentsPage({
               models={models.map((m) => ({
                 id: m.id,
                 name: m.name,
-                provider: m.provider_id,
+                provider_type: m.provider_type,
                 provider_id: m.provider_id,
                 enabled: m.is_available,
               }))}

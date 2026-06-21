@@ -53,7 +53,8 @@ import type { WorkspaceSkill } from "@/types";
 import { useModels } from "@/hooks/use-models";
 import { useProviders, PROVIDER_TYPE_LABELS } from "@/hooks/use-providers";
 import type { Provider } from "@/hooks/use-providers";
-import { filterModelsByExecutor, getAllowedProviders, type ProviderId } from "@/lib/executor-constraints";
+import { filterModelsByExecutor, getAllowedProviders } from "@/lib/executor-constraints";
+import type { ProviderId } from "@/lib/executor-constraints";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import { CodexConfigSection } from "./codex-config-section";
@@ -66,7 +67,8 @@ export type ConfigSectionId = "prompts" | "model" | "capabilities" | "memory" | 
 export interface ModelOption {
   id: string;
   name: string;
-  provider?: string;
+  provider_type?: string;
+  provider_id?: string;
 }
 
 export interface ExecutorOption {
@@ -189,12 +191,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       embedded = false,
     } = props;
     const { providers } = useProviders();
-    const { models: globalModels } = useModels({
-      workspacePath: workspacePath || undefined,
-      includeGlobal: true,
-      category: "llm",
-      surface: "chat",
-    });
+    const { models: allModels } = useModels();
     const isClaudeCode = executorType === "CLAUDE_CODE";
     const isCodex = executorType === "CODEX";
 
@@ -274,7 +271,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
             );
         return filteredProviders
           .filter((provider) => provider.category === "llm" || provider.surfaces.includes("chat"))
-        .sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name)),
+          .sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name));
       },
       [codexAllowedProviderIds, providers]
     );
@@ -288,13 +285,13 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     const selectedCodexBaseUrl = readConfigString(executorConfig.base_url)
       ?? readConfigString(executorConfig.baseUrl);
     const codexModelsFilteredByExecutor = useMemo(() => {
-      const availableModels = globalModels.filter((candidate) => candidate.is_available);
+      const availableModels = allModels.filter((candidate) => candidate.is_available);
       return filterModelsByExecutor(availableModels, "CODEX");
-    }, [globalModels]);
+    }, [allModels]);
     const codexModels = useMemo(() => {
       if (!selectedCodexProvider) return [];
       return codexModelsFilteredByExecutor.filter(
-        (candidate) => candidate.provider_id.toLowerCase() === selectedCodexProvider.provider_type.toLowerCase()
+        (candidate) => isModelForSelectedProvider(candidate, selectedCodexProvider)
       );
     }, [codexModelsFilteredByExecutor, selectedCodexProvider]);
     const selectedCodexModel = codexModels.some((candidate) => candidate.id === model)
@@ -316,7 +313,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       });
 
       const nextModel = codexModelsFilteredByExecutor.find((candidate) =>
-        provider ? candidate.provider_id.toLowerCase() === provider.provider_type.toLowerCase() : false
+        provider ? isModelForSelectedProvider(candidate, provider) : false
       );
       if (nextModel && nextModel.id !== model) {
         onModelChange(nextModel.id);
@@ -620,7 +617,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   <SelectContent>
                     {Object.entries(
                       models.reduce<Record<string, ModelOption[]>>((groups, m) => {
-                        const key = m.provider || "Other";
+                        const key = m.provider_id || m.provider_type || "Other";
                         (groups[key] ??= []).push(m);
                         return groups;
                       }, {})
@@ -1140,4 +1137,10 @@ function compactConfig(config: Record<string, unknown>): Record<string, unknown>
   return Object.fromEntries(
     Object.entries(config).filter(([, value]) => value !== undefined && value !== "")
   );
+}
+
+function isModelForSelectedProvider(model: { provider_id?: string }, provider: Provider): boolean {
+  const modelProviderId = model.provider_id?.toLowerCase();
+  const providerId = provider.id.toLowerCase();
+  return modelProviderId === providerId;
 }

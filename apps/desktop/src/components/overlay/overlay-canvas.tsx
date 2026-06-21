@@ -7,7 +7,7 @@ import { DOMZIndex } from "@/types/overlay";
 export function OverlayCanvas(): ReactElement | null {
   const containerRef = useRef<HTMLDivElement>(null);
   const { app, isReady } = useOverlayContext();
-  const { visible, opacity } = useOverlay();
+  const { opacity } = useOverlay();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -24,7 +24,7 @@ export function OverlayCanvas(): ReactElement | null {
     };
   }, [app, isReady]);
 
-  if (!visible || !isReady) return null;
+  if (!isReady) return null;
 
   return (
     <div

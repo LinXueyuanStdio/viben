@@ -3,13 +3,19 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth-store";
 import { useOverlayStore } from "@/stores/overlay-store";
 import { useUiStore } from "@/stores/ui-store";
-import { useVoiceAgentRequestStore } from "@/stores/voice-agent-request-store";
 import { handleWakeWordDetected } from "./wake-word-actions";
+
+const connectVoiceAgent = vi.hoisted(() => vi.fn<() => Promise<void>>());
 
 vi.mock("sonner", () => ({
   toast: {
     info: vi.fn(),
+    error: vi.fn(),
   },
+}));
+
+vi.mock("./voice-agent-service", () => ({
+  connectVoiceAgent,
 }));
 
 vi.hoisted(() => {
@@ -25,13 +31,10 @@ vi.hoisted(() => {
 describe("handleWakeWordDetected", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    connectVoiceAgent.mockResolvedValue(undefined);
     useAuthStore.setState({ isAuthenticated: false, user: null });
     useOverlayStore.setState({ visible: false, waveState: "idle" });
     useUiStore.setState({ isChatPopupOpen: false });
-    useVoiceAgentRequestStore.setState({
-      connectionRequestId: 0,
-      connectionRequestSource: null,
-    });
   });
 
   it("opens the chat popup when an unauthenticated user detects the wake word", () => {
@@ -48,15 +51,14 @@ describe("handleWakeWordDetected", () => {
     expect(toast.info).toHaveBeenCalledWith("聊天面板已打开");
   });
 
-  it("shows the listening overlay and requests voice agent connection when an authenticated user detects the wake word", () => {
+  it("shows the listening overlay and connects voice agent when an authenticated user detects the wake word", () => {
     useAuthStore.setState({ isAuthenticated: true });
 
     handleWakeWordDetected();
 
     expect(useOverlayStore.getState().visible).toBe(true);
     expect(useOverlayStore.getState().waveState).toBe("listening");
-    expect(useVoiceAgentRequestStore.getState().connectionRequestId).toBe(1);
-    expect(useVoiceAgentRequestStore.getState().connectionRequestSource).toBe("wake_word");
+    expect(connectVoiceAgent).toHaveBeenCalledTimes(1);
     expect(useUiStore.getState().isChatPopupOpen).toBe(false);
   });
 });

@@ -132,10 +132,11 @@ export function useAcpChatConfig({
       return modelsFilteredByExecutor;
     }
 
-    // 按 provider_id 过滤
-    return modelsFilteredByExecutor.filter(
-      (m) => m.provider_id.toLowerCase() === selectedProvider.provider_type.toLowerCase()
-    );
+    return modelsFilteredByExecutor.filter((m) => {
+      const modelProviderId = m.provider_id.toLowerCase();
+      const providerId = selectedProvider.id.toLowerCase();
+      return modelProviderId === providerId;
+    });
   }, [modelsFilteredByExecutor, selectedProviderId, filteredProviders]);
 
   // 6. 将 models 转换为 SelectorOption 格式

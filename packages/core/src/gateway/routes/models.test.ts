@@ -73,6 +73,7 @@ const mockModels: Model[] = [
     id: "gpt-4o",
     name: "GPT-4o",
     provider: "openai",
+    provider_id: "openai-default",
     category: "llm",
     surface: "chat",
     contextLength: 128000,
@@ -84,6 +85,7 @@ const mockModels: Model[] = [
     id: "gpt-image-2",
     name: "gpt-image-2",
     provider: "openai",
+    provider_id: "openai-default",
     category: "media",
     surface: "image",
     capabilities: ["t2i", "i2i"],
@@ -303,6 +305,8 @@ describe("Model Routes", () => {
       expect(body.models[0].max_output_tokens).toBe(8192);
       expect(body.models[0].is_default).toBe(true);
       expect(body.models[0].enabled).toBe(true);
+      expect(body.models[1].provider).toBe("openai");
+      expect(body.models[1].provider_id).toBe("openai-default");
     });
 
     it("should include workspace_path in response", async () => {
@@ -336,7 +340,8 @@ describe("Model Routes", () => {
           category: "media",
           surface: "image",
           capabilities: ["t2i", "i2i"],
-          provider_id: "openai",
+          provider: "openai",
+          provider_id: "openai-default",
         }),
       ]);
       expect(body.default_model_id).toBe("gpt-image-2");

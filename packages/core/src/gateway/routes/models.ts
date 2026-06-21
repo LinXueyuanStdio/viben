@@ -25,7 +25,7 @@ import type { ModelConfig, Model } from "../../types";
 interface ModelResponse {
   id: string;
   name: string;
-  provider: string;
+  provider_type: string;
   provider_id: string;
   provider_name: string;
   category?: string;
@@ -87,9 +87,9 @@ async function toSnakeCaseModel(model: Model): Promise<ModelResponse> {
   return {
     id: model.id,
     name: model.name,
-    provider: model.provider,
-    provider_id: model.provider,
-    provider_name: model.provider,
+    provider_type: model.provider,
+    provider_id: model.provider_id ?? model.provider,
+    provider_name: model.provider_id ?? model.provider,
     category: model.category,
     surface: model.surface,
     capabilities: model.capabilities,
@@ -420,7 +420,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
                 properties: {
                   id: { type: "string" },
                   name: { type: "string" },
-                  provider: { type: "string" },
+                  provider_type: { type: "string" },
                   provider_id: { type: "string" },
                   provider_name: { type: "string" },
                   category: { type: "string" },

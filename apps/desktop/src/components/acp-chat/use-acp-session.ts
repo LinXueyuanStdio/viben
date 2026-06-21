@@ -588,9 +588,11 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     if (!selectedProvider) {
       return modelsFilteredByExecutor;
     }
-    return modelsFilteredByExecutor.filter(
-      (m) => m.provider_id.toLowerCase() === selectedProvider.provider_type.toLowerCase()
-    );
+    return modelsFilteredByExecutor.filter((m) => {
+      const modelProviderId = m.provider_id.toLowerCase();
+      const providerId = selectedProvider.id.toLowerCase();
+      return modelProviderId === providerId;
+    });
   }, [modelsFilteredByExecutor, selectedProviderId, filteredProviders]);
 
   // Model selector options

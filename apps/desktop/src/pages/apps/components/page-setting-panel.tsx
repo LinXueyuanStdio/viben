@@ -6,10 +6,12 @@
  */
 
 import { useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
   Download,
+  ExternalLink,
   FolderOpen,
   Info,
   Package,
@@ -21,6 +23,10 @@ import { publishPage, readFile, viewPage } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
+import {
+  getPagePublishKey,
+  usePagePublishStore,
+} from "@/stores/page-publish-store";
 
 // ============================================================================
 // Types
@@ -43,6 +49,12 @@ export interface PageSettingPanelProps {
 // Component
 // ============================================================================
 
+const VIBEN_WEB_URL = "https://viben-web.vercel.app";
+
+function toExternalPublishedPageUrl(url: string): string {
+  return new URL(url, VIBEN_WEB_URL).toString();
+}
+
 export function PageSettingPanel({
   workspacePath,
   pageUid,
@@ -52,10 +64,13 @@ export function PageSettingPanel({
 }: PageSettingPanelProps) {
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const accessToken = useAuthStore((state) => state.user?.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const publishKey = getPagePublishKey(workspacePath, pageUid);
+  const publishEntry = usePagePublishStore((state) => state.entries[publishKey]);
+  const publishActions = usePagePublishStore((state) => state.actions);
+  const publishedUrl = publishEntry?.url ?? null;
+  const isPublishing = publishEntry?.status === "publishing";
 
   const directoryPath = `pages/${pageUid}`;
 
@@ -95,7 +110,7 @@ export function PageSettingPanel({
     }
 
     const baseUrl = getGatewayUrl();
-    setIsPublishing(true);
+    publishActions.startPublish(publishKey);
     try {
       const { page } = await viewPage(baseUrl, workspacePath, pageUid);
       if (!page || page.type !== "static") {
@@ -123,17 +138,28 @@ export function PageSettingPanel({
         );
       }
 
-      setPublishedUrl(result.url);
+      publishActions.finishPublish(publishKey, result.url);
+
       toast.success(t("page.settings.publishSuccess", "Page published"), {
         description: result.url,
       });
     } catch (error) {
       console.error("[PageSettingPanel] publish failed:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      publishActions.failPublish(publishKey, message);
       toast.error(t("page.settings.publishFailed", "Publish failed"), {
-        description: error instanceof Error ? error.message : String(error),
+        description: message,
       });
-    } finally {
-      setIsPublishing(false);
+    }
+  };
+
+  const handleOpenPublishedPage = async () => {
+    if (!publishedUrl) return;
+    const externalUrl = toExternalPublishedPageUrl(publishedUrl);
+    try {
+      await openUrl(externalUrl);
+    } catch {
+      window.open(externalUrl, "_blank");
     }
   };
 
@@ -220,8 +246,18 @@ export function PageSettingPanel({
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   {t("page.settings.published", "Published")}
                 </div>
-                <div className="break-all font-mono text-xs text-muted-foreground">
-                  {publishedUrl}
+                <div className="space-y-3">
+                  <div className="break-all font-mono text-xs text-muted-foreground">
+                    {publishedUrl}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenPublishedPage}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {t("page.settings.openPublishedPage", "Open in Browser")}
+                  </Button>
                 </div>
               </div>
             )}

@@ -9,7 +9,7 @@ import type { ExecutorType } from "@/types";
 import i18n from "@/i18n";
 
 /**
- * Provider IDs that match the provider_id in WorkspaceModel
+ * Provider types that match provider_type in WorkspaceModel
  */
 export type ProviderId =
   | "anthropic"
@@ -97,11 +97,11 @@ export function isProviderAllowed(executorType?: string, providerId?: string): b
 /**
  * Filter models by executor type constraints.
  *
- * @param models - Array of models with provider_id field
+ * @param models - Array of models with provider_type field
  * @param executorType - The executor type to filter for
  * @returns Filtered array of models that are compatible with the executor
  */
-export function filterModelsByExecutor<T extends { provider_id?: string }>(
+export function filterModelsByExecutor<T>(
   models: T[],
   executorType?: string
 ): T[] {
@@ -109,9 +109,20 @@ export function filterModelsByExecutor<T extends { provider_id?: string }>(
   if (!allowedProviders || allowedProviders.length === 0) return models;
 
   return models.filter((model) => {
-    if (!model.provider_id) return true;
-    return allowedProviders.includes(model.provider_id as ProviderId);
+    const providerType = readModelProviderType(model);
+    if (!providerType) return true;
+    return allowedProviders.includes(providerType as ProviderId);
   });
+}
+
+function readModelProviderType(model: unknown): string | undefined {
+  if (!model || typeof model !== "object") return undefined;
+  const record = model as Record<string, unknown>;
+  return typeof record.provider_type === "string"
+    ? record.provider_type
+    : typeof record.provider === "string"
+      ? record.provider
+      : undefined;
 }
 
 /**
