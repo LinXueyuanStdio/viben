@@ -34,7 +34,7 @@ export function buildAcpAgentConfig(params: {
   const selectedProvider = providerId
     ? providers?.find((provider) => provider.id === providerId)
     : undefined;
-  const provider = providerId ?? agent?.provider;
+  const providerIdValue = providerId ?? agent?.provider_id;
   const executorConfig = withCodexProviderConfig(
     agent?.executor_config,
     agent?.executor_type ?? executorType,
@@ -43,7 +43,7 @@ export function buildAcpAgentConfig(params: {
   return {
     name: agent?.name,
     executor_type: agent?.executor_type ?? executorType,
-    provider,
+    provider_id: providerIdValue,
     model: selectedModel,
     system_prompt: agent?.system_prompt,
     append_prompt: agent?.append_prompt,

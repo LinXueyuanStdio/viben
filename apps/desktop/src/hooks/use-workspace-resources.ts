@@ -767,7 +767,7 @@ export interface AgentListItem {
   /** Model ID (agents only) */
   model?: string;
   /** Provider ID (agents only) */
-  provider?: string;
+  provider_id?: string;
   /** Whether this agent is marked as a template (agents only) */
   is_template?: boolean;
   /** Template description for selection UI (agents only) */
@@ -888,7 +888,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
         config_path: a.config_path,
         executor_type: a.executor_type,
         model: a.model,
-        provider: a.provider,
+        provider_id: a.provider_id,
         is_template: a.is_template,
         template_description: a.template_description,
       }));

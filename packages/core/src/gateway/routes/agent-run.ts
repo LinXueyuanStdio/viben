@@ -111,7 +111,7 @@ function createSessionLogger(sessionId: string, traceId?: string) {
 export interface AgentConfigPayload {
   name?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;
@@ -173,7 +173,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
     return {
       name: config.name,
       model: config.model,
-      provider: config.provider,
+      provider_id: config.provider_id,
       system_prompt: systemPrompt || undefined,
       append_prompt: config.append_prompt,
       temperature: config.temperature,
@@ -470,7 +470,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         log.info("config", "loaded_from_path", {
           agentName: agentConfig.name,
           model: agentConfig.model,
-          provider: agentConfig.provider,
+          provider_id: agentConfig.provider_id,
         });
       }
     } else {
@@ -479,7 +479,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         log.info("config", "using_inline", {
           agentName: agentConfig.name,
           model: agentConfig.model,
-          provider: agentConfig.provider,
+          provider_id: agentConfig.provider_id,
         });
       } else {
         log.info("config", "using_defaults");
@@ -499,7 +499,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       agentConfig: agentConfig ? {
         name: agentConfig.name,
         model: agentConfig.model,
-        provider: agentConfig.provider,
+        provider_id: agentConfig.provider_id,
         executor_type: agentConfig.executor_type,
         mcp_servers: agentConfig.mcp_servers,
         skills: agentConfig.skills,

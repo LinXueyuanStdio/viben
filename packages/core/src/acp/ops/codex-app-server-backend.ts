@@ -281,7 +281,7 @@ function codexArgs(agentConfig: AgentConfigPayload | undefined, baseArgs: string
   const config = asRecord(agentConfig?.executor_config);
   const modelProvider = readString(config.model_provider)
     ?? readString(config.modelProvider)
-    ?? readString(agentConfig?.provider);
+    ?? readString(agentConfig?.provider_id);
   const baseUrl = readString(config.base_url) ?? readString(config.baseUrl);
   const args = [...baseArgs];
   if (modelProvider) {
@@ -313,8 +313,8 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
   if (context.agentConfig?.model) {
     base.model = context.agentConfig.model;
   }
-  if (context.agentConfig?.provider) {
-    base.modelProvider = context.agentConfig.provider;
+  if (context.agentConfig?.provider_id) {
+    base.modelProvider = context.agentConfig.provider_id;
   }
   const config = asRecord(context.agentConfig?.executor_config);
   const approvalPolicy = codexApprovalPolicy(context.agentConfig);

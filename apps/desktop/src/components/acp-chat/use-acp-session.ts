@@ -256,7 +256,7 @@ function summarizeAgentConfigForLog(config: AgentConfigPayload | undefined): Rec
   return {
     name: config.name,
     executorType: config.executor_type,
-    provider: config.provider,
+    provider_id: config.provider_id,
     model: config.model,
     approvalMode: config.approval_mode,
     permissionMode: config.permission_mode,

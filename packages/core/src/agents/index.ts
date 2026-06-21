@@ -64,7 +64,7 @@ function agentConfigFileToAgent(
     description: config.description,
     tools: config.tools ?? [],
     model: config.model,
-    provider: config.provider,
+    provider_id: config.provider_id,
     systemPrompt: systemPrompt || undefined,
     appendPrompt: config.append_prompt,
     temperature: config.temperature,
@@ -95,7 +95,7 @@ function agentToConfigFile(
     description?: string;
     tools?: string[];
     model?: string;
-    provider?: string;
+    provider_id?: string;
     appendPrompt?: string;
     temperature?: number;
     maxTokens?: number;
@@ -119,7 +119,7 @@ function agentToConfigFile(
     description: overrides.description ?? agent.description,
     tools: overrides.tools ?? agent.tools,
     model: overrides.model ?? agent.model,
-    provider: overrides.provider ?? agent.provider,
+    provider_id: overrides.provider_id ?? agent.provider_id,
     append_prompt: overrides.appendPrompt ?? agent.appendPrompt,
     temperature: overrides.temperature ?? agent.temperature,
     max_tokens: overrides.maxTokens ?? agent.maxTokens,
@@ -220,7 +220,7 @@ export class AgentManager {
           description: template.description,
           tools: template.tools,
           model: template.model,
-          provider: template.provider,
+          provider_id: template.provider_id,
           systemPrompt: template.systemPrompt,
           appendPrompt: template.appendPrompt,
           temperature: template.temperature,
@@ -241,7 +241,7 @@ export class AgentManager {
       description: options.description || baseConfig.description,
       tools: options.tools ?? [],
       model: options.model || baseConfig.model,
-      provider: options.provider || baseConfig.provider,
+      provider_id: options.provider_id || baseConfig.provider_id,
       append_prompt: options.append_prompt ?? baseConfig.appendPrompt,
       temperature: options.temperature ?? baseConfig.temperature,
       max_tokens: options.max_tokens ?? baseConfig.maxTokens,
@@ -437,7 +437,7 @@ export class AgentManager {
       description: template.description,
       tools: template.tools,
       model: template.model,
-      provider: template.provider,
+      provider_id: template.provider_id,
       append_prompt: template.appendPrompt,
       temperature: template.temperature,
       max_tokens: template.maxTokens,
@@ -498,7 +498,7 @@ export class AgentManager {
       description: agent.description,
       tools: agent.tools,
       model: agent.model,
-      provider: agent.provider,
+      provider_id: agent.provider_id,
       append_prompt: agent.appendPrompt,
       temperature: agent.temperature,
       max_tokens: agent.maxTokens,

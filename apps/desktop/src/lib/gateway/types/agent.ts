@@ -13,7 +13,7 @@ export interface CreateAgentOptions {
   id?: string;
   description?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;
@@ -113,7 +113,7 @@ export interface AgentResponse {
   config_path?: string;
   description?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;
@@ -147,7 +147,7 @@ export interface UpdateAgentOptions {
   name?: string;
   description?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;

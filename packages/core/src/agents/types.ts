@@ -28,7 +28,7 @@ export interface AgentConfigFile {
   description?: string;
   tools?: string[];
   model?: string;
-  provider?: string;
+  provider_id?: string;
   append_prompt?: string;
   temperature?: number;
   max_tokens?: number;

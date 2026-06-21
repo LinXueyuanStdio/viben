@@ -175,7 +175,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
                   config_path: { type: "string" },
                   description: { type: "string" },
                   model: { type: "string" },
-                  provider: { type: "string" },
+                  provider_id: { type: "string" },
                   executor_type: { type: "string" },
                 },
               },
@@ -211,7 +211,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         config_path: a.path ? `${a.path}/AGENTS.md` : undefined,
         description: a.description,
         model: a.model,
-        provider: a.provider,
+        provider_id: a.provider_id,
         system_prompt: a.systemPrompt,
         append_prompt: a.appendPrompt,
         temperature: a.temperature,
@@ -274,7 +274,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       id?: string;
       description?: string;
       model?: string;
-      provider?: string;
+      provider_id?: string;
       system_prompt?: string;
       append_prompt?: string;
       temperature?: number;
@@ -295,7 +295,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         name: body.name,
         description: body.description,
         model: body.model,
-        provider: body.provider,
+        provider_id: body.provider_id,
         system_prompt: body.system_prompt,
         append_prompt: body.append_prompt,
         temperature: body.temperature,
@@ -331,7 +331,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
-        provider: agent.provider,
+        provider_id: agent.provider_id,
         system_prompt: agent.systemPrompt,
         append_prompt: agent.appendPrompt,
         temperature: agent.temperature,
@@ -407,7 +407,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         is_template: t.isTemplate,
         template_description: t.templateDescription,
         model: t.model,
-        provider: t.provider,
+        provider_id: t.provider_id,
         executor_type: t.executorType,
         created_at: t.created_at,
         updated_at: t.updated_at,
@@ -464,7 +464,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         is_template: template.isTemplate,
         template_description: template.templateDescription,
         model: template.model,
-        provider: template.provider,
+        provider_id: template.provider_id,
         executor_type: template.executorType,
         system_prompt: template.systemPrompt,
         created_at: template.created_at,
@@ -509,7 +509,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
           description: agent.description,
           model: agent.model,
-          provider: agent.provider,
+          provider_id: agent.provider_id,
           system_prompt: agent.systemPrompt,
           append_prompt: agent.appendPrompt,
           temperature: agent.temperature,
@@ -566,7 +566,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
-        provider: agent.provider,
+        provider_id: agent.provider_id,
         system_prompt: agent.systemPrompt,
         append_prompt: agent.appendPrompt,
         temperature: agent.temperature,
@@ -1100,7 +1100,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
       description: agent.description,
       model: agent.model,
-      provider: agent.provider,
+      provider_id: agent.provider_id,
       system_prompt: agent.systemPrompt,
       append_prompt: agent.appendPrompt,
       temperature: agent.temperature,
@@ -1128,7 +1128,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       name?: string;
       description?: string;
       model?: string;
-      provider?: string;
+      provider_id?: string;
       system_prompt?: string;
       append_prompt?: string;
       temperature?: number;
@@ -1149,7 +1149,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       name: body.name,
       description: body.description,
       model: body.model,
-      provider: body.provider,
+      provider_id: body.provider_id,
       systemPrompt: body.system_prompt,
       appendPrompt: body.append_prompt,
       temperature: body.temperature,
@@ -1186,7 +1186,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
-        provider: agent.provider,
+        provider_id: agent.provider_id,
         system_prompt: agent.systemPrompt,
         append_prompt: agent.appendPrompt,
         temperature: agent.temperature,

@@ -220,7 +220,7 @@ export function WorkspaceAgentsPage({
       path: agent.config_path,
       description: agent.description,
       model: agent.model,
-      provider: agent.provider,
+      provider_id: agent.provider_id,
       system_prompt: undefined as string | undefined,
       temperature: undefined as number | undefined,
       max_tokens: undefined as number | undefined,

@@ -905,7 +905,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
     return {
       name: config.name,
       model: config.model,
-      provider: config.provider,
+      provider_id: config.provider_id,
       system_prompt: systemPrompt || undefined,
       append_prompt: config.append_prompt,
       temperature: config.temperature,
@@ -1047,7 +1047,7 @@ function summarizeAgentConfig(config: AgentConfigPayload | undefined): Record<st
   return {
     name: config.name,
     executorType: config.executor_type,
-    provider: config.provider,
+    provider_id: config.provider_id,
     model: config.model,
     approvalMode: config.approval_mode,
     permissionMode: config.permission_mode,

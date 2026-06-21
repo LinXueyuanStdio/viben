@@ -52,7 +52,7 @@ interface AgentWsQuery {
 interface AgentConfigPayload {
   name?: string;
   model?: string;
-  provider?: string;
+  provider_id?: string;
   system_prompt?: string;
   append_prompt?: string;
   temperature?: number;
@@ -212,7 +212,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
     return {
       name: config.name,
       model: config.model,
-      provider: config.provider,
+      provider_id: config.provider_id,
       system_prompt: systemPrompt || undefined,
       append_prompt: config.append_prompt,
       temperature: config.temperature,

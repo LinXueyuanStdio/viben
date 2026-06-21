@@ -88,7 +88,7 @@ description: Default workspace agent
 
 # Model configuration (optional, uses defaults)
 # model: claude-sonnet-4-20250514
-# provider: anthropic
+# provider_id: anthropic
 `;
 
 /**

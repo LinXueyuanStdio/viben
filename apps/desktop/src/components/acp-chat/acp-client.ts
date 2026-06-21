@@ -189,7 +189,7 @@ export type ElicitationResponse =
 export interface AgentConfigPayload {
   name?: string;
   executor_type?: string;
-  provider?: string;
+  provider_id?: string;
   model?: string;
   system_prompt?: string;
   permission_mode?: string;
@@ -981,7 +981,7 @@ function summarizeAgentConfig(config: AgentConfigPayload | undefined): Record<st
   return {
     name: config.name,
     executorType: config.executor_type,
-    provider: config.provider,
+    provider_id: config.provider_id,
     model: config.model,
     approvalMode: config.approval_mode,
     permissionMode: config.permission_mode,
