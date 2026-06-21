@@ -65,6 +65,7 @@ import {
   isModelForSelectedProvider,
   readConfigString,
   readEnvRecord,
+  ANTHROPIC_MODEL_ENV,
 } from "./provider-model-selection";
 
 // Section IDs for scroll navigation
@@ -265,6 +266,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     const executorConfig = props.executorConfig ?? {};
     const availableModels = useMemo(() => allModels.filter((candidate) => candidate.is_available), [allModels]);
 
+    const claudeEnv = useMemo(() => readEnvRecord(executorConfig.env), [executorConfig.env]);
     const selectedClaudeProviderId = readConfigString(executorConfig.model_provider) ?? "";
     const claudeAllowedProviderIds = useMemo(() => getAllowedProviders("CLAUDE_CODE") ?? [], []);
     const claudeProviders = useMemo(
@@ -297,8 +299,9 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       })),
       [claudeModels]
     );
-    const selectedClaudeModel = claudeModelOptions.some((candidate) => candidate.id === model)
-      ? model
+    const claudeCurrentModel = claudeEnv[ANTHROPIC_MODEL_ENV] ?? model;
+    const selectedClaudeModel = claudeModelOptions.some((candidate) => candidate.id === claudeCurrentModel)
+      ? claudeCurrentModel
       : "";
 
     const selectedCodexProviderId = readConfigString(executorConfig.model_provider) ?? "";
@@ -343,7 +346,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
           ...executorConfig,
           env: readEnvRecord(executorConfig.env),
         },
-        currentModel: model,
+        currentModel: claudeCurrentModel,
         providerId,
         providerModels,
       });
@@ -436,7 +439,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       if (selectedClaudeProviderId !== selectedClaudeProvider.id) {
         const result = buildClaudeCodeProviderSwitch({
           config: executorConfig,
-          currentModel: model,
+          currentModel: claudeCurrentModel,
           providerId: selectedClaudeProvider.id,
           providerModels: claudeModels,
         });
@@ -445,7 +448,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
           onModelChange(result.currentModel);
         }
       }
-    }, [claudeModels, executorConfig, isClaudeCode, model, onModelChange, selectedClaudeProvider, selectedClaudeProviderId, props.onExecutorConfigChange]);
+    }, [claudeCurrentModel, claudeModels, executorConfig, isClaudeCode, model, onModelChange, selectedClaudeProvider, selectedClaudeProviderId, props.onExecutorConfigChange]);
 
     useEffect(() => {
       if (!isClaudeCode || !selectedClaudeProvider || claudeModels.length === 0) return;
@@ -454,7 +457,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
           ...executorConfig,
           env: readEnvRecord(executorConfig.env),
         },
-        currentModel: model,
+        currentModel: claudeCurrentModel,
         providerId: selectedClaudeProvider.id,
         providerModels: claudeModels,
       });
@@ -462,7 +465,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
         props.onExecutorConfigChange?.(result.config);
       }
       if (result.currentModel && result.currentModel !== model) onModelChange(result.currentModel);
-    }, [claudeModels, executorConfig, isClaudeCode, model, onModelChange, selectedClaudeProvider, props.onExecutorConfigChange]);
+    }, [claudeCurrentModel, claudeModels, executorConfig, isClaudeCode, model, onModelChange, selectedClaudeProvider, props.onExecutorConfigChange]);
 
     // Get availability status display
     const getAvailabilityDisplay = () => {

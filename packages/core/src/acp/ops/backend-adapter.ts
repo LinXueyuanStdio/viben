@@ -32,6 +32,7 @@ import {
   GUI_EXECUTE_TOOL_NAME,
 } from "./client-side-mcp-constants";
 import { CodexAppServerBackendAdapter } from "./codex-app-server-backend";
+import { AcpPromptError, normalizeAcpError } from "./errors";
 import type {
   AcpAgentCapabilities,
   AcpConfigOption,
@@ -1162,8 +1163,12 @@ async function withBackendTimeout<T>(
   }
 }
 
-function addProcessDiagnostics(error: unknown, processHandle: AcpBackendProcess, fallbackMessage: string): Error {
-  const base = error instanceof Error ? error : new Error(String(error));
+export function createAcpBackendDiagnosticError(
+  error: unknown,
+  processHandle: AcpBackendProcess,
+  fallbackMessage: string
+): Error {
+  const base = error instanceof Error ? error : new AcpPromptError(normalizeAcpError(error));
   const diagnostic = base as Error & Record<string, unknown>;
   if (!diagnostic.message || isEnoentError(diagnostic)) {
     diagnostic.message = fallbackMessage;
@@ -1178,7 +1183,25 @@ function addProcessDiagnostics(error: unknown, processHandle: AcpBackendProcess,
   diagnostic.claudeConfigDir = diagnostic.claudeConfigDir ?? processHandle.claudeConfigDir;
   diagnostic.resolution = diagnostic.resolution ?? processHandle.resolutionDiagnostics;
   diagnostic.hint = diagnostic.hint ?? createBackendFailureHint(processHandle);
+  if (base instanceof AcpPromptError) {
+    Object.assign(base.detail, {
+      stderr: base.detail.stderr ?? diagnostic.stderr,
+      exitCode: base.detail.exitCode ?? diagnostic.exitCode,
+      signal: base.detail.signal ?? diagnostic.signal,
+      command: base.detail.command ?? diagnostic.command,
+      args: base.detail.args ?? diagnostic.args,
+      cwd: base.detail.cwd ?? diagnostic.cwd,
+      cwdExists: base.detail.cwdExists ?? diagnostic.cwdExists,
+      claudeConfigDir: base.detail.claudeConfigDir ?? diagnostic.claudeConfigDir,
+      resolution: base.detail.resolution ?? diagnostic.resolution,
+      hint: base.detail.hint ?? diagnostic.hint,
+    });
+  }
   return base;
+}
+
+function addProcessDiagnostics(error: unknown, processHandle: AcpBackendProcess, fallbackMessage: string): Error {
+  return createAcpBackendDiagnosticError(error, processHandle, fallbackMessage);
 }
 
 function createBackendError(message: string, processHandle: AcpBackendProcess): Error {

@@ -127,4 +127,68 @@ describe("provider model selection", () => {
       CUSTOM_FLAG: "1",
     });
   });
+
+  it("keeps an existing valid ANTHROPIC_MODEL as the Claude Code current model", () => {
+    const result = buildClaudeCodeProviderSwitch({
+      config: {
+        env: {
+          ANTHROPIC_MODEL: "claude-haiku-main",
+        },
+      },
+      currentModel: "gpt-5.1",
+      providerId: "anthropic-main",
+      providerModels: filterProviderModels(models, "anthropic-main"),
+    });
+
+    expect(result.currentModel).toBe("claude-haiku-main");
+    expect(result.config.env).toMatchObject({
+      ANTHROPIC_MODEL: "claude-haiku-main",
+    });
+  });
+
+  it("removes provider-owned Claude Code environment variables", () => {
+    const result = buildClaudeCodeProviderSwitch({
+      config: {
+        env: {
+          ANTHROPIC_BASE_URL: "https://api.deepseek.com/anthropic",
+          ANTHROPIC_AUTH_TOKEN: "secret",
+          CUSTOM_FLAG: "1",
+        },
+      },
+      currentModel: "",
+      providerId: "anthropic-main",
+      providerModels: filterProviderModels(models, "anthropic-main"),
+    });
+
+    expect(result.config.env).not.toHaveProperty("ANTHROPIC_BASE_URL");
+    expect(result.config.env).not.toHaveProperty("ANTHROPIC_AUTH_TOKEN");
+    expect(result.config.env).toMatchObject({
+      CUSTOM_FLAG: "1",
+    });
+  });
+
+  it("clears stale Claude Code model environment variables when the provider has no models", () => {
+    const result = buildClaudeCodeProviderSwitch({
+      config: {
+        env: {
+          CLAUDE_CODE_EFFORT_LEVEL: "max",
+          CLAUDE_CODE_SUBAGENT_MODEL: "claude-haiku-main",
+          ANTHROPIC_MODEL: "claude-sonnet-main",
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-main",
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "claude-haiku-main",
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-main",
+          CUSTOM_FLAG: "1",
+        },
+      },
+      currentModel: "claude-sonnet-main",
+      providerId: "anthropic-empty",
+      providerModels: [],
+    });
+
+    expect(result.currentModel).toBe("");
+    expect(result.config.env).toEqual({
+      CLAUDE_CODE_EFFORT_LEVEL: "max",
+      CUSTOM_FLAG: "1",
+    });
+  });
 });

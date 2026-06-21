@@ -78,10 +78,17 @@ export function buildClaudeCodeProviderSwitch({
   providerModels,
 }: ClaudeCodeProviderSwitchInput): ClaudeCodeProviderSwitchResult {
   const currentEnv = readEnvRecord(config.env);
+  const preservedEnv = Object.fromEntries(
+    Object.entries(currentEnv).filter(
+      ([key]) => !CLAUDE_CODE_PROVIDER_ENV_KEYS.has(key) && !CLAUDE_CODE_MODEL_ENV_KEYS.has(key)
+    )
+  );
   const providerModelIds = new Set(providerModels.map((model) => model.id));
-  const nextCurrentModel = providerModelIds.has(currentModel)
-    ? currentModel
-    : pickPreferredModel(providerModels, "sonnet") ?? providerModels[0]?.id ?? "";
+  const nextCurrentModel = pickValidProviderModel(currentEnv[ANTHROPIC_MODEL_ENV], providerModelIds)
+    ?? pickValidProviderModel(currentModel, providerModelIds)
+    ?? pickPreferredModel(providerModels, "sonnet")
+    ?? providerModels[0]?.id
+    ?? "";
   const sonnetModel = pickValidProviderModel(
     currentEnv[ANTHROPIC_DEFAULT_SONNET_MODEL_ENV],
     providerModelIds
@@ -100,7 +107,7 @@ export function buildClaudeCodeProviderSwitch({
   ) ?? haikuModel;
 
   const env = {
-    ...currentEnv,
+    ...preservedEnv,
     ...(nextCurrentModel ? { [ANTHROPIC_MODEL_ENV]: nextCurrentModel } : {}),
     ...(sonnetModel ? { [ANTHROPIC_DEFAULT_SONNET_MODEL_ENV]: sonnetModel } : {}),
     ...(haikuModel ? { [ANTHROPIC_DEFAULT_HAIKU_MODEL_ENV]: haikuModel } : {}),

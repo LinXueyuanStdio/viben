@@ -70,10 +70,10 @@ export function ProviderModelSelector({
                       </Badge>
                     )}
                   </div>
-                  <div className="break-all text-xs leading-snug text-muted-foreground">
-                    {PROVIDER_TYPE_LABELS[selectedProvider.provider_type] ?? selectedProvider.provider_type}
-                    {selectedProvider.base_url ? ` · ${selectedProvider.base_url}` : ""}
-                  </div>
+	                  <div className="break-all text-xs leading-snug text-muted-foreground">
+	                    {PROVIDER_TYPE_LABELS[selectedProvider.provider_type] ?? selectedProvider.provider_type}
+	                    {showBaseUrl && selectedProvider.base_url ? ` · ${selectedProvider.base_url}` : ""}
+	                  </div>
                 </div>
               ) : (
                 <span className="text-muted-foreground">选择 provider</span>
@@ -91,10 +91,10 @@ export function ProviderModelSelector({
                         </Badge>
                       )}
                     </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {PROVIDER_TYPE_LABELS[provider.provider_type] ?? provider.provider_type}
-                      {provider.base_url ? ` · ${provider.base_url}` : ""}
-                    </span>
+	                    <span className="truncate text-xs text-muted-foreground">
+	                      {PROVIDER_TYPE_LABELS[provider.provider_type] ?? provider.provider_type}
+	                      {showBaseUrl && provider.base_url ? ` · ${provider.base_url}` : ""}
+	                    </span>
                   </span>
                 </SelectItem>
               ))}

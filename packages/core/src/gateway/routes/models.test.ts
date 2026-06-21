@@ -42,6 +42,7 @@ vi.mock("../../models", () => ({
     clearFallbacks: vi.fn(),
     getModelsByProvider: vi.fn(),
     reload: vi.fn(),
+    getModel: vi.fn(),
     createModel: vi.fn(),
     enableModel: vi.fn(),
     disableModel: vi.fn(),
@@ -1135,6 +1136,11 @@ describe("Model Routes", () => {
   describe("POST /api/models/:id/enable", () => {
     it("should enable a model", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModel).mockResolvedValue(createMockModel({
+        id: "claude-sonnet",
+        provider: "anthropic",
+        provider_id: "anthropic-main",
+      }));
       vi.mocked(modelManager.enableModel).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
@@ -1147,12 +1153,16 @@ describe("Model Routes", () => {
       expect(body.success).toBe(true);
       expect(body.model_id).toBe("claude-sonnet");
       expect(body.enabled).toBe(true);
-      expect(modelManager.enableModel).toHaveBeenCalledWith("claude-sonnet");
+      expect(modelManager.enableModel).toHaveBeenCalledWith(
+        "claude-sonnet",
+        "anthropic",
+        "anthropic-main"
+      );
     });
 
     it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
-      vi.mocked(modelManager.enableModel).mockRejectedValue(new Error("Model not found"));
+      vi.mocked(modelManager.getModel).mockResolvedValue(null);
 
       const response = await fastify.inject({
         method: "POST",
@@ -1172,6 +1182,11 @@ describe("Model Routes", () => {
   describe("POST /api/models/:id/disable", () => {
     it("should disable a model", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModel).mockResolvedValue(createMockModel({
+        id: "claude-sonnet",
+        provider: "anthropic",
+        provider_id: "anthropic-main",
+      }));
       vi.mocked(modelManager.disableModel).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
@@ -1184,12 +1199,16 @@ describe("Model Routes", () => {
       expect(body.success).toBe(true);
       expect(body.model_id).toBe("claude-sonnet");
       expect(body.enabled).toBe(false);
-      expect(modelManager.disableModel).toHaveBeenCalledWith("claude-sonnet");
+      expect(modelManager.disableModel).toHaveBeenCalledWith(
+        "claude-sonnet",
+        "anthropic",
+        "anthropic-main"
+      );
     });
 
     it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
-      vi.mocked(modelManager.disableModel).mockRejectedValue(new Error("Model not found"));
+      vi.mocked(modelManager.getModel).mockResolvedValue(null);
 
       const response = await fastify.inject({
         method: "POST",
