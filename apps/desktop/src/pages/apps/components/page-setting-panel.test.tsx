@@ -365,8 +365,8 @@ describe("PageSettingPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
     fireEvent.click(await screen.findByRole("button", { name: /嵌入此页面/i }));
 
-    const embedInput = screen.getByLabelText("嵌入代码");
-    expect(embedInput).toHaveValue(
+    const embedInput = screen.getByLabelText("嵌入代码") as HTMLTextAreaElement;
+    expect(embedInput.value).toBe(
       '<iframe src="https://viben-web.vercel.app/page/user-1/demo" width="100%" height="600" frameborder="0" allowfullscreen />'
     );
 

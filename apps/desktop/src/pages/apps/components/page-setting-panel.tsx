@@ -6,15 +6,27 @@
  */
 
 import { useState } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import {
+  ArrowLeft,
   CheckCircle2,
+  ChevronRight,
+  Code2,
+  Copy,
   Download,
   ExternalLink,
   FolderOpen,
+  Globe,
   Info,
+  Link2,
+  Mail,
+  MessageCircle,
   Package,
+  Search,
+  Share2,
+  Tags,
   UploadCloud,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +34,9 @@ import { getGatewayUrl } from "@/lib/gateway/config";
 import { publishPage, readFile, viewPage } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   getPagePublishKey,
@@ -51,8 +66,40 @@ export interface PageSettingPanelProps {
 
 const VIBEN_WEB_URL = "https://viben-web.vercel.app";
 
+type PublishSettingsView = "overview" | "seo" | "embed" | "share";
+
 function toExternalPublishedPageUrl(url: string): string {
   return new URL(url, VIBEN_WEB_URL).toString();
+}
+
+function buildEmbedCode(url: string): string {
+  return `<iframe src="${url}" width="100%" height="600" frameborder="0" allowfullscreen />`;
+}
+
+interface PublishActionRowProps {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+  trailing?: ReactNode;
+}
+
+function PublishActionRow({
+  icon: Icon,
+  label,
+  onClick,
+  trailing = <ChevronRight className="h-4 w-4 text-muted-foreground" />,
+}: PublishActionRowProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+    >
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <span className="min-w-0 flex-1 text-foreground">{label}</span>
+      {trailing}
+    </button>
+  );
 }
 
 export function PageSettingPanel({
@@ -64,6 +111,12 @@ export function PageSettingPanel({
 }: PageSettingPanelProps) {
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [publishSettingsView, setPublishSettingsView] =
+    useState<PublishSettingsView>("overview");
+  const [seoDiscoverable, setSeoDiscoverable] = useState(true);
+  const [showEmbedTitle, setShowEmbedTitle] = useState(true);
+  const [seoTitle, setSeoTitle] = useState(pageName);
+  const [seoDescription, setSeoDescription] = useState("");
   const accessToken = useAuthStore((state) => state.user?.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const publishKey = getPagePublishKey(workspacePath, pageUid);
@@ -71,8 +124,22 @@ export function PageSettingPanel({
   const publishActions = usePagePublishStore((state) => state.actions);
   const publishedUrl = publishEntry?.url ?? null;
   const isPublishing = publishEntry?.status === "publishing";
+  const externalPublishedUrl = publishedUrl
+    ? toExternalPublishedPageUrl(publishedUrl)
+    : null;
+  const embedCode = externalPublishedUrl ? buildEmbedCode(externalPublishedUrl) : "";
 
   const directoryPath = `pages/${pageUid}`;
+
+  const copyText = async (text: string, successMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(successMessage);
+    } catch (error) {
+      console.error("[PageSettingPanel] copy failed:", error);
+      toast.error(t("common.copyFailed", "Failed to copy"));
+    }
+  };
 
   const handleDownloadZip = async () => {
     const baseUrl = getGatewayUrl();
@@ -154,12 +221,29 @@ export function PageSettingPanel({
   };
 
   const handleOpenPublishedPage = async () => {
-    if (!publishedUrl) return;
-    const externalUrl = toExternalPublishedPageUrl(publishedUrl);
+    if (!externalPublishedUrl) return;
     try {
-      await openUrl(externalUrl);
+      await openUrl(externalPublishedUrl);
     } catch {
-      window.open(externalUrl, "_blank");
+      window.open(externalPublishedUrl, "_blank");
+    }
+  };
+
+  const handleSocialShare = async (target: "x" | "whatsapp" | "facebook" | "linkedin" | "email") => {
+    if (!externalPublishedUrl) return;
+    const encodedUrl = encodeURIComponent(externalPublishedUrl);
+    const encodedTitle = encodeURIComponent(pageName);
+    const targets: Record<typeof target, string> = {
+      x: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
+      whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+      email: `mailto:?subject=${encodedTitle}&body=${encodedUrl}`,
+    };
+    try {
+      await openUrl(targets[target]);
+    } catch {
+      window.open(targets[target], "_blank");
     }
   };
 
@@ -240,25 +324,227 @@ export function PageSettingPanel({
                   )}
             </p>
 
-            {publishedUrl && (
+            {publishedUrl && externalPublishedUrl && (
               <div className="mb-4 rounded-md border border-border bg-muted/50 p-3">
-                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  {t("page.settings.published", "Published")}
-                </div>
-                <div className="space-y-3">
-                  <div className="break-all font-mono text-xs text-muted-foreground">
-                    {publishedUrl}
+                {publishSettingsView === "overview" && (
+                  <div className="space-y-3">
+                    <div className="flex min-w-0 items-center rounded-md border border-border bg-background">
+                      <div className="shrink-0 border-r border-border px-2 py-2 font-mono text-xs text-muted-foreground">
+                        {VIBEN_WEB_URL}
+                      </div>
+                      <div className="min-w-0 flex-1 truncate px-2 py-2 font-mono text-xs text-foreground">
+                        {publishedUrl}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Copy published URL"
+                        onClick={() =>
+                          copyText(
+                            externalPublishedUrl,
+                            t("page.settings.copyPublishedUrlSuccess", "Link copied")
+                          )
+                        }
+                        className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Open published page"
+                        onClick={handleOpenPublishedPage}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <PublishActionRow
+                        icon={Search}
+                        label="搜索引擎索引"
+                        onClick={() => setPublishSettingsView("seo")}
+                      />
+                    </div>
+                    <div className="border-t border-border" />
+                    <div className="space-y-1">
+                      <PublishActionRow
+                        icon={Code2}
+                        label="嵌入此页面"
+                        onClick={() => setPublishSettingsView("embed")}
+                      />
+                      <PublishActionRow
+                        icon={Share2}
+                        label="分享到社交平台"
+                        onClick={() => setPublishSettingsView("share")}
+                      />
+                    </div>
+                    <div className="border-t border-border" />
+                    <div className="space-y-1">
+                      <PublishActionRow
+                        icon={ExternalLink}
+                        label="在浏览器打开"
+                        onClick={handleOpenPublishedPage}
+                        trailing={null}
+                      />
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenPublishedPage}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    {t("page.settings.openPublishedPage", "Open in Browser")}
-                  </Button>
-                </div>
+                )}
+
+                {publishSettingsView === "seo" && (
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      aria-label="Back to publish settings"
+                      onClick={() => setPublishSettingsView("overview")}
+                      className="flex items-center gap-2 text-sm font-medium text-foreground"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      搜索引擎索引
+                    </button>
+                    <div className="flex items-center gap-3 rounded-md px-2 py-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 text-sm text-foreground">
+                        可在网络上被发现
+                      </span>
+                      <Switch
+                        checked={seoDiscoverable}
+                        onCheckedChange={setSeoDiscoverable}
+                        aria-label="可在网络上被发现"
+                      />
+                    </div>
+                    <div className="border-t border-border" />
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-foreground">
+                        SEO 预览
+                      </div>
+                      <div className="rounded-md border border-border bg-background p-3">
+                        <div className="truncate text-sm font-medium text-blue-600">
+                          {seoTitle || pageName}
+                        </div>
+                        <div className="truncate text-xs text-green-700">
+                          {externalPublishedUrl}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {seoDescription || "Demo description"}
+                        </div>
+                      </div>
+                      <label className="block space-y-1 text-sm">
+                        <span className="font-medium text-foreground">
+                          链接标题
+                        </span>
+                        <Input
+                          value={seoTitle}
+                          onChange={(event) => setSeoTitle(event.target.value)}
+                        />
+                      </label>
+                      <label className="block space-y-1 text-sm">
+                        <span className="font-medium text-foreground">描述</span>
+                        <Textarea
+                          value={seoDescription}
+                          onChange={(event) =>
+                            setSeoDescription(event.target.value)
+                          }
+                          className="min-h-[84px]"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {publishSettingsView === "embed" && (
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      aria-label="Back to publish settings"
+                      onClick={() => setPublishSettingsView("overview")}
+                      className="flex items-center gap-2 text-sm font-medium text-foreground"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      嵌入此页面
+                    </button>
+                    <div className="flex items-center gap-3 rounded-md px-2 py-2">
+                      <Tags className="h-4 w-4 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 text-sm text-foreground">
+                        显示页面标题
+                      </span>
+                      <Switch
+                        checked={showEmbedTitle}
+                        onCheckedChange={setShowEmbedTitle}
+                        aria-label="显示页面标题"
+                      />
+                    </div>
+                    <div className="border-t border-border" />
+                    <label className="block space-y-2 text-sm">
+                      <span className="sr-only">嵌入代码</span>
+                      <Textarea
+                        aria-label="嵌入代码"
+                        value={embedCode}
+                        readOnly
+                        className="min-h-[108px] font-mono text-xs"
+                      />
+                    </label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        copyText(
+                          embedCode,
+                          t("page.settings.copyEmbedSuccess", "Embed code copied")
+                        )
+                      }
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      复制代码
+                    </Button>
+                  </div>
+                )}
+
+                {publishSettingsView === "share" && (
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      aria-label="Back to publish settings"
+                      onClick={() => setPublishSettingsView("overview")}
+                      className="flex items-center gap-2 text-sm font-medium text-foreground"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      分享到社交平台
+                    </button>
+                    <div className="space-y-1">
+                      <PublishActionRow
+                        icon={Share2}
+                        label="分享到 X"
+                        onClick={() => handleSocialShare("x")}
+                        trailing={null}
+                      />
+                      <PublishActionRow
+                        icon={MessageCircle}
+                        label="分享到 Whatsapp"
+                        onClick={() => handleSocialShare("whatsapp")}
+                        trailing={null}
+                      />
+                      <PublishActionRow
+                        icon={Globe}
+                        label="分享到 Facebook"
+                        onClick={() => handleSocialShare("facebook")}
+                        trailing={null}
+                      />
+                      <PublishActionRow
+                        icon={Link2}
+                        label="分享到 Linkin"
+                        onClick={() => handleSocialShare("linkedin")}
+                        trailing={null}
+                      />
+                    </div>
+                    <div className="border-t border-border" />
+                    <PublishActionRow
+                      icon={Mail}
+                      label="分享到 电子邮件"
+                      onClick={() => handleSocialShare("email")}
+                      trailing={null}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

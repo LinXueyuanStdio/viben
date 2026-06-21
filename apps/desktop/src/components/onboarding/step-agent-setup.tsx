@@ -914,7 +914,7 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
       const agent = await client.createAgent({
         name: agentName.trim(),
         model: selectedModel || undefined,
-        provider: selectedProvider?.provider_type || undefined,
+        provider_id: selectedProvider?.id || undefined,
       });
       await client.updateAgent(agent.id, {
         executor_type: selectedExecutor,

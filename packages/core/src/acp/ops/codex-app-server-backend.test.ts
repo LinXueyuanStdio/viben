@@ -64,7 +64,7 @@ describe("CodexAppServerBackendAdapter", () => {
       connection: createConnection(),
       agentConfig: {
         executor_type: "CODEX",
-        provider: "hexin",
+        provider_id: "hexin",
         model: "gpt-5.5",
         executor_config: {
           args: ["app-server", "--listen", "stdio://"],
@@ -146,7 +146,7 @@ describe("CodexAppServerBackendAdapter", () => {
       agentConfig: {
         executor_type: "CODEX",
         model: "gpt-5.4",
-        provider: "openai",
+        provider_id: "openai",
         executor_config: {
           command: "fake-codex",
           args: ["app-server"],
@@ -200,7 +200,7 @@ describe("CodexAppServerBackendAdapter", () => {
       agentConfig: {
         executor_type: "CODEX",
         model: "gpt-5.4",
-        provider: "openai",
+        provider_id: "openai",
         system_prompt: "Use the repo conventions.",
         append_prompt: "Prefer concise answers.",
         temperature: 0.2,

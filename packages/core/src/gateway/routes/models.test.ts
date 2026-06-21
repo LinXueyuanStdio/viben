@@ -340,7 +340,7 @@ describe("Model Routes", () => {
           category: "media",
           surface: "image",
           capabilities: ["t2i", "i2i"],
-          provider: "openai",
+          provider_type: "openai",
           provider_id: "openai-default",
         }),
       ]);

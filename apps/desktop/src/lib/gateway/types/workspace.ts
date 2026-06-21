@@ -144,7 +144,7 @@ export interface AgentInfo {
   /** Model ID (Viben agents only) */
   model?: string;
   /** Provider ID (Viben agents only) */
-  provider?: string;
+  provider_id?: string;
   /** System prompt (Viben agents only) */
   system_prompt?: string;
   /** Append prompt (Viben agents only) */

@@ -34,7 +34,7 @@ export interface ListItem {
   globalConfigPath?: string;
   // For agents
   model?: string;
-  provider?: string;
+  provider_id?: string;
   mcp_servers?: string[];
   skills?: string[];
   system_prompt?: string;

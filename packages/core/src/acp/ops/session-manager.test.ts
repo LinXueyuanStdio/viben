@@ -443,7 +443,7 @@ describe("AcpSessionManager", () => {
           agent_config_path: configPath,
           agent_config: {
             model: "deepseek-v4-flash",
-            provider: "hexin",
+            provider_id: "hexin",
             executor_config: {
               model_provider: "hexin",
               base_url: "http://localhost:8777/v1",
