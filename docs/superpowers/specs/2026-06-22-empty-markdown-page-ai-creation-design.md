@@ -380,21 +380,413 @@ AI 创建应复用现有 ACP 会话系统，不新建独立传输层。
 
 当前 ACP agent/provider/model 选择相关文件有未提交改动，后续实现必须以当时工作区状态为准，不能回滚这些改动。
 
-## 已确认但待继续细化的内容
+## 从模板创建
 
-以下内容属于本需求范围，但还没有完成详细设计，后续继续讨论：
+用户点击空态卡片中的 `从模板创建` 后，弹出模板选择对话框。
 
-1. 模板创建对话框的具体数据流。
-2. `template_id` 如何从 Gateway create route 传到 `createPage`。
-3. 内置模板 frontmatter 从旧 `page:` 结构迁移到 `metadata.page` 的兼容策略。
-4. 导入新页面对话框中 URL、Markdown 文件、HTML 文件三种导入方式的 API 设计。
-5. URL 抓取和 HTML 转 Markdown 的执行位置、依赖和错误处理。
-6. HTML 文件导入后页面类型如何从 Markdown 切换到 `static`，以及 `index.html` 如何写入。
-7. AI 创建文档时如何 watch `SKILL.md` 变化、diff 并实时渲染 blocks。
-8. AI 创建静态网页时如何检测 `index.html` 出现并切换 static preview。
-9. AI 创建全栈应用时如何检测 `package.json` 和 `vite.config.js` 出现并切换 server preview。
-10. compact loading UI 的粘滞底部行为、关闭行为和点击文档边缘隐藏行为。
-11. 测试矩阵和验证命令。
+对话框结构：
+
+```text
+[选择模板                 x]
+[ search icon ] 搜索模板
++-----------------------------+
+| 模板列表                     |
+| 模板1                        |
+| 模板2                        |
++-----------------------------+
+```
+
+数据来源：
+
+1. 继续使用现有 `/api/page/templates` 获取模板列表。
+2. 模板包含内置模板和 workspace 自定义模板。
+3. Workspace 自定义模板目录沿用 `docs/page-templates/`。
+4. 搜索按 `name`、`description`、`type` 过滤。
+
+应用目标：
+
+1. 模板应用到当前空页面。
+2. 不创建另一个新页面。
+3. 不保留一个多余的空页面。
+4. 当前页面 uid 不变。
+
+原因：
+
+用户是在已经打开的空页面里点击 `从模板创建`。此时心智是“初始化当前页面”，不是“再创建一个新页面”。如果模板按钮新建页面，会造成当前空页遗留，页面树出现多余节点。
+
+需要新增核心 page API：
+
+```text
+POST /api/page/apply-template
+```
+
+请求体：
+
+```json
+{
+  "workspace_path": "...",
+  "uid": "...",
+  "template_id": "..."
+}
+```
+
+行为：
+
+1. 校验 `workspace_path` 下存在 `pages/<uid>/SKILL.md`。
+2. 校验目标页面正文为空。第一版只允许空页面应用模板。
+3. 加载 `template_id` 对应模板。
+4. 将模板文件渲染并写入 `pages/<uid>/`。
+5. 如果模板包含 `SKILL.md`，覆盖当前页面的 `SKILL.md`。
+6. 如果模板包含附属文件，一并写入当前页面目录。
+7. 返回更新后的 `PageConfig`。
+
+覆盖策略：
+
+1. 第一版只从空态入口调用，所以不做复杂 merge。
+2. 如果目标正文非空，API 返回错误。
+3. 后续可以增加“确认覆盖”交互，但不进入第一版。
+
+模板兼容：
+
+当前部分内置 page templates 使用旧的 top-level `page:` front matter，而 discovery 依赖 `metadata.page`。实现时必须修正模板 frontmatter，统一为当前结构：
+
+```yaml
+metadata:
+  page:
+    type: markdown
+    permission: [read, write]
+```
+
+否则暴露 `template_id` 或 `apply-template` 后，模板可能生成 discovery 无法解析的页面。
+
+## 导入新页面
+
+用户点击 `导入新页面 ▾` 后，弹出导入方式对话框。
+
+对话框结构：
+
+```text
+[选择导入方式             x]
+---
+[[剪藏 icon] 从网络连接导入]
+[[url 输入框] [[loading icon] 开始导入]]
+---
+[[markdown icon] 导入 Markdown 文件]
+[[html icon] 导入 HTML 文件]
+```
+
+建议新增核心 page import API：
+
+```text
+POST /api/page/import
+```
+
+请求体：
+
+```json
+{
+  "workspace_path": "...",
+  "uid": "...",
+  "source_type": "url",
+  "source_url": "https://example.com"
+}
+```
+
+或：
+
+```json
+{
+  "workspace_path": "...",
+  "uid": "...",
+  "source_type": "markdown_file",
+  "source_path": "/absolute/path/to/file.md"
+}
+```
+
+或：
+
+```json
+{
+  "workspace_path": "...",
+  "uid": "...",
+  "source_type": "html_file",
+  "source_path": "/absolute/path/to/file.html"
+}
+```
+
+所有字段必须使用 snake_case。
+
+导入方式一：从网络连接导入。
+
+行为：
+
+1. Core/Gateway 根据 `source_url` 抓取页面。
+2. 抽取主要正文。
+3. 整理为 Markdown。
+4. 写入当前页面 `SKILL.md` 正文。
+5. 保留当前页面自己的 front matter。
+6. 页面类型仍为 `markdown`。
+
+失败行为：
+
+1. 不修改页面文件。
+2. 保留 URL 输入。
+3. 对话框内显示错误，或 toast 提示。
+4. 空态 UI 保持显示。
+
+导入方式二：导入 Markdown 文件。
+
+行为：
+
+1. Desktop/Tauri 负责打开系统文件选择器。
+2. Desktop 只把本机绝对路径传给 Gateway。
+3. Core 读取 `source_path`。
+4. 去除导入文件自己的 YAML front matter。
+5. 将剩余正文写入当前页面 `SKILL.md` 正文。
+6. 保留当前页面自己的 front matter。
+7. 页面类型仍为 `markdown`。
+
+如果导入文件去掉 front matter 后正文仍为空，则当前页面继续保持空态。
+
+导入方式三：导入 HTML 文件。
+
+行为：
+
+1. Desktop/Tauri 负责打开系统文件选择器。
+2. Desktop 只传本机绝对路径。
+3. Core 读取 HTML 文件。
+4. 当前页面类型更新为 `static`。
+5. HTML 内容写入 `pages/<uid>/index.html`。
+6. `SKILL.md` front matter 更新为：
+
+```yaml
+metadata:
+  page:
+    type: static
+    file: index.html
+    permission: [read, write]
+```
+
+7. `SKILL.md` 正文写入：
+
+```markdown
+从 /.../xxx.html 导入的页面
+```
+
+8. 成功后 UI 切换到 static preview。
+
+失败行为：
+
+1. 不改 page type。
+2. 不写半成品 `index.html`。
+3. 不覆盖当前 `SKILL.md`。
+4. 保持空态 UI。
+
+安全边界：
+
+1. `source_path` 必须是本机绝对路径。
+2. `uid` 必须属于 `workspace_path/pages/` 下的现有页面。
+3. URL 抓取必须有超时和内容大小限制。
+4. 第一版只允许对空页面导入，避免覆盖用户内容。
+
+## AI 创建状态流
+
+用户在空态 AI 输入区输入内容并提交后，系统进入创建中状态。
+
+启动流程：
+
+1. 创建或选择一个 ACP session。
+2. 将当前 `page_uid`、`workspace_path`、创建模式和 `session_id` 记录到当前页面 UI 状态。
+3. 创建模式为三选一：
+   - `document`
+   - `static`
+   - `fullstack`
+4. Prompt 明确告诉智能体目标页面目录和产物要求。
+5. 空态卡片隐藏。
+6. 显示 compact loading UI。
+
+Prompt 约束：
+
+1. 文档模式：写入或更新 `pages/<uid>/SKILL.md` 正文。
+2. 静态网页模式：创建 `pages/<uid>/index.html`，必要时更新 `SKILL.md` 页面类型为 `static`。
+3. 全栈应用模式：在 `pages/<uid>/` 下创建 Vite 应用关键文件，至少包含 `package.json` 和 `vite.config.js`，必要时更新 `SKILL.md` 页面类型为 `server`。
+
+文档模式：
+
+1. 监听当前页面 `SKILL.md` 内容变化。
+2. 每次变化后重新拉取 page detail 或读取文件内容。
+3. 去除 front matter 后 diff 正文。
+4. 实时更新 Yoopta blocks。
+5. compact loading UI 保持在最后一个 block 下方。
+6. 用户向上滚动时，loading UI 粘滞在底部中间。
+7. 用户点击 compact UI 的关闭/展开按钮，或点击文档边缘区域，可以隐藏 loading UI。
+8. 隐藏 loading UI 不等于停止 session。
+
+静态网页模式：
+
+1. 监听 `pages/<uid>/index.html` 是否存在。
+2. 监听 page config 是否已经是 `static`。
+3. 当 `index.html` 存在且页面可作为 static 预览时，隐藏 loading UI。
+4. 切换到 static preview 页面。
+5. 调用 `selectSession(session_id)`，让左侧/全局 ACP Chat 切换到同一会话。
+6. 用户后续通过该 session 继续指导生成。
+
+如果 `index.html` 已存在但 page config 还没更新，UI 继续 loading 或显示“等待页面配置更新”，避免用错误类型打开预览。
+
+全栈应用模式：
+
+1. 监听 `pages/<uid>/package.json`。
+2. 监听 `pages/<uid>/vite.config.js`。
+3. 两者都存在后，隐藏 loading UI。
+4. 页面切换为 server preview。
+5. 启动或提示启动 live preview。
+6. 调用 `selectSession(session_id)`，让左侧/全局 ACP Chat 切换到同一会话。
+7. 端口、command、ready_pattern 等默认按现有 server preview/page config 逻辑处理。
+
+继续对话：
+
+1. compact loading UI 内的输入在 agent 运行中提交时，走 `sendSteerPrompt` 或等价队列。
+2. 如果 agent 已停止或完成，提交走 `sendPrompt` 继续同一 session。
+3. 切换到左侧 chat 时，只 `selectSession(session_id)`，不创建新 session。
+4. 左侧 chat mode 建议切到 `full`，因为生成网页/全栈时用户需要同时看 preview 和对话。
+
+停止行为：
+
+1. 停止按钮调用当前 ACP session 的 `interrupt()`。
+2. 本地 loading 状态立即停止。
+3. 重新检查当前文件状态。
+4. 如果 `SKILL.md` 正文仍为空，恢复空态 UI。
+5. 如果 `SKILL.md` 正文非空，显示文档内容，不恢复空态。
+6. 对 static/fullstack，如果关键文件已存在，则切换对应预览。
+7. 如果关键文件不存在且 Markdown 正文仍为空，则恢复空态。
+8. 如果 `SKILL.md` 有说明正文但关键文件不存在，则显示当前 Markdown 内容和停止/错误状态提示。
+
+## 监听与数据同步
+
+第一版采用页面级轻量轮询，不先引入文件系统 watch。
+
+原因：
+
+1. 当前桌面端已有 React Query/轮询模式。
+2. Gateway 文件 API 和 page detail API 可复用。
+3. 文件系统 watch 需要额外处理跨平台、Tauri 权限、Gateway 事件源和生命周期。
+
+轮询只在 AI 创建中开启：
+
+1. 文档模式：每 800-1200ms refetch 当前 page detail，读取 `skill_content` 和 `updated_at`。
+2. 静态模式：每 800-1200ms 检查 page detail 和 `index.html` 是否存在。
+3. 全栈模式：每 800-1200ms 检查 page detail、`package.json`、`vite.config.js` 是否存在。
+4. 创建结束后停止轮询。
+5. 用户停止后停止轮询。
+6. 用户切换离开页面后停止轮询。
+7. loading UI 关闭后停止轮询或降级为普通 page query 刷新。
+
+Yoopta 同步规则：
+
+1. 外部生成内容变化时，renderer 可以接受新的 `content` 并重建 blocks。
+2. 如果用户正在本地编辑，不应被轮询结果覆盖。
+3. 第一版可以采用简单规则：AI 创建中由 agent 写入时，用户主要通过 compact/左侧 chat 指导，不同时在正文里编辑。
+4. 如果 editor 有未保存本地 dirty 状态，则暂停外部内容应用，并显示“有本地编辑，已暂停实时同步”。
+5. 文档实时渲染时，frontmatter 继续 opaque preserve。
+6. diff 动画只作用于正文 blocks。
+7. 如果 diff 动画实现复杂，第一版可以先做到内容实时更新和滚动定位，动画作为后续增强。
+
+## 错误处理
+
+模板应用失败：
+
+1. 不修改页面。
+2. 对话框内显示错误。
+3. toast 提示。
+4. 空态保持。
+
+URL 导入失败：
+
+1. 不修改页面。
+2. 保留 URL 输入。
+3. 显示错误。
+4. 空态保持。
+
+Markdown 文件导入失败：
+
+1. 不修改页面。
+2. 显示文件读取或解析错误。
+3. 空态保持。
+
+HTML 文件导入失败：
+
+1. 不改 page type。
+2. 不写半成品 `index.html`。
+3. 显示错误。
+4. 空态保持。
+
+AI 创建失败或中断：
+
+1. 停止 loading。
+2. 按文件状态恢复空态或显示已有内容。
+3. 不删除已经生成的有效内容。
+
+监听超时：
+
+1. 如果长时间没有任何文件变化，loading UI 显示“等待文件生成”。
+2. 不自动失败。
+3. 用户可以停止或继续对话。
+
+page config 和文件产物不一致：
+
+1. 以 page config 为准。
+2. 提示需要等待或刷新。
+3. 不做隐式猜测破坏文件。
+
+## 测试与验证
+
+后续实现需要覆盖三层测试。
+
+Core/page 单元测试：
+
+1. `createPage` 支持 `empty_body`，生成 frontmatter-only Markdown。
+2. `discovery` 能解析正文为空的 Markdown 页面，保留 page config。
+3. 空 Markdown 页面的 `skill_content` 明确为空字符串或等价空状态。
+4. `serve` 对空 Markdown 页面不报错。
+5. `apply-template` 只能应用到空页面。
+6. `apply-template` 能写入模板文件。
+7. 模板使用 `metadata.page` frontmatter。
+8. URL import 成功写入 Markdown 正文。
+9. URL import 失败不改文件。
+10. Markdown 文件 import 去除 frontmatter 后写入正文。
+11. HTML 文件 import 写入 `index.html` 并改 page type 为 `static`。
+
+Desktop 组件/Hook 测试：
+
+1. 新建页面入口默认调用 `type: "markdown"` 和 `empty_body: true`。
+2. `YooptaMarkdownRenderer` 对 `content=""` 显示空态 UI。
+3. `YooptaMarkdownRenderer` 对 frontmatter-only 内容显示空态 UI。
+4. 正文非空时空态隐藏。
+5. 标题处按 Enter 能创建/聚焦空 Paragraph。
+6. 点击空态“开始编辑”能创建/聚焦空 Paragraph。
+7. 空态 AI 输入使用 expanded `ChatInput` 结构。
+8. 创建中使用 compact 结构。
+9. 停止后根据正文是否为空恢复空态。
+10. 模板对话框调用 `apply-template` API。
+11. 导入对话框调用 `import` API。
+12. API 错误时对话框保留可重试状态。
+
+集成/手动验证：
+
+1. 新建页面无需表单，直接打开空 Markdown 页面。
+2. 从模板创建当前空页，不产生多余页面。
+3. 导入 Markdown 文件后正文出现。
+4. 导入 HTML 文件后切换 static preview。
+5. AI 文档创建时能实时看到正文更新。
+6. AI 静态创建时能自动切换 static preview。
+7. AI 全栈创建时能自动切换 server preview。
+8. 切换预览后左侧 chat 继续同一 session。
+
+验证命令：
+
+1. 实现完成后至少运行相关 package 测试。
+2. 最终运行 `pnpm typecheck` 或 `pnpm build`。
+3. 如果 pre-commit hook 发现 lockfile 问题，先处理 lockfile，不用 `--no-verify` 绕过实现提交。
 
 ## 当前阶段设计结论
 
@@ -410,6 +802,14 @@ AI 创建应复用现有 ACP 会话系统，不新建独立传输层。
 8. 空态初始 AI 输入复用 expanded `ChatInput`。
 9. 创建中 UI 复用 compact `ChatApp`/`ChatInput` 语义。
 10. AI 创建会话复用 ACP session/store，后续左侧 chat 切换到同一个 session。
+11. 模板应用到当前空页面，不创建新页面。
+12. 模板应用通过 `POST /api/page/apply-template` 进入 core page 边界。
+13. 导入通过 `POST /api/page/import` 进入 core page 边界。
+14. URL 和 Markdown 导入保持页面类型为 `markdown`。
+15. HTML 导入将当前页面切换为 `static` 并写入 `index.html`。
+16. AI 创建第一版使用页面级轻量轮询，不先引入文件系统 watch。
+17. 文档模式监听 `SKILL.md`，静态模式监听 `index.html`，全栈模式监听 `package.json` 和 `vite.config.js`。
+18. 实现提交不能绕过 lockfile/typecheck/build 等正常验证。
 
 ## 实施约束
 
@@ -420,4 +820,3 @@ AI 创建应复用现有 ACP 会话系统，不新建独立传输层。
 5. 编辑文件时使用绝对路径。
 6. 后续实现必须运行 `pnpm build` 或 `pnpm typecheck` 做验证。
 7. 不能回滚当前工作区中已有的未提交用户改动。
-
