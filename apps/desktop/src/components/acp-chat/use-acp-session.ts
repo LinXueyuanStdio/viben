@@ -29,13 +29,9 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAcpSessionStore, type PermissionDialogState, type ElicitationDialogState, type ElicitationFormField } from "@/stores/acp-session-store";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
-import { useAgents } from "@/hooks/use-workspace-resources";
-import { useModels } from "@/hooks/use-models";
-import { useProviders } from "@/hooks/use-providers";
+import { useAgentModelSelection } from "@/hooks/use-agent-model-selection";
 import type { AgentInfo } from "@/lib/gateway";
-import { filterModelsByExecutor, getAllowedProviders } from "@/lib/executor-constraints";
-import { filterSelectorProviders } from "@/components/agent/provider-model-selection";
-import { buildAcpAgentConfig, getAcpAgentProviderId } from "./acp-agent-config";
+import { buildAcpAgentConfig } from "./acp-agent-config";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
@@ -444,282 +440,54 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     setSubagentSheet,
   } = useAcpSessionStore();
 
-  // Use defaults if store values are null
-  const executorType = storeExecutorType ?? defaultExecutorType;
-  const model = storeModel ?? defaultModel;
-
-  // Wrapped setters that handle null-to-default conversion
-  const setExecutorType = useCallback((type: string) => {
-    setStoreExecutorType(type);
-  }, [setStoreExecutorType]);
-
-  const setModel = useCallback((m: string) => {
-    setStoreModel(m);
-  }, [setStoreModel]);
-
-  const setSelectedProviderId = useCallback((id: string | null) => {
-    setStoreSelectedProviderId(id);
-  }, [setStoreSelectedProviderId]);
-
-  // Load agents, providers, models from Gateway API
   const {
+    executorType,
+    model,
     agents: allAgents,
-    loading: agentsLoading,
-    error: agentsError,
-  } = useAgents({
-    workspacePath: workspacePath || undefined,
-    includeGlobal: true,
-  });
-
-  const selectedAgent = useMemo(
-    () => allAgents.find((a) => a.id === selectedAgentId),
-    [allAgents, selectedAgentId]
-  );
-  const effectiveExecutorType = selectedAgent?.executor_type ?? executorType;
-
-  const {
+    globalAgents,
+    workspaceAgents,
+    selectedAgent,
     providers,
-    loading: providersLoading,
-    error: providersError,
-  } = useProviders();
-
-  const allowedProviderIds = useMemo(() => {
-    return getAllowedProviders(effectiveExecutorType);
-  }, [effectiveExecutorType]);
-
-  const filteredProviders = useMemo(() => {
-    return filterSelectorProviders(providers, allowedProviderIds);
-  }, [providers, allowedProviderIds]);
-
-  const selectedAgentProviderId = getAcpAgentProviderId(selectedAgent) ?? null;
-  const selectedAgentModelId = selectedAgent?.model?.trim() || null;
-  const selectedAgentDefaultsKey = selectedAgent
-    ? [selectedAgent.id, selectedAgentProviderId ?? "", selectedAgentModelId ?? ""].join("|")
-    : null;
-  const preferredAgentProvider = useMemo(() => {
-    if (selectedAgentProviderId) {
-      const configuredProvider = filteredProviders.find((provider) => provider.id === selectedAgentProviderId);
-      if (configuredProvider) return configuredProvider;
-    }
-    return filteredProviders.find((provider) => provider.is_default) ?? filteredProviders[0] ?? null;
-  }, [filteredProviders, selectedAgentProviderId]);
-  const preferredAgentProviderId = preferredAgentProvider?.id ?? null;
-
-  const selectedProviderForModels = useMemo(
-    () => filteredProviders.find((provider) => provider.id === selectedProviderId),
-    [filteredProviders, selectedProviderId]
-  );
-
-  const {
-    models: allModels,
-    loading: modelsLoading,
-    error: modelsError,
-  } = useModels({
-    providerId: selectedProviderForModels?.id,
-    enabled: Boolean(selectedProviderForModels),
+    agentOptions,
+    providerOptions,
+    modelOptions,
+    agentSelectionReady,
+    configLoading,
+    configError,
+    setSelectedAgentId: handleSetSelectedAgentId,
+    setSelectedProviderId,
+    setExecutorType,
+    setModel,
+  } = useAgentModelSelection({
+    workspacePath,
+    defaultExecutorType,
+    defaultModel,
+    selectedAgentId,
+    selectedProviderId,
+    storeExecutorType,
+    storeModel,
+    setSelectedAgentId: setStoreSelectedAgentId,
+    setSelectedProviderId: setStoreSelectedProviderId,
+    setExecutorType: setStoreExecutorType,
+    setModel: setStoreModel,
   });
-  const sandboxConfig = useChatConfigStore((state) => state.sandboxConfig);
-
-  // Track previous values for detecting changes
-  const prevExecutorTypeRef = useRef(executorType);
-  const prevProviderIdRef = useRef(selectedProviderId);
-  const appliedAgentProviderDefaultsRef = useRef<string | null>(null);
-  const appliedAgentModelDefaultsRef = useRef<string | null>(null);
-
-  // Split agents into global vs workspace groups
-  const globalAgents = useMemo(
-    () => allAgents.filter((a) => a.source === "global"),
-    [allAgents]
-  );
-  const workspaceAgents = useMemo(
-    () => allAgents.filter((a) => a.source === "workspace"),
-    [allAgents]
-  );
-
-  const agentSelectionReady = useMemo(
-    () => !agentsLoading && (allAgents.length === 0 || Boolean(selectedAgent)),
-    [agentsLoading, allAgents.length, selectedAgent]
-  );
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return buildAcpAgentConfig({
       agent: selectedAgent,
-      executorType: effectiveExecutorType,
+      executorType,
       model,
       providerId: selectedProviderId,
       providers,
     });
-  }, [effectiveExecutorType, model, providers, selectedAgent, selectedProviderId]);
+  }, [executorType, model, providers, selectedAgent, selectedProviderId]);
+  const sandboxConfig = useChatConfigStore((state) => state.sandboxConfig);
   const acpSandboxConfig = useMemo(
     () => sandboxConfig.enabled
       ? { enabled: true, provider: sandboxConfig.provider }
       : undefined,
     [sandboxConfig.enabled, sandboxConfig.provider]
   );
-
-  // Agent selector options (grouped by source)
-  const agentOptions = useMemo<SelectorOption[]>(() => {
-    const options: SelectorOption[] = [];
-    // Add workspace agents first
-    workspaceAgents.forEach((agent) => {
-      options.push({
-        id: agent.id,
-        label: agent.name,
-        description: agent.executor_type,
-        badge: "workspace",
-      });
-    });
-    // Add global agents
-    globalAgents.forEach((agent) => {
-      options.push({
-        id: agent.id,
-        label: agent.name,
-        description: agent.executor_type,
-        badge: "global",
-      });
-    });
-    return options;
-  }, [workspaceAgents, globalAgents]);
-
-  // Provider selector options
-  const providerOptions = useMemo<SelectorOption[]>(() => {
-    return filteredProviders.map((p) => ({
-      id: p.id,
-      label: p.name,
-      description: p.provider_type,
-      badge: p.is_default ? "default" : undefined,
-    }));
-  }, [filteredProviders]);
-
-  // Filter models by executor type
-  const modelsFilteredByExecutor = useMemo(() => {
-    const availableModels = allModels.filter((m) => m.is_available);
-    return filterModelsByExecutor(availableModels, effectiveExecutorType);
-  }, [allModels, effectiveExecutorType]);
-
-  // Further filter models by selected provider
-  const filteredModels = useMemo(() => {
-    if (!selectedProviderId) {
-      return [];
-    }
-    return modelsFilteredByExecutor.filter((m) => {
-      const modelProviderId = m.provider_id.toLowerCase();
-      const providerId = selectedProviderId.toLowerCase();
-      return modelProviderId === providerId;
-    });
-  }, [modelsFilteredByExecutor, selectedProviderId]);
-
-  // Model selector options
-  const modelOptions = useMemo<SelectorOption[]>(() => {
-    return filteredModels.map((m) => ({
-      id: m.id,
-      label: m.name,
-      description: m.provider_id,
-      badge: m.is_default ? "default" : undefined,
-    }));
-  }, [filteredModels]);
-
-  // Auto-select default agent on initial load
-  useEffect(() => {
-    if (!agentsLoading && allAgents.length > 0 && !selectedAgent) {
-      // Prefer workspace agent, then first global agent
-      const defaultAgent = workspaceAgents[0] ?? globalAgents[0];
-      if (defaultAgent) {
-        setStoreSelectedAgentId(defaultAgent.id);
-        // Also set executor type from agent
-        if (defaultAgent.executor_type) {
-          setExecutorType(defaultAgent.executor_type);
-        }
-      }
-    }
-  }, [agentsLoading, allAgents, selectedAgent, workspaceAgents, globalAgents, setStoreSelectedAgentId, setExecutorType]);
-
-  // Prefer the selected agent's configured provider when the agent changes.
-  useEffect(() => {
-    if (!selectedAgentDefaultsKey || appliedAgentProviderDefaultsRef.current === selectedAgentDefaultsKey) {
-      return;
-    }
-    if (!preferredAgentProviderId) {
-      return;
-    }
-    appliedAgentProviderDefaultsRef.current = selectedAgentDefaultsKey;
-    if (selectedProviderId !== preferredAgentProviderId) {
-      setSelectedProviderId(preferredAgentProviderId);
-    }
-  }, [preferredAgentProviderId, selectedAgentDefaultsKey, selectedProviderId, setSelectedProviderId]);
-
-  // Auto-select default provider on initial load or when executor changes
-  useEffect(() => {
-    if (prevExecutorTypeRef.current !== effectiveExecutorType) {
-      prevExecutorTypeRef.current = effectiveExecutorType;
-    }
-    // Select default provider if none selected or current is invalid
-    const currentProviderValid = selectedProviderId && filteredProviders.some((p) => p.id === selectedProviderId);
-    if (!currentProviderValid && filteredProviders.length > 0) {
-      const defaultProvider = filteredProviders.find((p) => p.is_default);
-      const newProviderId = defaultProvider?.id ?? filteredProviders[0]?.id ?? null;
-      setSelectedProviderId(newProviderId);
-    }
-  }, [effectiveExecutorType, filteredProviders, selectedProviderId, setSelectedProviderId]);
-
-  // Auto-select default model on initial load or when provider changes
-  useEffect(() => {
-    if (prevProviderIdRef.current !== selectedProviderId) {
-      prevProviderIdRef.current = selectedProviderId;
-    }
-
-    if (
-      selectedAgentDefaultsKey &&
-      appliedAgentModelDefaultsRef.current !== selectedAgentDefaultsKey
-    ) {
-      if (preferredAgentProviderId && selectedProviderId !== preferredAgentProviderId) {
-        return;
-      }
-      if (filteredModels.length === 0) {
-        return;
-      }
-      appliedAgentModelDefaultsRef.current = selectedAgentDefaultsKey;
-      if (selectedAgentModelId && filteredModels.some((m) => m.id === selectedAgentModelId)) {
-        if (model !== selectedAgentModelId) {
-          setModel(selectedAgentModelId);
-        }
-        return;
-      }
-    }
-
-    // Select default model if none selected or current is invalid
-    const currentModelValid = model && filteredModels.some((m) => m.id === model);
-    if (!currentModelValid && filteredModels.length > 0) {
-      const defaultModel = filteredModels.find((m) => m.is_default);
-      const newModelId = defaultModel?.id ?? filteredModels[0]?.id;
-      if (newModelId) {
-        setModel(newModelId);
-      }
-    }
-  }, [
-    selectedAgentDefaultsKey,
-    selectedAgentModelId,
-    preferredAgentProviderId,
-    selectedProviderId,
-    filteredModels,
-    model,
-    setModel,
-  ]);
-
-  // Handle agent selection - also update executor type
-  const handleSetSelectedAgentId = useCallback((id: string | null) => {
-    setStoreSelectedAgentId(id);
-    if (id) {
-      const agent = allAgents.find((a) => a.id === id);
-      if (agent?.executor_type) {
-        setExecutorType(agent.executor_type);
-      }
-    }
-  }, [allAgents, setExecutorType, setStoreSelectedAgentId]);
-
-  // Combined config loading state
-  const configLoading = agentsLoading || providersLoading || modelsLoading;
-  const configError = agentsError || providersError || modelsError || null;
 
   const clientRef = useRef<AcpWebSocketClient | null>(null);
 

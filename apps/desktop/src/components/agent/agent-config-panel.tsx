@@ -49,7 +49,11 @@ import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { WorkspaceSkill } from "@/types";
 import { useModels } from "@/hooks/use-models";
 import { useProviders } from "@/hooks/use-providers";
-import { filterModelsByExecutor, getAllowedProviders } from "@/lib/executor-constraints";
+import {
+  filterModelsByExecutor,
+  filterModelsByProvider,
+  filterProvidersByExecutor,
+} from "@/lib/executor-constraints";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import { ClaudeCodeConfigSection } from "./claude-code-config-section";
@@ -60,8 +64,6 @@ import { ProviderModelSelector } from "./provider-model-selector";
 import {
   buildClaudeCodeProviderSwitch,
   compactConfig,
-  filterProviderModels,
-  filterSelectorProviders,
   isModelForSelectedProvider,
   readConfigString,
   readEnvRecord,
@@ -268,10 +270,13 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
 
     const claudeEnv = useMemo(() => readEnvRecord(executorConfig.env), [executorConfig.env]);
     const selectedClaudeProviderId = readConfigString(executorConfig.provider_id) ?? "";
-    const claudeAllowedProviderIds = useMemo(() => getAllowedProviders("CLAUDE_CODE") ?? [], []);
     const claudeProviders = useMemo(
-      () => filterSelectorProviders(providers, claudeAllowedProviderIds),
-      [claudeAllowedProviderIds, providers]
+      () => filterProvidersByExecutor(providers, "CLAUDE_CODE", {
+        enabledOnly: true,
+        chatOnly: true,
+        sort: true,
+      }),
+      [providers]
     );
     const selectedClaudeProvider = useMemo(
       () => claudeProviders.find((provider) => provider.id === selectedClaudeProviderId)
@@ -286,7 +291,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     );
     const claudeModels = useMemo(
       () => selectedClaudeProvider
-        ? filterProviderModels(claudeModelsFilteredByExecutor, selectedClaudeProvider.id)
+        ? filterModelsByProvider(claudeModelsFilteredByExecutor, selectedClaudeProvider.id)
         : [],
       [claudeModelsFilteredByExecutor, selectedClaudeProvider]
     );
@@ -305,10 +310,13 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       : "";
 
     const selectedCodexProviderId = readConfigString(executorConfig.provider_id) ?? "";
-    const codexAllowedProviderIds = useMemo(() => getAllowedProviders("CODEX") ?? [], []);
     const codexProviders = useMemo(
-      () => filterSelectorProviders(providers, codexAllowedProviderIds),
-      [codexAllowedProviderIds, providers]
+      () => filterProvidersByExecutor(providers, "CODEX", {
+        enabledOnly: true,
+        chatOnly: true,
+        sort: true,
+      }),
+      [providers]
     );
     const selectedCodexProvider = useMemo(
       () => codexProviders.find((provider) => provider.id === selectedCodexProviderId)
@@ -340,7 +348,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     };
 
     const handleClaudeProviderChange = (providerId: string) => {
-      const providerModels = filterProviderModels(claudeModelsFilteredByExecutor, providerId);
+      const providerModels = filterModelsByProvider(claudeModelsFilteredByExecutor, providerId);
       const result = buildClaudeCodeProviderSwitch({
         config: {
           ...executorConfig,

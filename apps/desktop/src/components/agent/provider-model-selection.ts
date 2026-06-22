@@ -1,24 +1,8 @@
 import type { Provider } from "@/hooks/use-providers";
-import type { ProviderId } from "@/lib/executor-constraints";
+import type { ModelLike } from "@/lib/executor-constraints";
 import type { ModelOption } from "./agent-config-panel";
 
-export interface ProviderLike {
-  id: string;
-  provider_type: string;
-  category: string;
-  name: string;
-  surfaces: string[];
-  enabled: boolean;
-  is_default: boolean;
-}
-
-export interface ModelLike {
-  id: string;
-  name: string;
-  provider_type?: string;
-  provider_id: string;
-  is_available?: boolean;
-}
+export type { ModelLike };
 
 export interface ClaudeCodeProviderSwitchInput {
   config: Record<string, unknown>;
@@ -45,27 +29,6 @@ export const CLAUDE_CODE_MODEL_ENV_KEYS = new Set([
   CLAUDE_CODE_SUBAGENT_MODEL_ENV,
 ]);
 export const CLAUDE_CODE_PROVIDER_ENV_KEYS = new Set(["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"]);
-
-export function filterSelectorProviders<T extends ProviderLike>(
-  providers: T[],
-  allowedProviderIds?: readonly ProviderId[]
-): T[] {
-  const enabledProviders = providers.filter((provider) => provider.enabled);
-  const filteredProviders = !allowedProviderIds || allowedProviderIds.length === 0
-    ? enabledProviders
-    : enabledProviders.filter((provider) =>
-        allowedProviderIds.includes(provider.provider_type as ProviderId)
-      );
-
-  return filteredProviders
-    .filter((provider) => provider.category === "llm" || provider.surfaces.includes("chat"))
-    .sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name));
-}
-
-export function filterProviderModels<T extends ModelLike>(models: T[], providerId: string): T[] {
-  const normalizedProviderId = providerId.toLowerCase();
-  return models.filter((model) => model.provider_id?.toLowerCase() === normalizedProviderId);
-}
 
 export function pickPreferredModel(models: ModelLike[], family: "sonnet" | "haiku" | "opus"): string | undefined {
   return models.find((model) => model.id.toLowerCase().includes(family))?.id ?? models[0]?.id;
@@ -163,7 +126,7 @@ export function isModelForSelectedProvider(model: { provider_id?: string }, prov
 export function toModelOption(model: ModelLike): ModelOption {
   return {
     id: model.id,
-    name: model.name,
+    name: model.name ?? model.id,
     provider_type: model.provider_type,
     provider_id: model.provider_id,
   };

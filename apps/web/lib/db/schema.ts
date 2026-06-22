@@ -650,6 +650,7 @@ export const publishedPages = pgTable(
     icon: jsonb('icon').$type<{ type: string; value: string } | null>(),
     description: text('description'),
     html: text('html').notNull(),
+    currentVersion: integer('current_version'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -707,6 +708,50 @@ export const publishedPageVersionsRelations = relations(
     }),
     user: one(users, {
       fields: [publishedPageVersions.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const publishedPageRecords = pgTable(
+  'published_page_records',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    publishedPageId: text('published_page_id')
+      .notNull()
+      .references(() => publishedPages.id, { onDelete: 'cascade' }),
+    uid: text('uid').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    recordNumber: integer('record_number').notNull(),
+    version: integer('version').notNull(),
+    action: text('action', { enum: ['publish', 'rollback'] }).notNull(),
+    title: text('title').notNull(),
+    icon: jsonb('icon').$type<{ type: string; value: string } | null>(),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('published_page_records_page_id_idx').on(table.publishedPageId),
+    index('published_page_records_user_id_uid_idx').on(table.userId, table.uid),
+    uniqueIndex('published_page_records_user_id_uid_record_number_idx').on(
+      table.userId,
+      table.uid,
+      table.recordNumber
+    ),
+  ]
+);
+
+export const publishedPageRecordsRelations = relations(
+  publishedPageRecords,
+  ({ one }) => ({
+    publishedPage: one(publishedPages, {
+      fields: [publishedPageRecords.publishedPageId],
+      references: [publishedPages.id],
+    }),
+    user: one(users, {
+      fields: [publishedPageRecords.userId],
       references: [users.id],
     }),
   })

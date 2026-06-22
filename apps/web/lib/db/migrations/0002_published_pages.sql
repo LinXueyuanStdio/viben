@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS "published_pages" (
   "icon" jsonb,
   "description" text,
   "html" text NOT NULL,
+  "current_version" integer,
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -80,3 +81,32 @@ CREATE INDEX IF NOT EXISTS "published_page_versions_page_id_idx" ON "published_p
 CREATE INDEX IF NOT EXISTS "published_page_versions_user_id_uid_idx" ON "published_page_versions" USING btree ("user_id", "uid");
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "published_page_versions_user_id_uid_version_idx" ON "published_page_versions" USING btree ("user_id", "uid", "version");
+--> statement-breakpoint
+ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "current_version" integer;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "published_page_records" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text NOT NULL,
+  "published_page_id" text NOT NULL REFERENCES "published_pages"("id") ON DELETE CASCADE,
+  "uid" text NOT NULL,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "record_number" integer NOT NULL,
+  "version" integer NOT NULL,
+  "action" text NOT NULL,
+  "title" text NOT NULL,
+  "icon" jsonb,
+  "description" text,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "published_page_records_page_id_idx" ON "published_page_records" USING btree ("published_page_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "published_page_records_user_id_uid_idx" ON "published_page_records" USING btree ("user_id", "uid");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "published_page_records_user_id_uid_record_number_idx" ON "published_page_records" USING btree ("user_id", "uid", "record_number");
+--> statement-breakpoint
+ALTER TABLE "published_page_records"
+  DROP CONSTRAINT IF EXISTS "published_page_records_action_check";
+--> statement-breakpoint
+ALTER TABLE "published_page_records"
+  ADD CONSTRAINT "published_page_records_action_check"
+  CHECK ("action" IN ('publish', 'rollback'));

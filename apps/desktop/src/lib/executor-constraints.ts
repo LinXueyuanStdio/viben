@@ -23,6 +23,26 @@ export type ProviderId =
   | "grok"
   | "aihubmix";
 
+export interface ProviderLike {
+  id: string;
+  provider_type: string;
+  category?: string;
+  name?: string;
+  surfaces?: readonly string[];
+  enabled?: boolean;
+  is_default?: boolean;
+}
+
+export interface ModelLike {
+  id: string;
+  name?: string;
+  provider_type?: string;
+  provider?: string;
+  provider_id: string;
+  is_available?: boolean;
+  is_default?: boolean;
+}
+
 /**
  * Mapping of executor types to their allowed provider IDs.
  * If an executor is not in this map, it supports all providers.
@@ -94,6 +114,27 @@ export function isProviderAllowed(executorType?: string, providerId?: string): b
   return allowedProviders.includes(providerId as ProviderId);
 }
 
+export function filterProvidersByExecutor<T extends ProviderLike>(
+  providers: T[],
+  executorType?: string,
+  options: { enabledOnly?: boolean; chatOnly?: boolean; sort?: boolean } = {}
+): T[] {
+  const { enabledOnly = false, chatOnly = false, sort = false } = options;
+  const allowedProviders = getAllowedProviders(executorType);
+  const filtered = providers.filter((provider) => {
+    if (enabledOnly && provider.enabled !== true) return false;
+    if (chatOnly && !isChatProvider(provider)) return false;
+    if (!allowedProviders || allowedProviders.length === 0) return true;
+    return allowedProviders.includes(provider.provider_type as ProviderId);
+  });
+
+  if (!sort) return filtered;
+  return [...filtered].sort(
+    (a, b) => Number(Boolean(b.is_default)) - Number(Boolean(a.is_default)) ||
+      (a.name ?? a.id).localeCompare(b.name ?? b.id)
+  );
+}
+
 /**
  * Filter models by executor type constraints.
  *
@@ -115,6 +156,12 @@ export function filterModelsByExecutor<T>(
   });
 }
 
+export function filterModelsByProvider<T extends ModelLike>(models: T[], providerId?: string | null): T[] {
+  const normalizedProviderId = providerId?.trim().toLowerCase();
+  if (!normalizedProviderId) return [];
+  return models.filter((model) => model.provider_id.toLowerCase() === normalizedProviderId);
+}
+
 function readModelProviderType(model: unknown): string | undefined {
   if (!model || typeof model !== "object") return undefined;
   const record = model as Record<string, unknown>;
@@ -123,6 +170,10 @@ function readModelProviderType(model: unknown): string | undefined {
     : typeof record.provider === "string"
       ? record.provider
       : undefined;
+}
+
+function isChatProvider(provider: ProviderLike): boolean {
+  return provider.category === "llm" || Boolean(provider.surfaces?.includes("chat"));
 }
 
 /**

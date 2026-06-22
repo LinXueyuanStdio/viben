@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { db, publishedPages, publishedPageVersions } from '@/lib/db';
+import { db, publishedPageRecords, publishedPages, publishedPageVersions } from '@/lib/db';
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -62,6 +62,16 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
+    const latestVersion = await db.query.publishedPageVersions.findFirst({
+      where: and(
+        eq(publishedPageVersions.userId, session.userId),
+        eq(publishedPageVersions.uid, uid)
+      ),
+      orderBy: [desc(publishedPageVersions.version)],
+    });
+
+    const nextVersion = (latestVersion?.version ?? 0) + 1;
+
     await db
       .insert(publishedPages)
       .values({
@@ -71,6 +81,7 @@ export async function POST(request: NextRequest) {
         icon: icon ?? null,
         description: description ?? null,
         html,
+        currentVersion: nextVersion,
       })
       .onConflictDoUpdate({
         target: [publishedPages.userId, publishedPages.uid],
@@ -79,38 +90,51 @@ export async function POST(request: NextRequest) {
           icon: icon ?? null,
           description: description ?? null,
           html,
+          currentVersion: nextVersion,
           updatedAt: sql`now()`,
         },
       });
 
-    const publishedPage = await db.query.publishedPages.findFirst({
+    const updatedPublishedPage = await db.query.publishedPages.findFirst({
       where: and(
         eq(publishedPages.userId, session.userId),
         eq(publishedPages.uid, uid)
       ),
     });
 
-    if (!publishedPage) {
+    if (!updatedPublishedPage) {
       throw new Error('Published page was not found after upsert');
     }
 
-    const latestVersion = await db.query.publishedPageVersions.findFirst({
-      where: and(
-        eq(publishedPageVersions.userId, session.userId),
-        eq(publishedPageVersions.uid, uid)
-      ),
-      orderBy: [desc(publishedPageVersions.version)],
-    });
-
     await db.insert(publishedPageVersions).values({
-      publishedPageId: publishedPage.id,
+      publishedPageId: updatedPublishedPage.id,
       uid,
       userId: session.userId,
-      version: (latestVersion?.version ?? 0) + 1,
+      version: nextVersion,
       title,
       icon: icon ?? null,
       description: description ?? null,
       html,
+    });
+
+    const latestRecord = await db.query.publishedPageRecords.findFirst({
+      where: and(
+        eq(publishedPageRecords.userId, session.userId),
+        eq(publishedPageRecords.uid, uid)
+      ),
+      orderBy: [desc(publishedPageRecords.recordNumber)],
+    });
+
+    await db.insert(publishedPageRecords).values({
+      publishedPageId: updatedPublishedPage.id,
+      uid,
+      userId: session.userId,
+      recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
+      version: nextVersion,
+      action: 'publish',
+      title,
+      icon: icon ?? null,
+      description: description ?? null,
     });
 
     return NextResponse.json({

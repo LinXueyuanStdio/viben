@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildClaudeCodeProviderSwitch,
-  filterProviderModels,
-  filterSelectorProviders,
 } from "./provider-model-selection";
+import {
+  filterModelsByProvider,
+  filterProvidersByExecutor,
+} from "@/lib/executor-constraints";
 
 const providers = [
   {
@@ -84,13 +86,19 @@ const models = [
 
 describe("provider model selection", () => {
   it("keeps only enabled LLM/chat providers allowed for an executor", () => {
-    expect(filterSelectorProviders(providers, ["anthropic"]).map((provider) => provider.id)).toEqual([
+    expect(
+      filterProvidersByExecutor(providers, "CLAUDE_CODE", {
+        enabledOnly: true,
+        chatOnly: true,
+        sort: true,
+      }).map((provider) => provider.id)
+    ).toEqual([
       "anthropic-main",
     ]);
   });
 
   it("filters model options by the selected provider id", () => {
-    expect(filterProviderModels(models, "anthropic-main").map((model) => model.id)).toEqual([
+    expect(filterModelsByProvider(models, "anthropic-main").map((model) => model.id)).toEqual([
       "claude-sonnet-main",
       "claude-haiku-main",
       "claude-opus-main",
@@ -112,7 +120,7 @@ describe("provider model selection", () => {
       },
       currentModel: "gpt-5.1",
       providerId: "anthropic-main",
-      providerModels: filterProviderModels(models, "anthropic-main"),
+      providerModels: filterModelsByProvider(models, "anthropic-main"),
     });
 
     expect(result.currentModel).toBe("claude-sonnet-main");
@@ -137,7 +145,7 @@ describe("provider model selection", () => {
       },
       currentModel: "gpt-5.1",
       providerId: "anthropic-main",
-      providerModels: filterProviderModels(models, "anthropic-main"),
+      providerModels: filterModelsByProvider(models, "anthropic-main"),
     });
 
     expect(result.currentModel).toBe("claude-haiku-main");
@@ -157,7 +165,7 @@ describe("provider model selection", () => {
       },
       currentModel: "",
       providerId: "anthropic-main",
-      providerModels: filterProviderModels(models, "anthropic-main"),
+      providerModels: filterModelsByProvider(models, "anthropic-main"),
     });
 
     expect(result.config.env).not.toHaveProperty("ANTHROPIC_BASE_URL");

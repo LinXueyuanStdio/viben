@@ -17,7 +17,11 @@ import type { SelectorOption } from "@viben/chat";
 import { useModels } from "@/hooks/use-models";
 import { useProviders } from "@/hooks/use-providers";
 import type { WorkspaceModel } from "@/lib/gateway";
-import { filterModelsByExecutor, getAllowedProviders, type ProviderId } from "@/lib/executor-constraints";
+import {
+  filterModelsByExecutor,
+  filterModelsByProvider,
+  filterProvidersByExecutor,
+} from "@/lib/executor-constraints";
 
 // ============================================================================
 // Types
@@ -82,28 +86,16 @@ export function useAcpChatConfig({
   // 追踪上次的 provider ID，用于检测变化
   const prevProviderIdRef = useRef(selectedProviderId);
 
-  // 1. 根据 executor 类型获取允许的 provider 列表
-  const allowedProviderIds = useMemo(() => {
-    return getAllowedProviders(executorType);
-  }, [executorType]);
-
-  // 2. 过滤 provider 选项
+  // 1. 过滤 provider 选项
   const filteredProviders = useMemo(() => {
-    // 只显示已启用且有 API key 配置的 providers
-    const enabledProviders = providers.filter((p) => p.enabled);
+    return filterProvidersByExecutor(providers, executorType, {
+      enabledOnly: true,
+      chatOnly: true,
+      sort: true,
+    });
+  }, [providers, executorType]);
 
-    // 如果 executor 没有 provider 限制，返回所有启用的 providers
-    if (!allowedProviderIds || allowedProviderIds.length === 0) {
-      return enabledProviders;
-    }
-
-    // 根据 executor 约束过滤 providers
-    return enabledProviders.filter((p) =>
-      allowedProviderIds.includes(p.provider_type as ProviderId)
-    );
-  }, [providers, allowedProviderIds]);
-
-  // 3. 将 provider 转换为 SelectorOption 格式
+  // 2. 将 provider 转换为 SelectorOption 格式
   const providerOptions = useMemo<SelectorOption[]>(() => {
     return filteredProviders.map((p) => ({
       id: p.id,
@@ -113,33 +105,28 @@ export function useAcpChatConfig({
     }));
   }, [filteredProviders]);
 
-  // 4. 根据 executor 类型过滤 models
+  // 3. 根据 executor 类型过滤 models
   const modelsFilteredByExecutor = useMemo(() => {
     // 只保留可用的 models
     const availableModels = models.filter((m) => m.is_available);
     return filterModelsByExecutor(availableModels, executorType);
   }, [models, executorType]);
 
-  // 5. 再根据选中的 provider 过滤 models
+  // 4. 再根据选中的 provider 过滤 models
   const filteredModels = useMemo(() => {
     if (!selectedProviderId) {
       return modelsFilteredByExecutor;
     }
 
-    // 找到选中 provider 的类型
     const selectedProvider = filteredProviders.find((p) => p.id === selectedProviderId);
     if (!selectedProvider) {
       return modelsFilteredByExecutor;
     }
 
-    return modelsFilteredByExecutor.filter((m) => {
-      const modelProviderId = m.provider_id.toLowerCase();
-      const providerId = selectedProvider.id.toLowerCase();
-      return modelProviderId === providerId;
-    });
+    return filterModelsByProvider(modelsFilteredByExecutor, selectedProvider.id);
   }, [modelsFilteredByExecutor, selectedProviderId, filteredProviders]);
 
-  // 6. 将 models 转换为 SelectorOption 格式
+  // 5. 将 models 转换为 SelectorOption 格式
   const modelOptions = useMemo<SelectorOption[]>(() => {
     return filteredModels.map((m) => ({
       id: m.id,
@@ -149,7 +136,7 @@ export function useAcpChatConfig({
     }));
   }, [filteredModels]);
 
-  // 7. 当 executor 类型变化时，自动选择第一个可用的 provider
+  // 6. 当 executor 类型变化时，自动选择第一个可用的 provider
   useEffect(() => {
     if (prevExecutorTypeRef.current !== executorType) {
       prevExecutorTypeRef.current = executorType;
@@ -166,7 +153,7 @@ export function useAcpChatConfig({
     }
   }, [executorType, filteredProviders, selectedProviderId, onProviderChange]);
 
-  // 8. 当 provider 变化时，自动选择第一个可用的 model
+  // 7. 当 provider 变化时，自动选择第一个可用的 model
   useEffect(() => {
     if (prevProviderIdRef.current !== selectedProviderId) {
       prevProviderIdRef.current = selectedProviderId;
@@ -185,7 +172,7 @@ export function useAcpChatConfig({
     }
   }, [selectedProviderId, filteredModels, selectedModelId, onModelChange]);
 
-  // 9. 刷新数据
+  // 8. 刷新数据
   const refresh = useCallback(async () => {
     await Promise.all([refreshProviders(), refreshModels()]);
   }, [refreshProviders, refreshModels]);

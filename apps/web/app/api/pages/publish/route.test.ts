@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 const mocks = vi.hoisted(() => ({
   findPublishedPage: vi.fn(),
   findLatestVersion: vi.fn(),
+  findLatestRecord: vi.fn(),
   insertValues: vi.fn(),
   onConflictDoUpdate: vi.fn(),
   execute: vi.fn(),
@@ -33,6 +34,9 @@ vi.mock('@/lib/db', () => ({
       publishedPageVersions: {
         findFirst: mocks.findLatestVersion,
       },
+      publishedPageRecords: {
+        findFirst: mocks.findLatestRecord,
+      },
     },
     insert: vi.fn(() => ({
       values: mocks.insertValues,
@@ -46,6 +50,7 @@ vi.mock('@/lib/db', () => ({
     icon: 'icon',
     description: 'description',
     html: 'html',
+    currentVersion: 'currentVersion',
     updatedAt: 'updatedAt',
   },
   publishedPageVersions: {
@@ -57,6 +62,17 @@ vi.mock('@/lib/db', () => ({
     icon: 'versionIcon',
     description: 'versionDescription',
     html: 'versionHtml',
+  },
+  publishedPageRecords: {
+    publishedPageId: 'recordPublishedPageId',
+    uid: 'recordUid',
+    userId: 'recordUserId',
+    recordNumber: 'recordNumber',
+    version: 'recordVersion',
+    action: 'recordAction',
+    title: 'recordTitle',
+    icon: 'recordIcon',
+    description: 'recordDescription',
   },
 }));
 
@@ -94,6 +110,7 @@ describe('POST /api/pages/publish', () => {
       userId: 'user-1',
     });
     mocks.findLatestVersion.mockResolvedValue(null);
+    mocks.findLatestRecord.mockResolvedValue(null);
     mocks.insertValues.mockReturnValue({
       onConflictDoUpdate: mocks.onConflictDoUpdate,
     });
@@ -124,6 +141,7 @@ describe('POST /api/pages/publish', () => {
       icon: { type: 'lucide', value: 'file-text' },
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
+      currentVersion: 1,
     });
     expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
       target: ['userId', 'uid'],
@@ -132,6 +150,7 @@ describe('POST /api/pages/publish', () => {
         icon: { type: 'lucide', value: 'file-text' },
         description: 'Demo page',
         html: '<!doctype html><html><body>Demo</body></html>',
+        currentVersion: 1,
         updatedAt: { type: 'sql', sql: 'now()' },
       },
     });
@@ -145,6 +164,17 @@ describe('POST /api/pages/publish', () => {
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
     });
+    expect(mocks.insertValues).toHaveBeenCalledWith({
+      publishedPageId: 'published-1',
+      uid: 'demo',
+      userId: 'user-1',
+      recordNumber: 1,
+      version: 1,
+      action: 'publish',
+      title: 'Demo',
+      icon: { type: 'lucide', value: 'file-text' },
+      description: 'Demo page',
+    });
     expect(mocks.execute).toHaveBeenCalled();
   });
 
@@ -156,6 +186,9 @@ describe('POST /api/pages/publish', () => {
     });
     mocks.findLatestVersion.mockResolvedValue({
       version: 3,
+    });
+    mocks.findLatestRecord.mockResolvedValue({
+      recordNumber: 8,
     });
 
     const response = await POST(requestWithBody({
@@ -179,10 +212,11 @@ describe('POST /api/pages/publish', () => {
         icon: null,
         description: 'Updated',
         html: '<html><body>Updated</body></html>',
+        currentVersion: 4,
         updatedAt: { type: 'sql', sql: 'now()' },
       },
     });
-    expect(mocks.insertValues).toHaveBeenLastCalledWith({
+    expect(mocks.insertValues).toHaveBeenCalledWith({
       publishedPageId: 'published-1',
       uid: 'demo',
       userId: 'user-1',
@@ -191,6 +225,17 @@ describe('POST /api/pages/publish', () => {
       icon: null,
       description: 'Updated',
       html: '<html><body>Updated</body></html>',
+    });
+    expect(mocks.insertValues).toHaveBeenLastCalledWith({
+      publishedPageId: 'published-1',
+      uid: 'demo',
+      userId: 'user-1',
+      recordNumber: 9,
+      version: 4,
+      action: 'publish',
+      title: 'Demo v2',
+      icon: null,
+      description: 'Updated',
     });
   });
 
@@ -230,6 +275,7 @@ describe('POST /api/pages/publish', () => {
       icon: null,
       description: null,
       html: '<html><body>Bob Demo</body></html>',
+      currentVersion: 1,
     });
   });
 
