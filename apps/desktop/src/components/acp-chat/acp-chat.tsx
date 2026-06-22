@@ -343,6 +343,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const chatSurfaceRef = useRef<HTMLDivElement>(null);
 
   // Get active workspace name
   const activeWorkspace = useWorkspaceStore((state) => state.getActiveWorkspace());
@@ -537,6 +538,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const [isSessionDrawerOpen, setIsSessionDrawerOpen] = useState(false);
   const [isSessionDrawerMounted, setIsSessionDrawerMounted] = useState(false);
   const [selectedSessionListIndex, setSelectedSessionListIndex] = useState(0);
+  const shouldFocusInputAfterSessionDrawerCloseRef = useRef(false);
 
   const openSessionDrawer = useCallback(() => {
     setIsSessionDrawerMounted(true);
@@ -556,8 +558,13 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   }, []);
 
   const closeSessionDrawerAndFocusInput = useCallback(() => {
+    shouldFocusInputAfterSessionDrawerCloseRef.current = true;
     setIsSessionDrawerOpen(false);
-    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+
+  const focusChatInput = useCallback(() => {
+    const textarea = textareaRef.current ?? chatSurfaceRef.current?.querySelector("textarea");
+    textarea?.focus({ preventScroll: true });
   }, []);
 
   const handleSessionListAttach = useCallback(async (targetSessionId: string) => {
@@ -575,9 +582,16 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   useEffect(() => {
     if (isSessionDrawerOpen || !isSessionDrawerMounted) return;
-    const timer = window.setTimeout(() => setIsSessionDrawerMounted(false), 240);
+    const timer = window.setTimeout(() => {
+      setIsSessionDrawerMounted(false);
+      if (!shouldFocusInputAfterSessionDrawerCloseRef.current) return;
+      shouldFocusInputAfterSessionDrawerCloseRef.current = false;
+      window.requestAnimationFrame(() => {
+        focusChatInput();
+      });
+    }, 240);
     return () => window.clearTimeout(timer);
-  }, [isSessionDrawerMounted, isSessionDrawerOpen]);
+  }, [focusChatInput, isSessionDrawerMounted, isSessionDrawerOpen]);
 
   const sessionDrawer = isSessionDrawerMounted ? (
     <AcpSessionListDrawer
@@ -1028,6 +1042,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     cost: latestUsage.cost,
   }), [latestUsage.used, latestUsage.size, latestUsage.cost]);
 
+  const contextUsagePercent = contextBreakdown.size > 0
+    ? Math.min((contextBreakdown.used / contextBreakdown.size) * 100, 100)
+    : 0;
+
 
 
   const handleContextPopupMouseEnter = useCallback(() => {
@@ -1112,7 +1130,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
               onClick={handleContextPopupClick}
             >
               <Settings2 className="h-4 w-4" />
-              <span>{Math.round(contextBreakdown.usedPercent)}%</span>
+              <span>{Math.round(contextUsagePercent)}%</span>
             </button>
           ) : (
             <button
@@ -1136,6 +1154,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       permissionMode,
       backgroundTask,
       contextBreakdown,
+      contextUsagePercent,
       handleCompactContext,
       handleContextPopupClick,
       handleContextPopupMouseEnter,
@@ -1450,7 +1469,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   if (windowMode) {
     modeContent = (
       <ChatDragProvider value={dragContextValue}>
-        <div className={cn("relative flex h-full w-full flex-col overflow-visible bg-background", className)}>
+        <div ref={chatSurfaceRef} className={cn("relative flex h-full w-full flex-col overflow-visible bg-background", className)}>
           {displayError && (
             <div className="absolute left-4 right-4 top-14 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
               {displayError}
@@ -1475,6 +1494,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
             </div>
           )}
           <motion.div
+            ref={chatSurfaceRef}
             className="pointer-events-auto relative overflow-visible"
             style={floatingStyle ?? { position: "absolute" }}
             animate={isDragging ? undefined : positionConfig}
@@ -1498,6 +1518,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     modeContent = (
       <ChatDragProvider value={dragContextValue}>
         <div
+          ref={chatSurfaceRef}
           className={cn(
             "group/resize relative h-full min-h-[560px] overflow-visible bg-background",
             enableFullResize && "flex-shrink-0",

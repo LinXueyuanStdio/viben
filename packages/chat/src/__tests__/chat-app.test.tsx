@@ -51,6 +51,12 @@ vi.mock("../chat-input", async () => {
       clearAttachments: vi.fn(),
       isAnyLoading: false,
     }),
+    useIMEComposition: () => ({
+      isComposing: false,
+      isComposingEvent: () => false,
+      handleCompositionStart: vi.fn(),
+      handleCompositionEnd: vi.fn(),
+    }),
     ChatInput: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "overlay-chat-input-props" },
@@ -285,6 +291,10 @@ function createHeaderContent({
 beforeEach(() => {
   mockBuildBackgroundTasksFromMessages.mockClear();
   mockBuildTodoListItemsFromMessages.mockClear();
+  globalThis.ResizeObserver ??= class ResizeObserver {
+    observe() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
 });
 
 describe("ChatApp", () => {

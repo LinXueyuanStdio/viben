@@ -10,6 +10,7 @@
 import { useMemo, useCallback } from "react";
 import { useAgentConversation } from "./use-agent-conversation";
 import { useAgentDetail } from "@/hooks/use-workspace-resources";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 import type {
   AgentMessage,
   AgentPhase,
@@ -42,7 +43,7 @@ export interface UseConversationReturn {
     executor_type?: string;
     mcp_servers?: string[];
     skills?: string[];
-    approval_mode?: "bypass" | "rules" | "ai";
+    permission_mode?: PermissionMode;
   } | null;
   /** Loading agent details */
   agentLoading: boolean;
@@ -134,7 +135,7 @@ export function useConversation(
       executor_type: agentDetail.executor_type,
       mcp_servers: agentDetail.mcp_servers?.map((s) => typeof s === "string" ? s : s.name),
       skills: agentDetail.skills,
-      approval_mode: agentDetail.approval_mode,
+      permission_mode: agentDetail.permission_mode,
     };
   }, [agentDetail]);
 

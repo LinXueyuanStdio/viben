@@ -1,0 +1,23 @@
+{
+  "name": "@viben/channel-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo relay server for Viben Cloud Page Action Bridge sessions",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "demo:page": "tsx src/demo/page-client.ts",
+    "demo:gateway": "tsx src/demo/gateway-client.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@viben/protocol": "workspace:*",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.18.1"
+  }
+}

@@ -32,11 +32,7 @@ function OptionItem({
   onClick: () => void;
   showArrow?: boolean;
 }) {
-  const accessibilityLabel = [
-    option.label,
-    option.description,
-    option.badge,
-  ].filter(Boolean).join(" ");
+  const tooltipLabel = option.label;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -45,8 +41,6 @@ function OptionItem({
           <Button
             variant="ghost"
             size="sm"
-            aria-label={accessibilityLabel}
-            title={accessibilityLabel}
             className={cn(
               "w-full justify-start gap-1.5 h-7 px-2",
               option.disabled && "opacity-50",
@@ -65,7 +59,7 @@ function OptionItem({
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right" align="center" className="max-w-80 break-words">
-          {accessibilityLabel}
+          {tooltipLabel}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

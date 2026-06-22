@@ -81,7 +81,9 @@ export function registerAgentAcpRoutes(fastify: FastifyInstance): void {
 
     const cleanup = () => {
       for (const sessionId of ownedSessionIds) {
-        acpSessionManager.closeSession(sessionId);
+        void acpSessionManager.closeSession(sessionId).catch((error) => {
+          log.warn({ err: error, sessionId }, "ACP session cleanup close failed");
+        });
       }
       log.info({ sessions: ownedSessionIds.size }, "ACP WebSocket disconnected");
     };
@@ -175,7 +177,7 @@ function createVibenAcpAgent(
 
     async unstable_closeSession(request: CloseSessionRequest) {
       if (request.sessionId) {
-        acpSessionManager.closeSession(request.sessionId);
+        await acpSessionManager.closeSession(request.sessionId);
         ownedSessionIds.delete(request.sessionId);
       }
       return {};

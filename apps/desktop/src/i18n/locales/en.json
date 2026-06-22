@@ -1260,7 +1260,7 @@
     "templateIdPlaceholder": "my-template",
     "templateIdHint": "A unique identifier for this template (lowercase, hyphens allowed)",
     "executorType": "Executor Type",
-    "approvalMode": "Approval Mode",
+    "permissionMode": "Permission Mode",
     "skipPermissions": "Skip Permissions",
     "claudeModel": "Claude Model",
     "appendPrompt": "Append Prompt",
@@ -4841,8 +4841,8 @@
     "sandbox": "Sandbox",
     "worktree": "Worktree",
     "compactContext": "Compact Context",
-    "contextApproval": {
-      "approvalMode": "Approval Mode"
+    "contextPermissions": {
+      "permissionMode": "Permission Mode"
     },
     "newSessionInWindow": "New session in window",
     "newSessionWith": "New session: {{name}}",

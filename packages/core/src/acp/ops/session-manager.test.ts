@@ -1,11 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { PromptRequest, PromptResponse } from "@agentclientprotocol/sdk";
-import { InputHistoryService } from "../../services/input-history";
+import { InputHistoryService, inputHistoryService } from "../../services/input-history";
 import { resolveBuiltinAcpBackend } from "./backend-adapter";
 import { AcpSessionManager } from "./session-manager";
+import { DefaultAcpSessionStorageAdapter } from "./session-storage";
+import { InMemoryAcpSessionEventStore } from "./session-event-store";
+import { InMemoryAcpSessionIndexStore } from "./session-index-store";
 import { InMemoryAcpSteerPromptStore } from "./steer-prompt-store";
 import type {
   AcpBackendAdapter,
@@ -279,7 +282,335 @@ function createCapturingConnection(): CapturingConnection {
   return connection;
 }
 
+function createMemoryStorage(): {
+  storage: DefaultAcpSessionStorageAdapter;
+  index: InMemoryAcpSessionIndexStore;
+  events: InMemoryAcpSessionEventStore;
+} {
+  const index = new InMemoryAcpSessionIndexStore();
+  const events = new InMemoryAcpSessionEventStore();
+  return {
+    storage: new DefaultAcpSessionStorageAdapter(index, events),
+    index,
+    events,
+  };
+}
+
+function getInternalConnection(manager: AcpSessionManager, key: string): AcpConnection {
+  const session = (manager as unknown as { sessions: Map<string, { connection: AcpConnection }> }).sessions.get(key);
+  if (!session) {
+    throw new Error(`Expected internal session for key ${key}`);
+  }
+  return session.connection;
+}
+
+async function flushAsyncWork(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
 describe("AcpSessionManager", () => {
+  beforeEach(() => {
+    process.env.VIBEN_ACP_SESSION_INDEX_STORE = "memory";
+    process.env.VIBEN_ACP_SESSION_EVENT_STORE = "memory";
+  });
+
+  it("stores an active index record after creating a session", async () => {
+    const { storage, index } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+
+    const session = await manager.createSession(
+      {
+        cwd: "/tmp",
+        mcpServers: [],
+        agent_config: {
+          name: "Codex Agent",
+          executor_type: "CODEX",
+          permission_mode: "plan",
+        },
+        agent_dir: "/tmp/agent",
+        agent_config_path: "/tmp/agent/AGENTS.md",
+        persist_session_id: "persist-session",
+        persist_task_id: "persist-task",
+        gateway_url: "http://127.0.0.1:18790",
+      },
+      createConnection(),
+      { cwd: "/tmp/workspace" }
+    );
+
+    await expect(index.getRecord("CODEX", session.sessionId)).resolves.toMatchObject({
+      executor_type: "CODEX",
+      session_id: session.sessionId,
+      status: "active",
+      cwd: "/tmp",
+      workspace_path: "/tmp/workspace",
+      agent_dir: "/tmp/agent",
+      agent_config_path: "/tmp/agent/AGENTS.md",
+      title: "Codex Agent",
+      permission_mode: "plan",
+      persist_session_id: "persist-session",
+      persist_task_id: "persist-task",
+      gateway_url: "http://127.0.0.1:18790",
+      event_store_type: "jsonl",
+      event_store_uri: `memory://acp/sessions/CODEX/${session.sessionId}/events.jsonl`,
+      event_last_seq: -1,
+    });
+  });
+
+  it("parks a session and records detached session updates", async () => {
+    const { storage, index, events } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+
+    await expect(manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection))
+      .resolves.toBe(true);
+    await getInternalConnection(manager, `CODEX:${session.sessionId}`).sessionUpdate({
+      sessionId: session.sessionId,
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        content: { type: "text", text: "detached update" },
+      },
+    });
+
+    await expect(index.getRecord("CODEX", session.sessionId)).resolves.toMatchObject({
+      status: "parked",
+      parked_at: expect.any(String),
+      event_last_seq: 0,
+    });
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "session_update",
+        data: {
+          sessionId: session.sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "detached update" },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("routes backend updates through the detached connection after parking", async () => {
+    const { storage, events } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    await expect(manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection))
+      .resolves.toBe(true);
+    await adapter.startContext?.connection.sessionUpdate({
+      sessionId: session.sessionId,
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        content: { type: "text", text: "backend after park" },
+      },
+    });
+
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "session_update",
+        data: {
+          sessionId: session.sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "backend after park" },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("loads a detached in-memory session and returns recorded history", async () => {
+    const { storage, index } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+    await manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection);
+    await getInternalConnection(manager, `CODEX:${session.sessionId}`).sessionUpdate({
+      sessionId: session.sessionId,
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        content: { type: "text", text: "history item" },
+      },
+    });
+
+    const loaded = await manager.loadSession(
+      { sessionId: session.sessionId, cwd: "/tmp", mcpServers: [] },
+      createConnection()
+    );
+
+    expect(loaded).toMatchObject({
+      sessionId: session.sessionId,
+      history: [
+        {
+          seq: 0,
+          type: "session_update",
+          data: {
+            sessionId: session.sessionId,
+            update: {
+              sessionUpdate: "agent_message_chunk",
+              content: { type: "text", text: "history item" },
+            },
+          },
+        },
+      ],
+    });
+    await expect(index.getRecord("CODEX", session.sessionId)).resolves.toMatchObject({
+      status: "active",
+      parked_at: undefined,
+    });
+  });
+
+  it("closes a parked session, marks the index finished, and cancels detached pending requests", async () => {
+    const { storage, index, events } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+    await manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection);
+    const pending = getInternalConnection(manager, `CODEX:${session.sessionId}`).requestPermission({
+      sessionId: session.sessionId,
+      toolCall: {
+        toolCallId: "permission-1",
+        title: "Edit file",
+        kind: "edit",
+      },
+      options: [{ optionId: "allow_once", name: "Allow once", kind: "allow_once" }],
+    });
+    await flushAsyncWork();
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_request",
+        status: "pending",
+      },
+    ]);
+
+    await manager.closeSession(session.sessionId);
+
+    await expect(pending).rejects.toThrow("Detached connection closed");
+    await expect(index.getRecord("CODEX", session.sessionId)).resolves.toMatchObject({
+      status: "finished",
+      finished_at: expect.any(String),
+      event_last_seq: 0,
+    });
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_request",
+        status: "cancelled",
+      },
+    ]);
+  });
+
+  it("keeps detached pending requests when parkSession is called twice", async () => {
+    const { storage, events } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+    await manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection);
+    const pending = getInternalConnection(manager, `CODEX:${session.sessionId}`).requestPermission({
+      sessionId: session.sessionId,
+      toolCall: {
+        toolCallId: "permission-1",
+        title: "Edit file",
+        kind: "edit",
+      },
+      options: [{ optionId: "allow_once", name: "Allow once", kind: "allow_once" }],
+    });
+    await flushAsyncWork();
+
+    await expect(manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection))
+      .resolves.toBe(true);
+    await manager.closeSession(session.sessionId);
+
+    await expect(pending).rejects.toThrow("Detached connection closed");
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_request",
+        status: "cancelled",
+      },
+    ]);
+  });
+
+  it("does not park when the closing connection is not the current connection", async () => {
+    const { storage, index } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      createConnection()
+    );
+
+    await expect(manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, createConnection()))
+      .resolves.toBe(false);
+
+    expect(manager.getSession(session.sessionId)?.status).toBe("initializing");
+    await expect(index.getRecord("CODEX", session.sessionId)).resolves.toMatchObject({
+      status: "active",
+      parked_at: undefined,
+    });
+  });
+
   it("expands home-relative cwd before starting the ACP backend", async () => {
     const adapter = new CapturingBackendAdapter();
     const manager = new AcpSessionManager(adapter);

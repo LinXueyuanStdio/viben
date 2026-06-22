@@ -296,7 +296,6 @@ function summarizeAgentConfigForLog(config: AgentConfigPayload | undefined): Rec
     executorType: config.executor_type,
     provider_id: config.provider_id,
     model: config.model,
-    approvalMode: config.approval_mode,
     permissionMode: config.permission_mode,
     dangerouslySkipPermissions: config.dangerously_skip_permissions,
     mcpServerCount: Array.isArray(config.mcp_servers) ? config.mcp_servers.length : 0,

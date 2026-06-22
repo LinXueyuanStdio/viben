@@ -26,6 +26,7 @@ import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getGatewayUrl, isAgentAvailable } from "@/lib/gateway";
 import { getOpenClawRuntimeConfig } from "@/lib/gateway/modules/agent-execution";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 import type { SandboxConfig } from "@/hooks/use-sandbox";
 import {
   addBackgroundTask,
@@ -230,7 +231,7 @@ export interface AgentConfig {
   executor_type?: string;
   mcp_servers?: (string | AgentMcpEntry)[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: PermissionMode;
   executor_config?: Record<string, unknown>;
 }
 
@@ -1842,7 +1843,7 @@ The workspace ID for this session is: \`${workspaceId}\`
   );
 
   /**
-   * Approve/reject exec (only used in WebSocket mode for OpenClaw interactive approvals)
+   * Approve/reject exec (only used in WebSocket mode for OpenClaw interactive permission requests)
    */
   const approveExec = useCallback(
     (decision: string, feedback?: string) => {

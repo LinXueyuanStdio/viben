@@ -22,19 +22,13 @@ describe("TripleSelector", () => {
     fireEvent.click(screen.getByRole("button", { name: /agent \/ provider \/ model/i }));
 
     expect(await screen.findByRole("dialog")).toHaveAttribute("data-side", "top");
-    expect(screen.getByRole("button", { name: "Agent Claude Code workspace" })).toHaveAttribute(
-      "title",
-      "Agent Claude Code workspace"
-    );
-    expect(screen.getByRole("button", { name: "Provider anthropic" })).toHaveAttribute(
-      "title",
-      "Provider anthropic"
-    );
-    expect(screen.getByRole("button", { name: "Model" })).toHaveAttribute("title", "Model");
+    expect(screen.getByRole("button", { name: "Agent" })).not.toHaveAttribute("title");
+    expect(screen.getByRole("button", { name: "Provider" })).not.toHaveAttribute("title");
+    expect(screen.getByRole("button", { name: "Model" })).not.toHaveAttribute("title");
 
-    fireEvent.mouseOver(screen.getByRole("button", { name: "Agent Claude Code workspace" }));
+    fireEvent.mouseOver(screen.getByRole("button", { name: "Agent" }));
     await waitFor(() => {
-      expect(screen.getByRole("tooltip")).toHaveTextContent("Agent Claude Code workspace");
+      expect(screen.getByRole("tooltip")).toHaveTextContent("Agent");
     });
   });
 });

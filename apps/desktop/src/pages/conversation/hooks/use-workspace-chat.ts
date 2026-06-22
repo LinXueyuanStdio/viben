@@ -434,7 +434,7 @@ export function useWorkspaceChat() {
     executor_type: currentAgent.executor_type,
     mcp_servers: currentAgent.mcp_servers,
     skills: currentAgent.skills,
-    approval_mode: currentAgent.approval_mode,
+    permission_mode: currentAgent.permission_mode,
   } : undefined;
 
   const sandboxConfig = useChatConfigStore((state) => state.sandboxConfig);
@@ -855,7 +855,7 @@ export function useWorkspaceChat() {
         id: agent.id, name: agent.name, description: agent.description,
         model: agent.model, provider_id: agent.provider_id, system_prompt: agent.system_prompt,
         temperature: agent.temperature, max_tokens: agent.max_tokens,
-        approval_mode: agent.approval_mode,
+        permission_mode: agent.permission_mode,
       } : undefined;
 
       const newSession = await client.createAgentSession(selectedAgentId, {
@@ -966,7 +966,7 @@ export function useWorkspaceChat() {
         id: agent.id, name: agent.name, description: agent.description,
         model: agent.model, provider_id: agent.provider_id, system_prompt: agent.system_prompt,
         temperature: agent.temperature, max_tokens: agent.max_tokens,
-        approval_mode: agent.approval_mode,
+        permission_mode: agent.permission_mode,
       } : undefined;
 
       const newSession = await client.createAgentSession(selectedAgentId, {

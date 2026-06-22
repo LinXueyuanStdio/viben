@@ -53,6 +53,17 @@ import {
   createDefaultAcpSteerPromptStore,
   type AcpSteerPromptStore,
 } from "./steer-prompt-store";
+import { DetachedConnection } from "./detached-connection";
+import { AcpSessionEventRecorder } from "./session-event-recorder";
+import {
+  createDefaultAcpSessionStorage,
+  type AcpSessionStorageAdapter,
+} from "./session-storage";
+import type { AcpSessionEventIdentity } from "./session-event-store";
+import type {
+  AcpSessionRecord,
+  AcpSessionRecordStatus,
+} from "./session-index-store";
 import { isAcpClientSideBridgeTool } from "./client-side-mcp-constants";
 
 const log = globalLogger.child({ module: "acp-session-manager" });
@@ -83,8 +94,12 @@ type AcpPromptQueueItem = AcpNormalPromptQueueItem | AcpSteerResumeQueueItem;
 
 interface AcpSession {
   id: string;
+  executor_type: string;
+  session_id: string;
+  backend_id?: string;
   status: AcpSessionStatus;
   cwd: string;
+  workspace_path?: string;
   created_at: Date;
   last_active_at: Date;
   agent_config_path?: string;
@@ -95,6 +110,7 @@ interface AcpSession {
   sandbox_config?: AcpSandboxConfig;
   mcp_servers: AcpMcpServer[];
   connection: AcpConnection;
+  recorder: AcpSessionEventRecorder;
   gateway_url?: string;
   backend?: AcpBackendSession;
   backend_load_session_id?: string;
@@ -118,19 +134,22 @@ export class AcpSessionManager {
   private backendAdapter: AcpBackendAdapter;
   private steerPromptStore: AcpSteerPromptStore;
   private inputHistory: InputHistoryService;
+  private storage: AcpSessionStorageAdapter;
 
   constructor(
     backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter(),
     steerPromptStore: AcpSteerPromptStore = createDefaultAcpSteerPromptStore(),
-    inputHistory: InputHistoryService = inputHistoryService
+    inputHistory: InputHistoryService = inputHistoryService,
+    storage: AcpSessionStorageAdapter = createDefaultAcpSessionStorage()
   ) {
     this.backendAdapter = backendAdapter;
     this.steerPromptStore = steerPromptStore;
     this.inputHistory = inputHistory;
+    this.storage = storage;
   }
 
   getSession(sessionId: string): AcpSessionSummary | undefined {
-    const session = this.sessions.get(sessionId);
+    const session = this.findUniqueLiveSession(sessionId);
     return session ? toSummary(session) : undefined;
   }
 
@@ -145,7 +164,8 @@ export class AcpSessionManager {
   ): Promise<AcpNewSessionResponse> {
     const sessionId = randomUUID();
     const session = await this.createSessionRecord(sessionId, request, connection, context);
-    this.sessions.set(sessionId, session);
+    this.sessions.set(sessionKey(session), session);
+    await this.upsertSessionIndex(session, "active");
     log.info(sessionLogFields(session, { source: "session/new" }), "ACP session created");
 
     return {
@@ -164,11 +184,17 @@ export class AcpSessionManager {
     const inlineConfig = request.agent_config ?? request.agentConfig ?? context.agent_config;
     const agentConfig = await resolveAgentConfig(agentConfigPath, inlineConfig);
     const cwd = resolveCwd(request.cwd ?? context.cwd ?? process.cwd());
+    const executorType = resolveExecutorType(agentConfig);
+    const identity = { executor_type: executorType, session_id: sessionId };
+    const recorder = new AcpSessionEventRecorder(this.storage.events, identity, this.storage.index);
 
     const session: AcpSession = {
       id: sessionId,
+      executor_type: executorType,
+      session_id: sessionId,
       status: "initializing",
       cwd,
+      workspace_path: context.cwd,
       created_at: new Date(),
       last_active_at: new Date(),
       agent_config_path: agentConfigPath,
@@ -188,6 +214,7 @@ export class AcpSessionManager {
         context.sandbox_config,
       mcp_servers: request.mcpServers ?? [],
       connection,
+      recorder,
       gateway_url: request.gateway_url ?? request.gatewayUrl ?? context.gateway_url,
       prompt_running: false,
       prompt_queue: [],
@@ -203,7 +230,7 @@ export class AcpSessionManager {
     input: unknown,
     toolCallId: string = randomUUID()
   ): Promise<CallToolResult> {
-    const session = this.sessions.get(sessionId);
+    const session = this.findUniqueLiveSession(sessionId);
     if (!session) {
       return {
         content: [{ type: "text", text: `ACP session not found: ${sessionId}` }],
@@ -224,10 +251,16 @@ export class AcpSessionManager {
     connection: AcpConnection,
     context: AcpSessionContext = {}
   ): Promise<AcpLoadSessionResponse> {
-    const existing = this.sessions.get(request.sessionId);
+    const existing = this.findUniqueLiveSession(request.sessionId);
     if (existing) {
+      let history;
+      if (existing.connection instanceof DetachedConnection) {
+        history = await existing.connection.resume(connection);
+      }
       existing.connection = connection;
+      existing.status = "active";
       existing.last_active_at = new Date();
+      await this.upsertSessionIndex(existing, "active");
       if (!existing.backend) {
         existing.backend_load_session_id = request.sessionId;
       }
@@ -239,6 +272,7 @@ export class AcpSessionManager {
       return {
         sessionId: existing.id,
         configOptions: existing.config_options,
+        history,
       };
     }
 
@@ -258,7 +292,8 @@ export class AcpSessionManager {
       context
     );
     session.backend_load_session_id = request.sessionId;
-    this.sessions.set(request.sessionId, session);
+    this.sessions.set(sessionKey(session), session);
+    await this.upsertSessionIndex(session, "active");
     log.info(sessionLogFields(session, {
       source: "session/load",
       requestedSessionId: request.sessionId,
@@ -272,7 +307,7 @@ export class AcpSessionManager {
   }
 
   async prompt(request: AcpPromptRequest): Promise<AcpPromptResponse> {
-    const session = this.sessions.get(request.sessionId);
+    const session = this.findUniqueLiveSession(request.sessionId);
     if (!session) {
       throw new Error(`ACP session not found: ${request.sessionId}`);
     }
@@ -451,10 +486,11 @@ export class AcpSessionManager {
   }
 
   async cancelSession(sessionId: string): Promise<boolean> {
-    const session = this.sessions.get(sessionId);
+    const session = this.findUniqueLiveSession(sessionId);
     if (!session) return false;
 
     session.status = "cancelled";
+    session.last_active_at = new Date();
     for (const item of session.prompt_queue.splice(0)) {
       item.resolve({ stopReason: "cancelled" });
     }
@@ -467,6 +503,7 @@ export class AcpSessionManager {
         // The backend may already be ending its current prompt.
       }
     }
+    await this.upsertSessionIndex(session, "active");
     log.info({ sessionId }, "ACP session cancelled");
     return true;
   }
@@ -482,8 +519,8 @@ export class AcpSessionManager {
     });
   }
 
-  closeSession(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+  async closeSession(sessionId: string): Promise<void> {
+    const session = this.findUniqueLiveSession(sessionId);
     if (!session) return;
     if (session.prompt_running) {
       clientToolCompletionRegistry.cancelSession(sessionId);
@@ -494,14 +531,47 @@ export class AcpSessionManager {
     for (const item of session.prompt_queue.splice(0)) {
       item.resolve({ stopReason: "cancelled" });
     }
-    this.sessions.delete(sessionId);
+    if (session.connection instanceof DetachedConnection) {
+      await session.connection.close();
+    }
+    session.status = "finished";
+    session.last_active_at = new Date();
+    await this.upsertSessionIndex(session, "finished");
+    this.sessions.delete(sessionKey(session));
     log.info({ sessionId }, "ACP session closed");
   }
 
   closeAll(): void {
-    for (const sessionId of this.sessions.keys()) {
-      this.closeSession(sessionId);
+    for (const session of Array.from(this.sessions.values())) {
+      void this.closeSession(session.id).catch((error) => {
+        log.warn({ err: error, sessionId: session.id }, "ACP session close failed");
+      });
     }
+  }
+
+  async parkSession(
+    identity: AcpSessionEventIdentity,
+    closingConnection?: AcpConnection
+  ): Promise<boolean> {
+    const session = this.sessions.get(sessionKey(identity));
+    if (!session) return false;
+    if (session.connection instanceof DetachedConnection) {
+      return true;
+    }
+    if (closingConnection && session.connection !== closingConnection) {
+      return false;
+    }
+
+    session.connection = new DetachedConnection(
+      session.recorder,
+      session.id,
+      session.agent_config?.permission_mode ?? "default"
+    );
+    session.status = "parked";
+    session.last_active_at = new Date();
+    await this.upsertSessionIndex(session, "parked");
+    log.info(sessionLogFields(session, { source: "session/park" }), "ACP session parked");
+    return true;
   }
 
   private enqueuePromptItem(
@@ -654,7 +724,7 @@ export class AcpSessionManager {
       outerSessionId: session.id,
       cwd: session.cwd,
       request: startRequest,
-      connection: session.connection,
+      connection: this.createBackendConnection(session),
       agentConfig: session.agent_config,
       sandboxConfig: session.sandbox_config,
       onSessionUpdate: (notification) => {
@@ -665,6 +735,7 @@ export class AcpSessionManager {
     });
 
     session.backend = backend;
+    session.backend_id = this.backendAdapter.id;
     session.sdk_session_id = backend.backendSessionId;
     session.agent_capabilities = backend.agentCapabilities ?? DEFAULT_AGENT_CAPABILITIES;
     session.config_options = backend.configOptions;
@@ -677,6 +748,23 @@ export class AcpSessionManager {
       backendCapabilities: summarizeBackendCapabilities(backend.agentCapabilities),
     }, "ACP backend session ready");
     return backend;
+  }
+
+  private createBackendConnection(session: AcpSession): AcpConnection {
+    return {
+      sessionUpdate: async (params) => {
+        await session.connection.sessionUpdate(params);
+      },
+      requestPermission: async (params) => {
+        return await session.connection.requestPermission(params);
+      },
+      requestClient: async (method, params) => {
+        return await session.connection.requestClient(method, params);
+      },
+      notifyClient: async (method, params) => {
+        await session.connection.notifyClient(method, params);
+      },
+    };
   }
 
   private async handleBackendSessionUpdate(
@@ -741,7 +829,7 @@ export class AcpSessionManager {
   }
 
   consumePendingBridgeToolCall(sessionId: string, toolName: string): void {
-    const session = this.sessions.get(sessionId);
+    const session = this.findUniqueLiveSession(sessionId);
     if (!session) return;
     const index = session.pending_client_side_bridge_tool_calls.findIndex((p) => p.toolName === toolName);
     if (index >= 0) {
@@ -869,15 +957,83 @@ export class AcpSessionManager {
   }
 
   private requireSession(sessionId: string): AcpSession {
-    const session = this.sessions.get(sessionId);
+    const session = this.findUniqueLiveSession(sessionId);
     if (!session) {
       throw new Error(`ACP session not found: ${sessionId}`);
     }
     return session;
   }
+
+  private findUniqueLiveSession(sessionId: string): AcpSession | undefined {
+    const direct = this.sessions.get(sessionId);
+    if (direct) return direct;
+
+    const matches = Array.from(this.sessions.values()).filter((session) => session.session_id === sessionId);
+    return matches.length === 1 ? matches[0] : undefined;
+  }
+
+  private async upsertSessionIndex(session: AcpSession, status: AcpSessionRecordStatus): Promise<void> {
+    const existing = await this.storage.index.getRecord(session.executor_type, session.session_id);
+    await this.storage.index.upsertRecord(this.buildSessionRecord(session, status, existing));
+  }
+
+  private buildSessionRecord(
+    session: AcpSession,
+    status: AcpSessionRecordStatus,
+    existing?: AcpSessionRecord | null
+  ): AcpSessionRecord {
+    return {
+      executor_type: session.executor_type,
+      session_id: session.session_id,
+      status,
+      cwd: session.cwd,
+      workspace_path: session.workspace_path,
+      agent_dir: session.agent_dir,
+      agent_config_path: session.agent_config_path,
+      backend_id: session.backend_id,
+      title: session.agent_config?.name,
+      permission_mode: session.agent_config?.permission_mode,
+      acp_record: {
+        sessionId: session.id,
+        executor_type: session.executor_type,
+        sdk_session_id: session.sdk_session_id,
+        backend_load_session_id: session.backend_load_session_id,
+      },
+      persist_session_id: session.persist_session_id,
+      persist_task_id: session.persist_task_id,
+      gateway_url: session.gateway_url,
+      event_store_type: "jsonl",
+      event_store_uri: this.storage.events.getEventStoreUri(getStorageIdentity(session)),
+      event_last_seq: existing?.event_last_seq ?? -1,
+      created_at: session.created_at.toISOString(),
+      last_active_at: session.last_active_at.toISOString(),
+      parked_at: status === "parked" ? session.last_active_at.toISOString() : undefined,
+      finished_at: status === "finished" ? session.last_active_at.toISOString() : undefined,
+      last_error: session.last_error,
+    };
+  }
 }
 
 export const acpSessionManager = new AcpSessionManager();
+
+export function sessionKey(identity: AcpSessionEventIdentity): string {
+  return `${identity.executor_type}:${identity.session_id}`;
+}
+
+export function getStorageIdentity(session: AcpSessionEventIdentity): AcpSessionEventIdentity {
+  return {
+    executor_type: session.executor_type,
+    session_id: session.session_id,
+  };
+}
+
+export function resolveExecutorType(agentConfig?: AgentConfigPayload | null): string {
+  const raw = agentConfig?.executor_type;
+  if (typeof raw !== "string" || !raw.trim()) {
+    return "CLAUDE_CODE";
+  }
+  return raw.trim().replace(/[-\s]+/g, "_").toUpperCase();
+}
 
 async function resolveAgentConfig(
   agentConfigPath?: string,

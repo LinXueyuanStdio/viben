@@ -188,7 +188,7 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
       executor_config: currentSelectedAgentDetail.executor_config ?? listSelectedAgent?.executor_config,
       mcp_servers: normalizeMcpServerNames(currentSelectedAgentDetail.mcp_servers) ?? listSelectedAgent?.mcp_servers,
       skills: currentSelectedAgentDetail.skills ?? listSelectedAgent?.skills,
-      approval_mode: currentSelectedAgentDetail.approval_mode ?? listSelectedAgent?.approval_mode,
+      permission_mode: currentSelectedAgentDetail.permission_mode ?? listSelectedAgent?.permission_mode,
       is_template: currentSelectedAgentDetail.is_template ?? listSelectedAgent?.is_template,
       template_description: currentSelectedAgentDetail.template_description ?? listSelectedAgent?.template_description,
       created_at: currentSelectedAgentDetail.created_at ?? listSelectedAgent?.created_at,

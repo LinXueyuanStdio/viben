@@ -1260,7 +1260,7 @@
     "templateIdPlaceholder": "my-template",
     "templateIdHint": "此模板的唯一标识符（小写，允许连字符）",
     "executorType": "执行器类型",
-    "approvalMode": "审批模式",
+    "permissionMode": "权限模式",
     "skipPermissions": "跳过权限",
     "claudeModel": "Claude 模型",
     "appendPrompt": "追加提示",
@@ -4841,8 +4841,8 @@
     "sandbox": "沙箱",
     "worktree": "工作树",
     "compactContext": "压缩上下文",
-    "contextApproval": {
-      "approvalMode": "审批模式"
+    "contextPermissions": {
+      "permissionMode": "权限模式"
     },
     "newSessionInWindow": "在新窗口中创建会话",
     "newSessionWith": "新建会话：{{name}}",

@@ -1,5 +1,6 @@
 import type { AgentInfo } from "@/lib/gateway";
 import type { AgentConfigPayload } from "./acp-client";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 
 const CLIENT_SIDE_MCP_SERVER = "client_side";
 
@@ -20,6 +21,11 @@ function executorBoolean(config: Record<string, unknown> | undefined, key: strin
 
 function executorString(config: Record<string, unknown> | undefined, key: string): string | undefined {
   return config ? readString(config[key]) : undefined;
+}
+
+function executorPermissionMode(config: Record<string, unknown> | undefined): PermissionMode | undefined {
+  const value = executorString(config, "permission_mode");
+  return isPermissionMode(value) ? value : undefined;
 }
 
 export function getAcpAgentProviderId(agent?: AgentInfo): string | undefined {
@@ -52,7 +58,7 @@ export function buildAcpAgentConfig(params: {
     max_tokens: agent?.max_tokens,
     executor_config: executorConfig,
     dangerously_skip_permissions: executorBoolean(executorConfig, "dangerously_skip_permissions"),
-    permission_mode: agent?.permission_mode ?? executorString(executorConfig, "permission_mode") ?? "default",
+    permission_mode: agent?.permission_mode ?? executorPermissionMode(executorConfig) ?? "default",
     mcp_servers: mergeAgentMcpServers(agent?.mcp_servers),
     skills: agent?.skills,
   };
@@ -94,4 +100,13 @@ function readString(value: unknown): string | undefined {
 
 function readBoolean(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
+}
+
+function isPermissionMode(value: string | undefined): value is PermissionMode {
+  return value === "default"
+    || value === "bypassPermissions"
+    || value === "auto"
+    || value === "acceptEdits"
+    || value === "dontAsk"
+    || value === "plan";
 }
