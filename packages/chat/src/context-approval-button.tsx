@@ -1,8 +1,8 @@
 /**
- * Context Approval Button Component
+ * Context Permission Button Component
  *
  * A compact rounded-rectangle button showing [icon] percentage% format.
- * Hover/click opens a popover with context details and approval mode selector.
+ * Hover/click opens a popover with context details and permission mode selector.
  */
 
 import * as React from "react";
@@ -15,12 +15,12 @@ import {
 import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@viben/ui";
 import type { ContextTokenBreakdown } from "./types";
 
-export type ApprovalMode = "bypass" | "rules" | "ai";
+export type PermissionMode = "bypass" | "rules" | "ai";
 
 export interface ContextApprovalButtonProps {
   breakdown: ContextTokenBreakdown;
-  approvalMode: ApprovalMode;
-  onApprovalModeChange: (mode: ApprovalMode) => void;
+  permissionMode: PermissionMode;
+  onPermissionModeChange: (mode: PermissionMode) => void;
   className?: string;
   disabled?: boolean;
   /** Render custom popup content. If provided, popup will show on hover/click */
@@ -36,25 +36,25 @@ export interface ContextApprovalButtonProps {
 export interface ContextPopupRenderProps {
   breakdown: ContextTokenBreakdown;
   usagePercentage: number;
-  approvalMode: ApprovalMode;
-  onApprovalModeChange: (mode: ApprovalMode) => void;
+  permissionMode: PermissionMode;
+  onPermissionModeChange: (mode: PermissionMode) => void;
 }
 
-const APPROVAL_MODE_CONFIG: Record<ApprovalMode, { icon: typeof ShieldCheck; label: string; description: string }> = {
+const PERMISSION_MODE_CONFIG: Record<PermissionMode, { icon: typeof ShieldCheck; label: string; description: string }> = {
   bypass: {
     icon: ShieldOff,
-    label: "绕过审批",
-    description: "跳过所有审批步骤",
+    label: "绕过权限",
+    description: "跳过所有权限确认步骤",
   },
   rules: {
     icon: ShieldCheck,
-    label: "规则审批",
-    description: "根据预设规则自动审批",
+    label: "规则权限",
+    description: "根据预设规则处理权限确认",
   },
   ai: {
     icon: ShieldAlert,
-    label: "AI 审批",
-    description: "由 AI 评估并审批",
+    label: "AI 权限",
+    description: "由 AI 评估权限确认",
   },
 };
 
@@ -111,8 +111,8 @@ function MiniCircularProgress({
 
 export function ContextApprovalButton({
   breakdown,
-  approvalMode,
-  onApprovalModeChange,
+  permissionMode,
+  onPermissionModeChange,
   className,
   disabled,
   renderPopup,
@@ -129,8 +129,8 @@ export function ContextApprovalButton({
       ? Math.min((breakdown.used / breakdown.size) * 100, 100)
       : 0;
 
-  const config = APPROVAL_MODE_CONFIG[approvalMode];
-  const ApprovalIcon = config.icon;
+  const config = PERMISSION_MODE_CONFIG[permissionMode];
+  const PermissionIcon = config.icon;
 
   const hasPopup = renderPopup || externalPopup;
 
@@ -174,7 +174,7 @@ export function ContextApprovalButton({
       disabled={disabled}
       aria-label={`${config.label}, Context 使用率 ${usagePercentage.toFixed(0)}%`}
     >
-      <ApprovalIcon className="h-4 w-4 text-muted-foreground" />
+      <PermissionIcon className="h-4 w-4 text-muted-foreground" />
       <MiniCircularProgress percentage={usagePercentage} />
     </button>
   );
@@ -214,8 +214,8 @@ export function ContextApprovalButton({
           {renderPopup({
             breakdown,
             usagePercentage,
-            approvalMode,
-            onApprovalModeChange,
+            permissionMode,
+            onPermissionModeChange,
           })}
         </div>
       )}
@@ -223,10 +223,10 @@ export function ContextApprovalButton({
   );
 }
 
-export function useContextApprovalPopupProps(
+export function useContextPermissionPopupProps(
   breakdown: ContextTokenBreakdown,
-  approvalMode: ApprovalMode,
-  onApprovalModeChange: (mode: ApprovalMode) => void
+  permissionMode: PermissionMode,
+  onPermissionModeChange: (mode: PermissionMode) => void
 ): ContextPopupRenderProps {
   const usagePercentage =
     breakdown.size > 0
@@ -236,9 +236,9 @@ export function useContextApprovalPopupProps(
   return {
     breakdown,
     usagePercentage,
-    approvalMode,
-    onApprovalModeChange,
+    permissionMode,
+    onPermissionModeChange,
   };
 }
 
-export { APPROVAL_MODE_CONFIG };
+export { PERMISSION_MODE_CONFIG };

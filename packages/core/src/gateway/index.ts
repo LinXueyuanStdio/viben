@@ -26,6 +26,7 @@ import { agentService } from "../services/agent";
 import { getActiveWsConnectionCount } from "./routes/ws";
 import { workspaceManager } from "../workspace";
 import { ClientSocketServer } from "./client-socket-server";
+import { acpSessionManager, cleanupStaleAcpSessions } from "../acp";
 
 export { AppState, createAppState } from "./state";
 export { registerRoutes } from "./routes";
@@ -207,6 +208,12 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Register routes
   await registerRoutes(app, state);
+
+  try {
+    await cleanupStaleAcpSessions(acpSessionManager.storage);
+  } catch (err) {
+    log.warn({ err }, "Stale ACP session cleanup failed");
+  }
 
   // Create client socket server (Socket.io) after ready when httpServer is available
   if (runtime) {

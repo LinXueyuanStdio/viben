@@ -156,8 +156,7 @@ async function main() {
         ...(provider ? { provider_id: provider } : {}),
         model,
         system_prompt: "Answer briefly. Do not edit files or run commands.",
-        approval_mode: "bypass",
-        permission_mode: "bypass",
+        permission_mode: "bypassPermissions",
         mcp_servers: [],
         executor_config: {
           init_timeout_ms: 120000,

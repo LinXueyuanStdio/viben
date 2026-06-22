@@ -150,6 +150,7 @@ export interface CreatePageOptions {
   icon?: IconData;
   type: "static" | "markdown" | "server" | "proxy";
   parent_uid?: string;
+  empty_body?: boolean;
   // Template support
   template_id?: string;
   // Static-specific
@@ -167,7 +168,17 @@ export interface CreatePageOptions {
 export async function createPage(
   options: CreatePageOptions
 ): Promise<CreatePageResult> {
-  const { workspace_path, slug, name, description = "", icon, type, template_id, parent_uid } = options;
+  const {
+    workspace_path,
+    slug,
+    name,
+    description = "",
+    icon,
+    type,
+    template_id,
+    parent_uid,
+    empty_body = false,
+  } = options;
 
   const uid = generatePageUid(slug);
   const pagesDir = join(workspace_path, PAGES_DIR);
@@ -248,8 +259,11 @@ export async function createPage(
     }
 
     skillContent += "---\n\n";
-    skillContent += `# ${name}\n\n`;
-    skillContent += description || "Page description here.";
+
+    if (!(type === "markdown" && empty_body)) {
+      skillContent += `# ${name}\n\n`;
+      skillContent += description || "Page description here.";
+    }
 
     writeFileSync(pageMdPath, skillContent, "utf-8");
 

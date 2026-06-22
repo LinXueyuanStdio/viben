@@ -180,6 +180,18 @@ class HangingCancelBackendAdapter implements AcpBackendAdapter {
   }
 }
 
+class BackendIdAdapter implements AcpBackendAdapter {
+  readonly id = "backend-id";
+  startContext?: AcpBackendStartContext;
+
+  constructor(private readonly backendSessionId: string) {}
+
+  async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
+    this.startContext = context;
+    return new FakeBackendSession(this.backendSessionId);
+  }
+}
+
 class ToolFinishInterruptBackendSession implements AcpBackendSession {
   readonly prompts: PromptRequest[] = [];
   cancelCount = 0;
@@ -280,6 +292,33 @@ function createCapturingConnection(): CapturingConnection {
     },
   };
   return connection;
+}
+
+function createPermissionCancellingConnection(): AcpConnection {
+  return {
+    async sessionUpdate() {},
+    async requestPermission() {
+      return { outcome: { outcome: "cancelled" } };
+    },
+    async requestClient(_method, params) {
+      return readClientToolEnvelope(params);
+    },
+    async notifyClient() {},
+  };
+}
+
+function createHangingPermissionConnection(): AcpConnection {
+  return {
+    async sessionUpdate() {},
+    async requestPermission() {
+      await new Promise<void>(() => {});
+      return { outcome: { outcome: "cancelled" } };
+    },
+    async requestClient(_method, params) {
+      return readClientToolEnvelope(params);
+    },
+    async notifyClient() {},
+  };
 }
 
 function createMemoryStorage(): {
@@ -451,6 +490,47 @@ describe("AcpSessionManager", () => {
     ]);
   });
 
+  it("abandons active in-flight permission requests when parking", async () => {
+    const { storage, events } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createHangingPermissionConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    void adapter.startContext?.connection.requestPermission({
+      sessionId: session.sessionId,
+      toolCall: {
+        toolCallId: "permission-1",
+        title: "Edit file",
+        kind: "edit",
+      },
+      options: [{ optionId: "allow_once", name: "Allow once", kind: "allow_once" }],
+    });
+    await flushAsyncWork();
+
+    await manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection);
+
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_request",
+        status: "abandoned",
+      },
+    ]);
+  });
+
   it("records active backend session updates and returns them after park and load", async () => {
     const { storage, events } = createMemoryStorage();
     const adapter = new CapturingBackendAdapter();
@@ -544,6 +624,44 @@ describe("AcpSessionManager", () => {
             input: { action: "test" },
           },
         },
+      },
+    ]);
+  });
+
+  it("marks active permission cancellation responses as cancelled", async () => {
+    const { storage, events } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      createPermissionCancellingConnection()
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    const response = await adapter.startContext?.connection.requestPermission({
+      sessionId: session.sessionId,
+      toolCall: {
+        toolCallId: "permission-1",
+        title: "Edit file",
+        kind: "edit",
+      },
+      options: [{ optionId: "allow_once", name: "Allow once", kind: "allow_once" }],
+    });
+
+    expect(response).toEqual({ outcome: { outcome: "cancelled" } });
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_request",
+        status: "cancelled",
       },
     ]);
   });
@@ -843,13 +961,13 @@ describe("AcpSessionManager", () => {
       prompt: [{ type: "text", text: "inspect the workspace" }],
     });
 
-    expect(manager.listSessions()[0]).toMatchObject({
+    await expect(manager.listSessions()).resolves.toMatchObject([{
       id: session.sessionId,
       status: "finished",
       agentName: "Desktop Agent",
       agentExecutorType: "CODEX",
       initialPrompt: "inspect the workspace",
-    });
+    }]);
   });
 
   it("stores steer prompts in input history when ACP steer prompt is received", async () => {
@@ -917,6 +1035,354 @@ describe("AcpSessionManager", () => {
       sessionId: "persisted-backend-session",
     });
     expect(manager.getSession("persisted-backend-session")?.sdkSessionId).toBe("persisted-backend-session");
+  });
+
+  it("rejects DB-backed load when session_id matches multiple executor types without context", async () => {
+    const { storage, index } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const now = new Date().toISOString();
+    for (const executorType of ["CODEX", "CLAUDE_CODE"]) {
+      await index.upsertRecord({
+        executor_type: executorType,
+        session_id: "shared-session",
+        status: "parked",
+        cwd: "/tmp",
+        title: `${executorType} Agent`,
+        permission_mode: "default",
+        acp_record: { sessionId: "shared-session" },
+        event_store_type: "jsonl",
+        event_store_uri: storage.events.getEventStoreUri({ executor_type: executorType, session_id: "shared-session" }),
+        event_last_seq: -1,
+        created_at: now,
+        last_active_at: now,
+      });
+    }
+
+    await expect(manager.loadSession(
+      { sessionId: "shared-session", cwd: "/tmp", mcpServers: [] },
+      createConnection()
+    )).rejects.toThrow("ACP session_id is ambiguous across executor_type; provide executor context");
+  });
+
+  it("loads a DB-backed session by executor context and returns abandoned JSONL history", async () => {
+    const { storage, index, events } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const createdAt = new Date("2026-06-14T08:00:00.000Z").toISOString();
+    const lastActiveAt = new Date("2026-06-14T09:00:00.000Z").toISOString();
+    await index.upsertRecord({
+      executor_type: "CODEX",
+      session_id: "persisted-session",
+      status: "parked",
+      cwd: "/tmp/persisted",
+      workspace_path: "/tmp/workspace",
+      agent_dir: "/tmp/agent",
+      agent_config_path: "/tmp/agent/AGENTS.md",
+      backend_id: "codex",
+      title: "Persisted Codex",
+      permission_mode: "plan",
+      acp_record: {
+        sessionId: "persisted-session",
+        initialPrompt: "from persisted index",
+        sdkSessionId: "backend-session-from-index",
+        configOptions: [{ name: "model", values: ["gpt-5"] }],
+      },
+      persist_session_id: "persist-session",
+      persist_task_id: "persist-task",
+      gateway_url: "http://127.0.0.1:18790",
+      event_store_type: "jsonl",
+      event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: "persisted-session" }),
+      event_last_seq: -1,
+      created_at: createdAt,
+      last_active_at: lastActiveAt,
+      parked_at: lastActiveAt,
+    });
+    await events.appendEvent(
+      { executor_type: "CODEX", session_id: "persisted-session" },
+      {
+        type: "permission_request",
+        ts: lastActiveAt,
+        status: "pending",
+        request_id: "permission-1",
+        data: { sessionId: "persisted-session" },
+      }
+    );
+
+    const loaded = await manager.loadSession(
+      {
+        sessionId: "persisted-session",
+        cwd: "/tmp/ignored",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await manager.prompt({
+      sessionId: loaded.sessionId ?? "persisted-session",
+      prompt: [{ type: "text", text: "continue" }],
+    });
+
+    expect(loaded).toMatchObject({
+      sessionId: "backend-session-from-index",
+      history: [
+        {
+          seq: 0,
+          type: "permission_request",
+          status: "abandoned",
+          request_id: "permission-1",
+        },
+      ],
+    });
+    expect(adapter.startContext?.request).toMatchObject({
+      sessionId: "backend-session-from-index",
+      cwd: "/tmp/persisted",
+      agent_config: {
+        name: "Persisted Codex",
+        executor_type: "CODEX",
+        permission_mode: "plan",
+      },
+      persist_session_id: "persist-session",
+      persist_task_id: "persist-task",
+      gateway_url: "http://127.0.0.1:18790",
+    });
+    expect(manager.getSession("persisted-session")).toBeUndefined();
+    expect(manager.getSession("backend-session-from-index")).toMatchObject({
+      id: "backend-session-from-index",
+      cwd: "/tmp/persisted",
+      agentName: "Persisted Codex",
+      agentExecutorType: "CODEX",
+      agentConfigPath: "/tmp/agent/AGENTS.md",
+      agentDir: "/tmp/agent",
+      initialPrompt: "from persisted index",
+      sdkSessionId: "backend-session-from-index",
+    });
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: "persisted-session" })).resolves.toMatchObject([
+      {
+        seq: 0,
+        status: "abandoned",
+      },
+    ]);
+    await expect(index.getRecord("CODEX", "backend-session-from-index")).resolves.toMatchObject({
+      status: "active",
+      parked_at: undefined,
+    });
+  });
+
+  it("restores backend load id from index record when backend id differs from outer session id", async () => {
+    const { storage, index } = createMemoryStorage();
+    const adapter = new BackendIdAdapter("new-backend-id");
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const created = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      createConnection()
+    );
+    await manager.prompt({
+      sessionId: created.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    const recoveredAdapter = new CapturingBackendAdapter();
+    const recoveredManager = new AcpSessionManager(
+      recoveredAdapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    await recoveredManager.loadSession(
+      {
+        sessionId: created.sessionId,
+        cwd: "/tmp",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await recoveredManager.prompt({
+      sessionId: created.sessionId,
+      prompt: [{ type: "text", text: "continue" }],
+    });
+
+    expect(recoveredAdapter.startContext?.request).toMatchObject({
+      sessionId: "new-backend-id",
+    });
+    await expect(index.getRecord("CODEX", created.sessionId)).resolves.toMatchObject({
+      acp_record: expect.objectContaining({
+        sdkSessionId: "new-backend-id",
+      }),
+    });
+  });
+
+  it("loads the live session matching executor context when another executor has the same session_id", async () => {
+    const { storage } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { name: "Codex Agent", executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/claude",
+        mcpServers: [],
+        agent_config: { name: "Claude Agent", executor_type: "CLAUDE_CODE" },
+      },
+      createConnection()
+    );
+
+    const loaded = await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/claude-reconnect",
+        mcpServers: [],
+        agent_config: { executor_type: "CLAUDE_CODE" },
+      },
+      createConnection()
+    );
+
+    expect(loaded.sessionId).toBe("shared-live-session");
+    expect(manager.getSession("shared-live-session")).toBeUndefined();
+    await expect(manager.listSessions()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "shared-live-session",
+          cwd: "/tmp/codex",
+          agentExecutorType: "CODEX",
+        }),
+        expect.objectContaining({
+          id: "shared-live-session",
+          cwd: "/tmp/claude",
+          agentExecutorType: "CLAUDE_CODE",
+        }),
+      ])
+    );
+  });
+
+  it("lists sessions from the index after refreshing active memory sessions", async () => {
+    const { storage, index } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const older = new Date("2026-06-14T07:00:00.000Z").toISOString();
+    await index.upsertRecord({
+      executor_type: "CODEX",
+      session_id: "db-session",
+      status: "parked",
+      cwd: "/tmp/db",
+      title: "DB Session",
+      permission_mode: "auto",
+      acp_record: {
+        sessionId: "db-session",
+        initialPrompt: "stored prompt",
+        sdkSessionId: "stored-sdk",
+      },
+      event_store_type: "jsonl",
+      event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: "db-session" }),
+      event_last_seq: -1,
+      created_at: older,
+      last_active_at: older,
+      parked_at: older,
+    });
+    const live = await manager.createSession(
+      {
+        cwd: "/tmp/live",
+        mcpServers: [],
+        agent_config: {
+          name: "Live Agent",
+          executor_type: "OPENCLAW",
+        },
+      },
+      createConnection()
+    );
+
+    const sessions = await manager.listSessions();
+
+    expect(sessions.map((session) => session.id)).toEqual([live.sessionId, "db-session"]);
+    expect(sessions[0]).toMatchObject({
+      id: live.sessionId,
+      cwd: "/tmp/live",
+      status: "initializing",
+      agentName: "Live Agent",
+      agentExecutorType: "OPENCLAW",
+    });
+    expect(sessions[1]).toMatchObject({
+      id: "db-session",
+      cwd: "/tmp/db",
+      status: "parked",
+      agentName: "DB Session",
+      agentExecutorType: "CODEX",
+      initialPrompt: "stored prompt",
+      sdkSessionId: "stored-sdk",
+    });
+  });
+
+  it("marks an indexed session finished when closing without a live runtime session", async () => {
+    const { storage, index, events } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const now = new Date().toISOString();
+    await index.upsertRecord({
+      executor_type: "CODEX",
+      session_id: "stored-only",
+      status: "parked",
+      cwd: "/tmp",
+      title: "Stored Only",
+      acp_record: { sessionId: "stored-only" },
+      event_store_type: "jsonl",
+      event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: "stored-only" }),
+      event_last_seq: -1,
+      created_at: now,
+      last_active_at: now,
+      parked_at: now,
+    });
+    await events.appendEvent(
+      { executor_type: "CODEX", session_id: "stored-only" },
+      {
+        type: "session_update",
+        ts: now,
+        data: { sessionId: "stored-only", update: { sessionUpdate: "agent_message_chunk" } },
+      }
+    );
+
+    await manager.closeSession("stored-only");
+
+    await expect(index.getRecord("CODEX", "stored-only")).resolves.toMatchObject({
+      status: "finished",
+      finished_at: expect.any(String),
+    });
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: "stored-only" })).resolves.toHaveLength(1);
   });
 
   it("loads snake_case agent config frontmatter before starting the ACP backend", async () => {

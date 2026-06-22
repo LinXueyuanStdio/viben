@@ -32,3 +32,24 @@ export function createDefaultAcpSessionStorage(): AcpSessionStorageAdapter {
     createDefaultAcpSessionEventStore()
   );
 }
+
+export async function cleanupStaleAcpSessions(
+  storage: AcpSessionStorageAdapter,
+  parkTTLDays = 7
+): Promise<void> {
+  const records = await storage.index.listRecords({ statuses: ["parked"] });
+  const now = Date.now();
+  const finishedAt = new Date(now).toISOString();
+  const ttlMs = parkTTLDays * 24 * 60 * 60 * 1000;
+
+  for (const record of records) {
+    const lastActiveAt = new Date(record.last_active_at).getTime();
+    if (!Number.isFinite(lastActiveAt)) continue;
+    if (now - lastActiveAt <= ttlMs) continue;
+
+    await storage.index.updateStatus(record.executor_type, record.session_id, "finished", {
+      finished_at: finishedAt,
+      last_active_at: finishedAt,
+    });
+  }
+}

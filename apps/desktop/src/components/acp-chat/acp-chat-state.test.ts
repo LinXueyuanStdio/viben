@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyQueuedUiStep, createUiSession, stopSessionTurn } from "./acp-chat-state";
+import {
+  applyQueuedUiStep,
+  applyUiStepsImmediately,
+  createUiSession,
+  stopSessionTurn,
+  type UiSessionState,
+} from "./acp-chat-state";
 
 describe("ACP chat session state", () => {
   it("marks an interrupted turn as stopped immediately", () => {
@@ -64,6 +70,46 @@ describe("ACP chat session state", () => {
         type: "error",
         message: "Codex connection dropped before the response completed. Start a new turn or reconnect the session.",
       }),
+    ]);
+  });
+
+  it("applies restored history steps immediately without queueing animation", () => {
+    let sessionsById: Record<string, UiSessionState> = {
+      "session-1": createUiSession("session-1", "/tmp/workspace", { sessionId: "session-1" }),
+    };
+    const setSessionsById = (updater: (current: Record<string, UiSessionState>) => Record<string, UiSessionState>) => {
+      sessionsById = updater(sessionsById);
+    };
+
+    applyUiStepsImmediately(setSessionsById, "session-1", [
+      {
+        kind: "message",
+        merge: "text_chunk",
+        message: {
+          id: "text-1",
+          type: "text",
+          content: "restored",
+          timestamp: 1,
+        },
+      },
+      {
+        kind: "message",
+        merge: "text_chunk",
+        message: {
+          id: "text-1",
+          type: "text",
+          content: " history",
+          timestamp: 2,
+        },
+      },
+    ]);
+
+    expect(sessionsById["session-1"].uiStepQueue).toEqual([]);
+    expect(sessionsById["session-1"].uiMessages).toMatchObject([
+      {
+        type: "text",
+        content: "restored history",
+      },
     ]);
   });
 });

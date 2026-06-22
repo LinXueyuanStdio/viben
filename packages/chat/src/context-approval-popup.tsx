@@ -1,7 +1,7 @@
 /**
- * Context Approval Popup Component
+ * Context Permission Popup Component
  *
- * A collapsible card showing context token usage and approval mode selector.
+ * A collapsible card showing context token usage and permission mode selector.
  */
 
 import * as React from "react";
@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { Badge, cn } from "@viben/ui";
 import type { ContextTokenBreakdown } from "./types";
-import type { ApprovalMode, ContextPopupRenderProps } from "./context-approval-button";
-import { APPROVAL_MODE_CONFIG } from "./context-approval-button";
+import type { ContextPopupRenderProps, PermissionMode } from "./context-approval-button";
+import { PERMISSION_MODE_CONFIG } from "./context-approval-button";
 
 export interface ContextApprovalPopupProps extends ContextPopupRenderProps {
   className?: string;
@@ -36,8 +36,8 @@ function getUsageBarColor(percentage: number): string {
 export function ContextApprovalPopup({
   breakdown,
   usagePercentage,
-  approvalMode,
-  onApprovalModeChange,
+  permissionMode,
+  onPermissionModeChange,
   className,
   defaultExpanded = true,
 }: ContextApprovalPopupProps) {
@@ -45,7 +45,7 @@ export function ContextApprovalPopup({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const remaining = Math.max(0, breakdown.size - breakdown.used);
-  const currentModeConfig = APPROVAL_MODE_CONFIG[approvalMode];
+  const currentModeConfig = PERMISSION_MODE_CONFIG[permissionMode];
   const CurrentModeIcon = currentModeConfig.icon;
 
   return (
@@ -98,16 +98,16 @@ export function ContextApprovalPopup({
             </div>
           )}
 
-          {/* Approval Mode Selector */}
+          {/* Permission Mode Selector */}
           <div className="pt-2 border-t border-border">
             <div className="text-xs font-medium text-muted-foreground mb-2">
-              {t("chat.contextApproval.approvalMode", "审批模式")}
+              {t("chat.contextApproval.permissionMode", "权限模式")}
             </div>
             <div className="space-y-1">
-              {(Object.keys(APPROVAL_MODE_CONFIG) as ApprovalMode[]).map((mode) => {
-                const modeConfig = APPROVAL_MODE_CONFIG[mode];
+              {(Object.keys(PERMISSION_MODE_CONFIG) as PermissionMode[]).map((mode) => {
+                const modeConfig = PERMISSION_MODE_CONFIG[mode];
                 const ModeIcon = modeConfig.icon;
-                const isActive = approvalMode === mode;
+                const isActive = permissionMode === mode;
                 return (
                   <button
                     key={mode}
@@ -119,7 +119,7 @@ export function ContextApprovalPopup({
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
-                    onClick={() => onApprovalModeChange(mode)}
+                    onClick={() => onPermissionModeChange(mode)}
                   >
                     <ModeIcon className="size-3.5 shrink-0" />
                     <span className="flex-1">{modeConfig.label}</span>

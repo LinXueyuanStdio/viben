@@ -5,7 +5,7 @@
  * Displays pages as app icons with folder overlay support.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Plus, Loader2 } from "lucide-react";
@@ -21,9 +21,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { usePages, useDeletePage } from "@/hooks/use-pages";
+import { usePages, useCreatePage, useDeletePage } from "@/hooks/use-pages";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import { CreatePageDialog } from "./create-page-dialog";
 import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { PageIcon } from "./page-app-icon";
@@ -52,16 +51,14 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
   const { data, isLoading, error } = usePages(workspacePath);
   const pages = data?.pages ?? [];
   const index = data?.index ?? { root: [] };
+  const createPageMutation = useCreatePage();
   const deletePageMutation = useDeletePage();
+  const creatingEmptyPageRef = useRef(false);
 
   // Dialog states (extracted hook)
   const {
     pageToDelete,
     setPageToDelete,
-    createDialogOpen,
-    createParentUid,
-    openCreateDialog,
-    closeCreateDialog,
     permissionsPage,
     setPermissionsPage,
     editPage,
@@ -116,27 +113,46 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     }
   };
 
+  const createEmptyMarkdownPage = useCallback(
+    async (parentUid?: string) => {
+      if (creatingEmptyPageRef.current) return;
+      creatingEmptyPageRef.current = true;
+      try {
+        const result = await createPageMutation.mutateAsync({
+          workspace_path: workspacePath,
+          name: t("page.untitled", "Untitled"),
+          type: "markdown",
+          icon: { type: "lucide", value: "file-text" },
+          parent_uid: parentUid,
+          empty_body: true,
+        });
+
+        if (result.page?.uid) {
+          openWorkspacePage(workspaceId, result.page.uid, {
+            title: result.page.name,
+            icon: result.page.icon,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to create page:", err);
+        toast.error(t("page.createFailed", "Failed to create page"));
+      } finally {
+        creatingEmptyPageRef.current = false;
+      }
+    },
+    [createPageMutation, openWorkspacePage, t, workspaceId, workspacePath]
+  );
+
   const handleCreateSubpage = useCallback(
     (parentUid: string) => {
-      openCreateDialog(parentUid);
+      void createEmptyMarkdownPage(parentUid);
     },
-    [openCreateDialog]
+    [createEmptyMarkdownPage]
   );
 
   const handleCreatePage = useCallback(() => {
-    openCreateDialog();
-  }, [openCreateDialog]);
-
-  const handleCreateSuccess = useCallback(
-    (uid: string) => {
-      const page = pages?.find((item) => item.uid === uid);
-      openWorkspacePage(workspaceId, uid, {
-        title: page?.name ?? uid,
-        icon: page?.icon,
-      });
-    },
-    [openWorkspacePage, pages, workspaceId]
-  );
+    void createEmptyMarkdownPage();
+  }, [createEmptyMarkdownPage]);
 
   const handleNodeClick = useCallback(
     (node: PageTreeNode, e?: React.MouseEvent) => {
@@ -320,15 +336,6 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Create dialog */}
-      <CreatePageDialog
-        open={createDialogOpen}
-        onOpenChange={(open) => !open && closeCreateDialog()}
-        workspacePath={workspacePath}
-        parentUid={createParentUid}
-        onSuccess={handleCreateSuccess}
-      />
 
       {/* Permissions dialog */}
       <PagePermissionsDialog

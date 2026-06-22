@@ -93,7 +93,7 @@ export async function parseSkillMd(
     show_toc: showToc,
     permission: pageData.permission ?? ["read", "write"],
     path: pageDir,
-    skill_content: markdownContent.trim() || undefined,
+    skill_content: markdownContent.trim() ? markdownContent.trim() : "",
     updated_at: updatedAt,
   };
 

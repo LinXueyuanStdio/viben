@@ -4,6 +4,7 @@ import type {
   AcpRequestPermissionRequest,
   AcpRequestPermissionResponse,
   AcpSessionEvent,
+  AcpSessionEventStatus,
   AcpSessionNotification,
 } from "../types";
 import {
@@ -166,7 +167,7 @@ export class DetachedConnection implements AcpConnection {
     task
       .then(async (response) => {
         this.clearPending(pending);
-        await this.recorder.updateStatus(pending.seq, "resolved");
+        await this.recorder.updateStatus(pending.seq, pendingStatus(pending, response));
         pending.resolve(response);
       })
       .catch(async (error: unknown) => {
@@ -201,4 +202,16 @@ function nowIso(): string {
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+function pendingStatus(pending: PendingRequest<unknown>, response: unknown): AcpSessionEventStatus {
+  if (
+    pending.kind === "permission" &&
+    typeof response === "object" &&
+    response !== null &&
+    (response as AcpRequestPermissionResponse).outcome?.outcome === "cancelled"
+  ) {
+    return "cancelled";
+  }
+  return "resolved";
 }

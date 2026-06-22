@@ -34,6 +34,7 @@ import type { AgentInfo } from "@/lib/gateway";
 import { buildAcpAgentConfig } from "./acp-agent-config";
 import {
   AcpWebSocketClient,
+  type AcpSessionEvent,
   type AcpSessionUpdate,
   type AcpListSessionItem,
   type AcpListSessionsResult,
@@ -69,6 +70,7 @@ import {
 } from "./acp-chat-adapter";
 import {
   appendUiMessagesImmediately,
+  applyUiStepsImmediately,
   applyQueuedUiStep,
   createUiSession,
   drainSessionUiStepQueue,
@@ -287,6 +289,14 @@ function normalizeAcpSessionListItem(item: AcpListSessionItem): AcpSessionListIt
     queueDepth: item.queue_depth,
     updatedAt: item.updated_at ?? item.updatedAt,
   };
+}
+
+function historyEventsToUiSteps(events: AcpSessionEvent[] | undefined) {
+  if (!events || events.length === 0) return [];
+  return events.flatMap((event) => {
+    if (event.type !== "session_update") return [];
+    return acpSessionUpdateToUiSteps(event.data as AcpSessionUpdate);
+  });
 }
 
 function summarizeAgentConfigForLog(config: AgentConfigPayload | undefined): Record<string, unknown> | null {
@@ -879,6 +889,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
               ...current,
               [loadedId]: createUiSession(loadedId, cwd, session, current[loadedId]),
             }));
+            applyUiStepsImmediately(setSessionsById, loadedId, historyEventsToUiSteps(session.history));
             setSessionOrder((current) => [loadedId, ...current.filter((item) => item !== loadedId)]);
             setActiveSessionId(loadedId);
             const commands = readSessionAvailableCommands(session);
@@ -1066,6 +1077,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           ...current,
           [loadedId]: createUiSession(loadedId, cwd, session, current[loadedId]),
         }));
+        applyUiStepsImmediately(setSessionsById, loadedId, historyEventsToUiSteps(session.history));
         setSessionOrder((current) => [loadedId, ...current.filter((item) => item !== loadedId)]);
         setActiveSessionId(loadedId);
         enqueueUiSteps(setSessionsById, loadedId, systemTextToUiSteps(`Session loaded: ${loadedId}`));

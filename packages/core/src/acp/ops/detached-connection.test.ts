@@ -56,6 +56,14 @@ function permissionResponse(optionId = "yes"): AcpRequestPermissionResponse {
   };
 }
 
+function cancelledPermissionResponse(): AcpRequestPermissionResponse {
+  return {
+    outcome: {
+      outcome: "cancelled",
+    },
+  };
+}
+
 function createResolvingConnection(): AcpConnection & {
   permissionRequests: AcpRequestPermissionRequest[];
   clientRequests: { method: string; params?: Record<string, unknown> }[];
@@ -70,6 +78,19 @@ function createResolvingConnection(): AcpConnection & {
     },
     async requestClient(method, params) {
       this.clientRequests.push({ method, params });
+      return { ok: true };
+    },
+    notifyClient() {},
+  };
+}
+
+function createPermissionCancellingConnection(): AcpConnection {
+  return {
+    sessionUpdate() {},
+    async requestPermission() {
+      return cancelledPermissionResponse();
+    },
+    async requestClient() {
       return { ok: true };
     },
     notifyClient() {},
@@ -147,6 +168,27 @@ describe("DetachedConnection", () => {
     await connection.close();
 
     await expect(responsePromise).rejects.toThrow("Detached connection closed");
+    await expect(events.loadEvents(identity)).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_request",
+        status: "cancelled",
+      },
+    ]);
+  });
+
+  it("marks resumed permission cancellation responses as cancelled", async () => {
+    const { recorder, events } = createRecorder();
+    const connection = new DetachedConnection(recorder, identity.session_id);
+
+    const responsePromise = connection.requestPermission(permissionRequest());
+    await vi.waitFor(async () => {
+      await expect(events.loadEvents(identity)).resolves.toHaveLength(1);
+    });
+
+    await connection.resume(createPermissionCancellingConnection());
+
+    await expect(responsePromise).resolves.toEqual(cancelledPermissionResponse());
     await expect(events.loadEvents(identity)).resolves.toMatchObject([
       {
         seq: 0,

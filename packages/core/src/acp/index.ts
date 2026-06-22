@@ -63,3 +63,39 @@ export {
   type ListSteerPromptInput,
 } from "./ops/steer-prompt-store";
 export { AcpSessionManager, acpSessionManager } from "./ops/session-manager";
+export type {
+  AcpSessionRecord,
+  AcpSessionRecordStatus,
+  AcpSessionIndexStore,
+} from "./ops/session-index-store";
+export {
+  SqliteAcpSessionIndexStore,
+  InMemoryAcpSessionIndexStore,
+  createDefaultAcpSessionIndexStore,
+  validateAcpSessionIdentity,
+} from "./ops/session-index-store";
+export type {
+  AcpSessionEventIdentity,
+  AcpSessionEventStore,
+} from "./ops/session-event-store";
+export {
+  JsonlAcpSessionEventStore,
+  InMemoryAcpSessionEventStore,
+  createDefaultAcpSessionEventStore,
+} from "./ops/session-event-store";
+export type { AcpSessionStorageAdapter } from "./ops/session-storage";
+export {
+  DefaultAcpSessionStorageAdapter,
+  createDefaultAcpSessionStorage,
+  cleanupStaleAcpSessions,
+} from "./ops/session-storage";
+export { AcpSessionEventRecorder } from "./ops/session-event-recorder";
+export type {
+  PermissionDecision,
+  PermissionHandler,
+} from "./ops/permission-handler";
+export {
+  DefaultPermissionHandler,
+  createDefaultPermissionHandler,
+} from "./ops/permission-handler";
+export { DetachedConnection } from "./ops/detached-connection";

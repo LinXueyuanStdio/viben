@@ -158,6 +158,8 @@ export interface CreatePageParams {
   icon?: IconData;
   type: PageType;
   parent_uid?: string;
+  template_id?: string;
+  empty_body?: boolean;
   file?: string;
   command?: string;
   port?: number;

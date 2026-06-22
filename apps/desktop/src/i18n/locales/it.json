@@ -1139,7 +1139,7 @@
     "templateIdHint": "A unique identifier for this template (lowercase, hyphens allowed)",
     "executorType": "Executor Type",
     "planMode": "Plan Mode",
-    "approvals": "Approvals",
+    "permissionMode": "Permissions",
     "skipPermissions": "Skip Permissions",
     "claudeModel": "Claude Model",
     "appendPrompt": "Append Prompt",

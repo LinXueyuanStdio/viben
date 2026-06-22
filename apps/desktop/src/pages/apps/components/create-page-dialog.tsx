@@ -122,7 +122,7 @@ export function CreatePageDialog({
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState<IconData | null>({ type: "lucide", value: "file-text" });
-  const [pageType, setPageType] = useState<PageType>("static");
+  const [pageType, setPageType] = useState<PageType>("markdown");
 
   // Type-specific fields
   const [file, setFile] = useState("index.html");
@@ -145,7 +145,7 @@ export function CreatePageDialog({
       setSlugManuallyEdited(false);
       setDescription("");
       setIcon({ type: "lucide", value: "file-text" });
-      setPageType("static");
+      setPageType("markdown");
       setFile("index.html");
       setCommand("npm run dev");
       setPort("5173");
@@ -200,7 +200,7 @@ export function CreatePageDialog({
     if (pageType === "static") {
       params.file = file.trim();
     } else if (pageType === "markdown") {
-      params.file = "content.md";
+      params.empty_body = true;
     } else if (pageType === "server") {
       params.command = command.trim();
       params.port = parseInt(port, 10);
@@ -227,6 +227,7 @@ export function CreatePageDialog({
     description,
     icon,
     pageType,
+    parentUid,
     file,
     command,
     port,

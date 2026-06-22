@@ -4887,6 +4887,7 @@
       "openInNewWindow": "在新窗口中打开",
       "connect": "连接",
       "recallQueue": "召回队列",
+      "parked": "已暂停",
       "welcomeTitle": "ACP 聊天",
       "welcomeDescription": "连接、创建或恢复会话，然后与 ACP 后端对话。"
     }

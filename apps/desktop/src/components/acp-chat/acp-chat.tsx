@@ -1684,6 +1684,7 @@ function AcpSessionListDrawer({
             ) : sessions.map((session, index) => {
               const selected = index === selectedIndex;
               const running = isRunningSession(session);
+              const parked = session.status === "parked";
               return (
                 <button
                   key={session.sessionId}
@@ -1702,7 +1703,11 @@ function AcpSessionListDrawer({
                       {session.title || shortSessionId(session.sessionId)}
                     </div>
                     <Badge variant={running ? "default" : "secondary"} className="shrink-0 text-[10px]">
-                      {running ? t("chat.acp.running", "Running") : t("chat.acp.resume", "Resume")}
+                      {running
+                        ? t("chat.acp.running", "Running")
+                        : parked
+                          ? t("chat.acp.parked", "Paused")
+                          : t("chat.acp.resume", "Resume")}
                     </Badge>
                   </div>
                   <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">

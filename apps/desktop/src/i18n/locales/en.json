@@ -4887,6 +4887,7 @@
       "openInNewWindow": "Open in new window",
       "connect": "Connect",
       "recallQueue": "Recall queue",
+      "parked": "Paused",
       "welcomeTitle": "ACP Chat",
       "welcomeDescription": "Connect, create or resume a session, then talk to an ACP backend."
     }

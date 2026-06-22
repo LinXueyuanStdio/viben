@@ -139,6 +139,25 @@ export function enqueueUiSteps(
   });
 }
 
+export function applyUiStepsImmediately(
+  setSessionsById: SessionsByIdSetter,
+  sessionId: string,
+  steps: AcpUiStep[]
+): void {
+  if (steps.length === 0) return;
+  updateSession(setSessionsById, sessionId, (session) => {
+    let next = session;
+    for (const step of steps) {
+      next = applyQueuedUiStep(next, step, []);
+    }
+    return {
+      ...next,
+      uiStepQueue: [],
+      lastActiveAt: new Date().toISOString(),
+    };
+  });
+}
+
 /**
  * Append messages directly to uiMessages without going through the queue.
  * Use this for events that should appear immediately in chronological order,

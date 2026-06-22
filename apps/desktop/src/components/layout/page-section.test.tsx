@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import type { PageConfig } from "@/hooks/use-pages";
 const openWorkspacePage = vi.fn();
 const mockUsePages = vi.fn();
 const mockDeleteMutateAsync = vi.fn();
+const mockCreateMutateAsync = vi.fn();
 const mockDuplicateMutate = vi.fn();
 const mockReorderMutate = vi.fn();
 
@@ -33,6 +34,10 @@ vi.mock("@/hooks/use-desktop-routing", () => ({
 
 vi.mock("@/hooks/use-pages", () => ({
   usePages: (...args: unknown[]) => mockUsePages(...args),
+  useCreatePage: () => ({
+    isPending: false,
+    mutateAsync: mockCreateMutateAsync,
+  }),
   useDeletePage: () => ({
     isPending: false,
     mutateAsync: mockDeleteMutateAsync,
@@ -95,6 +100,15 @@ describe("PageSection", () => {
       isLoading: false,
       error: null,
     });
+    mockCreateMutateAsync.mockResolvedValue({
+      success: true,
+      page: {
+        uid: "new-page",
+        name: "Untitled",
+        type: "markdown",
+        icon: { type: "lucide", value: "file-text" },
+      },
+    });
   });
 
   it("uses one read-only page tree popup entry when collapsed", async () => {
@@ -117,5 +131,80 @@ describe("PageSection", () => {
     expect(screen.getByRole("button", { name: "page.createPage" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "page.createSubpage" })).toBeNull();
     expect(screen.queryByRole("button", { name: "common.edit" })).toBeNull();
+  });
+
+  it("creates and opens an empty markdown page from the section create button", async () => {
+    mockUsePages.mockReturnValue({
+      data: {
+        pages: [],
+        index: { root: [] },
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/workspace/ws-1/chat"]}>
+        <TooltipProvider>
+          <PageSection workspaceId="ws-1" workspacePath="/workspace" />
+        </TooltipProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "page.createPage" }));
+
+    await waitFor(() => {
+      expect(mockCreateMutateAsync).toHaveBeenCalledWith({
+        workspace_path: "/workspace",
+        name: "Untitled",
+        type: "markdown",
+        icon: { type: "lucide", value: "file-text" },
+        empty_body: true,
+      });
+    });
+    expect(openWorkspacePage).toHaveBeenCalledWith("ws-1", "new-page", {
+      title: "Untitled",
+      icon: { type: "lucide", value: "file-text" },
+    });
+  });
+
+  it("does not submit duplicate empty markdown creates while one is in flight", () => {
+    mockUsePages.mockReturnValue({
+      data: {
+        pages: [],
+        index: { root: [] },
+      },
+      isLoading: false,
+      error: null,
+    });
+    let resolveCreate: (value: unknown) => void = () => {};
+    mockCreateMutateAsync.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCreate = resolve;
+      })
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/workspace/ws-1/chat"]}>
+        <TooltipProvider>
+          <PageSection workspaceId="ws-1" workspacePath="/workspace" />
+        </TooltipProvider>
+      </MemoryRouter>,
+    );
+
+    const createButton = screen.getByRole("button", { name: "page.createPage" });
+    fireEvent.click(createButton);
+    fireEvent.click(createButton);
+
+    expect(mockCreateMutateAsync).toHaveBeenCalledTimes(1);
+
+    resolveCreate({
+      success: true,
+      page: {
+        uid: "new-page",
+        name: "Untitled",
+        type: "markdown",
+      },
+    });
   });
 });

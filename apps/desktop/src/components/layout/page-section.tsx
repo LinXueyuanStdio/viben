@@ -82,10 +82,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { usePages, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
+import { usePages, useCreatePage, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
 import type { PageIndex } from "@/lib/gateway/types/page";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import { CreatePageDialog } from "@/pages/apps/components/create-page-dialog";
 import { EditPageDialog } from "@/pages/apps/components/edit-page-dialog";
 import { PagePermissionsDialog } from "@/pages/apps/components/page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
@@ -803,16 +802,13 @@ export function PageSection({
   const serverIndex = pagesData?.index;
   // Only show loading spinner on initial load, not on refetch or when we have cached data
   const showLoading = isLoading && !pages;
+  const createPageMutation = useCreatePage();
   const deletePageMutation = useDeletePage();
   const duplicatePageMutation = useDuplicatePage();
   const reorderPagesMutation = useReorderPages();
 
   // Delete confirmation state
   const [pageToDelete, setPageToDelete] = useState<PageConfig | null>(null);
-
-  // Create page dialog state
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createParentUid, setCreateParentUid] = useState<string | undefined>(undefined);
 
   // Edit page dialog state
   const [editPage, setEditPage] = useState<PageConfig | null>(null);
@@ -826,6 +822,7 @@ export function PageSection({
   const [expandedPageUids, setExpandedPageUids] = useState<Record<string, boolean>>({});
   const [collapsedPagesOpen, setCollapsedPagesOpen] = useState(false);
   const collapsedPagesCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const creatingEmptyPageRef = useRef(false);
 
   const cancelCollapsedPagesClose = useCallback(() => {
     if (collapsedPagesCloseTimeoutRef.current) {
@@ -1051,17 +1048,45 @@ export function PageSection({
     }
   };
 
+  const createEmptyMarkdownPage = useCallback(
+    async (parentUid?: string) => {
+      if (creatingEmptyPageRef.current) return;
+      creatingEmptyPageRef.current = true;
+      try {
+        const result = await createPageMutation.mutateAsync({
+          workspace_path: workspacePath,
+          name: t("page.untitled", "Untitled"),
+          type: "markdown",
+          icon: { type: "lucide", value: "file-text" },
+          parent_uid: parentUid,
+          empty_body: true,
+        });
+
+        if (result.page?.uid) {
+          openWorkspacePage(workspaceId, result.page.uid, {
+            title: result.page.name,
+            icon: result.page.icon,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to create page:", err);
+        toast.error(t("page.createFailed", "Failed to create page"));
+      } finally {
+        creatingEmptyPageRef.current = false;
+      }
+    },
+    [createPageMutation, openWorkspacePage, t, workspaceId, workspacePath]
+  );
+
   // Handle create subpage
   const handleCreateSubpage = useCallback((parentUid: string) => {
-    setCreateParentUid(parentUid);
-    setCreateDialogOpen(true);
-  }, []);
+    void createEmptyMarkdownPage(parentUid);
+  }, [createEmptyMarkdownPage]);
 
   // Handle create new page
   const handleCreatePage = useCallback(() => {
-    setCreateParentUid(undefined);
-    setCreateDialogOpen(true);
-  }, []);
+    void createEmptyMarkdownPage();
+  }, [createEmptyMarkdownPage]);
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((page: PageConfig) => {
@@ -1114,15 +1139,6 @@ export function PageSection({
       }
     );
   }, [workspacePath, duplicatePageMutation, t]);
-
-  // Handle page creation success - open new page in tab
-  const handleCreateSuccess = useCallback((uid: string) => {
-    const page = pages?.find((item) => item.uid === uid);
-    openWorkspacePage(workspaceId, uid, {
-      title: page?.name ?? uid,
-      icon: page?.icon,
-    });
-  }, [openWorkspacePage, pages, workspaceId]);
 
   // Handle edit click
   const handleEditClick = useCallback((page: PageConfig) => {
@@ -1216,13 +1232,6 @@ export function PageSection({
             onOpenChange={setCollapsedPagesOpen}
           />
         </PopoverContent>
-        <CreatePageDialog
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
-          workspacePath={workspacePath}
-          parentUid={createParentUid}
-          onSuccess={handleCreateSuccess}
-        />
       </Popover>
     );
   }
@@ -1379,15 +1388,6 @@ export function PageSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Create Page Dialog */}
-      <CreatePageDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        workspacePath={workspacePath}
-        parentUid={createParentUid}
-        onSuccess={handleCreateSuccess}
-      />
 
       {/* Edit Page Dialog */}
       <EditPageDialog

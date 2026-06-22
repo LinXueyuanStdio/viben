@@ -726,6 +726,8 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       icon?: IconData;
       type: PageType;
       parent_uid?: string;
+      template_id?: string;
+      empty_body?: boolean;
       // Static-specific
       file?: string;
       // Server-specific
@@ -752,6 +754,8 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
           icon: { ...iconDataSchema, description: "Page icon data" },
           type: { ...pageTypeSchema, description: "Page type (required)" },
           parent_uid: { type: "string", description: "Parent page uid for creating subpages" },
+          template_id: { type: "string", nullable: true, description: "Page template id" },
+          empty_body: { type: "boolean", nullable: true, description: "Create markdown page with empty body" },
           // Static-specific
           file: { type: "string", description: "Entry file for static pages" },
           // Server-specific
@@ -779,6 +783,8 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       icon,
       type,
       parent_uid,
+      template_id,
+      empty_body,
       file,
       command,
       port,
@@ -811,6 +817,8 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       icon,
       type,
       parent_uid,
+      template_id,
+      empty_body,
       file,
       command,
       port,

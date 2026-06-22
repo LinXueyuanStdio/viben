@@ -102,6 +102,26 @@ describe("AcpSessionIndexStore", () => {
     });
   });
 
+  it("does not regress event_last_seq when updating cursor directly", async () => {
+    const sqliteStore = new SqliteAcpSessionIndexStore(":memory:");
+    await sqliteStore.upsertRecord(baseRecord({ event_last_seq: 2 }));
+    await sqliteStore.updateEventCursor("CLAUDE_CODE", "session-1", 5);
+    await sqliteStore.updateEventCursor("CLAUDE_CODE", "session-1", 3);
+
+    await expect(sqliteStore.getRecord("CLAUDE_CODE", "session-1")).resolves.toMatchObject({
+      event_last_seq: 5,
+    });
+
+    const memoryStore = new InMemoryAcpSessionIndexStore();
+    await memoryStore.upsertRecord(baseRecord({ event_last_seq: 2 }));
+    await memoryStore.updateEventCursor("CLAUDE_CODE", "session-1", 5);
+    await memoryStore.updateEventCursor("CLAUDE_CODE", "session-1", 3);
+
+    await expect(memoryStore.getRecord("CLAUDE_CODE", "session-1")).resolves.toMatchObject({
+      event_last_seq: 5,
+    });
+  });
+
   it("keeps identical session_id values separate by executor_type", async () => {
     const store = new SqliteAcpSessionIndexStore(":memory:");
     await store.upsertRecord(baseRecord({ executor_type: "CLAUDE_CODE", session_id: "same-id", title: "Claude" }));

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { getStateDir } from "../../config/paths";
 import { logger as globalLogger } from "../../telemetry";
 import { AsyncLock } from "../../utils/async-lock";
+import { validateAcpSessionIdentity } from "./session-index-store";
 import type {
   AcpSessionEvent,
   AcpSessionEventPatch,
@@ -36,6 +37,7 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
   constructor(private readonly baseDir: string = DEFAULT_EVENT_ROOT) {}
 
   async appendEvent(identity: AcpSessionEventIdentity, event: Omit<AcpSessionEvent, "seq">): Promise<number> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     return this.writeLock.withLock(lockKey(identity), async () => {
       const seq = await this.getNextSeq(identity);
       await fs.mkdir(this.sessionDir(identity), { recursive: true });
@@ -49,6 +51,7 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
     seq: number,
     status: AcpSessionEvent["status"]
   ): Promise<void> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     await this.writeLock.withLock(lockKey(identity), async () => {
       const patch: AcpSessionEventPatch = {
         _type: "patch",
@@ -61,6 +64,7 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
   }
 
   async loadEvents(identity: AcpSessionEventIdentity): Promise<AcpSessionEvent[]> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     const lines = await this.readEventLines(identity);
     const events = new Map<number, AcpSessionEvent>();
 
@@ -83,10 +87,12 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
   }
 
   getEventStoreUri(identity: AcpSessionEventIdentity): string {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     return path.join(this.sessionDir(identity), EVENTS_FILE);
   }
 
   async deleteEvents(identity: AcpSessionEventIdentity): Promise<void> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     await this.writeLock.withLock(lockKey(identity), async () => {
       await fs.rm(this.sessionDir(identity), { recursive: true, force: true });
       this.seqCounters.delete(lockKey(identity));
@@ -165,6 +171,7 @@ export class InMemoryAcpSessionEventStore implements AcpSessionEventStore {
   private readonly seqCounters = new Map<string, number>();
 
   async appendEvent(identity: AcpSessionEventIdentity, event: Omit<AcpSessionEvent, "seq">): Promise<number> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     const key = lockKey(identity);
     const seq = (this.seqCounters.get(key) ?? -1) + 1;
     this.seqCounters.set(key, seq);
@@ -177,6 +184,7 @@ export class InMemoryAcpSessionEventStore implements AcpSessionEventStore {
     seq: number,
     status: AcpSessionEvent["status"]
   ): Promise<void> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     const key = lockKey(identity);
     const events = this.events.get(key) ?? [];
     this.events.set(
@@ -186,16 +194,19 @@ export class InMemoryAcpSessionEventStore implements AcpSessionEventStore {
   }
 
   async loadEvents(identity: AcpSessionEventIdentity): Promise<AcpSessionEvent[]> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     return [...(this.events.get(lockKey(identity)) ?? [])]
       .sort((left, right) => left.seq - right.seq)
       .map((event) => cloneEvent(event));
   }
 
   getEventStoreUri(identity: AcpSessionEventIdentity): string {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     return `memory://acp/sessions/${safePathSegment(identity.executor_type)}/${safePathSegment(identity.session_id)}/${EVENTS_FILE}`;
   }
 
   async deleteEvents(identity: AcpSessionEventIdentity): Promise<void> {
+    validateAcpSessionIdentity(identity.executor_type, identity.session_id);
     const key = lockKey(identity);
     this.events.delete(key);
     this.seqCounters.delete(key);
@@ -217,7 +228,7 @@ function safePathSegment(value: string): string {
   if (!value) {
     throw new Error("ACP session event identity segments must not be empty");
   }
-  return encodeURIComponent(value);
+  return value;
 }
 
 function isPathInside(child: string, parent: string): boolean {

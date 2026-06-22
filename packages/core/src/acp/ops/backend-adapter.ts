@@ -368,6 +368,7 @@ interface ClaudeProviderDetails {
 
 export interface AcpBackendStartContext {
   outerSessionId: string;
+  resolveOuterSessionId?: () => string;
   cwd: string;
   request: AcpNewSessionRequest | AcpLoadSessionRequest;
   connection: AcpConnection;
@@ -380,6 +381,7 @@ export interface AcpBackendSession {
   readonly backendSessionId: string;
   readonly agentCapabilities?: AcpAgentCapabilities;
   readonly configOptions?: AcpConfigOption[];
+  resume?(): Promise<void>;
   prompt(request: PromptRequest): Promise<PromptResponse>;
   cancel(): Promise<void>;
   close(): Promise<void>;
@@ -574,6 +576,20 @@ class SubprocessAcpBackendSession implements AcpBackendSession {
     await this.connection.cancel({ sessionId: this.backendSessionId });
   }
 
+  async resume(): Promise<void> {
+    const connection = this.connection as ClientSideConnection & {
+      unstable_resumeSession?: (params: { sessionId: string }) => Promise<unknown>;
+      resumeSession?: (params: { sessionId: string }) => Promise<unknown>;
+    };
+    if (typeof connection.unstable_resumeSession === "function") {
+      await connection.unstable_resumeSession({ sessionId: this.backendSessionId });
+      return;
+    }
+    if (typeof connection.resumeSession === "function") {
+      await connection.resumeSession({ sessionId: this.backendSessionId });
+    }
+  }
+
   async close(): Promise<void> {
     try {
       await this.connection.unstable_closeSession({ sessionId: this.backendSessionId });
@@ -585,9 +601,11 @@ class SubprocessAcpBackendSession implements AcpBackendSession {
 }
 
 function createBackendClient(context: AcpBackendStartContext): Client {
+  const getOuterSessionId = () => context.resolveOuterSessionId?.() ?? context.outerSessionId;
+
   return {
     async sessionUpdate(params: SessionNotification): Promise<void> {
-      const mapped = mapSessionNotification(params, context.outerSessionId);
+      const mapped = mapSessionNotification(params, getOuterSessionId());
       await context.connection.sessionUpdate(mapped);
       await context.onSessionUpdate?.(mapped);
     },
@@ -595,14 +613,14 @@ function createBackendClient(context: AcpBackendStartContext): Client {
     async requestPermission(params) {
       return await context.connection.requestPermission({
         ...params,
-        sessionId: context.outerSessionId,
+        sessionId: getOuterSessionId(),
       });
     },
 
     async extMethod(method: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
       const response = await context.connection.requestClient(method, {
         ...params,
-        sessionId: context.outerSessionId,
+        sessionId: getOuterSessionId(),
       });
       return normalizeExtResponse(response);
     },

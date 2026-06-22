@@ -207,6 +207,10 @@ class CodexAppServerBackendSession implements AcpBackendSession {
     await this.interruptActiveTurn(activeTurn);
   }
 
+  async resume(): Promise<void> {
+    return;
+  }
+
   private async interruptActiveTurn(activeTurn: ActiveTurn): Promise<void> {
     await this.client.request("turn/interrupt", {
       threadId: this.backendSessionId,
@@ -223,7 +227,7 @@ class CodexAppServerBackendSession implements AcpBackendSession {
       this.handleTurnStarted(notification);
     }
 
-    const mapped = codexNotificationToAcpSessionUpdate(this.outerSessionId, notification);
+    const mapped = codexNotificationToAcpSessionUpdate(context.resolveOuterSessionId?.() ?? this.outerSessionId, notification);
     if (mapped) {
       await context.connection.sessionUpdate(mapped);
       await context.onSessionUpdate?.(mapped as unknown as SessionNotification);

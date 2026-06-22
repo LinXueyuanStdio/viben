@@ -36,7 +36,7 @@ import {
   CommandQueuePanel,
   ContextApprovalButton,
   ContextApprovalPopup,
-  useContextApprovalPopupProps,
+  useContextPermissionPopupProps,
   ExecApproval,
   ExpandedHeader,
   ExpandedHeaderModeControls,
@@ -47,7 +47,7 @@ import {
   TodoListPanel,
   TripleSelector,
 } from "@viben/chat";
-import type { ApprovalMode } from "@viben/chat";
+import type { PermissionMode } from "@viben/chat";
 import type { SelectorOption, TripleSelectorValue } from "@viben/chat";
 import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, LoadedSubagentDetails, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, SubagentOpenContext, TaskPlan, ToolConfig, BackgroundTaskItem, TasksSummary, BackgroundTasksSummary } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
@@ -1155,7 +1155,7 @@ export function App() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 {viewMode === "chat"
-                  ? "A real conversation surface over ACP with prompt, steering, approvals, elicitation, and slash commands."
+                  ? "A real conversation surface over ACP with prompt, steering, permissions, elicitation, and slash commands."
                   : <>Connects to Viben Gateway at <code>/ws/agent/acp</code> and speaks ACP JSON-RPC.</>}
               </p>
             </div>
@@ -1902,8 +1902,8 @@ function AcpChatSurface({
     onRecallSteerQueue(items, value);
   }, [onPromptChange, onRecallSteerQueue]);
 
-  // Approval mode state
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("rules");
+  // Permission mode state
+  const [permissionModeForContext, setPermissionModeForContext] = useState<PermissionMode>("rules");
 
   // TripleSelector options (Executor -> Provider -> Model)
   const executorSelectorOptions = useMemo<SelectorOption[]>(() =>
@@ -2034,10 +2034,14 @@ function AcpChatSurface({
     />
   ), [backgroundTasksSummary, isStreaming, onPromptChange, prompt, renderBackgroundTasksPopup, renderTasksPopup, tasksSummary]);
 
-  // Context approval popup state - supports both hover and click
+  // Context permission popup state - supports both hover and click
   const [isContextPopupOpen, setIsContextPopupOpen] = useState(false);
   const [isContextPopupPinned, setIsContextPopupPinned] = useState(false);
-  const contextPopupProps = useContextApprovalPopupProps(contextBreakdown, approvalMode, setApprovalMode);
+  const contextPopupProps = useContextPermissionPopupProps(
+    contextBreakdown,
+    permissionModeForContext,
+    setPermissionModeForContext
+  );
   const contextPopupHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleContextPopupMouseEnter = useCallback(() => {
@@ -2065,7 +2069,7 @@ function AcpChatSurface({
     }
   }, [isContextPopupPinned]);
 
-  // Bottom toolbar left content with triple selector and context approval button wrapped in hover container
+  // Bottom toolbar left content with triple selector and context permission button wrapped in hover container
   const bottomToolbarLeftContent = useMemo(() => (
     <div className="flex items-center gap-2">
       {tripleSelectorNode}
@@ -2083,14 +2087,14 @@ function AcpChatSurface({
         )}
         <ContextApprovalButton
           breakdown={contextBreakdown}
-          approvalMode={approvalMode}
-          onApprovalModeChange={setApprovalMode}
+          permissionMode={permissionModeForContext}
+          onPermissionModeChange={setPermissionModeForContext}
           onClick={handleContextPopupClick}
           externalPopup
         />
       </div>
     </div>
-  ), [approvalMode, contextBreakdown, contextPopupProps, handleContextPopupClick, handleContextPopupMouseEnter, handleContextPopupMouseLeave, isContextPopupOpen, tripleSelectorNode]);
+  ), [permissionModeForContext, contextBreakdown, contextPopupProps, handleContextPopupClick, handleContextPopupMouseEnter, handleContextPopupMouseLeave, isContextPopupOpen, tripleSelectorNode]);
 
   // Bottom toolbar with triple selector and context approval button
   const bottomToolbar = useMemo(() => (

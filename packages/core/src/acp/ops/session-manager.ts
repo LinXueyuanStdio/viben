@@ -24,14 +24,19 @@ import type {
   AcpLoadSessionRequest,
   AcpLoadSessionResponse,
   AcpMcpServer,
+  AcpPermissionMode,
   AcpNewSessionRequest,
   AcpNewSessionResponse,
+  AcpRequestPermissionRequest,
+  AcpRequestPermissionResponse,
   AcpCancelSteerPromptRequest,
   AcpCancelSteerPromptResponse,
   AcpPromptRequest,
   AcpPromptResponse,
   AcpSandboxConfig,
   AcpSessionContext,
+  AcpSessionEventStatus,
+  AcpSessionNotification,
   AcpSessionStatus,
   AcpSessionSummary,
   AcpSteerPromptRecord,
@@ -56,6 +61,10 @@ import {
 import { DetachedConnection } from "./detached-connection";
 import { AcpSessionEventRecorder } from "./session-event-recorder";
 import {
+  createDefaultPermissionHandler,
+  type PermissionHandler,
+} from "./permission-handler";
+import {
   createDefaultAcpSessionStorage,
   type AcpSessionStorageAdapter,
 } from "./session-storage";
@@ -75,6 +84,164 @@ const DEFAULT_AGENT_CAPABILITIES: AcpAgentCapabilities = {
     list: {},
   },
 };
+
+class RecordingAcpConnection implements AcpConnection {
+  private readonly permissionHandler: PermissionHandler;
+  private readonly pendingSeqs = new Set<number>();
+
+  constructor(
+    private readonly sessionId: string,
+    private rawConnection: AcpConnection,
+    private readonly recorder: AcpSessionEventRecorder,
+    private readonly permissionMode: AcpPermissionMode = "default",
+    permissionHandler: PermissionHandler = createDefaultPermissionHandler()
+  ) {
+    this.permissionHandler = permissionHandler;
+  }
+
+  setRawConnection(connection: AcpConnection): void {
+    this.rawConnection = connection;
+  }
+
+  getRawConnection(): AcpConnection {
+    return this.rawConnection;
+  }
+
+  hasRawConnection(connection: AcpConnection): boolean {
+    return this.rawConnection === connection;
+  }
+
+  async sessionUpdate(params: AcpSessionNotification): Promise<void> {
+    await this.tryAppend({
+      type: "session_update",
+      ts: nowIso(),
+      data: params,
+    }, "Failed to record ACP active session update");
+    await this.rawConnection.sessionUpdate(params);
+  }
+
+  async requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequestPermissionResponse> {
+    const autoResponse = await this.evaluatePermission(params);
+    if (autoResponse) {
+      await this.tryAppend({
+        type: "permission_response",
+        ts: nowIso(),
+        data: autoResponse,
+      }, "Failed to record ACP active permission response");
+      return autoResponse;
+    }
+
+    const seq = await this.tryAppend({
+      type: "permission_request",
+      ts: nowIso(),
+      status: "pending",
+      request_id: params.toolCall.toolCallId,
+      data: params,
+    }, "Failed to record ACP active permission request");
+
+    this.trackPending(seq);
+    try {
+      const response = await this.rawConnection.requestPermission(params);
+      if (this.untrackPending(seq)) {
+        await this.tryUpdateStatus(
+          seq,
+          permissionResponseStatus(response),
+          "Failed to mark ACP active permission request resolved"
+        );
+      }
+      return response;
+    } catch (error) {
+      if (this.untrackPending(seq)) {
+        await this.tryUpdateStatus(seq, classifyRequestError(error), "Failed to mark ACP active permission request cancelled");
+      }
+      throw error;
+    }
+  }
+
+  async requestClient(method: string, params?: Record<string, unknown>): Promise<unknown> {
+    const seq = await this.tryAppend({
+      type: "client_tool_call",
+      ts: nowIso(),
+      status: "pending",
+      data: { method, params },
+    }, "Failed to record ACP active client tool call");
+
+    this.trackPending(seq);
+    try {
+      const response = await this.rawConnection.requestClient(method, params);
+      if (this.untrackPending(seq)) {
+        await this.tryUpdateStatus(seq, "resolved", "Failed to mark ACP active client tool call resolved");
+      }
+      return response;
+    } catch (error) {
+      if (this.untrackPending(seq)) {
+        await this.tryUpdateStatus(seq, classifyRequestError(error), "Failed to mark ACP active client tool call cancelled");
+      }
+      throw error;
+    }
+  }
+
+  async notifyClient(method: string, params?: Record<string, unknown>): Promise<void> {
+    await this.tryAppend({
+      type: "notification",
+      ts: nowIso(),
+      data: { method, params },
+    }, "Failed to record ACP active client notification");
+    await this.rawConnection.notifyClient(method, params);
+  }
+
+  private async evaluatePermission(
+    params: AcpRequestPermissionRequest
+  ): Promise<AcpRequestPermissionResponse | null> {
+    const decision = await this.permissionHandler.evaluate(params, this.permissionMode);
+    return decision.auto ? decision.response : null;
+  }
+
+  private async tryAppend(
+    event: Parameters<AcpSessionEventRecorder["append"]>[0],
+    message: string
+  ): Promise<number | undefined> {
+    try {
+      return await this.recorder.append(event);
+    } catch (error) {
+      log.warn({ err: error, sessionId: this.sessionId }, message);
+      return undefined;
+    }
+  }
+
+  private async tryUpdateStatus(
+    seq: number | undefined,
+    status: AcpSessionEventStatus,
+    message: string
+  ): Promise<void> {
+    if (seq === undefined) return;
+    try {
+      await this.recorder.updateStatus(seq, status);
+    } catch (error) {
+      log.warn({ err: error, sessionId: this.sessionId, seq, status }, message);
+    }
+  }
+
+  async abandonPending(): Promise<void> {
+    const pending = [...this.pendingSeqs];
+    this.pendingSeqs.clear();
+    await Promise.all(
+      pending.map((seq) =>
+        this.tryUpdateStatus(seq, "abandoned", "Failed to abandon ACP active pending request")
+      )
+    );
+  }
+
+  private trackPending(seq: number | undefined): void {
+    if (seq !== undefined) {
+      this.pendingSeqs.add(seq);
+    }
+  }
+
+  private untrackPending(seq: number | undefined): boolean {
+    return seq !== undefined ? this.pendingSeqs.delete(seq) : false;
+  }
+}
 
 interface AcpNormalPromptQueueItem {
   kind: "prompt";
@@ -134,7 +301,7 @@ export class AcpSessionManager {
   private backendAdapter: AcpBackendAdapter;
   private steerPromptStore: AcpSteerPromptStore;
   private inputHistory: InputHistoryService;
-  private storage: AcpSessionStorageAdapter;
+  readonly storage: AcpSessionStorageAdapter;
 
   constructor(
     backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter(),
@@ -153,8 +320,18 @@ export class AcpSessionManager {
     return session ? toSummary(session) : undefined;
   }
 
-  listSessions(): AcpSessionSummary[] {
-    return Array.from(this.sessions.values()).map((session) => toSummary(session));
+  async listSessions(): Promise<AcpSessionSummary[]> {
+    for (const session of this.sessions.values()) {
+      if (session.status === "active" || session.status === "parked" || session.status === "initializing") {
+        await this.upsertSessionIndex(session, indexStatusForSession(session));
+      }
+    }
+
+    const records = await this.storage.index.listRecords();
+    return records.map((record) => {
+      const live = this.sessions.get(sessionKey(record));
+      return live ? toSummary(live) : recordToSummary(record);
+    });
   }
 
   async createSession(
@@ -162,14 +339,22 @@ export class AcpSessionManager {
     connection: AcpConnection,
     context: AcpSessionContext = {}
   ): Promise<AcpNewSessionResponse> {
-    const sessionId = randomUUID();
-    const session = await this.createSessionRecord(sessionId, request, connection, context);
+    const gatewaySessionId = randomUUID();
+    const session = await this.createSessionRecord(gatewaySessionId, request, connection, context);
     this.sessions.set(sessionKey(session), session);
-    await this.upsertSessionIndex(session, "active");
+    try {
+      await this.ensureBackend(session, {
+        sessionId: gatewaySessionId,
+        prompt: [],
+      });
+    } catch (error) {
+      this.sessions.delete(sessionKey(session));
+      throw error;
+    }
     log.info(sessionLogFields(session, { source: "session/new" }), "ACP session created");
 
     return {
-      sessionId,
+      sessionId: session.id,
       configOptions: session.config_options,
     };
   }
@@ -213,7 +398,7 @@ export class AcpSessionManager {
         request.sandboxConfig ??
         context.sandbox_config,
       mcp_servers: request.mcpServers ?? [],
-      connection,
+      connection: this.createRecordingConnection(sessionId, connection, recorder, agentConfig?.permission_mode),
       recorder,
       gateway_url: request.gateway_url ?? request.gatewayUrl ?? context.gateway_url,
       prompt_running: false,
@@ -251,13 +436,29 @@ export class AcpSessionManager {
     connection: AcpConnection,
     context: AcpSessionContext = {}
   ): Promise<AcpLoadSessionResponse> {
-    const existing = this.findUniqueLiveSession(request.sessionId);
+    const executorContext = await this.resolveExecutorContext(request, context);
+    const existing = this.findLiveSession(request.sessionId, executorContext);
     if (existing) {
       let history;
       if (existing.connection instanceof DetachedConnection) {
         history = await existing.connection.resume(connection);
+        await existing.backend?.resume?.();
+        existing.connection = this.createRecordingConnection(
+          existing.id,
+          connection,
+          existing.recorder,
+          existing.agent_config?.permission_mode
+        );
+      } else if (existing.connection instanceof RecordingAcpConnection) {
+        existing.connection.setRawConnection(connection);
+      } else {
+        existing.connection = this.createRecordingConnection(
+          existing.id,
+          connection,
+          existing.recorder,
+          existing.agent_config?.permission_mode
+        );
       }
-      existing.connection = connection;
       existing.status = "active";
       existing.last_active_at = new Date();
       await this.upsertSessionIndex(existing, "active");
@@ -272,6 +473,37 @@ export class AcpSessionManager {
       return {
         sessionId: existing.id,
         configOptions: existing.config_options,
+        history,
+      };
+    }
+
+    const indexRecord = await this.resolveLoadSessionRecord(request, context, executorContext);
+    if (indexRecord) {
+      const session = await this.createSessionRecordFromIndex(indexRecord, request, connection, context);
+      const history = await session.recorder.abandonPending();
+      session.status = "active";
+      session.last_active_at = new Date();
+      this.sessions.set(sessionKey(session), session);
+      try {
+        await this.ensureBackend(session, {
+          sessionId: session.backend_load_session_id ?? session.session_id,
+          prompt: [],
+        });
+      } catch (error) {
+        this.sessions.delete(sessionKey(session));
+        throw error;
+      }
+      await this.upsertSessionIndex(session, "active");
+      log.info(sessionLogFields(session, {
+        source: "session/load",
+        requestedSessionId: request.sessionId,
+        reusedLiveSession: false,
+        loadedFromIndex: true,
+      }), "ACP session loaded from index");
+
+      return {
+        sessionId: session.id,
+        configOptions: session.config_options,
         history,
       };
     }
@@ -293,7 +525,15 @@ export class AcpSessionManager {
     );
     session.backend_load_session_id = request.sessionId;
     this.sessions.set(sessionKey(session), session);
-    await this.upsertSessionIndex(session, "active");
+    try {
+      await this.ensureBackend(session, {
+        sessionId: request.sessionId,
+        prompt: [],
+      });
+    } catch (error) {
+      this.sessions.delete(sessionKey(session));
+      throw error;
+    }
     log.info(sessionLogFields(session, {
       source: "session/load",
       requestedSessionId: request.sessionId,
@@ -301,13 +541,47 @@ export class AcpSessionManager {
     }), "ACP session loaded as new live session");
 
     return {
-      sessionId: request.sessionId,
+      sessionId: session.id,
       configOptions: session.config_options,
     };
   }
 
-  async prompt(request: AcpPromptRequest): Promise<AcpPromptResponse> {
-    const session = this.findUniqueLiveSession(request.sessionId);
+  async resolveSessionIdentity(
+    sessionId: string,
+    context: AcpSessionContext = {}
+  ): Promise<AcpSessionEventIdentity> {
+    const executorType = await this.resolveExecutorContext(
+      { sessionId, cwd: context.cwd ?? process.cwd(), mcpServers: [] },
+      context
+    );
+    if (executorType) {
+      const live = this.findLiveSession(sessionId, executorType);
+      if (live) return getStorageIdentity(live);
+
+      const record = await this.storage.index.getRecord(executorType, sessionId);
+      if (record) {
+        return {
+          executor_type: record.executor_type,
+          session_id: record.session_id,
+        };
+      }
+    }
+
+    const live = this.findUniqueLiveSession(sessionId);
+    if (live) return getStorageIdentity(live);
+
+    const record = await this.resolveUniqueIndexRecordBySessionId(sessionId);
+    if (!record) {
+      throw new Error(`ACP session not found: ${sessionId}`);
+    }
+    return {
+      executor_type: record.executor_type,
+      session_id: record.session_id,
+    };
+  }
+
+  async prompt(request: AcpPromptRequest, identity?: AcpSessionEventIdentity): Promise<AcpPromptResponse> {
+    const session = this.findLiveSessionByInput(request.sessionId, identity);
     if (!session) {
       throw new Error(`ACP session not found: ${request.sessionId}`);
     }
@@ -318,8 +592,8 @@ export class AcpSessionManager {
     });
   }
 
-  async steerPrompt(request: AcpSteerPromptRequest): Promise<AcpSteerPromptResponse> {
-    const session = this.requireSession(request.sessionId);
+  async steerPrompt(request: AcpSteerPromptRequest, identity?: AcpSessionEventIdentity): Promise<AcpSteerPromptResponse> {
+    const session = this.requireSession(request.sessionId, identity);
     if (!Array.isArray(request.prompt) || request.prompt.length === 0) {
       throw new Error("session/prompt/steer requires prompt");
     }
@@ -331,9 +605,10 @@ export class AcpSessionManager {
       source: "desktop_acp_chat",
       session_id: session.id,
     }));
+    const steerSessionId = compositeSessionId(getStorageIdentity(session));
 
     const record = await this.steerPromptStore.create({
-      session_id: session.id,
+      session_id: steerSessionId,
       agent_id: request.agent_id ?? request.agentId ?? resolveAgentId(session.agent_config_path, session.agent_config),
       user_id: request.user_id ?? request.userId ?? "default",
       prompt_json: request.prompt,
@@ -344,9 +619,9 @@ export class AcpSessionManager {
     return steerRecordToResponse(record);
   }
 
-  async cancelSteerPrompt(request: AcpCancelSteerPromptRequest): Promise<AcpCancelSteerPromptResponse> {
-    this.requireSession(request.sessionId);
-    const record = await this.steerPromptStore.cancel(request.sessionId, request.promptId);
+  async cancelSteerPrompt(request: AcpCancelSteerPromptRequest, identity?: AcpSessionEventIdentity): Promise<AcpCancelSteerPromptResponse> {
+    const session = this.requireSession(request.sessionId, identity);
+    const record = await this.steerPromptStore.cancel(compositeSessionId(getStorageIdentity(session)), request.promptId);
     if (!record) {
       throw new Error(`ACP steer prompt not found: ${request.promptId}`);
     }
@@ -359,10 +634,11 @@ export class AcpSessionManager {
     };
   }
 
-  async viewSteerPrompt(request: AcpViewSteerPromptRequest): Promise<AcpViewSteerPromptResponse> {
-    this.requireSession(request.sessionId);
+  async viewSteerPrompt(request: AcpViewSteerPromptRequest, identity?: AcpSessionEventIdentity): Promise<AcpViewSteerPromptResponse> {
+    const session = this.requireSession(request.sessionId, identity);
+    const steerSessionId = compositeSessionId(getStorageIdentity(session));
     if (request.promptId) {
-      const record = await this.steerPromptStore.get(request.sessionId, request.promptId);
+      const record = await this.steerPromptStore.get(steerSessionId, request.promptId);
       if (!record) {
         throw new Error(`ACP steer prompt not found: ${request.promptId}`);
       }
@@ -372,7 +648,7 @@ export class AcpSessionManager {
     const limit = normalizeSteerLimit(request.limit);
     const cursorOffset = parseSteerCursor(request.cursor);
     const records = await this.steerPromptStore.list({
-      session_id: request.sessionId,
+      session_id: steerSessionId,
       agent_id: request.agent_id ?? request.agentId,
       user_id: request.user_id ?? request.userId,
       status: request.status,
@@ -381,7 +657,7 @@ export class AcpSessionManager {
     });
     const total = this.steerPromptStore.count
       ? await this.steerPromptStore.count({
-        session_id: request.sessionId,
+        session_id: steerSessionId,
         agent_id: request.agent_id ?? request.agentId,
         user_id: request.user_id ?? request.userId,
         status: request.status,
@@ -394,41 +670,44 @@ export class AcpSessionManager {
     };
   }
 
-  async consumeNextSteerPrompt(sessionId: string): Promise<AcpSteerPromptView | undefined> {
-    const session = this.requireSession(sessionId);
-    const record = await this.steerPromptStore.consumeNext(sessionId);
+  async consumeNextSteerPrompt(sessionId: string, identity?: AcpSessionEventIdentity): Promise<AcpSteerPromptView | undefined> {
+    const session = this.requireSession(sessionId, identity);
+    const record = await this.steerPromptStore.consumeNext(compositeSessionId(getStorageIdentity(session)));
     if (!record) return undefined;
     await this.dispatchSteerConsumed(session, record);
     return steerRecordToView(record);
   }
 
-  async consumeQueuedSteerPrompts(sessionId: string): Promise<AcpSteerPromptView[]> {
-    const session = this.requireSession(sessionId);
-    const records = await this.steerPromptStore.consumeQueued(sessionId);
+  async consumeQueuedSteerPrompts(sessionId: string, identity?: AcpSessionEventIdentity): Promise<AcpSteerPromptView[]> {
+    const session = this.requireSession(sessionId, identity);
+    const records = await this.steerPromptStore.consumeQueued(compositeSessionId(getStorageIdentity(session)));
     for (const record of records) {
       await this.dispatchSteerConsumed(session, record);
     }
     return records.map((record) => steerRecordToView(record));
   }
 
-  async markSteerPromptCompleted(sessionId: string, promptId: string): Promise<AcpSteerPromptView | undefined> {
-    const session = this.requireSession(sessionId);
-    const record = await this.steerPromptStore.markCompleted(sessionId, promptId);
+  async markSteerPromptCompleted(sessionId: string, promptId: string, identity?: AcpSessionEventIdentity): Promise<AcpSteerPromptView | undefined> {
+    const session = this.requireSession(sessionId, identity);
+    const record = await this.steerPromptStore.markCompleted(compositeSessionId(getStorageIdentity(session)), promptId);
     if (!record) return undefined;
     await this.dispatchSteerUpdate(session, record, "steer_completed");
     return steerRecordToView(record);
   }
 
-  async markSteerPromptFailed(sessionId: string, promptId: string, error: string): Promise<AcpSteerPromptView | undefined> {
-    const session = this.requireSession(sessionId);
-    const record = await this.steerPromptStore.markFailed(sessionId, promptId, error);
+  async markSteerPromptFailed(sessionId: string, promptId: string, error: string, identity?: AcpSessionEventIdentity): Promise<AcpSteerPromptView | undefined> {
+    const session = this.requireSession(sessionId, identity);
+    const record = await this.steerPromptStore.markFailed(compositeSessionId(getStorageIdentity(session)), promptId, error);
     if (!record) return undefined;
     await this.dispatchSteerUpdate(session, record, "steer_failed");
     return steerRecordToView(record);
   }
 
-  async interruptSession(request: AcpInterruptSessionRequest): Promise<AcpInterruptSessionResponse> {
-    const session = this.requireSession(request.sessionId);
+  async interruptSession(
+    request: AcpInterruptSessionRequest,
+    identity?: AcpSessionEventIdentity
+  ): Promise<AcpInterruptSessionResponse> {
+    const session = this.requireSession(request.sessionId, identity);
     const promptIds = await this.enqueueQueuedSteerResume(session);
     if (promptIds.length === 0) {
       this.interruptCurrentExecution(session);
@@ -448,12 +727,12 @@ export class AcpSessionManager {
     };
   }
 
-  private async listQueuedSteerPrompts(sessionId: string): Promise<AcpSteerPromptView[]> {
+  private async listQueuedSteerPrompts(session: AcpSession): Promise<AcpSteerPromptView[]> {
     const records: AcpSteerPromptRecord[] = [];
     let cursor = "0";
     while (true) {
       const page = await this.steerPromptStore.list({
-        session_id: sessionId,
+        session_id: compositeSessionId(getStorageIdentity(session)),
         status: "queued",
         limit: 100,
         cursor,
@@ -466,7 +745,7 @@ export class AcpSessionManager {
   }
 
   private async enqueueQueuedSteerResume(session: AcpSession): Promise<string[]> {
-    const steerPrompts = await this.listQueuedSteerPrompts(session.id);
+    const steerPrompts = await this.listQueuedSteerPrompts(session);
     const promptIds = steerPrompts.map((item) => item.promptId);
     if (promptIds.length === 0) return [];
 
@@ -485,8 +764,8 @@ export class AcpSessionManager {
     return promptIds;
   }
 
-  async cancelSession(sessionId: string): Promise<boolean> {
-    const session = this.findUniqueLiveSession(sessionId);
+  async cancelSession(sessionId: string, identity?: AcpSessionEventIdentity): Promise<boolean> {
+    const session = this.findLiveSessionByInput(sessionId, identity);
     if (!session) return false;
 
     session.status = "cancelled";
@@ -519,15 +798,29 @@ export class AcpSessionManager {
     });
   }
 
-  async closeSession(sessionId: string): Promise<void> {
-    const session = this.findUniqueLiveSession(sessionId);
-    if (!session) return;
+  async closeSession(sessionId: string, identity?: AcpSessionEventIdentity): Promise<void> {
+    const session = this.findLiveSessionByInput(sessionId, identity);
+    if (!session) {
+      const record = identity
+        ? await this.storage.index.getRecord(identity.executor_type, identity.session_id)
+        : await this.resolveUniqueIndexRecordBySessionId(sessionId);
+      if (!record) return;
+      const finishedAt = new Date().toISOString();
+      await this.storage.index.updateStatus(record.executor_type, record.session_id, "finished", {
+        last_active_at: finishedAt,
+        finished_at: finishedAt,
+      });
+      log.info({ sessionId, executorType: record.executor_type }, "ACP indexed session closed");
+      return;
+    }
     if (session.prompt_running) {
       clientToolCompletionRegistry.cancelSession(sessionId);
     }
-    void session.backend?.close().catch((error) => {
+    try {
+      await session.backend?.close();
+    } catch (error) {
       log.debug({ err: error, sessionId }, "ACP backend close failed");
-    });
+    }
     for (const item of session.prompt_queue.splice(0)) {
       item.resolve({ stopReason: "cancelled" });
     }
@@ -558,10 +851,15 @@ export class AcpSessionManager {
     if (session.connection instanceof DetachedConnection) {
       return true;
     }
-    if (closingConnection && session.connection !== closingConnection) {
+    if (closingConnection && !isConnectionRawTarget(session.connection, closingConnection)) {
       return false;
     }
-
+    if (session.connection instanceof RecordingAcpConnection) {
+      await session.connection.abandonPending();
+      if (closingConnection && !isConnectionRawTarget(session.connection, closingConnection)) {
+        return false;
+      }
+    }
     session.connection = new DetachedConnection(
       session.recorder,
       session.id,
@@ -656,7 +954,7 @@ export class AcpSessionManager {
     });
 
     const backend = await this.ensureBackend(session, request);
-    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id, getStorageIdentity(session));
     const promptWithSteer = mergePromptWithSteerBlocks(request.prompt, steerPrompts);
     const response = await backend.prompt({
       ...request,
@@ -671,7 +969,7 @@ export class AcpSessionManager {
   }
 
   private async executeSteerResumePrompt(session: AcpSession): Promise<AcpPromptResponse> {
-    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id, getStorageIdentity(session));
     const prompt = mergeSteerPromptBlocks(steerPrompts);
     if (prompt.length === 0) {
       return { stopReason: "cancelled" };
@@ -720,8 +1018,11 @@ export class AcpSessionManager {
       backendLoadSessionId: session.backend_load_session_id,
     }), "ACP backend session starting");
 
+    const previousIdentity = getStorageIdentity(session);
+    const previousKey = sessionKey(previousIdentity);
     const backend = await this.backendAdapter.start({
       outerSessionId: session.id,
+      resolveOuterSessionId: () => session.id,
       cwd: session.cwd,
       request: startRequest,
       connection: this.createBackendConnection(session),
@@ -737,8 +1038,14 @@ export class AcpSessionManager {
     session.backend = backend;
     session.backend_id = this.backendAdapter.id;
     session.sdk_session_id = backend.backendSessionId;
+    if (session.session_id !== backend.backendSessionId) {
+      await this.migrateSessionIdentity(session, previousIdentity, backend.backendSessionId);
+    } else if (!this.sessions.has(previousKey)) {
+      this.sessions.set(sessionKey(session), session);
+    }
     session.agent_capabilities = backend.agentCapabilities ?? DEFAULT_AGENT_CAPABILITIES;
     session.config_options = backend.configOptions;
+    await this.upsertSessionIndex(session, indexStatusForSession(session));
     log.info({
       ...sessionLogFields(session, {
         source: session.backend_load_session_id ? "backend/load" : "backend/new",
@@ -748,6 +1055,30 @@ export class AcpSessionManager {
       backendCapabilities: summarizeBackendCapabilities(backend.agentCapabilities),
     }, "ACP backend session ready");
     return backend;
+  }
+
+  private async migrateSessionIdentity(
+    session: AcpSession,
+    previousIdentity: AcpSessionEventIdentity,
+    backendSessionId: string
+  ): Promise<void> {
+    const oldKey = sessionKey(previousIdentity);
+    const oldRecord = await this.storage.index.getRecord(previousIdentity.executor_type, previousIdentity.session_id);
+    session.id = backendSessionId;
+    session.session_id = backendSessionId;
+    session.backend_load_session_id = backendSessionId;
+    session.recorder = new AcpSessionEventRecorder(this.storage.events, getStorageIdentity(session), this.storage.index);
+    session.connection = this.createRecordingConnection(
+      session.id,
+      unwrapRecordingConnection(session.connection) ?? session.connection,
+      session.recorder,
+      session.agent_config?.permission_mode
+    );
+    this.sessions.delete(oldKey);
+    this.sessions.set(sessionKey(session), session);
+    if (oldRecord) {
+      await this.storage.index.hardDeleteRecord(previousIdentity.executor_type, previousIdentity.session_id);
+    }
   }
 
   private createBackendConnection(session: AcpSession): AcpConnection {
@@ -765,6 +1096,15 @@ export class AcpSessionManager {
         await session.connection.notifyClient(method, params);
       },
     };
+  }
+
+  private createRecordingConnection(
+    sessionId: string,
+    connection: AcpConnection,
+    recorder: AcpSessionEventRecorder,
+    permissionMode: AcpPermissionMode = "default"
+  ): RecordingAcpConnection {
+    return new RecordingAcpConnection(sessionId, connection, recorder, permissionMode);
   }
 
   private async handleBackendSessionUpdate(
@@ -817,7 +1157,7 @@ export class AcpSessionManager {
       input,
     });
     const result = normalizeClientToolResponse(response, session.id, toolCallId);
-    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id, getStorageIdentity(session));
     const accepted = clientToolCompletionRegistry.complete(
       toolCallId,
       session.id,
@@ -956,8 +1296,8 @@ export class AcpSessionManager {
     }
   }
 
-  private requireSession(sessionId: string): AcpSession {
-    const session = this.findUniqueLiveSession(sessionId);
+  private requireSession(sessionId: string, identity?: AcpSessionEventIdentity): AcpSession {
+    const session = this.findLiveSessionByInput(sessionId, identity);
     if (!session) {
       throw new Error(`ACP session not found: ${sessionId}`);
     }
@@ -965,16 +1305,122 @@ export class AcpSessionManager {
   }
 
   private findUniqueLiveSession(sessionId: string): AcpSession | undefined {
-    const direct = this.sessions.get(sessionId);
+    const direct = this.sessions.get(sessionId) ?? this.sessions.get(compositeSessionIdFromString(sessionId));
     if (direct) return direct;
 
     const matches = Array.from(this.sessions.values()).filter((session) => session.session_id === sessionId);
     return matches.length === 1 ? matches[0] : undefined;
   }
 
+  private findLiveSessionByInput(
+    sessionId: string,
+    identity?: AcpSessionEventIdentity
+  ): AcpSession | undefined {
+    if (identity) {
+      return this.sessions.get(sessionKey(identity));
+    }
+    return this.findUniqueLiveSession(sessionId);
+  }
+
+  private findLiveSession(
+    sessionId: string,
+    executorType?: string
+  ): AcpSession | undefined {
+    if (executorType) {
+      return this.sessions.get(sessionKey({ executor_type: executorType, session_id: sessionId }));
+    }
+    return this.findUniqueLiveSession(sessionId);
+  }
+
   private async upsertSessionIndex(session: AcpSession, status: AcpSessionRecordStatus): Promise<void> {
     const existing = await this.storage.index.getRecord(session.executor_type, session.session_id);
     await this.storage.index.upsertRecord(this.buildSessionRecord(session, status, existing));
+  }
+
+  private async resolveLoadSessionRecord(
+    request: AcpLoadSessionRequest,
+    context: AcpSessionContext,
+    executorContext?: string
+  ): Promise<AcpSessionRecord | null> {
+    const executorType = executorContext ?? await this.resolveExecutorContext(request, context);
+    if (executorType) {
+      return await this.storage.index.getRecord(executorType, request.sessionId);
+    }
+
+    const matches = await this.storage.index.findBySessionId(request.sessionId);
+    if (matches.length > 1) {
+      throw new Error("ACP session_id is ambiguous across executor_type; provide executor context");
+    }
+    return matches[0] ?? null;
+  }
+
+  private async resolveExecutorContext(
+    request: AcpLoadSessionRequest,
+    context: AcpSessionContext
+  ): Promise<string | undefined> {
+    const agentConfigPath = request.agent_config_path ?? request.agentConfigPath ?? context.agent_config_path;
+    const inlineConfig = request.agent_config ?? request.agentConfig ?? context.agent_config;
+    const agentConfig = await resolveAgentConfig(agentConfigPath, inlineConfig);
+    if (!agentConfig?.executor_type) return undefined;
+    return resolveExecutorType(agentConfig);
+  }
+
+  private async createSessionRecordFromIndex(
+    record: AcpSessionRecord,
+    request: AcpLoadSessionRequest,
+    connection: AcpConnection,
+    context: AcpSessionContext
+  ): Promise<AcpSession> {
+    const requestAgentConfigPath = request.agent_config_path ?? request.agentConfigPath ?? context.agent_config_path;
+    const requestAgentConfig = request.agent_config ?? request.agentConfig ?? context.agent_config;
+    const loadedAgentConfig = await resolveAgentConfig(requestAgentConfigPath ?? record.agent_config_path, requestAgentConfig);
+    const agentConfig = mergeRecordAgentConfig(record, loadedAgentConfig);
+    const identity = { executor_type: record.executor_type, session_id: record.session_id };
+    const recorder = new AcpSessionEventRecorder(this.storage.events, identity, this.storage.index);
+
+    return {
+      id: record.session_id,
+      executor_type: record.executor_type,
+      session_id: record.session_id,
+      backend_id: record.backend_id,
+      status: record.status === "finished" ? "finished" : "active",
+      cwd: record.cwd,
+      workspace_path: record.workspace_path,
+      created_at: parseRecordDate(record.created_at),
+      last_active_at: parseRecordDate(record.last_active_at),
+      agent_config_path: record.agent_config_path,
+      agent_dir: record.agent_dir,
+      persist_session_id: record.persist_session_id,
+      persist_task_id: record.persist_task_id,
+      agent_config: agentConfig,
+      sandbox_config: request.sandbox_config ?? request.sandboxConfig ?? context.sandbox_config,
+      mcp_servers: request.mcpServers ?? [],
+      connection: this.createRecordingConnection(
+        record.session_id,
+        connection,
+        recorder,
+        agentConfig?.permission_mode
+      ),
+      recorder,
+      gateway_url: record.gateway_url,
+      backend_load_session_id: restoreBackendLoadSessionId(record),
+      prompt_running: false,
+      prompt_queue: [],
+      pending_client_side_bridge_tool_calls: [],
+      sdk_session_id: readRecordString(record.acp_record, "sdkSessionId") ?? readRecordString(record.acp_record, "sdk_session_id"),
+      initial_prompt: readRecordString(record.acp_record, "initialPrompt") ?? readRecordString(record.acp_record, "initial_prompt"),
+      last_error: record.last_error,
+      config_options: readConfigOptions(record.acp_record),
+      agent_capabilities: DEFAULT_AGENT_CAPABILITIES,
+    };
+  }
+
+  private async resolveUniqueIndexRecordBySessionId(sessionId: string): Promise<AcpSessionRecord | null> {
+    const matches = await this.storage.index.findBySessionId(sessionId);
+    if (matches.length > 1) {
+      throw new Error("ACP session_id is ambiguous across executor_type; provide executor context");
+    }
+    return matches[0] ?? null;
   }
 
   private buildSessionRecord(
@@ -997,7 +1443,11 @@ export class AcpSessionManager {
         sessionId: session.id,
         executor_type: session.executor_type,
         sdk_session_id: session.sdk_session_id,
+        sdkSessionId: session.sdk_session_id,
         backend_load_session_id: session.backend_load_session_id,
+        initialPrompt: session.initial_prompt,
+        initial_prompt: session.initial_prompt,
+        configOptions: session.config_options,
       },
       persist_session_id: session.persist_session_id,
       persist_task_id: session.persist_task_id,
@@ -1025,6 +1475,36 @@ export function getStorageIdentity(session: AcpSessionEventIdentity): AcpSession
     executor_type: session.executor_type,
     session_id: session.session_id,
   };
+}
+
+function isConnectionRawTarget(connection: AcpConnection, target: AcpConnection): boolean {
+  if (connection === target) return true;
+  return connection instanceof RecordingAcpConnection && connection.hasRawConnection(target);
+}
+
+function unwrapRecordingConnection(connection: AcpConnection): AcpConnection | undefined {
+  return connection instanceof RecordingAcpConnection ? connection.getRawConnection() : undefined;
+}
+
+function compositeSessionId(identity: AcpSessionEventIdentity): string {
+  return `${identity.executor_type}:${identity.session_id}`;
+}
+
+function compositeSessionIdFromString(sessionId: string): string {
+  return sessionId;
+}
+
+function classifyRequestError(error: unknown): AcpSessionEventStatus {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("cancel") || message.includes("abort") ? "cancelled" : "abandoned";
+}
+
+function permissionResponseStatus(response: AcpRequestPermissionResponse): AcpSessionEventStatus {
+  return response.outcome.outcome === "cancelled" ? "cancelled" : "resolved";
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
 }
 
 export function resolveExecutorType(agentConfig?: AgentConfigPayload | null): string {
@@ -1408,7 +1888,7 @@ function isCallToolResult(value: unknown): value is CallToolResult {
 function steerRecordToResponse(record: AcpSteerPromptRecord): AcpSteerPromptResponse {
   return {
     promptId: record.id,
-    sessionId: record.session_id,
+    sessionId: publicSteerSessionId(record.session_id),
     agentId: record.agent_id,
     userId: record.user_id,
     status: record.status,
@@ -1419,7 +1899,7 @@ function steerRecordToResponse(record: AcpSteerPromptRecord): AcpSteerPromptResp
 function steerRecordToView(record: AcpSteerPromptRecord): AcpSteerPromptView {
   return {
     promptId: record.id,
-    sessionId: record.session_id,
+    sessionId: publicSteerSessionId(record.session_id),
     agentId: record.agent_id,
     userId: record.user_id,
     prompt: record.prompt_json,
@@ -1431,6 +1911,11 @@ function steerRecordToView(record: AcpSteerPromptRecord): AcpSteerPromptView {
     error: record.error,
     meta: record.meta_json,
   };
+}
+
+function publicSteerSessionId(sessionId: string): string {
+  const separatorIndex = sessionId.indexOf(":");
+  return separatorIndex >= 0 ? sessionId.slice(separatorIndex + 1) : sessionId;
 }
 
 function normalizeSteerLimit(limit: number | undefined): number {
@@ -1472,6 +1957,83 @@ function toSummary(session: AcpSession): AcpSessionSummary {
     configOptions: session.config_options,
     lastError: session.last_error,
   };
+}
+
+function recordToSummary(record: AcpSessionRecord): AcpSessionSummary {
+  return {
+    id: readRecordString(record.acp_record, "sessionId") ?? record.session_id,
+    status: recordStatusToSessionStatus(record.status),
+    cwd: record.cwd,
+    createdAt: record.created_at,
+    lastActiveAt: record.last_active_at,
+    queueDepth: readRecordNumber(record.acp_record, "queueDepth") ?? 0,
+    promptRunning: readRecordBoolean(record.acp_record, "promptRunning") ?? false,
+    sdkSessionId: readRecordString(record.acp_record, "sdkSessionId") ?? readRecordString(record.acp_record, "sdk_session_id"),
+    agentName: record.title,
+    agentExecutorType: record.executor_type,
+    agentConfigPath: record.agent_config_path,
+    agentDir: record.agent_dir,
+    initialPrompt: readRecordString(record.acp_record, "initialPrompt") ?? readRecordString(record.acp_record, "initial_prompt"),
+    agentCapabilities: DEFAULT_AGENT_CAPABILITIES,
+    configOptions: readConfigOptions(record.acp_record),
+    lastError: record.last_error,
+  };
+}
+
+function recordStatusToSessionStatus(status: AcpSessionRecordStatus): AcpSessionStatus {
+  return status;
+}
+
+function indexStatusForSession(session: AcpSession): AcpSessionRecordStatus {
+  if (session.status === "parked" || session.status === "finished" || session.status === "error") {
+    return session.status;
+  }
+  return "active";
+}
+
+function mergeRecordAgentConfig(
+  record: AcpSessionRecord,
+  loadedConfig: AgentConfigPayload | null
+): AgentConfigPayload {
+  return {
+    ...(loadedConfig ?? {}),
+    name: loadedConfig?.name ?? record.title,
+    executor_type: record.executor_type,
+    permission_mode: loadedConfig?.permission_mode ?? record.permission_mode,
+  };
+}
+
+function restoreBackendLoadSessionId(record: AcpSessionRecord): string {
+  return readRecordString(record.acp_record, "backend_load_session_id") ??
+    readRecordString(record.acp_record, "backendLoadSessionId") ??
+    readRecordString(record.acp_record, "sdkSessionId") ??
+    readRecordString(record.acp_record, "sdk_session_id") ??
+    record.session_id;
+}
+
+function parseRecordDate(value: string): Date {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function readRecordString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function readRecordNumber(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readRecordBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
+  const value = record[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function readConfigOptions(record: Record<string, unknown>): AcpConfigOption[] | undefined {
+  const value = record.configOptions ?? record.config_options;
+  return Array.isArray(value) ? value as AcpConfigOption[] : undefined;
 }
 
 function resolveCwd(cwd: string): string {

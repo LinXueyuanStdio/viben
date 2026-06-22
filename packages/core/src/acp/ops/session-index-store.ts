@@ -7,6 +7,7 @@ import type { AcpErrorDetail, AcpPermissionMode } from "../types";
 const require = createRequire(import.meta.url);
 const DEFAULT_SESSION_INDEX_DB_PATH = join(getStateDir(), "acp", "sessions.sqlite");
 const DEFAULT_LIST_STATUSES: AcpSessionRecordStatus[] = ["active", "parked"];
+const ACP_SESSION_IDENTITY_SEGMENT_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 interface SqliteDatabase {
   exec(sql: string): void;
@@ -91,19 +92,15 @@ export function createDefaultAcpSessionIndexStore(): AcpSessionIndexStore {
     return new InMemoryAcpSessionIndexStore();
   }
 
-  try {
-    return new SqliteAcpSessionIndexStore(process.env.VIBEN_ACP_SESSION_INDEX_DB_PATH || DEFAULT_SESSION_INDEX_DB_PATH);
-  } catch {
-    return new InMemoryAcpSessionIndexStore();
-  }
+  return new SqliteAcpSessionIndexStore(process.env.VIBEN_ACP_SESSION_INDEX_DB_PATH || DEFAULT_SESSION_INDEX_DB_PATH);
 }
 
 export function validateAcpSessionIdentity(executorType: string, sessionId: string): void {
-  if (!executorType.trim()) {
-    throw new Error("ACP session executor_type is required");
+  if (!ACP_SESSION_IDENTITY_SEGMENT_RE.test(executorType)) {
+    throw new Error("ACP session executor_type must match /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/");
   }
-  if (!sessionId.trim()) {
-    throw new Error("ACP session session_id is required");
+  if (!ACP_SESSION_IDENTITY_SEGMENT_RE.test(sessionId)) {
+    throw new Error("ACP session session_id must match /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/");
   }
 }
 
@@ -171,7 +168,7 @@ export class InMemoryAcpSessionIndexStore implements AcpSessionIndexStore {
   async updateEventCursor(executorType: string, sessionId: string, eventLastSeq: number): Promise<void> {
     const record = await this.getRecord(executorType, sessionId);
     if (!record) return;
-    record.event_last_seq = eventLastSeq;
+    record.event_last_seq = Math.max(record.event_last_seq, eventLastSeq);
     this.records.set(recordKey(executorType, sessionId), record);
   }
 
@@ -381,7 +378,7 @@ export class SqliteAcpSessionIndexStore implements AcpSessionIndexStore {
     validateAcpSessionIdentity(executorType, sessionId);
     this.db.prepare(`
       UPDATE acp_sessions
-      SET event_last_seq = ?
+      SET event_last_seq = MAX(event_last_seq, ?)
       WHERE executor_type = ? AND session_id = ?
     `).run(eventLastSeq, executorType, sessionId);
   }

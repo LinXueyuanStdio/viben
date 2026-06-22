@@ -222,6 +222,29 @@ export interface SessionLoadParams {
   mcpServers?: unknown[];
 }
 
+export interface AcpSessionEvent {
+  seq: number;
+  ts: string;
+  type:
+    | "prompt"
+    | "session_update"
+    | "permission_request"
+    | "permission_response"
+    | "client_tool_call"
+    | "client_tool_result"
+    | "notification";
+  id?: string;
+  status?: "pending" | "resolved" | "cancelled" | "abandoned";
+  request_id?: string;
+  data?: unknown;
+}
+
+export interface SessionLoadResult {
+  sessionId?: string;
+  history?: AcpSessionEvent[];
+  [key: string]: unknown;
+}
+
 export interface SteerPromptParams {
   sessionId: string;
   text: string;
@@ -256,6 +279,7 @@ export interface ConsumedSteerPromptResult {
 
 export interface AcpListSessionItem {
   sessionId: string;
+  executor_type?: string;
   cwd?: string;
   title?: string;
   status?: string;
@@ -468,7 +492,7 @@ export class AcpWebSocketClient {
     });
   }
 
-  loadSession(params: SessionLoadParams): Promise<unknown> {
+  loadSession(params: SessionLoadParams): Promise<SessionLoadResult> {
     const request = {
       sessionId: params.session_id,
       cwd: params.cwd || undefined,
@@ -479,7 +503,7 @@ export class AcpWebSocketClient {
       sandbox_config: params.sandbox_config,
     };
     console.log("[ACP-Client] session/load request", summarizeSessionRequest(request));
-    return this.request("session/load", request);
+    return this.request("session/load", request) as Promise<SessionLoadResult>;
   }
 
   prompt(sessionId: string, text: string): Promise<unknown> {

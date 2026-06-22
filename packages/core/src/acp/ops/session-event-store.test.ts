@@ -1,6 +1,6 @@
-import { mkdtemp, appendFile, stat } from "node:fs/promises";
+import { mkdtemp, appendFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, relative, sep } from "node:path";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AcpSessionEvent } from "../types";
 import {
@@ -95,29 +95,18 @@ describe("JsonlAcpSessionEventStore", () => {
     expect([claudeSeq, codexSeq]).toEqual([0, 0]);
   });
 
-  it("encodes session_id containing slash without escaping the event root", async () => {
+  it("rejects session_id containing slash", async () => {
     const store = new JsonlAcpSessionEventStore(root);
     const slashIdentity = { executor_type: "CODEX", session_id: "workspace/session" };
 
-    await store.appendEvent(slashIdentity, testEvent("slash"));
-
-    const uri = store.getEventStoreUri(slashIdentity);
-    const pathUnderRoot = relative(root, uri);
-    expect(pathUnderRoot.startsWith("..")).toBe(false);
-    expect(pathUnderRoot.split(sep)).toEqual(["CODEX", "workspace%2Fsession", "events.jsonl"]);
-    await expect(stat(uri)).resolves.toMatchObject({ isFile: expect.any(Function) });
+    await expect(store.appendEvent(slashIdentity, testEvent("slash"))).rejects.toThrow("session_id must match");
   });
 
-  it("does not escape the event root for traversal-shaped identity segments", async () => {
+  it("rejects traversal-shaped identity segments", async () => {
     const store = new JsonlAcpSessionEventStore(root);
     const traversalIdentity = { executor_type: "../CODEX", session_id: "../outside" };
 
-    await store.appendEvent(traversalIdentity, testEvent("safe"));
-
-    const uri = store.getEventStoreUri(traversalIdentity);
-    const pathUnderRoot = relative(root, uri);
-    expect(pathUnderRoot === ".." || pathUnderRoot.startsWith(`..${sep}`)).toBe(false);
-    expect(pathUnderRoot.split(sep)).toEqual(["..%2FCODEX", "..%2Foutside", "events.jsonl"]);
+    await expect(store.appendEvent(traversalIdentity, testEvent("safe"))).rejects.toThrow("executor_type must match");
   });
 
   it("serializes concurrent append operations for the same identity", async () => {

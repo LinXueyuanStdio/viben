@@ -142,17 +142,17 @@ function injectConfigListener(html: string): string {
 function serveMarkdownContent(
   page: PageConfig & { type: "markdown" }
 ): ServePageResult {
-  if (!page.skill_content) {
+  if (page.skill_content === undefined || page.skill_content === null) {
     return {
       success: false,
-      error: "Markdown page has no content",
+      error: "Markdown page content is unavailable",
     };
   }
 
   return {
     success: true,
     content: Buffer.from(page.skill_content, "utf-8"),
-    content_type: "text/markdown",
+    content_type: "text/markdown; charset=utf-8",
   };
 }
 
