@@ -58,7 +58,7 @@ jobs:
       dry_run: ${{ steps.get-version.outputs.dry_run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Get version
         id: get-version
@@ -119,7 +119,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           token: ${{ secrets.GH_PAT }}
@@ -192,7 +192,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download Android artifacts
         uses: actions/download-artifact@v8
@@ -456,7 +456,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           token: ${{ secrets.GH_PAT }}
@@ -506,7 +506,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download iOS artifacts
         uses: actions/download-artifact@v8
@@ -809,7 +809,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Publish draft release
         if: needs.prepare.outputs.is_draft == 'true'
