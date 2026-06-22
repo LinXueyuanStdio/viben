@@ -26,7 +26,7 @@ Core page 层：
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts`
   - `CreatePageOptions` 增加 `empty_body?: boolean`。
   - Markdown 页面在 `empty_body: true` 时只写 frontmatter，不写标题/占位正文。
-  - 所有通过 uid 访问页面目录的操作改用 `resolvePageDir()`，覆盖 update/delete/duplicate 等既有写路径。
+  - 所有通过 uid 访问页面目录的操作改用 `resolvePageDir()` / `resolveExistingPageDir()`，覆盖 create/view/update/delete/duplicate/upload asset 等既有路径。
   - 使用 `template-files.ts` 的 helper 写模板文件，供 `createPage(template_id)` 与 apply-template 复用。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts`
   - `parseSkillMd()` 对空正文返回 `skill_content: ""`。
@@ -129,7 +129,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import matter from "gray-matter";
 import { afterEach, describe, expect, it } from "vitest";
-import { createPage } from "./crud";
+import { createPage, uploadPageAsset } from "./crud";
 
 const workspaces: string[] = [];
 
@@ -548,6 +548,7 @@ import matter from "gray-matter";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPage } from "./crud";
 import { applyPageTemplate } from "./templates";
+import { writeTemplateFilesToPageDir } from "./template-files";
 
 const workspaces: string[] = [];
 
@@ -609,6 +610,47 @@ describe("applyPageTemplate", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("empty");
+  });
+
+  it("rejects escaping template file paths without damaging the existing page", async () => {
+    const workspacePath = createWorkspace();
+    const created = await createPage({
+      workspace_path: workspacePath,
+      slug: "blank-doc",
+      name: "模板文档",
+      type: "markdown",
+      empty_body: true,
+    });
+    const skillPath = join(created.page!.path, "SKILL.md");
+    const before = readFileSync(skillPath, "utf-8");
+
+    expect(() => writeTemplateFilesToPageDir(created.page!.path, new Map([
+      ["SKILL.md", "---\nname: changed\n---\n\nchanged"],
+      ["../escape.txt", "escape"],
+    ]))).toThrow("escapes page directory");
+
+    expect(readFileSync(skillPath, "utf-8")).toBe(before);
+  });
+
+  it("rejects uploaded asset filenames that escape the assets directory", async () => {
+    const workspacePath = createWorkspace();
+    const created = await createPage({
+      workspace_path: workspacePath,
+      slug: "asset-doc",
+      name: "素材文档",
+      type: "markdown",
+      empty_body: true,
+    });
+
+    const result = await uploadPageAsset({
+      workspace_path: workspacePath,
+      uid: created.page!.uid,
+      filename: "../secret.png",
+      data: Buffer.from("x"),
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invalid asset filename");
   });
 });
 ```
@@ -674,6 +716,12 @@ describe("page path safety", () => {
     expect(() => resolvePageRelativePath(pageDir, "../SKILL.md")).toThrow("escapes page directory");
     expect(() => resolvePageRelativePath(pageDir, "/tmp/outside")).toThrow("relative path");
   });
+
+  it("rejects uploaded asset filenames that escape the assets directory", () => {
+    const pageDir = join(createRoot(), "pages", "page-1");
+    expect(() => resolvePageAssetPath(pageDir, "../secret.txt")).toThrow("Invalid asset filename");
+    expect(() => resolvePageAssetPath(pageDir, "nested/secret.txt")).toThrow("Invalid asset filename");
+  });
 });
 ```
 
@@ -686,6 +734,7 @@ import { existsSync, mkdirSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 
 const PAGES_DIR = "pages";
+const ASSETS_DIR = "_assets";
 
 export function assertSafePageUid(uid: string): void {
   if (!uid || uid.includes("/") || uid.includes("\\") || uid === "." || uid === ".." || uid.includes("..")) {
@@ -740,21 +789,53 @@ export function resolvePageRelativePath(pageDir: string, filePath: string): stri
   assertRealInside(pageDir, parent, "Template file path");
   return target;
 }
+
+export function resolvePageAssetPath(pageDir: string, filename: string): { assetsDir: string; filePath: string; filename: string } {
+  if (
+    !filename ||
+    filename.includes("/") ||
+    filename.includes("\\") ||
+    filename.includes("..") ||
+    isAbsolute(filename)
+  ) {
+    throw new Error(`Invalid asset filename: ${filename}`);
+  }
+  const uniqueFilename = `${Date.now()}-${filename}`;
+  const assetsDir = resolvePageRelativePath(pageDir, ASSETS_DIR);
+  const filePath = resolvePageRelativePath(assetsDir, uniqueFilename);
+  return { assetsDir, filePath, filename: uniqueFilename };
+}
 ```
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts` 中，把所有基于 uid 的页面目录拼接替换为 `resolvePageDir()` 或 `resolveExistingPageDir()`：
 
 ```ts
-import { resolveExistingPageDir, resolvePageDir } from "./page-paths";
+import { resolveExistingPageDir, resolvePageAssetPath, resolvePageDir } from "./page-paths";
 
 // createPage: 新页面目录尚不存在，使用 resolvePageDir()
 const pageDir = resolvePageDir(workspace_path, uid);
 
-// updatePageContent / updatePageConfig / deletePage / duplicatePage: 目标页必须存在，使用 resolveExistingPageDir()
+// viewPage / updatePageContent / updatePageConfig / deletePage / duplicatePage / uploadPageAsset: 目标页必须存在，使用 resolveExistingPageDir()
 const pageDir = resolveExistingPageDir(workspace_path, uid);
 ```
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts` 的 `getPageByUid()` 中同样使用 `resolveExistingPageDir()` 构造 `skillPath`，捕获不安全 uid 或不存在目录并返回 `null`。
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts` 的 `uploadPageAsset()` 中不要使用 `join(page.path, "_assets", filename)`，改为：
+
+```ts
+  const pageDir = resolveExistingPageDir(workspace_path, uid);
+  const asset = resolvePageAssetPath(pageDir, filename);
+  await mkdir(asset.assetsDir, { recursive: true });
+  await writeFile(asset.filePath, data);
+
+  return {
+    success: true,
+    filename: asset.filename,
+  };
+```
+
+所有调用 `resolvePageDir()`、`resolveExistingPageDir()`、`resolvePageAssetPath()` 的 ops 必须捕获 path helper 抛出的错误，并返回 `{ success: false, error }`；Gateway routes 看到这些错误时返回 400，缺失页面返回 404，不允许非法 uid、非法 filename 或 symlink escape 冒泡为 500。
 
 - [ ] **Step 5: 新增类型**
 
@@ -777,7 +858,7 @@ export interface ApplyPageTemplateResult extends PageResult {
 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/template-files.ts`：
 
 ```ts
-import { existsSync, mkdirSync, mkdtempSync, rmSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { resolvePageRelativePath } from "./page-paths";
 
@@ -787,21 +868,31 @@ export function writeTemplateFilesToPageDir(
   pageDir: string,
   files: Map<string, string>
 ): void {
+  const plannedFiles = Array.from(files, ([filePath, content]) => {
+    const outputPath = filePath === SKILL_FILE ? SKILL_FILE : filePath;
+    return {
+      outputPath,
+      content,
+      finalPath: resolvePageRelativePath(pageDir, outputPath),
+    };
+  });
   const stagingDir = mkdtempSync(join(pageDir, ".template-staging-"));
-  const writtenTargets: string[] = [];
+  const backups = plannedFiles.map((file) => ({
+    finalPath: file.finalPath,
+    existed: existsSync(file.finalPath),
+    content: existsSync(file.finalPath) ? readFileSync(file.finalPath) : undefined,
+  }));
   const stagedFiles: Array<{ stagedPath: string; finalPath: string }> = [];
 
   try {
-  for (const [filePath, content] of files) {
-      const outputPath = filePath === SKILL_FILE ? SKILL_FILE : filePath;
-      const finalPath = resolvePageRelativePath(pageDir, outputPath);
-      const stagedPath = join(stagingDir, outputPath);
+    for (const file of plannedFiles) {
+      const stagedPath = join(stagingDir, file.outputPath);
       const parentDir = dirname(stagedPath);
-    if (!existsSync(parentDir)) {
-      mkdirSync(parentDir, { recursive: true });
-    }
-      writeFileSync(stagedPath, content, "utf-8");
-      stagedFiles.push({ stagedPath, finalPath });
+      if (!existsSync(parentDir)) {
+        mkdirSync(parentDir, { recursive: true });
+      }
+      writeFileSync(stagedPath, file.content, "utf-8");
+      stagedFiles.push({ stagedPath, finalPath: file.finalPath });
     }
 
     for (const { stagedPath, finalPath } of stagedFiles) {
@@ -810,11 +901,14 @@ export function writeTemplateFilesToPageDir(
         mkdirSync(parentDir, { recursive: true });
       }
       renameSync(stagedPath, finalPath);
-      writtenTargets.push(finalPath);
     }
   } catch (error) {
-    for (const target of writtenTargets) {
-      rmSync(target, { force: true });
+    for (const backup of backups) {
+      if (backup.existed && backup.content) {
+        writeFileSync(backup.finalPath, backup.content);
+      } else {
+        rmSync(backup.finalPath, { force: true });
+      }
     }
     throw error;
   } finally {
@@ -858,44 +952,51 @@ import type {
 export async function applyPageTemplate(
   options: ApplyPageTemplateOptions
 ): Promise<ApplyPageTemplateResult> {
-  const { workspace_path, uid, template_id } = options;
-  const page = await getPageByUid(workspace_path, uid);
-  if (!page) {
-    return { success: false, error: `Page not found: ${uid}` };
-  }
-  if (page.type !== "markdown") {
-    return { success: false, error: "Template can only be applied to an empty markdown page" };
-  }
+  try {
+    const { workspace_path, uid, template_id } = options;
+    const page = await getPageByUid(workspace_path, uid);
+    if (!page) {
+      return { success: false, error: `Page not found: ${uid}` };
+    }
+    if (page.type !== "markdown") {
+      return { success: false, error: "Template can only be applied to an empty markdown page" };
+    }
 
-  const pageDir = resolveExistingPageDir(workspace_path, uid);
-  const skillPath = join(pageDir, "SKILL.md");
-  if (!existsSync(skillPath)) {
-    return { success: false, error: `Page SKILL.md not found: ${uid}` };
-  }
+    const pageDir = resolveExistingPageDir(workspace_path, uid);
+    const skillPath = join(pageDir, "SKILL.md");
+    if (!existsSync(skillPath)) {
+      return { success: false, error: `Page SKILL.md not found: ${uid}` };
+    }
 
-  const parsed = matter(readFileSync(skillPath, "utf-8"));
-  if (parsed.content.trim()) {
-    return { success: false, error: "Template can only be applied to an empty page" };
-  }
+    const parsed = matter(readFileSync(skillPath, "utf-8"));
+    if (parsed.content.trim()) {
+      return { success: false, error: "Template can only be applied to an empty page" };
+    }
 
-  const template = getTemplate(template_id, workspace_path);
-  if (!template) {
-    return { success: false, error: `Template not found: ${template_id}` };
-  }
+    const template = getTemplate(template_id, workspace_path);
+    if (!template) {
+      return { success: false, error: `Template not found: ${template_id}` };
+    }
 
-  const vars = {
-    name: page.name,
-    slug: uid,
-    description: page.description ?? "",
-  };
-  const files = loadTemplateFiles(template_id, vars, workspace_path);
-  if (files.size === 0) {
-    return { success: false, error: `Template has no files: ${template_id}` };
-  }
+    const vars = {
+      name: page.name,
+      slug: uid,
+      description: page.description ?? "",
+    };
+    const files = loadTemplateFiles(template_id, vars, workspace_path);
+    if (files.size === 0) {
+      return { success: false, error: `Template has no files: ${template_id}` };
+    }
 
-  writeTemplateFilesToPageDir(pageDir, files);
-  const updated = await getPageByUid(workspace_path, uid);
-  return { success: true, page: updated ?? undefined };
+    writeTemplateFilesToPageDir(pageDir, files);
+    const updated = await getPageByUid(workspace_path, uid);
+    return { success: true, page: updated ?? undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to apply page template",
+    };
+  }
 }
 ```
 
@@ -955,7 +1056,13 @@ Expected: PASS。
 
 - [ ] **Step 11: 写 apply-template Gateway 测试**
 
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts` 的 `describe("page routes")` 内追加：
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts` 顶部新增：
+
+```ts
+import fastifyMultipart from "@fastify/multipart";
+```
+
+在 `describe("page routes")` 内追加：
 
 ```ts
   it("POST /api/page/apply-template applies a template to the current empty page", async () => {
@@ -993,6 +1100,86 @@ Expected: PASS。
       expect(body.success).toBe(true);
       expect(body.page.uid).toBe(created.page.uid);
       expect(body.page.skill_content).toContain("## Getting Started");
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("POST /api/page/apply-template returns 400 for unsafe page uid", async () => {
+    const app = Fastify({ logger: false });
+    registerPageRoutes(app);
+    await app.ready();
+    const workspacePath = createWorkspace();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/page/apply-template",
+      payload: {
+        workspace_path: workspacePath,
+        uid: "../secret",
+        template_id: "markdown-docs",
+      },
+    });
+
+    try {
+      expect(response.statusCode).toBe(400);
+      expect(response.json().success).toBe(false);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("POST /api/page/asset/upload returns 400 for an unsafe filename", async () => {
+    const app = Fastify({ logger: false });
+    await app.register(fastifyMultipart);
+    registerPageRoutes(app);
+    await app.ready();
+    const workspacePath = createWorkspace();
+
+    const createdResponse = await app.inject({
+      method: "POST",
+      url: "/api/page/create",
+      payload: {
+        workspace_path: workspacePath,
+        slug: "asset-doc",
+        name: "素材文档",
+        type: "markdown",
+        empty_body: true,
+      },
+    });
+    const created = createdResponse.json();
+
+    const boundary = "----viben-test-boundary";
+    const multipartBody = [
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="workspace_path"',
+      "",
+      workspacePath,
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="uid"',
+      "",
+      created.page.uid,
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="file"; filename="../secret.png"',
+      "Content-Type: image/png",
+      "",
+      "x",
+      `--${boundary}--`,
+      "",
+    ].join("\r\n");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/page/asset/upload",
+      headers: {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+      payload: multipartBody,
+    });
+
+    try {
+      expect(response.statusCode).toBe(400);
+      expect(response.json().success).toBe(false);
     } finally {
       await app.close();
     }
@@ -1083,6 +1270,7 @@ git commit -m "feat: apply templates to empty pages"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { lookup } from "node:dns/promises";
 import matter from "gray-matter";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "./crud";
@@ -1094,7 +1282,12 @@ vi.mock("../../http", () => ({
   proxyFetch: vi.fn(),
 }));
 
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(),
+}));
+
 const proxyFetchMock = vi.mocked(proxyFetch);
+const lookupMock = vi.mocked(lookup);
 
 const roots: string[] = [];
 
@@ -1200,6 +1393,7 @@ describe("importPage", () => {
 
   it("imports url content as markdown", async () => {
     const workspacePath = createRoot();
+    lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     proxyFetchMock.mockResolvedValue(new Response("<html><body><h1>URL 标题</h1><p>URL 正文</p></body></html>", { status: 200 }));
     const created = await createPage({
       workspace_path: workspacePath,
@@ -1224,6 +1418,7 @@ describe("importPage", () => {
 
   it("does not modify the page when url import fails", async () => {
     const workspacePath = createRoot();
+    lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     proxyFetchMock.mockResolvedValue(new Response("not found", { status: 404 }));
     const created = await createPage({
       workspace_path: workspacePath,
@@ -1240,6 +1435,59 @@ describe("importPage", () => {
       uid: created.page!.uid,
       source_type: "url",
       source_url: "https://example.com/404",
+    });
+
+    expect(result.success).toBe(false);
+    expect(readFileSync(skillPath, "utf-8")).toBe(before);
+  });
+
+  it("rejects url import when DNS resolves to a private address", async () => {
+    const workspacePath = createRoot();
+    lookupMock.mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
+    const created = await createPage({
+      workspace_path: workspacePath,
+      slug: "url-private",
+      name: "URL 私网",
+      type: "markdown",
+      empty_body: true,
+    });
+
+    const result = await importPage({
+      workspace_path: workspacePath,
+      uid: created.page!.uid,
+      source_type: "url",
+      source_url: "https://example.com/private",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("private network");
+    expect(proxyFetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects url import redirects to private addresses without modifying the page", async () => {
+    const workspacePath = createRoot();
+    lookupMock
+      .mockResolvedValueOnce([{ address: "93.184.216.34", family: 4 }])
+      .mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }]);
+    proxyFetchMock.mockResolvedValue(new Response("", {
+      status: 302,
+      headers: { location: "http://127.0.0.1/admin" },
+    }));
+    const created = await createPage({
+      workspace_path: workspacePath,
+      slug: "url-redirect",
+      name: "URL 跳转",
+      type: "markdown",
+      empty_body: true,
+    });
+    const skillPath = join(created.page!.path, "SKILL.md");
+    const before = readFileSync(skillPath, "utf-8");
+
+    const result = await importPage({
+      workspace_path: workspacePath,
+      uid: created.page!.uid,
+      source_type: "url",
+      source_url: "https://example.com/redirect",
     });
 
     expect(result.success).toBe(false);
@@ -1284,9 +1532,10 @@ export interface ImportPageResult extends PageResult {
 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/import.ts`：
 
 ```ts
+import { lookup } from "node:dns/promises";
 import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { isIP } from "node:net";
+import { join } from "node:path";
 import matter from "gray-matter";
 import { proxyFetch } from "../../http";
 import { getPageByUid } from "./discovery";
@@ -1307,27 +1556,42 @@ function assertImportContent(content: string | undefined, sourceType: "markdown_
   return content;
 }
 
-function assertSafeImportUrl(parsedUrl: URL): void {
-  const hostname = parsedUrl.hostname.toLowerCase();
-  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
-    throw new Error("source_url cannot target localhost");
-  }
-  const ipVersion = isIP(hostname);
+function isPrivateAddress(address: string): boolean {
+  const normalized = address.replace(/^\[|\]$/g, "").toLowerCase();
+  const ipVersion = isIP(normalized);
   if (ipVersion === 4) {
-    const parts = hostname.split(".").map((part) => Number(part));
+    const parts = normalized.split(".").map((part) => Number(part));
     const [a, b] = parts;
-    if (
+    return (
       a === 10 ||
       a === 127 ||
+      a === 0 ||
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && b === 168)
-    ) {
+    );
+  }
+  if (ipVersion === 6) {
+    return normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80");
+  }
+  return false;
+}
+
+async function assertSafeImportUrl(parsedUrl: URL): Promise<void> {
+  const hostname = parsedUrl.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+    throw new Error("source_url cannot target localhost");
+  }
+
+  if (isPrivateAddress(hostname)) {
+    throw new Error("source_url cannot target a private network address");
+  }
+
+  if (!isIP(hostname)) {
+    const records = await lookup(hostname, { all: true, verbatim: true });
+    if (records.some((record) => isPrivateAddress(record.address))) {
       throw new Error("source_url cannot target a private network address");
     }
-  }
-  if (ipVersion === 6 && (hostname === "::1" || hostname.startsWith("fc") || hostname.startsWith("fd") || hostname.startsWith("fe80"))) {
-    throw new Error("source_url cannot target a private network address");
   }
 }
 
@@ -1367,11 +1631,23 @@ async function importUrlToMarkdown(sourceUrl: string | undefined): Promise<strin
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     throw new Error("source_url must use http or https");
   }
-  assertSafeImportUrl(parsedUrl);
+  await assertSafeImportUrl(parsedUrl);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await proxyFetch(sourceUrl, { signal: controller.signal });
+    const response = await proxyFetch(sourceUrl, { signal: controller.signal, redirect: "manual" });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new Error(`URL import failed: HTTP ${response.status}`);
+      }
+      const redirectUrl = new URL(location, sourceUrl);
+      if (redirectUrl.protocol !== "http:" && redirectUrl.protocol !== "https:") {
+        throw new Error("source_url redirect must use http or https");
+      }
+      await assertSafeImportUrl(redirectUrl);
+      throw new Error("URL import redirects are not followed automatically");
+    }
     if (!response.ok) {
       throw new Error(`URL import failed: HTTP ${response.status}`);
     }
@@ -2499,7 +2775,7 @@ export function buildPageCreationPrompt(input: {
     ? "请将内容写入 pages/<uid>/SKILL.md 的正文，保留 YAML front matter。"
     : input.mode === "static"
       ? "请在目标页面目录创建 index.html，并将 SKILL.md 的 metadata.page.type 更新为 static，file 更新为 index.html。"
-      : "请在目标页面目录创建 Vite 全栈应用关键文件，至少包含 package.json 和 vite.config.js，并将 SKILL.md 的 metadata.page.type 更新为 server。";
+      : "请在目标页面目录创建 Vite 全栈应用关键文件，至少包含 package.json 和 vite.config.js，并将 SKILL.md 的 metadata.page.type 更新为 server，同时写入 metadata.page.command（默认 npm run dev）、metadata.page.port（默认 5173）和 metadata.page.permission。";
 
   return [
     `请使用 AI 助手创建${modeText}。`,
@@ -2686,13 +2962,13 @@ describe("EmptyMarkdownPageCard", () => {
       />
     );
 
-    expect(screen.getByText("开始")).toBeInTheDocument();
-    expect(screen.getByText("按 Enter 键开始编辑内容")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "从模板创建" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /导入新页面/ })).toBeInTheDocument();
-    expect(screen.getByText("使用 AI 助手创建")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "文档" })).toHaveAttribute("data-state", "active");
-    expect(screen.getByText("AI input")).toBeInTheDocument();
+    expect(screen.getByText("开始")).toBeTruthy();
+    expect(screen.getByText("按 Enter 键开始编辑内容")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "从模板创建" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /导入新页面/ })).toBeTruthy();
+    expect(screen.getByText("使用 AI 助手创建")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "文档" }).getAttribute("data-state")).toBe("active");
+    expect(screen.getByText("AI input")).toBeTruthy();
   });
 
   it("calls onStartEditing when the manual area receives Enter", () => {
@@ -2857,8 +3133,8 @@ describe("PageTemplateDialog", () => {
       target: { value: "documentation" },
     });
 
-    expect(screen.getByText("Markdown Documentation")).toBeInTheDocument();
-    expect(screen.queryByText("Static HTML")).not.toBeInTheDocument();
+    expect(screen.getByText("Markdown Documentation")).toBeTruthy();
+    expect(screen.queryByText("Static HTML")).toBeNull();
 
     fireEvent.click(screen.getByText("Markdown Documentation"));
     expect(onSelectTemplate).toHaveBeenCalledWith("markdown-docs");
@@ -3262,18 +3538,18 @@ function renderRenderer(content: string) {
 describe("YooptaMarkdownRenderer empty markdown card", () => {
   it("shows the empty page card when content is empty", () => {
     renderRenderer("");
-    expect(screen.getByText("开始")).toBeInTheDocument();
-    expect(screen.getByText("按 Enter 键开始编辑内容")).toBeInTheDocument();
+    expect(screen.getByText("开始")).toBeTruthy();
+    expect(screen.getByText("按 Enter 键开始编辑内容")).toBeTruthy();
   });
 
   it("shows the empty page card when content only has frontmatter", () => {
     renderRenderer("---\nname: test\n---\n\n");
-    expect(screen.getByText("开始")).toBeInTheDocument();
+    expect(screen.getByText("开始")).toBeTruthy();
   });
 
   it("hides the empty page card when markdown body has content", () => {
     renderRenderer("---\nname: test\n---\n\n正文");
-    expect(screen.queryByText("开始")).not.toBeInTheDocument();
+    expect(screen.queryByText("开始")).toBeNull();
   });
 });
 ```
@@ -3303,7 +3579,9 @@ git commit -m "feat: add empty markdown page card"
 
 **Files:**
 
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/acp-chat/acp-chat.tsx`
 - Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/acp-chat/use-acp-session.ts`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/stores/chat-mode-store.ts`
 - Create: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-ai-create-input.tsx`
 - Create: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-ai-create-compact.tsx`
 - Create: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/use-page-ai-creation.ts`
@@ -3424,8 +3702,8 @@ describe("PageAiCreateInput", () => {
       />
     );
 
-    expect(screen.getByText("selector")).toBeInTheDocument();
-    expect(screen.getByText("context")).toBeInTheDocument();
+    expect(screen.getByText("selector")).toBeTruthy();
+    expect(screen.getByText("context")).toBeTruthy();
     const input = screen.getByPlaceholderText("描述你想创建的内容");
     fireEvent.change(input, { target: { value: "写一份项目说明" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -3500,7 +3778,7 @@ export function PageAiCreateInput({
 }
 ```
 
-不要直接实例化 `ChatInputTopToolbar` 或 `ChatInputBottomToolbar`，它们有必填 props；这里用 `ChatInput` 自带输入/附件逻辑和 `ChatInputSubmitControl` 组合底栏。
+不要直接实例化 `@viben/chat` 的顶部/底部 toolbar 子组件，它们有必填 props；这里用 `ChatInput` 自带输入/附件逻辑和 `ChatInputSubmitControl` 组合底栏。
 
 - [ ] **Step 4: 实现 compact 创建中 UI**
 
@@ -3814,7 +4092,66 @@ pnpm --filter @viben/desktop test -- src/pages/apps/components/__tests__/page-ai
 
 Expected: PASS。
 
-- [ ] **Step 8: 接入 Yoopta、PagePreview 和父级 preview mode**
+- [ ] **Step 8: 增加 ACP Chat session 聚焦入口**
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/stores/chat-mode-store.ts` 扩展 store：
+
+```ts
+interface ChatModeState {
+  mode: ChatAppMode;
+  pendingFocusSessionId: string | null;
+  setMode: (mode: ChatAppMode) => void;
+  requestFocusSession: (session_id: string) => void;
+  clearFocusSession: (session_id: string) => void;
+  toggleMode: () => void;
+}
+
+export const useChatModeStore = create<ChatModeState>()(
+  persist(
+    (set, get) => ({
+      mode: "expanded",
+      pendingFocusSessionId: null,
+      setMode: (mode) => set({ mode }),
+      requestFocusSession: (session_id) => set({ mode: "expanded", pendingFocusSessionId: session_id }),
+      clearFocusSession: (session_id) =>
+        set((state) => state.pendingFocusSessionId === session_id ? { pendingFocusSessionId: null } : state),
+      toggleMode: () => {
+        const current = get().mode;
+        if (current === "floating") set({ mode: "expanded" });
+        else if (current === "expanded") set({ mode: "floating" });
+      },
+    }),
+    {
+      name: "viben-chat-mode",
+      partialize: (state) => ({ mode: state.mode }),
+    }
+  )
+);
+```
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/acp-chat/acp-chat.tsx` 读取并消费这个 pending session：
+
+```ts
+import { useChatModeStore } from "@/stores/chat-mode-store";
+```
+
+在组件内部、`selectSession` 解构后增加：
+
+```ts
+  const pendingFocusSessionId = useChatModeStore((state) => state.pendingFocusSessionId);
+  const clearFocusSession = useChatModeStore((state) => state.clearFocusSession);
+
+  useEffect(() => {
+    if (!pendingFocusSessionId) return;
+    if (!sessionsById[pendingFocusSessionId]) return;
+    selectSession(pendingFocusSessionId);
+    clearFocusSession(pendingFocusSessionId);
+  }, [clearFocusSession, pendingFocusSessionId, selectSession, sessionsById]);
+```
+
+不要引入新的 ACP Chat URL 协议；当前代码没有消费这类参数。页面侧只负责打开全局聊天并设置 pending session。
+
+- [ ] **Step 9: 接入 Yoopta、PagePreview 和父级 preview mode**
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx` props 增加：
 
@@ -3910,11 +4247,20 @@ onOpenAcpSession={onOpenAcpSession}
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/workspace-page.tsx` 调用 `PagePreview` 时增加：
 
 ```tsx
+const requestFocusSession = useChatModeStore((state) => state.requestFocusSession);
+const openChatPopup = useUiStore((state) => state.openChatPopup);
+
 onViewModeChange={setViewMode}
 onOpenAcpSession={(session_id) => {
-  setViewMode("skill");
-  openCurrentPageWeb(`viben://acp-chat?acp_session_id=${encodeURIComponent(session_id)}`, "ACP Chat");
+  requestFocusSession(session_id);
+  openChatPopup();
 }}
+```
+
+同时在文件顶部新增：
+
+```ts
+import { useChatModeStore, useUiStore } from "@/stores";
 ```
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/page-preview-window.tsx` 把 `const [viewMode]` 改为：
@@ -3929,7 +4275,7 @@ const [viewMode, setViewMode] = useState<PageViewMode>(initialViewMode);
 onViewModeChange={setViewMode}
 ```
 
-- [ ] **Step 9: 跑 Yoopta 空态和 AI 测试**
+- [ ] **Step 10: 跑 Yoopta 空态和 AI 测试**
 
 Run:
 
@@ -3939,12 +4285,12 @@ pnpm --filter @viben/desktop test -- src/pages/apps/components/__tests__/yoopta-
 
 Expected: PASS。
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 Run:
 
 ```bash
-git add /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/acp-chat/use-acp-session.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-ai-create-input.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-ai-create-compact.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/use-page-ai-creation.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-preview.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/workspace-page.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/page-preview-window.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-ai-create-input.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/use-page-ai-creation.test.tsx
+git add /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/acp-chat/acp-chat.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/acp-chat/use-acp-session.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/stores/chat-mode-store.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-ai-create-input.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-ai-create-compact.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/use-page-ai-creation.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-preview.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/workspace-page.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/page-preview-window.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-ai-create-input.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/use-page-ai-creation.test.tsx
 git commit -m "feat: add ai creation entry for empty pages"
 ```
 
@@ -4107,6 +4453,7 @@ Run:
 
 ```bash
 pnpm --filter @viben/core test -- src/page/ops/crud.test.ts src/page/ops/discovery.test.ts src/page/ops/serve.test.ts src/page/ops/templates.test.ts src/page/ops/import.test.ts src/gateway/routes/page.test.ts
+pnpm --filter @viben/core test -- src/page/ops/page-paths.test.ts src/page/ops/page-artifacts.test.ts
 ```
 
 Expected: PASS。
@@ -4116,7 +4463,7 @@ Expected: PASS。
 Run:
 
 ```bash
-pnpm --filter @viben/desktop test -- src/lib/gateway/modules/pages.test.ts src/hooks/use-pages-empty-page.test.tsx src/pages/apps/components/__tests__/empty-markdown-page-utils.test.ts src/pages/apps/components/__tests__/empty-markdown-page-card.test.tsx src/pages/apps/components/__tests__/page-ai-create-input.test.tsx src/pages/apps/components/__tests__/yoopta-markdown-renderer-empty.test.tsx src/pages/apps/components/__tests__/use-page-ai-creation.test.tsx src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx
+pnpm --filter @viben/desktop test -- src/lib/gateway/modules/pages.test.ts src/hooks/use-pages-empty-page.test.tsx src/pages/apps/components/__tests__/empty-markdown-page-utils.test.ts src/pages/apps/components/__tests__/empty-markdown-page-card.test.tsx src/pages/apps/components/__tests__/page-template-dialog.test.tsx src/pages/apps/components/__tests__/page-import-dialog.test.tsx src/pages/apps/components/__tests__/page-ai-create-input.test.tsx src/pages/apps/components/__tests__/yoopta-markdown-renderer-empty.test.tsx src/pages/apps/components/__tests__/yoopta-markdown-renderer-content.test.tsx src/pages/apps/components/__tests__/use-page-ai-creation.test.tsx src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx
 ```
 
 Expected: PASS。
@@ -4181,7 +4528,7 @@ Expected: Tauri/Vite desktop dev server 启动，端口 1549 可用。
 3. 文档模式下，AI 写入 `SKILL.md` 正文后 Yoopta 内容刷新，compact loading UI 保持在内容下方。
 4. 点击停止调用 interrupt；若正文仍为空，空态恢复；若正文已有内容，空态不恢复。
 5. 静态网页模式下，AI 生成 `index.html` 后刷新 page detail，页面进入 static preview。
-6. 全栈应用模式下，AI 生成 `package.json` 和 `vite.config.js` 后刷新 page detail，页面进入 server preview。
+6. 全栈应用模式下，AI 生成 `package.json` 和 `vite.config.js`，并把 `SKILL.md` 的 `metadata.page.type` 改为 `server`、`metadata.page.command` 改为 `npm run dev`、`metadata.page.port` 改为 `5173` 后刷新 page detail，页面进入 server preview。
 7. 点击 compact UI 摘要区域时，左侧 ACP Chat 选择当前 `session_id`，后续对话继续同一 session。
 
 - [ ] **Step 9: 最终状态检查**
@@ -4196,12 +4543,14 @@ Expected: 只包含本功能相关变更；若 `apps/desktop/src/hooks/use-agent
 
 - [ ] **Step 10: 最终 Commit**
 
-如果 Task 11 产生了修复或测试调整，运行：
+如果 Task 11 只产生测试调整，运行：
 
 ```bash
 git add /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/serve.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/templates.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/import.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/page-artifacts.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/modules/pages.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/hooks/use-pages-empty-page.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/empty-markdown-page-utils.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/empty-markdown-page-card.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-template-dialog.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-import-dialog.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-ai-create-input.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/yoopta-markdown-renderer-empty.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/yoopta-markdown-renderer-content.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/use-page-ai-creation.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx
 git commit -m "test: verify empty page creation flow"
 ```
+
+如果 Task 11 产生源码修复，先运行 `git diff --name-only`，只 `git add` 该输出中属于本功能的具体文件；不要 `git add` 整个仓库，也不要 stage `apps/desktop/src/hooks/use-agent-model-selection.ts` 或 `.test.ts` 等用户已有改动。
 
 如果没有新增变更，不创建空提交。
 
