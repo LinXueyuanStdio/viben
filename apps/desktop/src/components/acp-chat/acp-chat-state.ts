@@ -64,12 +64,17 @@ export function normalizeAcpSessionListItem(item: AcpListSessionItem): Normalize
 export function resolveAcpSessionStateKey(
   sessionsById: Record<string, UiSessionState>,
   sessionId: string,
-  activeSessionKey?: string | null
+  activeSessionKey?: string | null,
+  executorType?: string | null
 ): string {
+  const compositeKey = executorType ? buildAcpSessionKey(sessionId, executorType) : undefined;
+  if (compositeKey && sessionsById[compositeKey]) return compositeKey;
   const activeSession = activeSessionKey ? sessionsById[activeSessionKey] : undefined;
-  if (activeSession?.id === sessionId) return activeSessionKey!;
+  if (activeSession?.id === sessionId && (!executorType || activeSession.executorType === executorType)) return activeSessionKey!;
   if (sessionsById[sessionId]) return sessionId;
-  const matches = Object.entries(sessionsById).filter(([, session]) => session.id === sessionId);
+  const matches = Object.entries(sessionsById).filter(([, session]) =>
+    session.id === sessionId && (!executorType || session.executorType === executorType)
+  );
   return matches.length === 1 ? matches[0][0] : sessionId;
 }
 

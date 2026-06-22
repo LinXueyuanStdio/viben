@@ -112,16 +112,18 @@ class RecordingAcpConnection implements AcpConnection {
   }
 
   async sessionUpdate(params: AcpSessionNotification): Promise<void> {
+    const taggedParams = withIdentityMeta(params, this.recorder.getIdentity());
     await this.tryAppend({
       type: "session_update",
       ts: nowIso(),
-      data: params,
+      data: taggedParams,
     }, "Failed to record ACP active session update");
-    await this.rawConnection.sessionUpdate(params);
+    await this.rawConnection.sessionUpdate(taggedParams);
   }
 
   async requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequestPermissionResponse> {
-    const autoResponse = await this.evaluatePermission(params);
+    const taggedParams = withIdentityMeta(params, this.recorder.getIdentity());
+    const autoResponse = await this.evaluatePermission(taggedParams);
     if (autoResponse) {
       await this.tryAppend({
         type: "permission_response",
@@ -135,13 +137,13 @@ class RecordingAcpConnection implements AcpConnection {
       type: "permission_request",
       ts: nowIso(),
       status: "pending",
-      request_id: params.toolCall.toolCallId,
-      data: params,
+      request_id: taggedParams.toolCall.toolCallId,
+      data: taggedParams,
     }, "Failed to record ACP active permission request");
 
     this.trackPending(seq);
     try {
-      const response = await this.rawConnection.requestPermission(params);
+      const response = await this.rawConnection.requestPermission(taggedParams);
       if (this.untrackPending(seq)) {
         await this.tryUpdateStatus(
           seq,
@@ -159,16 +161,17 @@ class RecordingAcpConnection implements AcpConnection {
   }
 
   async requestClient(method: string, params?: Record<string, unknown>): Promise<unknown> {
+    const taggedParams = withIdentityMeta(params ?? {}, this.recorder.getIdentity());
     const seq = await this.tryAppend({
       type: "client_tool_call",
       ts: nowIso(),
       status: "pending",
-      data: { method, params },
+      data: { method, params: taggedParams },
     }, "Failed to record ACP active client tool call");
 
     this.trackPending(seq);
     try {
-      const response = await this.rawConnection.requestClient(method, params);
+      const response = await this.rawConnection.requestClient(method, taggedParams);
       if (this.untrackPending(seq)) {
         await this.tryUpdateStatus(seq, "resolved", "Failed to mark ACP active client tool call resolved");
       }
@@ -182,12 +185,13 @@ class RecordingAcpConnection implements AcpConnection {
   }
 
   async notifyClient(method: string, params?: Record<string, unknown>): Promise<void> {
+    const taggedParams = params ? withIdentityMeta(params, this.recorder.getIdentity()) : params;
     await this.tryAppend({
       type: "notification",
       ts: nowIso(),
-      data: { method, params },
+      data: { method, params: taggedParams },
     }, "Failed to record ACP active client notification");
-    await this.rawConnection.notifyClient(method, params);
+    await this.rawConnection.notifyClient(method, taggedParams);
   }
 
   private async evaluatePermission(
@@ -1475,6 +1479,20 @@ export function getStorageIdentity(session: AcpSessionEventIdentity): AcpSession
   return {
     executor_type: session.executor_type,
     session_id: session.session_id,
+  };
+}
+
+function withIdentityMeta<T extends Record<string, unknown>>(
+  params: T,
+  identity: AcpSessionEventIdentity
+): T {
+  const meta = isRecord(params._meta) ? params._meta : {};
+  return {
+    ...params,
+    _meta: {
+      ...meta,
+      executor_type: identity.executor_type,
+    },
   };
 }
 

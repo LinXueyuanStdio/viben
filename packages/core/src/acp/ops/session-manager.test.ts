@@ -268,20 +268,24 @@ function createConnection(): AcpConnection {
 interface CapturingConnection extends AcpConnection {
   updates: AcpSessionNotification[];
   clientRequests: ClientRequestRecord[];
+  permissionRequests: unknown[];
   clientResponse?: unknown;
 }
 
 function createCapturingConnection(): CapturingConnection {
   const updates: AcpSessionNotification[] = [];
   const clientRequests: ClientRequestRecord[] = [];
+  const permissionRequests: unknown[] = [];
   const connection: CapturingConnection = {
     updates,
     clientRequests,
+    permissionRequests,
     clientResponse: undefined,
     async sessionUpdate(notification) {
       updates.push(notification);
     },
-    async requestPermission() {
+    async requestPermission(params) {
+      permissionRequests.push(params);
       return { outcome: { outcome: "selected", optionId: "allow_once" } };
     },
     async requestClient(method, params) {
@@ -1349,6 +1353,120 @@ describe("AcpSessionManager", () => {
     });
   });
 
+  it("tags outbound session updates with executor_type identity metadata", async () => {
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      createMemoryStorage().storage
+    );
+    const connection = createCapturingConnection();
+
+    await manager.loadSession(
+      {
+        sessionId: "tagged-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      connection
+    );
+
+    await adapter.startContext?.connection.sessionUpdate({
+      sessionId: "tagged-session",
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        content: { type: "text", text: "hello" },
+      },
+    });
+
+    expect(connection.updates).toMatchObject([
+      {
+        sessionId: "tagged-session",
+        _meta: { executor_type: "CODEX" },
+      },
+    ]);
+  });
+
+  it("tags outbound permission requests with executor_type identity metadata", async () => {
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      createMemoryStorage().storage
+    );
+    const connection = createCapturingConnection();
+
+    await manager.loadSession(
+      {
+        sessionId: "tagged-permission-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      connection
+    );
+
+    await adapter.startContext?.connection.requestPermission({
+      sessionId: "tagged-permission-session",
+      toolCall: {
+        toolCallId: "tool-1",
+        title: "Run command",
+        kind: "execute",
+      },
+      options: [
+        { optionId: "allow", name: "Allow", kind: "allow_once" },
+      ],
+    });
+
+    expect(connection.permissionRequests).toMatchObject([
+      {
+        sessionId: "tagged-permission-session",
+        _meta: { executor_type: "CODEX" },
+      },
+    ]);
+  });
+
+  it("tags outbound client tool requests with executor_type identity metadata", async () => {
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      createMemoryStorage().storage
+    );
+    const connection = createCapturingConnection();
+
+    await manager.loadSession(
+      {
+        sessionId: "tagged-client-tool-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      connection
+    );
+
+    await adapter.startContext?.connection.requestClient("_viben/client_tool_call", {
+      sessionId: "tagged-client-tool-session",
+      toolName: "GUI_execute",
+      toolCallId: "tool-1",
+      input: { action: "noop" },
+    });
+
+    expect(connection.clientRequests).toMatchObject([
+      {
+        method: "_viben/client_tool_call",
+        params: {
+          sessionId: "tagged-client-tool-session",
+          _meta: { executor_type: "CODEX" },
+        },
+      },
+    ]);
+  });
+
   it("rejects live load when session_id matches multiple executor types without context", async () => {
     const { storage } = createMemoryStorage();
     const manager = new AcpSessionManager(
@@ -1976,6 +2094,9 @@ describe("AcpSessionManager", () => {
         method: "_viben/client_tool_call",
         params: {
           sessionId: session.sessionId,
+          _meta: {
+            executor_type: "CLAUDE_CODE",
+          },
           toolCallId: "tool-call-1",
           toolName: "mcp__client_side__GUI_execute",
           input: { action: "list_actions" },

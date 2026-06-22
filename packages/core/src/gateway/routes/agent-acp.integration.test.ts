@@ -187,6 +187,9 @@ describe("Agent ACP WebSocket route", () => {
         method: "session/update",
         params: {
           sessionId,
+          _meta: {
+            executor_type: "CODEX",
+          },
           update: {
             sessionUpdate: "agent_message_chunk",
             content: { type: "text", text: "codex says hello" },

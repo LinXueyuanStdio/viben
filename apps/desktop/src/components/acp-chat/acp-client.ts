@@ -59,6 +59,7 @@ export interface ClientToolCall {
   id: string;
   at: string;
   sessionId: string;
+  executorType?: string;
   toolName: string;
   toolCallId: string;
   action?: string;
@@ -70,6 +71,7 @@ export interface PermissionRequestLog {
   id: string;
   at: string;
   sessionId: string;
+  executorType?: string;
   toolCallId: string;
   title: string;
   selectedOptionId: string;
@@ -85,6 +87,7 @@ export interface ElicitationRequestLog {
   id: string;
   at: string;
   sessionId: string;
+  executorType?: string;
   message: string;
   action: unknown;
   rawInput: unknown;
@@ -92,6 +95,11 @@ export interface ElicitationRequestLog {
 
 export interface AcpSessionUpdate {
   sessionId: string;
+  executorType?: string;
+  _meta?: {
+    executor_type?: unknown;
+    [key: string]: unknown;
+  } | null;
   update: {
     sessionUpdate?: string;
     content?: { type: string; text?: string };
@@ -122,6 +130,7 @@ export type ConnectionStatus = "idle" | "connecting" | "connected" | "closed" | 
 
 export interface ClientToolExecutionRequest {
   sessionId: string;
+  executorType?: string;
   toolCallId: string;
   toolName: string;
   input: unknown;
@@ -129,6 +138,7 @@ export interface ClientToolExecutionRequest {
 
 export interface PermissionDecisionRequest {
   sessionId: string;
+  executorType?: string;
   toolCallId: string;
   title: string;
   options: PermissionOption[];
@@ -151,6 +161,7 @@ export type PermissionDecisionResult =
 
 export interface ElicitationRequest {
   sessionId: string;
+  executorType?: string;
   message: string;
   mode: "form" | "url";
   requestedSchema?: ElicitationSchema;
@@ -277,6 +288,7 @@ export interface CancelSteerPromptResult {
 
 export interface ConsumedSteerPromptResult {
   sessionId: string;
+  executorType?: string;
   promptId: string;
   status: string;
   consumedAt?: string;
@@ -550,8 +562,8 @@ export class AcpWebSocketClient {
     return this.request("session/close", { sessionId, agent_config: context?.agent_config });
   }
 
-  cancel(sessionId: string): void {
-    this.notify("session/cancel", { sessionId });
+  cancel(sessionId: string, context?: SessionIdentityContext): void {
+    this.notify("session/cancel", { sessionId, agent_config: context?.agent_config });
   }
 
   async interrupt(sessionId: string, context?: SessionIdentityContext): Promise<InterruptSessionResult> {
@@ -639,8 +651,12 @@ export class AcpWebSocketClient {
 
     if (isNotification(frame) && frame.method === "session/update") {
       const params = frame.params as AcpSessionUpdate;
-      this.callbacks.onSessionUpdate(params);
-      const consumed = steerConsumedFromSessionUpdate(params);
+      const normalizedParams = {
+        ...params,
+        executorType: params.executorType ?? readExecutorType(params),
+      };
+      this.callbacks.onSessionUpdate(normalizedParams);
+      const consumed = steerConsumedFromSessionUpdate(normalizedParams);
       if (consumed) this.callbacks.onSteerPromptConsumed(consumed);
       return;
     }
@@ -658,13 +674,16 @@ export class AcpWebSocketClient {
         toolName?: string;
         toolCallId?: string;
         input?: unknown;
+        _meta?: Record<string, unknown> | null;
       };
       const toolName = params?.toolName ?? "client tool";
       const toolCallId = params?.toolCallId ?? "unknown id";
       const sessionId = params?.sessionId ?? "unknown session";
+      const executorType = readExecutorType(params);
       const input = params?.input ?? null;
       const request = {
         sessionId,
+        executorType,
         toolName,
         toolCallId,
         input,
@@ -673,6 +692,7 @@ export class AcpWebSocketClient {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: new Date().toISOString(),
         sessionId,
+        executorType,
         toolName,
         toolCallId,
         action: readGuiAction(input),
@@ -698,6 +718,7 @@ export class AcpWebSocketClient {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: new Date().toISOString(),
         sessionId,
+        executorType,
         toolName,
         toolCallId,
         action: readGuiAction(input),
@@ -717,10 +738,13 @@ export class AcpWebSocketClient {
           rawInput?: unknown;
         };
         options?: PermissionOption[];
+        _meta?: Record<string, unknown> | null;
       };
+      const executorType = readExecutorType(params);
       // 请求前端用户授权，默认自动授权（allow_always 或 allow_once）
       const request: PermissionDecisionRequest = {
         sessionId: params.sessionId ?? "unknown session",
+        executorType,
         toolCallId: params.toolCall?.toolCallId ?? "unknown tool call",
         title: params.toolCall?.description ?? params.toolCall?.title ?? "Permission request",
         options: params.options ?? [],
@@ -748,6 +772,7 @@ export class AcpWebSocketClient {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: new Date().toISOString(),
         sessionId: request.sessionId,
+        executorType: request.executorType,
         toolCallId: request.toolCallId,
         title: request.title,
         selectedOptionId: decision.outcome === "selected" ? decision.optionId : "cancelled",
@@ -769,9 +794,12 @@ export class AcpWebSocketClient {
         requestedSchema?: ElicitationSchema;
         elicitationId?: string;
         url?: string;
+        _meta?: Record<string, unknown> | null;
       };
+      const executorType = readExecutorType(params);
       const request: ElicitationRequest = {
         sessionId: params.sessionId ?? "unknown session",
+        executorType,
         message: params.message ?? "Agent needs input",
         mode: params.mode === "url" ? "url" : "form",
         requestedSchema: params.requestedSchema,
@@ -789,6 +817,7 @@ export class AcpWebSocketClient {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: new Date().toISOString(),
         sessionId: request.sessionId,
+        executorType: request.executorType,
         message: request.message,
         action: result.action,
         rawInput: request.rawInput,
@@ -982,6 +1011,7 @@ function steerConsumedFromSessionUpdate(notification: AcpSessionUpdate): Consume
   const status = typeof update.status === "string" ? update.status : "consumed";
   return {
     sessionId: notification.sessionId,
+    executorType: notification.executorType,
     promptId,
     status,
     consumedAt: typeof update.consumedAt === "string" ? update.consumedAt : undefined,
@@ -1005,6 +1035,7 @@ function steerConsumedFromParams(params: unknown): ConsumedSteerPromptResult | n
   const status = typeof value.status === "string" ? value.status : "consumed";
   return {
     sessionId,
+    executorType: readExecutorType(value),
     promptId,
     status,
     consumedAt: typeof value.consumedAt === "string"
@@ -1080,6 +1111,17 @@ function summarizeExecutorConfig(config: Record<string, unknown> | undefined): R
 function readRecordString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function readExecutorType(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const record = value as Record<string, unknown>;
+  if (typeof record.executorType === "string") return record.executorType;
+  if (typeof record.executor_type === "string") return record.executor_type;
+  const meta = record._meta;
+  if (typeof meta !== "object" || meta === null || Array.isArray(meta)) return undefined;
+  const metaExecutorType = (meta as Record<string, unknown>).executor_type;
+  return typeof metaExecutorType === "string" ? metaExecutorType : undefined;
 }
 
 function readGuiAction(input: unknown): string | undefined {

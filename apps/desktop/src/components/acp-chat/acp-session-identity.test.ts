@@ -57,6 +57,49 @@ describe("ACP session list identity", () => {
     expect(resolveAcpSessionStateKey(sessionsById, "shared", "CLAUDE_CODE:shared")).toBe("CLAUDE_CODE:shared");
   });
 
+  it("resolves session updates by executor type before active bare-id fallback", () => {
+    const sessionsById = {
+      "CODEX:shared": createUiSession(
+        "shared",
+        "/tmp/codex",
+        null,
+        undefined,
+        { sessionKey: "CODEX:shared", executorType: "CODEX" }
+      ),
+      "CLAUDE_CODE:shared": createUiSession(
+        "shared",
+        "/tmp/claude",
+        null,
+        undefined,
+        { sessionKey: "CLAUDE_CODE:shared", executorType: "CLAUDE_CODE" }
+      ),
+    };
+
+    expect(resolveAcpSessionStateKey(sessionsById, "shared", "CODEX:shared", "CLAUDE_CODE"))
+      .toBe("CLAUDE_CODE:shared");
+  });
+
+  it("does not pretend a duplicate bare session id is unique without executor context", () => {
+    const sessionsById = {
+      "CODEX:shared": createUiSession(
+        "shared",
+        "/tmp/codex",
+        null,
+        undefined,
+        { sessionKey: "CODEX:shared", executorType: "CODEX" }
+      ),
+      "CLAUDE_CODE:shared": createUiSession(
+        "shared",
+        "/tmp/claude",
+        null,
+        undefined,
+        { sessionKey: "CLAUDE_CODE:shared", executorType: "CLAUDE_CODE" }
+      ),
+    };
+
+    expect(resolveAcpSessionStateKey(sessionsById, "shared", null)).toBe("shared");
+  });
+
   it("resolves bare session updates to the unique matching session", () => {
     const sessionsById = {
       "CODEX:shared": createUiSession(

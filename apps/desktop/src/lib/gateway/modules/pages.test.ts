@@ -6,7 +6,7 @@ describe("pages gateway module", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends an empty title and no initial content when creating an empty markdown page", async () => {
+  it("omits title and initial content when creating an empty markdown page", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({

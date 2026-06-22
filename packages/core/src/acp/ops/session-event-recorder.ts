@@ -15,6 +15,10 @@ export class AcpSessionEventRecorder {
     private readonly index?: AcpSessionIndexStore
   ) {}
 
+  getIdentity(): AcpSessionEventIdentity {
+    return this.identity;
+  }
+
   async append(event: Omit<AcpSessionEvent, "seq">): Promise<number> {
     const seq = await this.events.appendEvent(this.identity, event);
     await this.index?.updateEventCursor(this.identity.executor_type, this.identity.session_id, seq);

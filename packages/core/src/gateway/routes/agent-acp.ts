@@ -142,7 +142,10 @@ function createVibenAcpAgent(
 
     async newSession(request: AcpNewSessionRequest) {
       const response = await acpSessionManager.createSession(request, connection, context);
-      const identity = await acpSessionManager.resolveSessionIdentity(response.sessionId, context);
+      const identity = await acpSessionManager.resolveSessionIdentity(response.sessionId, {
+        ...context,
+        agent_config: request.agent_config ?? request.agentConfig ?? context.agent_config,
+      });
       ownedSessionIdentities.set(sessionKey(identity), identity);
       return response;
     },
@@ -155,7 +158,7 @@ function createVibenAcpAgent(
       const identity = await resolveRequestSessionIdentity(
         ownedSessionIdentities,
         response.sessionId ?? request.sessionId,
-        request,
+        request as unknown as Record<string, unknown>,
         context
       );
       ownedSessionIdentities.set(sessionKey(identity), identity);
@@ -265,7 +268,7 @@ function createVibenAcpAgent(
         case "session/interrupt":
           await acpSessionManager.interruptSession(
             params as unknown as AcpInterruptSessionRequest,
-            resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params)
+            await resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params, context)
           );
           return;
         default:
@@ -308,9 +311,13 @@ function createInitializeResponse(_request: InitializeRequest): InitializeRespon
 
 function resolveOwnedSessionIdentity(
   identities: Map<string, AcpSessionEventIdentity>,
-  sessionId: string | undefined
+  sessionId: string | undefined,
+  executorType?: string
 ): AcpSessionEventIdentity | undefined {
   if (!sessionId) return undefined;
+  if (executorType) {
+    return identities.get(sessionKey({ executor_type: executorType, session_id: sessionId }));
+  }
   const matches = Array.from(identities.values()).filter((identity) => identity.session_id === sessionId);
   return matches.length === 1 ? matches[0] : undefined;
 }
@@ -321,11 +328,13 @@ async function resolveRequestSessionIdentity(
   params: Record<string, unknown>,
   context: AcpSessionContext
 ): Promise<AcpSessionEventIdentity> {
-  const owned = resolveOwnedSessionIdentity(identities, sessionId);
+  const agentConfig = readAgentConfigFromParams(params) ?? context.agent_config;
+  const executorType = agentConfig?.executor_type;
+  const owned = resolveOwnedSessionIdentity(identities, sessionId, executorType);
   if (owned) return owned;
   return await acpSessionManager.resolveSessionIdentity(sessionId, {
     ...context,
-    agent_config: readAgentConfigFromParams(params) ?? context.agent_config,
+    agent_config: agentConfig,
   });
 }
 

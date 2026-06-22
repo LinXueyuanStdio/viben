@@ -321,7 +321,7 @@ function summarizeExecutorConfigForLog(config: Record<string, unknown> | undefin
   };
 }
 
-function buildSessionIdentityContext(session?: UiSessionState | null): { agent_config?: AgentConfigPayload } | undefined {
+export function buildSessionIdentityContext(session?: Pick<UiSessionState, "executorType"> | null): { agent_config?: AgentConfigPayload } | undefined {
   return session?.executorType
     ? { agent_config: { executor_type: session.executorType } }
     : undefined;
@@ -597,7 +597,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const [acpSessionList, setAcpSessionList] = useState<AcpSessionListItem[]>([]);
 
   const resolveStateKey = useCallback(
-    (rawSessionId: string) => resolveAcpSessionStateKey(sessionsById, rawSessionId, activeSessionId),
+    (rawSessionId: string, executorType?: string) =>
+      resolveAcpSessionStateKey(sessionsById, rawSessionId, activeSessionId, executorType),
     [activeSessionId, sessionsById]
   );
 
@@ -657,12 +658,12 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     // All session updates go through the queue to preserve ordering.
     // Previously agent_message_chunk bypassed the queue via streamingText,
     // causing timing mismatches with thinking/tool_call events.
-    const targetKey = resolveAcpSessionStateKey(sessionsById, notification.sessionId, activeSessionId);
+    const targetKey = resolveAcpSessionStateKey(sessionsById, notification.sessionId, activeSessionId, notification.executorType);
     enqueueUiSteps(setSessionsById, targetKey, acpSessionUpdateToUiSteps(notification));
   }, [activeSessionId, sessionsById, setSessionsById]);
 
   const appendClientToolCall = useCallback((call: ClientToolCall) => {
-    const targetKey = resolveAcpSessionStateKey(sessionsById, call.sessionId, activeSessionId);
+    const targetKey = resolveAcpSessionStateKey(sessionsById, call.sessionId, activeSessionId, call.executorType);
     updateSession(setSessionsById, targetKey, (session) => ({
       ...session,
       clientToolCalls: [call, ...session.clientToolCalls],
@@ -672,7 +673,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   }, [activeSessionId, sessionsById, setSessionsById]);
 
   const appendPermissionRequest = useCallback((request: PermissionRequestLog) => {
-    const targetKey = resolveAcpSessionStateKey(sessionsById, request.sessionId, activeSessionId);
+    const targetKey = resolveAcpSessionStateKey(sessionsById, request.sessionId, activeSessionId, request.executorType);
     updateSession(setSessionsById, targetKey, (session) => ({
       ...session,
       permissionRequests: [request, ...session.permissionRequests],
@@ -682,7 +683,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   }, [activeSessionId, sessionsById, setSessionsById]);
 
   const appendElicitationRequest = useCallback((request: ElicitationRequestLog) => {
-    const targetKey = resolveAcpSessionStateKey(sessionsById, request.sessionId, activeSessionId);
+    const targetKey = resolveAcpSessionStateKey(sessionsById, request.sessionId, activeSessionId, request.executorType);
     updateSession(setSessionsById, targetKey, (session) => ({
       ...session,
       elicitationRequests: [request, ...session.elicitationRequests],
@@ -693,7 +694,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const appendSteerPromptConsumed = useCallback(
     (result: ConsumedSteerPromptResult & { sessionId: string }) => {
-      const targetKey = resolveStateKey(result.sessionId);
+      const targetKey = resolveStateKey(result.sessionId, result.executorType);
       const steerItem = steerQueuesBySessionId[targetKey]?.find((item) => item.id === result.promptId);
       setSteerQueuesBySessionId((current) => ({
         ...current,
@@ -1155,11 +1156,12 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
       setError(null);
 
-      // Auto-create session if none exists
-	      let targetSessionId = sessionId;
-	      let targetSessionKey = sessionKey;
-      if (!targetSessionId) {
-        try {
+	      // Auto-create session if none exists
+		      let targetSessionId = sessionId;
+		      let targetSessionKey = sessionKey;
+		      let targetSessionExecutorType = activeSession?.executorType;
+	      if (!targetSessionId) {
+	        try {
           const client = ensureClient();
           // Ensure connected
           if (status !== "connected") {
@@ -1187,9 +1189,10 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 	          });
 	          setSessionsById((current) => ({ ...current, [stateKey]: record }));
 		          setSessionOrder((current) => [stateKey, ...current.filter((item) => item !== stateKey)]);
-		          setActiveSessionId(stateKey);
-		          targetSessionId = id;
-		          targetSessionKey = stateKey;
+			          setActiveSessionId(stateKey);
+			          targetSessionId = id;
+			          targetSessionKey = stateKey;
+			          targetSessionExecutorType = agentConfig.executor_type;
 	          // Don't show "Session ready" system message for auto-created sessions
 	          const commands = readSessionAvailableCommands(session);
 	          if (commands) {
@@ -1210,11 +1213,11 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         lastActiveAt: new Date().toISOString(),
       }));
       try {
-	        const result = await clientRef.current?.prompt(
-	          targetSessionId,
-	          text,
-	          buildSessionIdentityContext(sessionsById[targetSessionKey])
-	        );
+		        const result = await clientRef.current?.prompt(
+		          targetSessionId,
+		          text,
+		          buildSessionIdentityContext({ executorType: targetSessionExecutorType })
+		        );
 	        updateSession(setSessionsById, targetSessionKey, (session) => ({
           ...flushSessionStreamingText(drainSessionUiStepQueue(session)),
           promptInFlight: false,
@@ -1230,7 +1233,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(promptError instanceof Error ? promptError.message : String(promptError));
       }
     },
-	    [buildAgentConfig, cwd, ensureClient, initializeResult, sessionId, sessionKey, status, wsUrl, selectedAgent, acpSandboxConfig, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]
+		    [activeSession?.executorType, buildAgentConfig, cwd, ensureClient, initializeResult, sessionId, sessionKey, status, wsUrl, selectedAgent, acpSandboxConfig, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]
   );
 
   const sendSteerPrompt = useCallback(
@@ -1263,7 +1266,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       }
       return null;
     },
-	    [executorType, sessionId, sessionKey, setError, setSessionsById, setSteerQueuesBySessionId]
+	    [activeSession, executorType, sessionId, sessionKey, setError, setSessionsById, setSteerQueuesBySessionId]
 	  );
 
   const interrupt = useCallback(async () => {
@@ -1292,7 +1295,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (interruptError) {
       setError(interruptError instanceof Error ? interruptError.message : String(interruptError));
     }
-	  }, [elicitationDialog, permissionDialog, sessionId, sessionKey, setError, setPermissionDialogs, setActivePermissionDialogId, setElicitationDialogs, setActiveElicitationDialogId, setSessionsById]);
+	  }, [activeSession, elicitationDialog, permissionDialog, sessionId, sessionKey, setError, setPermissionDialogs, setActivePermissionDialogId, setElicitationDialogs, setActiveElicitationDialogId, setSessionsById]);
 
   const closeActiveSession = useCallback(async () => {
 	    if (!sessionId || !sessionKey) return;
@@ -1314,7 +1317,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (closeError) {
       setError(closeError instanceof Error ? closeError.message : String(closeError));
     }
-	  }, [sessionId, sessionKey, setError, setSessionsById, setSteerQueuesBySessionId, setSessionOrder, setActiveSessionId]);
+	  }, [activeSession, sessionId, sessionKey, setError, setSessionsById, setSteerQueuesBySessionId, setSessionOrder, setActiveSessionId]);
 
   const selectSession = useCallback((id: string) => {
     setActiveSessionId(id);
@@ -1431,7 +1434,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
       }
     },
-	    [sessionId, sessionKey, setError, setSteerQueuesBySessionId]
+		    [activeSession, sessionId, sessionKey, setError, setSteerQueuesBySessionId]
   );
 
   const recallSteerQueue = useCallback(
