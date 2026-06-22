@@ -78,6 +78,12 @@ const TEST_ENTRIES: RouteEntry[] = [
     queryParams: ["url", "title"],
   },
   {
+    pattern: "/workspace/:workspaceId/page/:uid",
+    icon: { type: "lucide", value: "file-text" },
+    title: (p) => p.uid,
+    queryParams: ["focus"],
+  },
+  {
     pattern: "/workspace/:workspaceId/agent/:agentId",
     icon: { type: "lucide", value: "bot" },
     title: (p) => p.agentId,
@@ -183,6 +189,16 @@ describe("buildUrl", () => {
         TEST_ENTRIES,
       ),
     ).toBe("/workspace/x/web?url=https%3A%2F%2Fa.com&title=T");
+  });
+
+  it("builds page detail URL with title focus query", () => {
+    expect(
+      buildUrl(
+        "/workspace/:workspaceId/page/:uid",
+        { workspaceId: "x", uid: "0623-blank", focus: "title" },
+        TEST_ENTRIES,
+      ),
+    ).toBe("/workspace/x/page/0623-blank?focus=title");
   });
 
   it("throws on empty rest param", () => {

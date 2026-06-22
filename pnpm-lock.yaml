@@ -1905,6 +1905,12 @@ importers:
       '@yoopta/tabs':
         specifier: workspace:*
         version: link:../../infra/Yoopta-Editor/packages/plugins/tabs
+      '@yoopta/themes-shadcn':
+        specifier: workspace:*
+        version: link:../../infra/Yoopta-Editor/packages/themes/shadcn
+      '@yoopta/ui':
+        specifier: workspace:*
+        version: link:../../infra/Yoopta-Editor/packages/core/ui
       '@yoopta/video':
         specifier: workspace:*
         version: link:../../infra/Yoopta-Editor/packages/plugins/video

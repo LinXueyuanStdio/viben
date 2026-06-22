@@ -153,13 +153,13 @@ export interface ListTemplatesResult extends PageResult {
 export interface CreatePageParams {
   workspace_path: string;
   slug?: string;
-  name: string;
+  name?: string;
   description?: string;
   icon?: IconData;
   type: PageType;
   parent_uid?: string;
   template_id?: string;
-  empty_body?: boolean;
+  content?: string;
   file?: string;
   command?: string;
   port?: number;

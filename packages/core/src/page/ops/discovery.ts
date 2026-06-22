@@ -68,7 +68,7 @@ export async function parseSkillMd(
 
   // Validate required fields - page config is now under metadata.page
   const pageData = data.metadata?.page;
-  if (!pageData?.type || !data.name) {
+  if (!pageData?.type || typeof data.name !== "string") {
     return null;
   }
 

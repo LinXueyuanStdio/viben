@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createDefaultAcpSessionIndexStore,
   InMemoryAcpSessionIndexStore,
   SqliteAcpSessionIndexStore,
   type AcpSessionIndexStore,
@@ -52,6 +53,37 @@ async function expectStoreBehavior(createStore: () => AcpSessionIndexStore) {
 }
 
 describe("AcpSessionIndexStore", () => {
+  it("only uses the in-memory default store when explicitly requested", async () => {
+    const originalStore = process.env.VIBEN_ACP_SESSION_INDEX_STORE;
+    const originalPath = process.env.VIBEN_ACP_SESSION_INDEX_DB_PATH;
+    process.env.VIBEN_ACP_SESSION_INDEX_DB_PATH = ":memory:";
+
+    try {
+      delete process.env.VIBEN_ACP_SESSION_INDEX_STORE;
+      expect(createDefaultAcpSessionIndexStore()).toBeInstanceOf(SqliteAcpSessionIndexStore);
+
+      process.env.VIBEN_ACP_SESSION_INDEX_STORE = "memory";
+      expect(createDefaultAcpSessionIndexStore()).toBeInstanceOf(InMemoryAcpSessionIndexStore);
+    } finally {
+      restoreEnv("VIBEN_ACP_SESSION_INDEX_STORE", originalStore);
+      restoreEnv("VIBEN_ACP_SESSION_INDEX_DB_PATH", originalPath);
+    }
+  });
+
+  it("surfaces sqlite initialization failures instead of falling back to memory", () => {
+    const originalStore = process.env.VIBEN_ACP_SESSION_INDEX_STORE;
+    const originalPath = process.env.VIBEN_ACP_SESSION_INDEX_DB_PATH;
+    process.env.VIBEN_ACP_SESSION_INDEX_DB_PATH = "/dev/null/sessions.sqlite";
+
+    try {
+      delete process.env.VIBEN_ACP_SESSION_INDEX_STORE;
+      expect(() => createDefaultAcpSessionIndexStore()).toThrow();
+    } finally {
+      restoreEnv("VIBEN_ACP_SESSION_INDEX_STORE", originalStore);
+      restoreEnv("VIBEN_ACP_SESSION_INDEX_DB_PATH", originalPath);
+    }
+  });
+
   it("roundtrips JSON fields through the sqlite store", async () => {
     await expectStoreBehavior(() => new SqliteAcpSessionIndexStore(":memory:"));
   });
@@ -102,7 +134,7 @@ describe("AcpSessionIndexStore", () => {
     });
   });
 
-  it("does not regress event_last_seq when updating cursor directly", async () => {
+  it("does not regress event_last_seq when updating sqlite cursor directly", async () => {
     const sqliteStore = new SqliteAcpSessionIndexStore(":memory:");
     await sqliteStore.upsertRecord(baseRecord({ event_last_seq: 2 }));
     await sqliteStore.updateEventCursor("CLAUDE_CODE", "session-1", 5);
@@ -111,7 +143,9 @@ describe("AcpSessionIndexStore", () => {
     await expect(sqliteStore.getRecord("CLAUDE_CODE", "session-1")).resolves.toMatchObject({
       event_last_seq: 5,
     });
+  });
 
+  it("does not regress event_last_seq when updating in-memory cursor directly", async () => {
     const memoryStore = new InMemoryAcpSessionIndexStore();
     await memoryStore.upsertRecord(baseRecord({ event_last_seq: 2 }));
     await memoryStore.updateEventCursor("CLAUDE_CODE", "session-1", 5);
@@ -234,3 +268,11 @@ describe("AcpSessionIndexStore", () => {
     warn.mockRestore();
   });
 });
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+}

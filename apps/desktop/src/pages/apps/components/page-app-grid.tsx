@@ -120,17 +120,16 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
       try {
         const result = await createPageMutation.mutateAsync({
           workspace_path: workspacePath,
-          name: t("page.untitled", "Untitled"),
           type: "markdown",
           icon: { type: "lucide", value: "file-text" },
           parent_uid: parentUid,
-          empty_body: true,
         });
 
         if (result.page?.uid) {
           openWorkspacePage(workspaceId, result.page.uid, {
             title: result.page.name,
             icon: result.page.icon,
+            focus: "title",
           });
         }
       } catch (err) {

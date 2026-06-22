@@ -47,7 +47,7 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
   { pattern: "/workspace/:workspaceId/chat-monitor", icon: { type: "lucide", value: "activity" }, title: "Chat Monitor", titleKey: "workspace.chatMonitor", dropdownCategory: "workspace-section" },
 
   // ─── Workspace Detail ───
-  { pattern: "/workspace/:workspaceId/page/:uid", icon: { type: "lucide", value: "file-text" }, title: (p) => p.uid, dropdownCategory: "page" },
+  { pattern: "/workspace/:workspaceId/page/:uid", icon: { type: "lucide", value: "file-text" }, title: (p) => p.uid, queryParams: ["focus"], dropdownCategory: "page" },
   { pattern: "/workspace/:workspaceId/agent/:agentId", icon: { type: "lucide", value: "bot" }, title: (p) => p.agentId, dropdownCategory: "detail" },
   { pattern: "/workspace/:workspaceId/executor/:executorType", icon: { type: "lucide", value: "terminal" }, title: (p) => p.executorType, dropdownCategory: "detail" },
   { pattern: "/workspace/:workspaceId/web", icon: { type: "lucide", value: "globe" }, title: (p) => p.title ?? "Web", queryParams: ["url", "title", "source_page", "web_id"], dropdownCategory: "detail" },

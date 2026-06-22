@@ -145,12 +145,12 @@ export async function viewPage(
 export interface CreatePageOptions {
   workspace_path: string;
   slug?: string;
-  name: string;
+  name?: string;
   description?: string;
   icon?: IconData;
   type: "static" | "markdown" | "server" | "proxy";
   parent_uid?: string;
-  empty_body?: boolean;
+  content?: string;
   // Template support
   template_id?: string;
   // Static-specific
@@ -171,13 +171,13 @@ export async function createPage(
   const {
     workspace_path,
     slug,
-    name,
+    name = "",
     description = "",
     icon,
     type,
     template_id,
     parent_uid,
-    empty_body = false,
+    content,
   } = options;
 
   const uid = generatePageUid(slug);
@@ -260,7 +260,9 @@ export async function createPage(
 
     skillContent += "---\n\n";
 
-    if (!(type === "markdown" && empty_body)) {
+    if (type === "markdown") {
+      skillContent += content ?? "";
+    } else {
       skillContent += `# ${name}\n\n`;
       skillContent += description || "Page description here.";
     }

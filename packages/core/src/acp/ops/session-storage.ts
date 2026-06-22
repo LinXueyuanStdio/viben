@@ -47,6 +47,15 @@ export async function cleanupStaleAcpSessions(
     if (!Number.isFinite(lastActiveAt)) continue;
     if (now - lastActiveAt <= ttlMs) continue;
 
+    const current = await storage.index.getRecord(record.executor_type, record.session_id);
+    if (!current) continue;
+    if (current.status !== "parked") continue;
+    if (current.last_active_at !== record.last_active_at) continue;
+
+    const currentLastActiveAt = new Date(current.last_active_at).getTime();
+    if (!Number.isFinite(currentLastActiveAt)) continue;
+    if (now - currentLastActiveAt <= ttlMs) continue;
+
     await storage.index.updateStatus(record.executor_type, record.session_id, "finished", {
       finished_at: finishedAt,
       last_active_at: finishedAt,

@@ -112,4 +112,41 @@ describe("ACP chat session state", () => {
       },
     ]);
   });
+
+  it("keeps restored history out of streaming state", () => {
+    let sessionsById: Record<string, UiSessionState> = {
+      "CODEX:session-1": createUiSession(
+        "session-1",
+        "/tmp/workspace",
+        { sessionId: "session-1" },
+        undefined,
+        { sessionKey: "CODEX:session-1", executorType: "CODEX" }
+      ),
+    };
+    const setSessionsById = (updater: (current: Record<string, UiSessionState>) => Record<string, UiSessionState>) => {
+      sessionsById = updater(sessionsById);
+    };
+
+    applyUiStepsImmediately(setSessionsById, "CODEX:session-1", [
+      {
+        kind: "message",
+        merge: "text_chunk",
+        message: {
+          id: "text-1",
+          type: "text",
+          content: "restored",
+          timestamp: 1,
+        },
+      },
+    ]);
+
+    expect(sessionsById["CODEX:session-1"].uiStepQueue).toEqual([]);
+    expect(sessionsById["CODEX:session-1"].streamingText).toBeNull();
+    expect(sessionsById["CODEX:session-1"].uiMessages).toMatchObject([
+      {
+        type: "text",
+        content: "restored",
+      },
+    ]);
+  });
 });

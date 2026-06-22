@@ -721,13 +721,13 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     Body: {
       workspace_path: string;
       slug?: string;
-      name: string;
+      name?: string;
       description?: string;
       icon?: IconData;
       type: PageType;
       parent_uid?: string;
       template_id?: string;
-      empty_body?: boolean;
+      content?: string;
       // Static-specific
       file?: string;
       // Server-specific
@@ -749,13 +749,13 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
           slug: { type: "string", description: "Page slug (optional, used to generate uid)" },
-          name: { type: "string", description: "Page name (required)" },
+          name: { type: "string", description: "Page name" },
           description: { type: "string", description: "Page description" },
           icon: { ...iconDataSchema, description: "Page icon data" },
           type: { ...pageTypeSchema, description: "Page type (required)" },
           parent_uid: { type: "string", description: "Parent page uid for creating subpages" },
           template_id: { type: "string", nullable: true, description: "Page template id" },
-          empty_body: { type: "boolean", nullable: true, description: "Create markdown page with empty body" },
+          content: { type: "string", nullable: true, description: "Initial markdown content" },
           // Static-specific
           file: { type: "string", description: "Entry file for static pages" },
           // Server-specific
@@ -767,7 +767,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
           url: { type: "string", description: "URL for proxy pages" },
           headers: { type: "object", additionalProperties: { type: "string" }, description: "Headers for proxy pages" },
         },
-        required: ["workspace_path", "name", "type"],
+        required: ["workspace_path", "type"],
       },
       response: {
         201: createPageResponseSchema,
@@ -784,7 +784,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       type,
       parent_uid,
       template_id,
-      empty_body,
+      content,
       file,
       command,
       port,
@@ -797,11 +797,6 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
-    }
-
-    if (!name) {
-      reply.code(400);
-      return { success: false, error: "name is required" };
     }
 
     if (!type) {
@@ -818,7 +813,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       type,
       parent_uid,
       template_id,
-      empty_body,
+      content,
       file,
       command,
       port,

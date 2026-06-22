@@ -546,7 +546,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     void refreshSessionList().then((items) => {
       setSelectedSessionListIndex((current) => {
         if (items.length === 0) return 0;
-        const activeIndex = sessionId ? items.findIndex((item) => item.sessionId === sessionId) : -1;
+        const activeIndex = sessionId ? items.findIndex((item) => item.sessionKey === sessionId) : -1;
         if (activeIndex >= 0) return activeIndex;
         return Math.min(current, items.length - 1);
       });
@@ -567,9 +567,9 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     textarea?.focus({ preventScroll: true });
   }, []);
 
-  const handleSessionListAttach = useCallback(async (targetSessionId: string) => {
+  const handleSessionListAttach = useCallback(async (targetSessionKey: string) => {
     closeSessionDrawer();
-    await loadSession(targetSessionId);
+    await loadSession(targetSessionKey);
   }, [closeSessionDrawer, loadSession]);
 
   useEffect(() => {
@@ -1645,7 +1645,7 @@ function AcpSessionListDrawer({
     }
     if (event.key === "Enter" && selectedSession) {
       event.preventDefault();
-      void onAttach(selectedSession.sessionId);
+      void onAttach(selectedSession.sessionKey);
     }
   }, [onAttach, onClose, onSelectedIndexChange, selectedIndex, selectedSession, sessions.length]);
 
@@ -1687,7 +1687,7 @@ function AcpSessionListDrawer({
               const parked = session.status === "parked";
               return (
                 <button
-                  key={session.sessionId}
+                  key={session.sessionKey}
                   type="button"
                   className={cn(
                     "w-full rounded-md border px-3 py-2 text-left transition-colors",
@@ -1696,7 +1696,7 @@ function AcpSessionListDrawer({
                       : "border-transparent hover:border-border hover:bg-muted/60"
                   )}
                   onMouseEnter={() => onSelectedIndexChange(index)}
-                  onClick={() => { void onAttach(session.sessionId); }}
+                  onClick={() => { void onAttach(session.sessionKey); }}
                 >
                   <div className="flex min-w-0 items-center justify-between gap-2">
                     <div className="min-w-0 truncate text-sm font-medium">
@@ -1715,7 +1715,7 @@ function AcpSessionListDrawer({
                   </div>
                   <div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                     <span className="truncate">{session.agent || session.agentExecutorType || t("chat.acp.unknownAgent", "Unknown agent")}</span>
-                    {activeSessionId === session.sessionId ? <span className="shrink-0 text-primary">{t("chat.acp.current", "Current")}</span> : null}
+                    {activeSessionId === session.sessionKey ? <span className="shrink-0 text-primary">{t("chat.acp.current", "Current")}</span> : null}
                   </div>
                   {session.initialPrompt ? (
                     <div className="mt-2 line-clamp-2 text-xs leading-snug text-foreground/80">

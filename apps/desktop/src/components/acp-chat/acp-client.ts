@@ -222,6 +222,10 @@ export interface SessionLoadParams {
   mcpServers?: unknown[];
 }
 
+export interface SessionIdentityContext {
+  agent_config?: AgentConfigPayload;
+}
+
 export interface AcpSessionEvent {
   seq: number;
   ts: string;
@@ -250,6 +254,7 @@ export interface SteerPromptParams {
   text: string;
   agentId?: string;
   userId?: string;
+  agentConfig?: AgentConfigPayload;
   meta?: Record<string, unknown>;
 }
 
@@ -506,9 +511,10 @@ export class AcpWebSocketClient {
     return this.request("session/load", request) as Promise<SessionLoadResult>;
   }
 
-  prompt(sessionId: string, text: string): Promise<unknown> {
+  prompt(sessionId: string, text: string, context?: SessionIdentityContext): Promise<unknown> {
     return this.request("session/prompt", {
       sessionId,
+      agent_config: context?.agent_config,
       prompt: [{ type: "text", text }],
     });
   }
@@ -518,19 +524,21 @@ export class AcpWebSocketClient {
       sessionId: params.sessionId,
       agent_id: params.agentId || undefined,
       user_id: params.userId || undefined,
+      agent_config: params.agentConfig,
       prompt: [{ type: "text", text: params.text }],
       _meta: params.meta,
     }) as SteerPromptResult;
   }
 
-  async cancelSteerPrompt(sessionId: string, promptId: string): Promise<CancelSteerPromptResult> {
-    return await this.request("session/prompt/cancel", { sessionId, promptId }) as CancelSteerPromptResult;
+  async cancelSteerPrompt(sessionId: string, promptId: string, context?: SessionIdentityContext): Promise<CancelSteerPromptResult> {
+    return await this.request("session/prompt/cancel", { sessionId, promptId, agent_config: context?.agent_config }) as CancelSteerPromptResult;
   }
 
-  async viewSteerPrompt(sessionId: string, promptId?: string): Promise<ViewSteerPromptResult> {
+  async viewSteerPrompt(sessionId: string, promptId?: string, context?: SessionIdentityContext): Promise<ViewSteerPromptResult> {
     return await this.request("session/prompt/view", {
       sessionId,
       promptId: promptId || undefined,
+      agent_config: context?.agent_config,
     }) as ViewSteerPromptResult;
   }
 
@@ -538,16 +546,16 @@ export class AcpWebSocketClient {
     return this.request("session/list", {});
   }
 
-  closeSession(sessionId: string): Promise<unknown> {
-    return this.request("session/close", { sessionId });
+  closeSession(sessionId: string, context?: SessionIdentityContext): Promise<unknown> {
+    return this.request("session/close", { sessionId, agent_config: context?.agent_config });
   }
 
   cancel(sessionId: string): void {
     this.notify("session/cancel", { sessionId });
   }
 
-  async interrupt(sessionId: string): Promise<InterruptSessionResult> {
-    return await this.request("session/interrupt", { sessionId }) as InterruptSessionResult;
+  async interrupt(sessionId: string, context?: SessionIdentityContext): Promise<InterruptSessionResult> {
+    return await this.request("session/interrupt", { sessionId, agent_config: context?.agent_config }) as InterruptSessionResult;
   }
 
   private request(method: string, params?: unknown): Promise<unknown> {

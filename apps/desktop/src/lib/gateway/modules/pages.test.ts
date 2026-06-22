@@ -6,7 +6,7 @@ describe("pages gateway module", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends empty_body when creating an empty markdown page", async () => {
+  it("sends an empty title and no initial content when creating an empty markdown page", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -30,17 +30,13 @@ describe("pages gateway module", () => {
 
     await createPage("http://127.0.0.1:18790", {
       workspace_path: "/tmp/workspace",
-      name: "Untitled",
       type: "markdown",
-      empty_body: true,
     });
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body).toEqual({
       workspace_path: "/tmp/workspace",
-      name: "Untitled",
       type: "markdown",
-      empty_body: true,
     });
   });
 });

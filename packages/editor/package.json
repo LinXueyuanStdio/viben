@@ -37,6 +37,8 @@
     "@yoopta/table": "workspace:*",
     "@yoopta/table-of-contents": "workspace:*",
     "@yoopta/tabs": "workspace:*",
+    "@yoopta/themes-shadcn": "workspace:*",
+    "@yoopta/ui": "workspace:*",
     "@yoopta/video": "workspace:*"
   },
   "devDependencies": {

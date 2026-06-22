@@ -280,6 +280,7 @@ export function WorkspacePage() {
   const legacyWorkspaceId = searchParams.get("workspace_id");
   const pagePath = searchParams.get("page_path");
   const viewParam = searchParams.get("view") as PageViewMode | null;
+  const focusParam = searchParams.get("focus");
   const workspaceId = routeWorkspaceId ?? legacyWorkspaceId;
   const uid = useMemo(
     () => routeUid ?? extractUidFromPath(pagePath),
@@ -617,6 +618,7 @@ export function WorkspacePage() {
             onStopLivePreview={stopPreview}
             onOpenPage={handleOpenPage}
             onOpenWeb={handleOpenWeb}
+            autoFocusTitle={focusParam === "title"}
             headerPortal={editorHeaderEl}
             className="h-full"
           />

@@ -20,15 +20,13 @@ afterEach(() => {
 });
 
 describe("createPage", () => {
-  it("creates a markdown page with frontmatter only when empty_body is true", async () => {
+  it("creates a markdown page with frontmatter only by default", async () => {
     const workspacePath = createWorkspace();
 
     const result = await createPage({
       workspace_path: workspacePath,
       slug: "blank-doc",
-      name: "空文档",
       type: "markdown",
-      empty_body: true,
     });
 
     expect(result.success).toBe(true);
@@ -39,9 +37,24 @@ describe("createPage", () => {
     const raw = readFileSync(skillPath, "utf-8");
     const parsed = matter(raw);
 
-    expect(parsed.data.name).toBe("空文档");
+    expect(parsed.data.name).toBe("");
     expect(parsed.data.metadata.page.type).toBe("markdown");
     expect(parsed.data.metadata.page.permission).toEqual(["read", "write"]);
     expect(parsed.content.trim()).toBe("");
+  });
+
+  it("uses provided content when creating a markdown page with content", async () => {
+    const workspacePath = createWorkspace();
+
+    const result = await createPage({
+      workspace_path: workspacePath,
+      slug: "filled-doc",
+      name: "文档",
+      type: "markdown",
+      content: "# 标题\n\n正文",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.page?.skill_content).toBe("# 标题\n\n正文");
   });
 });

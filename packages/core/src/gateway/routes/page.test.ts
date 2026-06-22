@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe("page routes", () => {
-  it("POST /api/page/create accepts empty_body and returns an empty markdown page", async () => {
+  it("POST /api/page/create creates an empty markdown page by default", async () => {
     const app = Fastify({ logger: false });
     registerPageRoutes(app);
     await app.ready();
@@ -33,9 +33,7 @@ describe("page routes", () => {
       payload: {
         workspace_path: workspacePath,
         slug: "blank-doc",
-        name: "空文档",
         type: "markdown",
-        empty_body: true,
       },
     });
 

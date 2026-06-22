@@ -836,7 +836,8 @@ export class AcpSessionManager {
 
   closeAll(): void {
     for (const session of Array.from(this.sessions.values())) {
-      void this.closeSession(session.id).catch((error) => {
+      const identity = getStorageIdentity(session);
+      void this.closeSession(session.id, identity).catch((error) => {
         log.warn({ err: error, sessionId: session.id }, "ACP session close failed");
       });
     }
@@ -2006,8 +2007,6 @@ function mergeRecordAgentConfig(
 function restoreBackendLoadSessionId(record: AcpSessionRecord): string {
   return readRecordString(record.acp_record, "backend_load_session_id") ??
     readRecordString(record.acp_record, "backendLoadSessionId") ??
-    readRecordString(record.acp_record, "sdkSessionId") ??
-    readRecordString(record.acp_record, "sdk_session_id") ??
     record.session_id;
 }
 

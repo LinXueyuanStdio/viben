@@ -64,10 +64,6 @@ vi.mock("@/hooks/use-pages", () => ({
   }),
 }));
 
-vi.mock("./create-page-dialog", () => ({
-  CreatePageDialog: () => null,
-}));
-
 vi.mock("./edit-page-dialog", () => ({
   EditPageDialog: () => null,
 }));
@@ -102,7 +98,7 @@ describe("PageIconGrid", () => {
       success: true,
       page: {
         uid: "0623-blank",
-        name: "Untitled",
+        name: "",
         type: "markdown",
         icon: { type: "lucide", value: "file-text" },
       },
@@ -122,18 +118,17 @@ describe("PageIconGrid", () => {
     await waitFor(() => {
       expect(mocks.createMutateAsync).toHaveBeenCalledWith({
         workspace_path: "/tmp/workspace",
-        name: "Untitled",
         type: "markdown",
         icon: { type: "lucide", value: "file-text" },
-        empty_body: true,
       });
     });
     expect(mocks.openWorkspacePage).toHaveBeenCalledWith(
       "workspace-1",
       "0623-blank",
       {
-        title: "Untitled",
+        title: "",
         icon: { type: "lucide", value: "file-text" },
+        focus: "title",
       }
     );
   });
@@ -156,7 +151,7 @@ describe("PageIconGrid", () => {
       success: true,
       page: {
         uid: "0623-child",
-        name: "Untitled",
+        name: "",
         type: "markdown",
         icon: { type: "lucide", value: "file-text" },
       },
@@ -174,11 +169,9 @@ describe("PageIconGrid", () => {
     await waitFor(() => {
       expect(mocks.createMutateAsync).toHaveBeenCalledWith({
         workspace_path: "/tmp/workspace",
-        name: "Untitled",
         type: "markdown",
         icon: { type: "lucide", value: "file-text" },
         parent_uid: "parent",
-        empty_body: true,
       });
     });
   });
@@ -208,7 +201,7 @@ describe("PageIconGrid", () => {
       success: true,
       page: {
         uid: "0623-blank",
-        name: "Untitled",
+        name: "",
         type: "markdown",
       },
     });

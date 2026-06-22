@@ -20,6 +20,7 @@ import type { AcpConnection, AcpSessionNotification } from "../types";
 class FakeBackendSession implements AcpBackendSession {
   readonly prompts: PromptRequest[] = [];
   cancelCount = 0;
+  closeCount = 0;
 
   constructor(readonly backendSessionId = "backend-session") {}
 
@@ -32,18 +33,24 @@ class FakeBackendSession implements AcpBackendSession {
     this.cancelCount += 1;
   }
 
-  async close(): Promise<void> {}
+  async close(): Promise<void> {
+    this.closeCount += 1;
+  }
 }
 
 class CapturingBackendAdapter implements AcpBackendAdapter {
   readonly id = "capturing";
   startContext?: AcpBackendStartContext;
   backendSession?: FakeBackendSession;
+  readonly startContexts: AcpBackendStartContext[] = [];
+  readonly backendSessions: FakeBackendSession[] = [];
 
   async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
     this.startContext = context;
+    this.startContexts.push(context);
     const requestedSessionId = "sessionId" in context.request ? context.request.sessionId : undefined;
     this.backendSession = new FakeBackendSession(requestedSessionId ?? "backend-session");
+    this.backendSessions.push(this.backendSession);
     return this.backendSession;
   }
 }
@@ -397,7 +404,7 @@ describe("AcpSessionManager", () => {
       persist_task_id: "persist-task",
       gateway_url: "http://127.0.0.1:18790",
       event_store_type: "jsonl",
-      event_store_uri: `memory://acp/sessions/CODEX/${session.sessionId}/events.jsonl`,
+      event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: session.sessionId }),
       event_last_seq: -1,
     });
   });
@@ -1069,7 +1076,7 @@ describe("AcpSessionManager", () => {
     )).rejects.toThrow("ACP session_id is ambiguous across executor_type; provide executor context");
   });
 
-  it("loads a DB-backed session by executor context and returns abandoned JSONL history", async () => {
+  it("loads a DB-backed session by executor context, ensures backend immediately, and returns abandoned JSONL history", async () => {
     const { storage, index, events } = createMemoryStorage();
     const adapter = new CapturingBackendAdapter();
     const manager = new AcpSessionManager(
@@ -1127,13 +1134,9 @@ describe("AcpSessionManager", () => {
       },
       createConnection()
     );
-    await manager.prompt({
-      sessionId: loaded.sessionId ?? "persisted-session",
-      prompt: [{ type: "text", text: "continue" }],
-    });
 
     expect(loaded).toMatchObject({
-      sessionId: "backend-session-from-index",
+      sessionId: "persisted-session",
       history: [
         {
           seq: 0,
@@ -1144,7 +1147,7 @@ describe("AcpSessionManager", () => {
       ],
     });
     expect(adapter.startContext?.request).toMatchObject({
-      sessionId: "backend-session-from-index",
+      sessionId: "persisted-session",
       cwd: "/tmp/persisted",
       agent_config: {
         name: "Persisted Codex",
@@ -1155,16 +1158,16 @@ describe("AcpSessionManager", () => {
       persist_task_id: "persist-task",
       gateway_url: "http://127.0.0.1:18790",
     });
-    expect(manager.getSession("persisted-session")).toBeUndefined();
-    expect(manager.getSession("backend-session-from-index")).toMatchObject({
-      id: "backend-session-from-index",
+    expect(adapter.startContexts).toHaveLength(1);
+    expect(manager.getSession("persisted-session")).toMatchObject({
+      id: "persisted-session",
       cwd: "/tmp/persisted",
       agentName: "Persisted Codex",
       agentExecutorType: "CODEX",
       agentConfigPath: "/tmp/agent/AGENTS.md",
       agentDir: "/tmp/agent",
       initialPrompt: "from persisted index",
-      sdkSessionId: "backend-session-from-index",
+      sdkSessionId: "persisted-session",
     });
     await expect(events.loadEvents({ executor_type: "CODEX", session_id: "persisted-session" })).resolves.toMatchObject([
       {
@@ -1172,7 +1175,7 @@ describe("AcpSessionManager", () => {
         status: "abandoned",
       },
     ]);
-    await expect(index.getRecord("CODEX", "backend-session-from-index")).resolves.toMatchObject({
+    await expect(index.getRecord("CODEX", "persisted-session")).resolves.toMatchObject({
       status: "active",
       parked_at: undefined,
     });
@@ -1281,6 +1284,226 @@ describe("AcpSessionManager", () => {
         }),
       ])
     );
+  });
+
+  it("does not reuse another executor live session during contextual load", async () => {
+    const { storage } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { name: "Codex Agent", executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/claude",
+        mcpServers: [],
+        agent_config: { name: "Claude Agent", executor_type: "CLAUDE_CODE" },
+      },
+      createConnection()
+    );
+
+    await manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "codex prompt" }],
+      },
+      { executor_type: "CODEX", session_id: "shared-live-session" }
+    );
+    await manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "claude prompt" }],
+      },
+      { executor_type: "CLAUDE_CODE", session_id: "shared-live-session" }
+    );
+
+    expect(adapter.backendSessions).toHaveLength(2);
+    expect(adapter.backendSessions[0].prompts).toHaveLength(1);
+    expect(adapter.backendSessions[0].prompts[0].prompt).toEqual([
+      { type: "text", text: "codex prompt" },
+    ]);
+    expect(adapter.backendSessions[1].prompts).toHaveLength(1);
+    expect(adapter.backendSessions[1].prompts[0].prompt).toEqual([
+      { type: "text", text: "claude prompt" },
+    ]);
+    await expect(storage.index.getRecord("CODEX", "shared-live-session")).resolves.toMatchObject({
+      cwd: "/tmp/codex",
+      title: "Codex Agent",
+    });
+    await expect(storage.index.getRecord("CLAUDE_CODE", "shared-live-session")).resolves.toMatchObject({
+      cwd: "/tmp/claude",
+      title: "Claude Agent",
+    });
+  });
+
+  it("rejects live load when session_id matches multiple executor types without context", async () => {
+    const { storage } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/claude",
+        mcpServers: [],
+        agent_config: { executor_type: "CLAUDE_CODE" },
+      },
+      createConnection()
+    );
+
+    await expect(manager.loadSession(
+      { sessionId: "shared-live-session", cwd: "/tmp", mcpServers: [] },
+      createConnection()
+    )).rejects.toThrow("ACP session_id is ambiguous across executor_type; provide executor context");
+  });
+
+  it("closes only the matching composite live session when identity is provided", async () => {
+    const { storage, index } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/claude",
+        mcpServers: [],
+        agent_config: { executor_type: "CLAUDE_CODE" },
+      },
+      createConnection()
+    );
+    await manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "codex prompt" }],
+      },
+      { executor_type: "CODEX", session_id: "shared-live-session" }
+    );
+    await manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "claude prompt" }],
+      },
+      { executor_type: "CLAUDE_CODE", session_id: "shared-live-session" }
+    );
+
+    await manager.closeSession("shared-live-session", {
+      executor_type: "CLAUDE_CODE",
+      session_id: "shared-live-session",
+    });
+
+    expect(adapter.backendSessions[0].closeCount).toBe(0);
+    expect(adapter.backendSessions[1].closeCount).toBe(1);
+    await expect(index.getRecord("CODEX", "shared-live-session")).resolves.toMatchObject({
+      status: "active",
+    });
+    await expect(index.getRecord("CLAUDE_CODE", "shared-live-session")).resolves.toMatchObject({
+      status: "finished",
+    });
+    await expect(manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "codex still live" }],
+      },
+      { executor_type: "CODEX", session_id: "shared-live-session" }
+    )).resolves.toEqual({ stopReason: "end_turn" });
+    expect(adapter.backendSessions[0].closeCount).toBe(0);
+    expect(adapter.backendSessions[0].prompts).toHaveLength(2);
+  });
+
+  it("uses composite identity when closeAll closes duplicate live session_ids", async () => {
+    const { storage, index } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/codex",
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      },
+      createConnection()
+    );
+    await manager.loadSession(
+      {
+        sessionId: "shared-live-session",
+        cwd: "/tmp/claude",
+        mcpServers: [],
+        agent_config: { executor_type: "CLAUDE_CODE" },
+      },
+      createConnection()
+    );
+    await manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "codex prompt" }],
+      },
+      { executor_type: "CODEX", session_id: "shared-live-session" }
+    );
+    await manager.prompt(
+      {
+        sessionId: "shared-live-session",
+        prompt: [{ type: "text", text: "claude prompt" }],
+      },
+      { executor_type: "CLAUDE_CODE", session_id: "shared-live-session" }
+    );
+
+    manager.closeAll();
+    await flushAsyncWork();
+
+    expect(adapter.backendSessions[0].closeCount).toBe(1);
+    expect(adapter.backendSessions[1].closeCount).toBe(1);
+    await expect(index.getRecord("CODEX", "shared-live-session")).resolves.toMatchObject({
+      status: "finished",
+    });
+    await expect(index.getRecord("CLAUDE_CODE", "shared-live-session")).resolves.toMatchObject({
+      status: "finished",
+    });
   });
 
   it("lists sessions from the index after refreshing active memory sessions", async () => {

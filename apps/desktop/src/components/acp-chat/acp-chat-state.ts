@@ -2,6 +2,7 @@ import type { AgentMessage, Artifact, CommandQueueItem, PendingQuestion, SlashCo
 import type { PendingExecApproval } from "@viben/chat";
 import { applyAcpUiStep, type AcpUiStep } from "./acp-chat-adapter";
 import type {
+  AcpListSessionItem,
   ClientToolCall,
   ElicitationRequestLog,
   PermissionRequestLog,
@@ -13,8 +14,69 @@ import type {
  */
 export type SessionsByIdSetter = (updater: (current: Record<string, UiSessionState>) => Record<string, UiSessionState>) => void;
 
+export function buildAcpSessionKey(sessionId: string, executorType?: string): string {
+  const normalizedExecutorType = executorType?.trim();
+  return normalizedExecutorType ? `${normalizedExecutorType}:${sessionId}` : sessionId;
+}
+
+export interface NormalizedAcpSessionListItem {
+  sessionKey: string;
+  sessionId: string;
+  executorType?: string;
+  cwd?: string;
+  title?: string;
+  status: string;
+  agent?: string;
+  agentExecutorType?: string;
+  agentConfigPath?: string;
+  agentDir?: string;
+  initialPrompt?: string;
+  promptRunning?: boolean;
+  queueDepth?: number;
+  updatedAt?: string;
+}
+
+function getListItemExecutorType(item: AcpListSessionItem): string | undefined {
+  return item.executor_type ?? item.agent_executor_type;
+}
+
+export function normalizeAcpSessionListItem(item: AcpListSessionItem): NormalizedAcpSessionListItem | null {
+  if (!item.sessionId.trim()) return null;
+  const executorType = getListItemExecutorType(item);
+  return {
+    sessionKey: buildAcpSessionKey(item.sessionId, executorType),
+    sessionId: item.sessionId,
+    executorType,
+    cwd: item.cwd,
+    title: item.title,
+    status: item.status ?? (item.prompt_running ? "active" : "finished"),
+    agent: item.agent_name ?? item.agent,
+    agentExecutorType: item.agent_executor_type ?? item.executor_type,
+    agentConfigPath: item.agent_config_path,
+    agentDir: item.agent_dir,
+    initialPrompt: item.initial_prompt,
+    promptRunning: item.prompt_running,
+    queueDepth: item.queue_depth,
+    updatedAt: item.updated_at ?? item.updatedAt,
+  };
+}
+
+export function resolveAcpSessionStateKey(
+  sessionsById: Record<string, UiSessionState>,
+  sessionId: string,
+  activeSessionKey?: string | null
+): string {
+  const activeSession = activeSessionKey ? sessionsById[activeSessionKey] : undefined;
+  if (activeSession?.id === sessionId) return activeSessionKey!;
+  if (sessionsById[sessionId]) return sessionId;
+  const matches = Object.entries(sessionsById).filter(([, session]) => session.id === sessionId);
+  return matches.length === 1 ? matches[0][0] : sessionId;
+}
+
 export interface UiSessionState {
+  sessionKey: string;
   id: string;
+  executorType?: string;
   title: string;
   cwd: string;
   createdAt: string;
@@ -57,11 +119,16 @@ export function createUiSession(
   id: string,
   cwd: string,
   sessionResult: unknown,
-  existing?: UiSessionState
+  existing?: UiSessionState,
+  options: { sessionKey?: string; executorType?: string } = {}
 ): UiSessionState {
   const now = new Date().toISOString();
+  const sessionKey = options.sessionKey ?? existing?.sessionKey ?? id;
+  const executorType = options.executorType ?? existing?.executorType;
   return {
+    sessionKey,
     id,
+    executorType,
     title: existing?.title ?? `Session ${shortId(id)}`,
     cwd,
     createdAt: existing?.createdAt ?? now,

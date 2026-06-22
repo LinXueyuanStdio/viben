@@ -88,7 +88,7 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
 
   getEventStoreUri(identity: AcpSessionEventIdentity): string {
     validateAcpSessionIdentity(identity.executor_type, identity.session_id);
-    return path.join(this.sessionDir(identity), EVENTS_FILE);
+    return eventStoreUri(identity);
   }
 
   async deleteEvents(identity: AcpSessionEventIdentity): Promise<void> {
@@ -100,7 +100,7 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
   }
 
   private eventsPath(identity: AcpSessionEventIdentity): string {
-    return this.getEventStoreUri(identity);
+    return path.join(this.sessionDir(identity), EVENTS_FILE);
   }
 
   private sessionDir(identity: AcpSessionEventIdentity): string {
@@ -202,7 +202,7 @@ export class InMemoryAcpSessionEventStore implements AcpSessionEventStore {
 
   getEventStoreUri(identity: AcpSessionEventIdentity): string {
     validateAcpSessionIdentity(identity.executor_type, identity.session_id);
-    return `memory://acp/sessions/${safePathSegment(identity.executor_type)}/${safePathSegment(identity.session_id)}/${EVENTS_FILE}`;
+    return eventStoreUri(identity);
   }
 
   async deleteEvents(identity: AcpSessionEventIdentity): Promise<void> {
@@ -222,6 +222,10 @@ export function createDefaultAcpSessionEventStore(): AcpSessionEventStore {
 
 function lockKey(identity: AcpSessionEventIdentity): string {
   return `${identity.executor_type}:${identity.session_id}`;
+}
+
+function eventStoreUri(identity: AcpSessionEventIdentity): string {
+  return path.posix.join(safePathSegment(identity.executor_type), safePathSegment(identity.session_id), EVENTS_FILE);
 }
 
 function safePathSegment(value: string): string {

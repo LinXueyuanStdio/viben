@@ -84,16 +84,30 @@ export function registerAgentAcpRoutes(fastify: FastifyInstance): void {
       stream
     );
 
-    const cleanup = () => {
-      for (const identity of ownedSessionIdentities.values()) {
-        void acpSessionManager.parkSession(identity, acpConnection).catch((error) => {
-          log.warn({ err: error, identity }, "ACP session cleanup park failed");
-        });
+    const cleanup = async () => {
+      const closingConnection = acpConnection;
+      if (!closingConnection) {
+        log.info({ sessions: ownedSessionIdentities.size }, "ACP WebSocket disconnected before agent connection opened");
+        return;
       }
-      log.info({ sessions: ownedSessionIdentities.size }, "ACP WebSocket disconnected, sessions parked");
+
+      let parkedCount = 0;
+      for (const identity of ownedSessionIdentities.values()) {
+        try {
+          const parked = await acpSessionManager.parkSession(identity, closingConnection);
+          if (parked) parkedCount += 1;
+        } catch (error) {
+          log.warn({ err: error, identity }, "ACP session cleanup park failed");
+        }
+      }
+      log.info({ sessions: ownedSessionIdentities.size, parkedCount }, "ACP WebSocket disconnected, sessions parked");
     };
 
-    socket.once("close", cleanup);
+    socket.once("close", () => {
+      void cleanup().catch((error) => {
+        log.warn({ err: error }, "ACP WebSocket cleanup failed");
+      });
+    });
     socket.once("error", (error) => {
       log.error({ err: error }, "ACP WebSocket error");
     });
@@ -138,7 +152,12 @@ function createVibenAcpAgent(
         throw RequestError.invalidParams({ request }, "session/load requires sessionId");
       }
       const response = await acpSessionManager.loadSession(request, connection, context);
-      const identity = await acpSessionManager.resolveSessionIdentity(response.sessionId ?? request.sessionId, context);
+      const identity = await resolveRequestSessionIdentity(
+        ownedSessionIdentities,
+        response.sessionId ?? request.sessionId,
+        request,
+        context
+      );
       ownedSessionIdentities.set(sessionKey(identity), identity);
       return response;
     },
@@ -148,7 +167,10 @@ function createVibenAcpAgent(
         throw RequestError.invalidParams({ request }, "session/prompt requires sessionId and prompt");
       }
       try {
-        return await acpSessionManager.prompt(request, resolveOwnedSessionIdentity(ownedSessionIdentities, request.sessionId)) as unknown as PromptResponse;
+        return await acpSessionManager.prompt(
+          request,
+          await resolveRequestSessionIdentity(ownedSessionIdentities, request.sessionId, request, context)
+        ) as unknown as PromptResponse;
       } catch (error) {
         const detail = getAcpErrorDetail(error);
         throw RequestError.internalError(detail, detail.message);
@@ -159,7 +181,7 @@ function createVibenAcpAgent(
       if (request.sessionId) {
         await acpSessionManager.cancelSession(
           request.sessionId,
-          resolveOwnedSessionIdentity(ownedSessionIdentities, request.sessionId)
+          await resolveRequestSessionIdentity(ownedSessionIdentities, request.sessionId, request as Record<string, unknown>, context)
         );
       }
     },
@@ -169,6 +191,12 @@ function createVibenAcpAgent(
       return {
         sessions: sessions.map((session) => ({
           sessionId: session.id,
+          _meta: {
+            executor_type: session.agentExecutorType,
+            agent_name: session.agentName,
+            agent_config_path: session.agentConfigPath,
+            agent_dir: session.agentDir,
+          },
           executor_type: session.agentExecutorType,
           cwd: session.cwd,
           title: session.agentCapabilities._meta?.title as string | undefined,
@@ -189,9 +217,13 @@ function createVibenAcpAgent(
 
     async unstable_closeSession(request: CloseSessionRequest) {
       if (request.sessionId) {
-        const identity = resolveOwnedSessionIdentity(ownedSessionIdentities, request.sessionId) ??
-          await acpSessionManager.resolveSessionIdentity(request.sessionId, context);
-        await acpSessionManager.closeSession(request.sessionId, identity);
+        const identity = await resolveRequestSessionIdentity(
+          ownedSessionIdentities,
+          request.sessionId,
+          request as unknown as Record<string, unknown>,
+          context
+        );
+        await acpSessionManager.closeSession(identity.session_id, identity);
         ownedSessionIdentities.delete(sessionKey(identity));
       }
       return {};
@@ -203,22 +235,22 @@ function createVibenAcpAgent(
           case "session/prompt/steer":
             return await acpSessionManager.steerPrompt(
               params as unknown as AcpSteerPromptRequest,
-              resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params)
+              await resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params, context)
             ) as unknown as Record<string, unknown>;
           case "session/prompt/cancel":
             return await acpSessionManager.cancelSteerPrompt(
               params as unknown as AcpCancelSteerPromptRequest,
-              resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params)
+              await resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params, context)
             ) as unknown as Record<string, unknown>;
           case "session/prompt/view":
             return await acpSessionManager.viewSteerPrompt(
               params as unknown as AcpViewSteerPromptRequest,
-              resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params)
+              await resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params, context)
             ) as unknown as Record<string, unknown>;
           case "session/interrupt":
             return await acpSessionManager.interruptSession(
               params as unknown as AcpInterruptSessionRequest,
-              resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params)
+              await resolveOwnedSessionIdentityFromParams(ownedSessionIdentities, params, context)
             ) as unknown as Record<string, unknown>;
           default:
             throw RequestError.methodNotFound(method);
@@ -283,12 +315,35 @@ function resolveOwnedSessionIdentity(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-function resolveOwnedSessionIdentityFromParams(
+async function resolveRequestSessionIdentity(
   identities: Map<string, AcpSessionEventIdentity>,
-  params: Record<string, unknown>
-): AcpSessionEventIdentity | undefined {
+  sessionId: string,
+  params: Record<string, unknown>,
+  context: AcpSessionContext
+): Promise<AcpSessionEventIdentity> {
+  const owned = resolveOwnedSessionIdentity(identities, sessionId);
+  if (owned) return owned;
+  return await acpSessionManager.resolveSessionIdentity(sessionId, {
+    ...context,
+    agent_config: readAgentConfigFromParams(params) ?? context.agent_config,
+  });
+}
+
+async function resolveOwnedSessionIdentityFromParams(
+  identities: Map<string, AcpSessionEventIdentity>,
+  params: Record<string, unknown>,
+  context: AcpSessionContext
+): Promise<AcpSessionEventIdentity | undefined> {
   const sessionId = typeof params.sessionId === "string" ? params.sessionId : undefined;
-  return resolveOwnedSessionIdentity(identities, sessionId);
+  if (!sessionId) return undefined;
+  return await resolveRequestSessionIdentity(identities, sessionId, params, context);
+}
+
+function readAgentConfigFromParams(params: Record<string, unknown>): AcpSessionContext["agent_config"] | undefined {
+  const value = params.agent_config ?? params.agentConfig;
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as AcpSessionContext["agent_config"]
+    : undefined;
 }
 
 function mapAcpExtensionError(error: unknown): RequestError {

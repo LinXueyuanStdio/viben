@@ -72,12 +72,18 @@ describe("JsonlAcpSessionEventStore", () => {
     const store = new JsonlAcpSessionEventStore(root);
 
     await store.appendEvent(identity, testEvent("valid"));
-    await appendFile(store.getEventStoreUri(identity), "{bad json\n", "utf8");
-    await appendFile(store.getEventStoreUri(identity), `${JSON.stringify({ ...testEvent("valid-two"), seq: 1 })}\n`, "utf8");
+    await appendFile(join(root, store.getEventStoreUri(identity)), "{bad json\n", "utf8");
+    await appendFile(join(root, store.getEventStoreUri(identity)), `${JSON.stringify({ ...testEvent("valid-two"), seq: 1 })}\n`, "utf8");
 
     const events = await store.loadEvents(identity);
 
     expect(events.map((event) => event.seq)).toEqual([0, 1]);
+  });
+
+  it("uses executor_type and session_id relative event store URIs", () => {
+    const store = new JsonlAcpSessionEventStore(root);
+
+    expect(store.getEventStoreUri(identity)).toBe("CLAUDE_CODE/session-1/events.jsonl");
   });
 
   it("keeps executor_type and session_id as a composite identity", async () => {
@@ -100,6 +106,7 @@ describe("JsonlAcpSessionEventStore", () => {
     const slashIdentity = { executor_type: "CODEX", session_id: "workspace/session" };
 
     await expect(store.appendEvent(slashIdentity, testEvent("slash"))).rejects.toThrow("session_id must match");
+    expect(() => store.getEventStoreUri(slashIdentity)).toThrow("session_id must match");
   });
 
   it("rejects traversal-shaped identity segments", async () => {
@@ -107,6 +114,7 @@ describe("JsonlAcpSessionEventStore", () => {
     const traversalIdentity = { executor_type: "../CODEX", session_id: "../outside" };
 
     await expect(store.appendEvent(traversalIdentity, testEvent("safe"))).rejects.toThrow("executor_type must match");
+    expect(() => store.getEventStoreUri(traversalIdentity)).toThrow("executor_type must match");
   });
 
   it("serializes concurrent append operations for the same identity", async () => {
@@ -131,6 +139,18 @@ describe("JsonlAcpSessionEventStore", () => {
 });
 
 describe("InMemoryAcpSessionEventStore", () => {
+  it("uses executor_type and session_id relative event store URIs", () => {
+    const store = new InMemoryAcpSessionEventStore();
+
+    expect(store.getEventStoreUri(identity)).toBe("CLAUDE_CODE/session-1/events.jsonl");
+  });
+
+  it("rejects invalid identity segments when creating event store URIs", () => {
+    const store = new InMemoryAcpSessionEventStore();
+
+    expect(() => store.getEventStoreUri({ executor_type: "CODEX", session_id: "workspace/session" })).toThrow("session_id must match");
+  });
+
   it("patches status and deletes events", async () => {
     const store = new InMemoryAcpSessionEventStore();
 

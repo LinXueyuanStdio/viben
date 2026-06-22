@@ -56,10 +56,6 @@ vi.mock("@/components/ui/icon-picker", () => ({
   ),
 }));
 
-vi.mock("@/pages/apps/components/create-page-dialog", () => ({
-  CreatePageDialog: () => null,
-}));
-
 vi.mock("@/pages/apps/components/edit-page-dialog", () => ({
   EditPageDialog: () => null,
 }));
@@ -104,7 +100,7 @@ describe("PageSection", () => {
       success: true,
       page: {
         uid: "new-page",
-        name: "Untitled",
+        name: "",
         type: "markdown",
         icon: { type: "lucide", value: "file-text" },
       },
@@ -156,15 +152,14 @@ describe("PageSection", () => {
     await waitFor(() => {
       expect(mockCreateMutateAsync).toHaveBeenCalledWith({
         workspace_path: "/workspace",
-        name: "Untitled",
         type: "markdown",
         icon: { type: "lucide", value: "file-text" },
-        empty_body: true,
       });
     });
     expect(openWorkspacePage).toHaveBeenCalledWith("ws-1", "new-page", {
-      title: "Untitled",
+      title: "",
       icon: { type: "lucide", value: "file-text" },
+      focus: "title",
     });
   });
 
@@ -202,7 +197,7 @@ describe("PageSection", () => {
       success: true,
       page: {
         uid: "new-page",
-        name: "Untitled",
+        name: "",
         type: "markdown",
       },
     });

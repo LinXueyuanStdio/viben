@@ -41,6 +41,7 @@ import { CoverPicker } from "@/components/ui/cover-picker";
 import { GRADIENT_COLORS } from "@/lib/gradient-colors";
 import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
 import { ensureBlockFocus } from "./yoopta-focus-utils";
+import { handleYooptaVerticalNavigation } from "./yoopta-keyboard-navigation";
 import {
   collectPageNavigationFromDom,
   extractPageNavigation,
@@ -93,6 +94,8 @@ export interface YooptaMarkdownRendererProps {
   onOpenWeb?: (url: string, title?: string) => void;
   /** Portal target for editor header buttons. If provided, header renders into this DOM element instead of inside the editor. */
   headerPortal?: HTMLElement | null;
+  /** Focus the editable page title when the renderer mounts */
+  autoFocusTitle?: boolean;
 }
 
 export function YooptaMarkdownRenderer({
@@ -113,6 +116,7 @@ export function YooptaMarkdownRenderer({
   onOpenPage,
   onOpenWeb,
   headerPortal,
+  autoFocusTitle = false,
 }: YooptaMarkdownRendererProps) {
   const { t } = useTranslation();
   const canSave = !!(workspacePath && uid);
@@ -680,6 +684,21 @@ export function YooptaMarkdownRenderer({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isEditable, editor]);
 
+  useEffect(() => {
+    if (!isEditable) return;
+
+    const handleKeyDownCapture = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (!target || !(target instanceof Node)) return;
+      if (!editor.refElement?.contains(target)) return;
+
+      handleYooptaVerticalNavigation(editor, event);
+    };
+
+    document.addEventListener("keydown", handleKeyDownCapture, true);
+    return () => document.removeEventListener("keydown", handleKeyDownCapture, true);
+  }, [isEditable, editor]);
+
   // Ref to stabilize wordCount — only triggers state update when values actually change
   const wordCountRef = useRef({ words: 0, characters: 0 });
   // Debounce word count computation to avoid running on every keystroke
@@ -909,6 +928,7 @@ export function YooptaMarkdownRenderer({
             onOpenCoverPicker={openCoverPicker}
             onTitleChange={handleTitleChange}
             onTitleKeyDown={handleTitleKeyDown}
+            autoFocusTitle={autoFocusTitle}
           />
         )}
         {/* Single IconPicker instance — positioned relative to iconAnchorRef */}
@@ -1003,6 +1023,7 @@ type PageTitleAreaProps = {
   onOpenCoverPicker: (anchor: HTMLElement, align?: "start" | "center" | "end") => void;
   onTitleChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onTitleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  autoFocusTitle?: boolean;
 };
 
 const PageTitleArea = memo(function PageTitleArea({
@@ -1015,11 +1036,23 @@ const PageTitleArea = memo(function PageTitleArea({
   onOpenCoverPicker,
   onTitleChange,
   onTitleKeyDown,
+  autoFocusTitle = false,
 }: PageTitleAreaProps) {
   const { t } = useTranslation();
   const [isTitleHovered, setIsTitleHovered] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!autoFocusTitle) return;
+
+    const frame = requestAnimationFrame(() => {
+      titleRef.current?.focus();
+      titleRef.current?.select();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [autoFocusTitle]);
 
   const showActions = isTitleHovered;
   return (

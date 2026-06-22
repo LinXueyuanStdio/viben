@@ -36,6 +36,7 @@ export interface DesktopNavigationOptions {
   openMode?: "focus" | "reuse" | "new-tab";
   title?: string;
   icon?: IconData;
+  focus?: "title";
   breadcrumbStack?: BreadcrumbStackItem[];
   stackMode?: "open" | "push" | "replace";
 }
@@ -576,6 +577,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       const url = registry.build("/workspace/:workspaceId/page/:uid", {
         workspaceId,
         uid,
+        focus: options?.focus ?? "",
       });
 
       const headers: NavigateHeaders | undefined =

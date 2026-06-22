@@ -12,7 +12,6 @@
  */
 
 import { useRef, useCallback, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { updatePageConfig } from "@/lib/gateway/modules/pages";
@@ -61,6 +60,8 @@ export interface PagePreviewProps {
   className?: string;
   /** Portal target for editor header buttons */
   headerPortal?: HTMLElement | null;
+  /** Focus the editable page title when the preview opens */
+  autoFocusTitle?: boolean;
 }
 
 /**
@@ -85,9 +86,8 @@ export function PagePreview({
   onOpenWeb,
   className,
   headerPortal,
+  autoFocusTitle = false,
 }: PagePreviewProps) {
-  const { t } = useTranslation();
-
   // Debounced title save
   const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleTitleChange = useCallback(
@@ -100,7 +100,7 @@ export function PagePreview({
           await updatePageConfig(baseUrl, {
             workspace_path: workspacePath,
             uid: page.uid,
-            name: newTitle || t("page.untitled", "Untitled"),
+            name: newTitle,
           });
         } catch (err) {
           console.error("[PagePreview] title save failed:", err);
@@ -143,6 +143,7 @@ export function PagePreview({
             onOpenPage={onOpenPage}
             onOpenWeb={onOpenWeb}
             headerPortal={headerPortal}
+            autoFocusTitle={autoFocusTitle}
             className="h-full"
           />
         )}
@@ -167,6 +168,7 @@ export function PagePreview({
                 onOpenPage={onOpenPage}
                 onOpenWeb={onOpenWeb}
                 headerPortal={headerPortal}
+                autoFocusTitle={autoFocusTitle}
                 className="h-full"
               />
             )}
