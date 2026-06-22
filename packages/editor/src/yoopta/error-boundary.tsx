@@ -1,9 +1,13 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import i18n from "@/i18n";
 
 type Props = {
   children: ReactNode;
   fallback?: ReactNode;
+  labels?: {
+    message?: string;
+    tryAgain?: string;
+    errorDetails?: string;
+  };
 };
 
 type State = {
@@ -32,6 +36,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
+      const labels = this.props.labels ?? {};
 
       return (
         <div
@@ -42,7 +47,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
           }}
         >
           <p style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-            {i18n.t("editor.errorBoundary.message", "Something went wrong loading the editor.")}
+            {labels.message ?? "Something went wrong loading the editor."}
           </p>
           <button
             onClick={this.handleRetry}
@@ -56,7 +61,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
               cursor: "pointer",
             }}
           >
-            {i18n.t("editor.errorBoundary.tryAgain", "Try again")}
+            {labels.tryAgain ?? "Try again"}
           </button>
           {this.state.error && (
             <details
@@ -66,7 +71,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
                 textAlign: "left",
               }}
             >
-              <summary style={{ cursor: "pointer" }}>{i18n.t("editor.errorBoundary.errorDetails", "Error details")}</summary>
+              <summary style={{ cursor: "pointer" }}>{labels.errorDetails ?? "Error details"}</summary>
               <pre
                 style={{
                   marginTop: "0.5rem",

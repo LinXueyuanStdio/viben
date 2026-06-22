@@ -20,8 +20,8 @@ import { LinkCommands } from "@yoopta/link";
 import { Editor, Element as SlateElement, Range } from "slate";
 import { FloatingToolbar } from "@yoopta/ui/floating-toolbar";
 import { HighlightColorPicker } from "@yoopta/ui/highlight-color-picker";
-import { YooptaActionMenuList } from "./yoopta-action-menu";
-import { MOD_KEY } from "./yoopta-constants";
+import { YooptaActionMenuList } from "./action-menu";
+import { MOD_KEY } from "./constants";
 
 export const YooptaToolbar = () => {
   const { t } = useTranslation();

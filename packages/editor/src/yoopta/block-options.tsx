@@ -27,8 +27,8 @@ import {
   IndentIncreaseIcon,
   IndentDecreaseIcon,
 } from "lucide-react";
-import { YooptaActionMenuList } from "./yoopta-action-menu";
-import { IS_MAC, MOD_KEY } from "./yoopta-constants";
+import { YooptaActionMenuList } from "./action-menu";
+import { IS_MAC, MOD_KEY } from "./constants";
 
 // ─── Local BlockOptions primitives ───────────────────────────────────────────
 // Replaces npm BlockOptions.Content / Group / Item / Separator / Label

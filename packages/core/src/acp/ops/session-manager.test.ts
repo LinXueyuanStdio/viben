@@ -1104,8 +1104,8 @@ describe("AcpSessionManager", () => {
       permission_mode: "plan",
       acp_record: {
         sessionId: "persisted-session",
-        initialPrompt: "from persisted index",
-        sdkSessionId: "backend-session-from-index",
+        initial_prompt: "from persisted index",
+        sdk_session_id: "backend-session-from-index",
         configOptions: [{ name: "model", values: ["gpt-5"] }],
       },
       persist_session_id: "persist-session",
@@ -1229,7 +1229,7 @@ describe("AcpSessionManager", () => {
     });
     await expect(index.getRecord("CODEX", created.sessionId)).resolves.toMatchObject({
       acp_record: expect.objectContaining({
-        sdkSessionId: "new-backend-id",
+        sdk_session_id: "new-backend-id",
       }),
     });
   });
@@ -1642,8 +1642,8 @@ describe("AcpSessionManager", () => {
       permission_mode: "auto",
       acp_record: {
         sessionId: "db-session",
-        initialPrompt: "stored prompt",
-        sdkSessionId: "stored-sdk",
+        initial_prompt: "stored prompt",
+        sdk_session_id: "stored-sdk",
       },
       event_store_type: "jsonl",
       event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: "db-session" }),

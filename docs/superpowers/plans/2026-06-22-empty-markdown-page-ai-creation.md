@@ -8,6 +8,15 @@
 
 **Tech Stack:** TypeScript, React 19, Vite, Tauri, TanStack Query, Fastify Gateway, gray-matter, Yoopta editor, `@viben/chat` ChatInput, Vitest, Testing Library.
 
+**当前确认决策（2026-06-23 更新）：**
+
+- 创建 Markdown 页面时不传 `empty_body`，该字段从 API、类型和调用点中移除。
+- 创建 Markdown 页面时也不需要手动传标题；`createPage()` 默认 `name = ""`，Markdown 正文默认 `content = ""`。
+- 如果确实需要用 API 创建带正文的 Markdown 页面，使用可选 `content?: string`，而不是 `empty_body`。
+- 点击“创建页面”后直接创建新的 Markdown 页面，并跳转到新页面标题输入框；不再展示 `create-page-dialog`。
+- 空态显示规则：Markdown 文件正文为空时显示；文件只有 YAML front matter、没有正文时也显示；正文有任意非空内容时隐藏。
+- `create-page-dialog` 已从当前设计中移除，模板创建和导入入口只出现在 Markdown 编辑器内的空页面 UI 中。
+
 ---
 
 ## 设计边界与文件结构
@@ -24,8 +33,9 @@ Core page 层：
 - 新增：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/template-files.ts`
   - 放置模板文件安全写入、路径边界校验和 staging commit 逻辑，避免 `crud.ts` 与 `templates.ts` 循环依赖。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts`
-  - `CreatePageOptions` 增加 `empty_body?: boolean`。
-  - Markdown 页面在 `empty_body: true` 时只写 frontmatter，不写标题/占位正文。
+  - `CreatePageOptions.name` 改为可选，`createPage()` 默认 `name = ""`。
+  - `CreatePageOptions.content?: string` 用于可选 Markdown 初始正文。
+  - Markdown 页面默认只写 frontmatter，不写标题/占位正文。
   - 所有通过 uid 访问页面目录的操作改用 `resolvePageDir()` / `resolveExistingPageDir()`，覆盖 create/view/update/delete/duplicate/upload asset 等既有路径。
   - 使用 `template-files.ts` 的 helper 写模板文件，供 `createPage(template_id)` 与 apply-template 复用。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts`
@@ -42,7 +52,7 @@ Core page 层：
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/index.ts`
   - 导出新增类型与函数。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.ts`
-  - `POST /api/page/create` 贯通 `empty_body` 和 `template_id`。
+  - `POST /api/page/create` 允许省略 `name`，并贯通 `content` 和 `template_id`。
   - 新增 `POST /api/page/apply-template`。
   - 新增 `POST /api/page/import`。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/templates/pages/markdown-docs/SKILL.md.hbs`
@@ -64,7 +74,7 @@ Core tests：
 Desktop Gateway 层：
 
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/types/page.ts`
-  - 增加 `empty_body`、`template_id`、apply-template/import 类型。
+  - 移除 `empty_body`，增加 `content`、`template_id`、apply-template/import 类型。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/modules/pages.ts`
   - 增加 `applyPageTemplate()`、`importPage()`。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/hooks/use-pages.ts`
@@ -74,11 +84,10 @@ Desktop Gateway 层：
 
 Desktop page UI 层：
 
-- 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx`
-  - 将默认创建从表单流改为直接创建空 Markdown 页面。
-  - 保留高级创建入口时，使用 `empty_body: true` 的 Markdown 默认值。
+- 删除：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx`
+  - 点击创建页面后不再弹表单；直接创建空 Markdown 页面。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.tsx`
-  - 新建按钮点击后直接调用 create mutation，并打开新 page uid。
+  - 新建按钮点击后直接调用 create mutation，不传 `name`，并打开新 page uid。
 - 修改：`/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx`
   - 修复空字符串内容加载。
   - 在 title/icon 下方、Yoopta editor 容器上方插入空态 UI。
@@ -113,246 +122,126 @@ Desktop tests：
 
 **Files:**
 
-- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/types.ts`
 - Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts`
 - Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.ts`
 - Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.test.ts`
 - Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts`
 
-- [ ] **Step 1: 写 createPage 空正文失败测试**
+- [x] **Step 1: 写 createPage 默认空标题/空正文测试**
 
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.test.ts` 新增：
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.test.ts` 覆盖：
 
 ```ts
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import matter from "gray-matter";
-import { afterEach, describe, expect, it } from "vitest";
-import { createPage, uploadPageAsset } from "./crud";
-
-const workspaces: string[] = [];
-
-function createWorkspace(): string {
-  const path = mkdtempSync(join(tmpdir(), "viben-page-crud-"));
-  workspaces.push(path);
-  return path;
-}
-
-afterEach(() => {
-  for (const workspace of workspaces.splice(0)) {
-    rmSync(workspace, { recursive: true, force: true });
-  }
-});
-
 describe("createPage", () => {
-  it("creates a markdown page with frontmatter only when empty_body is true", async () => {
+  it("creates a markdown page with frontmatter only by default", async () => {
     const workspacePath = createWorkspace();
 
     const result = await createPage({
       workspace_path: workspacePath,
       slug: "blank-doc",
-      name: "空文档",
       type: "markdown",
-      empty_body: true,
     });
 
     expect(result.success).toBe(true);
     expect(result.page?.type).toBe("markdown");
+    expect(result.page?.name).toBe("");
     expect(result.page?.skill_content).toBe("");
 
-    const skillPath = join(result.page!.path, "SKILL.md");
-    const raw = readFileSync(skillPath, "utf-8");
+    const raw = readFileSync(join(result.page!.path, "SKILL.md"), "utf-8");
     const parsed = matter(raw);
 
-    expect(parsed.data.name).toBe("空文档");
+    expect(parsed.data.name).toBe("");
     expect(parsed.data.metadata.page.type).toBe("markdown");
     expect(parsed.data.metadata.page.permission).toEqual(["read", "write"]);
     expect(parsed.content.trim()).toBe("");
   });
-});
-```
 
-- [ ] **Step 2: 跑测试确认失败**
-
-Run:
-
-```bash
-pnpm --filter @viben/core test -- src/page/ops/crud.test.ts
-```
-
-Expected: FAIL，TypeScript 报 `empty_body` 不在 `CreatePageOptions`，或断言发现正文包含 `# 空文档`。
-
-- [ ] **Step 3: 实现 `empty_body` 入参和 Markdown 空正文写入**
-
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts` 的 `CreatePageOptions` 中增加：
-
-```ts
-  empty_body?: boolean;
-```
-
-在 `createPage()` 解构参数处改为：
-
-```ts
-  const {
-    workspace_path,
-    slug,
-    name,
-    description = "",
-    icon,
-    type,
-    template_id,
-    parent_uid,
-    empty_body = false,
-  } = options;
-```
-
-在非模板分支构建完 frontmatter 后，将当前固定正文逻辑替换为：
-
-```ts
-    skillContent += "---\n\n";
-
-    if (!(type === "markdown" && empty_body)) {
-      skillContent += `# ${name}\n\n`;
-      skillContent += description || "Page description here.";
-    }
-```
-
-- [ ] **Step 4: 修正 discovery 返回空字符串**
-
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts` 将 base 中的 `skill_content` 从：
-
-```ts
-    skill_content: markdownContent.trim() || undefined,
-```
-
-改为：
-
-```ts
-    skill_content: markdownContent.trim() ? markdownContent.trim() : "",
-```
-
-- [ ] **Step 5: 跑 createPage 测试确认通过**
-
-Run:
-
-```bash
-pnpm --filter @viben/core test -- src/page/ops/crud.test.ts
-```
-
-Expected: PASS。
-
-- [ ] **Step 6: 写 Gateway create API 测试**
-
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts` 新增或合并：
-
-```ts
-import Fastify from "fastify";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import matter from "gray-matter";
-import { afterEach, describe, expect, it } from "vitest";
-import { registerPageRoutes } from "./page";
-
-const workspaces: string[] = [];
-
-function createWorkspace(): string {
-  const path = mkdtempSync(join(tmpdir(), "viben-page-route-"));
-  workspaces.push(path);
-  return path;
-}
-
-afterEach(() => {
-  for (const workspace of workspaces.splice(0)) {
-    rmSync(workspace, { recursive: true, force: true });
-  }
-});
-
-describe("page routes", () => {
-  it("POST /api/page/create accepts empty_body and returns an empty markdown page", async () => {
-    const app = Fastify({ logger: false });
-    registerPageRoutes(app);
-    await app.ready();
+  it("uses provided content when creating a markdown page with content", async () => {
     const workspacePath = createWorkspace();
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/page/create",
-      payload: {
-        workspace_path: workspacePath,
-        slug: "blank-doc",
-        name: "空文档",
-        type: "markdown",
-        empty_body: true,
-      },
+    const result = await createPage({
+      workspace_path: workspacePath,
+      slug: "filled-doc",
+      name: "文档",
+      type: "markdown",
+      content: "# 标题\n\n正文",
     });
 
-    try {
-      expect(response.statusCode).toBe(201);
-      const body = response.json();
-      expect(body.success).toBe(true);
-      expect(body.page.skill_content).toBe("");
-
-      const raw = readFileSync(join(body.page.path, "SKILL.md"), "utf-8");
-      expect(matter(raw).content.trim()).toBe("");
-    } finally {
-      await app.close();
-    }
+    expect(result.success).toBe(true);
+    expect(result.page?.skill_content).toBe("# 标题\n\n正文");
   });
 });
 ```
 
-- [ ] **Step 7: 跑 Gateway 测试确认失败**
+- [x] **Step 2: 实现 Markdown 默认空标题/空正文**
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts`：
+
+- `CreatePageOptions.name` 为可选。
+- 新增 `content?: string`。
+- `createPage()` 解构默认 `name = ""`。
+- 非模板 Markdown 分支写完 frontmatter 后追加 `content ?? ""`，不再写 `# ${name}` 和 `Page description here.`。
+- 非 Markdown 页面保留原有默认正文逻辑。
+
+- [x] **Step 3: 修正 discovery 允许空标题并返回空正文字符串**
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts`：
+
+- `parseSkillMd()` 校验 `typeof data.name === "string"`，不要用 truthy 判断。
+- `skill_content` 对空正文返回 `""`。
+
+- [x] **Step 4: 写 Gateway create API 测试**
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts` 覆盖：
+
+```ts
+it("POST /api/page/create creates an empty markdown page by default", async () => {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/page/create",
+    payload: {
+      workspace_path: workspacePath,
+      slug: "blank-doc",
+      type: "markdown",
+    },
+  });
+
+  expect(response.statusCode).toBe(201);
+  const body = response.json();
+  expect(body.success).toBe(true);
+  expect(body.page.name).toBe("");
+  expect(body.page.skill_content).toBe("");
+});
+```
+
+- [x] **Step 5: 贯通 Gateway create route**
+
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.ts`：
+
+- Body 类型 `name?: string`。
+- schema `required` 只保留 `workspace_path` 和 `type`。
+- 移除 `name is required` 空字符串校验。
+- 移除 `empty_body` schema、解构和传参。
+- 增加可选 `content?: string` 并传给 `createPage()`。
+
+- [x] **Step 6: 跑 core 创建相关测试**
 
 Run:
 
 ```bash
-pnpm --filter @viben/core test -- src/gateway/routes/page.test.ts
-```
-
-Expected: FAIL，response schema 或 handler 尚未传递 `empty_body`，或返回页面正文仍包含默认标题。
-
-- [ ] **Step 8: 贯通 Gateway create route**
-
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.ts` 的 create route Body 类型增加：
-
-```ts
-      template_id?: string;
-      empty_body?: boolean;
-```
-
-在 create body schema properties 增加：
-
-```ts
-          template_id: { type: "string", nullable: true, description: "Page template id" },
-          empty_body: { type: "boolean", nullable: true, description: "Create markdown page with empty body" },
-```
-
-在 handler 解构和 `createPage()` 调用中传递：
-
-```ts
-      template_id,
-      empty_body,
-```
-
-- [ ] **Step 9: 跑 core 创建相关测试**
-
-Run:
-
-```bash
-pnpm --filter @viben/core test -- src/page/ops/crud.test.ts src/gateway/routes/page.test.ts
+pnpm --dir packages/core exec vitest run src/page/ops/crud.test.ts src/gateway/routes/page.test.ts
 ```
 
 Expected: PASS。
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 7: Commit**
 
 Run:
 
 ```bash
 git add /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/discovery.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/page/ops/crud.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/src/gateway/routes/page.test.ts
-git commit -m "feat: create empty markdown pages"
+git commit -m "feat: create empty markdown pages by default"
 ```
 
 ---
@@ -570,9 +459,7 @@ describe("applyPageTemplate", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "blank-doc",
-      name: "模板文档",
       type: "markdown",
-      empty_body: true,
     });
 
     const result = await applyPageTemplate({
@@ -599,7 +486,7 @@ describe("applyPageTemplate", () => {
       slug: "not-empty",
       name: "已有内容",
       type: "markdown",
-      empty_body: false,
+      content: "# 已有内容\n\n正文",
     });
 
     const result = await applyPageTemplate({
@@ -617,9 +504,7 @@ describe("applyPageTemplate", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "blank-doc",
-      name: "模板文档",
       type: "markdown",
-      empty_body: true,
     });
     const skillPath = join(created.page!.path, "SKILL.md");
     const before = readFileSync(skillPath, "utf-8");
@@ -637,9 +522,7 @@ describe("applyPageTemplate", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "asset-doc",
-      name: "素材文档",
       type: "markdown",
-      empty_body: true,
     });
 
     const result = await uploadPageAsset({
@@ -1077,9 +960,7 @@ import fastifyMultipart from "@fastify/multipart";
       payload: {
         workspace_path: workspacePath,
         slug: "blank-doc",
-        name: "模板文档",
         type: "markdown",
-        empty_body: true,
       },
     });
     const created = createdResponse.json();
@@ -1142,9 +1023,7 @@ import fastifyMultipart from "@fastify/multipart";
       payload: {
         workspace_path: workspacePath,
         slug: "asset-doc",
-        name: "素材文档",
         type: "markdown",
-        empty_body: true,
       },
     });
     const created = createdResponse.json();
@@ -1319,9 +1198,7 @@ describe("importPage", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "blank-doc",
-      name: "当前页面",
       type: "markdown",
-      empty_body: true,
     });
 
     const result = await importPage({
@@ -1337,7 +1214,7 @@ describe("importPage", () => {
     expect(result.page?.skill_content).toBe("# 正文标题\n\n正文内容");
 
     const parsed = matter(readFileSync(join(result.page!.path, "SKILL.md"), "utf-8"));
-    expect(parsed.data.name).toBe("当前页面");
+    expect(parsed.data.name).toBe("");
     expect(parsed.content.trim()).toBe("# 正文标题\n\n正文内容");
   });
 
@@ -1348,9 +1225,7 @@ describe("importPage", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "blank-static",
-      name: "HTML 页面",
       type: "markdown",
-      empty_body: true,
     });
 
     const result = await importPage({
@@ -1376,7 +1251,7 @@ describe("importPage", () => {
       slug: "not-empty",
       name: "已有内容",
       type: "markdown",
-      empty_body: false,
+      content: "# 已有内容\n\n正文",
     });
 
     const result = await importPage({
@@ -1398,9 +1273,7 @@ describe("importPage", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "url-doc",
-      name: "URL 页面",
       type: "markdown",
-      empty_body: true,
     });
 
     const result = await importPage({
@@ -1423,9 +1296,7 @@ describe("importPage", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "url-fail",
-      name: "URL 失败",
       type: "markdown",
-      empty_body: true,
     });
     const skillPath = join(created.page!.path, "SKILL.md");
     const before = readFileSync(skillPath, "utf-8");
@@ -1447,9 +1318,7 @@ describe("importPage", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "url-private",
-      name: "URL 私网",
       type: "markdown",
-      empty_body: true,
     });
 
     const result = await importPage({
@@ -1476,9 +1345,7 @@ describe("importPage", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "url-redirect",
-      name: "URL 跳转",
       type: "markdown",
-      empty_body: true,
     });
     const skillPath = join(created.page!.path, "SKILL.md");
     const before = readFileSync(skillPath, "utf-8");
@@ -1773,9 +1640,7 @@ Expected: PASS。
       payload: {
         workspace_path: workspacePath,
         slug: "blank-doc",
-        name: "导入文档",
         type: "markdown",
-        empty_body: true,
       },
     });
     const created = createdResponse.json();
@@ -1924,9 +1789,7 @@ describe("getPageArtifacts", () => {
     const created = await createPage({
       workspace_path: workspacePath,
       slug: "blank",
-      name: "空页面",
       type: "markdown",
-      empty_body: true,
     });
     const pageDir = created.page!.path;
     writeFileSync(join(pageDir, "index.html"), "<h1>Static</h1>", "utf-8");
@@ -2104,14 +1967,12 @@ function mockJsonFetch(body: unknown) {
 }
 
 describe("pages gateway module", () => {
-  it("sends empty_body and template_id using snake_case for createPage", async () => {
+  it("sends createPage payload without title or empty_body for empty markdown pages", async () => {
     const fetchMock = mockJsonFetch({ success: true, page: null });
 
     await createPage("http://127.0.0.1:18790", {
       workspace_path: "/workspace",
-      name: "空文档",
       type: "markdown",
-      empty_body: true,
       template_id: "markdown-docs",
     });
 
@@ -2119,9 +1980,7 @@ describe("pages gateway module", () => {
       method: "POST",
       body: JSON.stringify({
         workspace_path: "/workspace",
-        name: "空文档",
         type: "markdown",
-        empty_body: true,
         template_id: "markdown-docs",
       }),
     }));
@@ -2200,12 +2059,15 @@ Expected: FAIL，类型或函数未定义。
 
 - [ ] **Step 7: 更新 desktop page types**
 
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/types/page.ts` 的 `CreatePageParams` 增加：
+在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/types/page.ts` 的 `CreatePageParams` 中确认：
 
 ```ts
+  name?: string;
   template_id?: string;
-  empty_body?: boolean;
+  content?: string;
 ```
+
+不要重新加入 `empty_body`。
 
 并新增：
 
@@ -2510,176 +2372,135 @@ git commit -m "feat: add empty page gateway hooks"
 
 ---
 
-### Task 6: 新建页面默认直接创建空 Markdown
+### Task 6: 新建页面默认直接创建空 Markdown 并聚焦标题
 
 **Files:**
 
 - Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.tsx`
-- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx`
-- Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/page-section.tsx`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/hooks/use-desktop-routing.ts`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/navigation/route-registry.ts`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/workspace-page.tsx`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-preview.tsx`
+- Modify: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx`
+- Delete: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx`
+- Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.test.tsx`
+- Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/page-section.test.tsx`
+- Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/modules/pages.test.ts`
+- Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/navigation/route-compiler.test.ts`
 
-- [ ] **Step 1: 写新建按钮行为测试**
+- [x] **Step 1: 移除 create-page-dialog**
 
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx` 新增：
+删除 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx`，并从以下文件移除 export/mock/import：
 
-```tsx
-// @vitest-environment jsdom
-import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { PageIconGrid } from "../page-app-grid";
+- `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/index.ts`
+- `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/index.ts`
+- `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/page-section.test.tsx`
+- `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.test.tsx`
 
-const mutateAsync = vi.fn(async () => ({
-  success: true,
-  page: {
-    uid: "page-1",
-    name: "未命名",
-    type: "markdown",
-    permission: ["read", "write"],
-    path: "/workspace/pages/page-1",
-    skill_content: "",
-  },
-}));
-const openWorkspacePage = vi.fn();
+- [x] **Step 2: 新建按钮直接创建空 Markdown 页面**
 
-vi.mock("@/hooks/use-pages", async () => {
-  const actual = await vi.importActual("@/hooks/use-pages");
-  return {
-    ...(actual as object),
-    usePages: () => ({ data: { pages: [], index: { root: [] } }, isLoading: false, error: null }),
-    useCreatePage: () => ({ mutateAsync, isPending: false }),
-    useDeletePage: () => ({ mutateAsync: vi.fn(), isPending: false }),
-    usePageTemplates: () => ({ data: [], isLoading: false }),
-  };
-});
+在 `page-app-grid.tsx` 和 `page-section.tsx` 中：
 
-vi.mock("@/hooks/use-desktop-routing", () => ({
-  useDesktopRouting: () => ({ openWorkspacePage }),
-}));
-
-vi.mock("@/hooks/use-page-dialogs", () => ({
-  usePageDialogs: () => ({
-    pageToDelete: null,
-    setPageToDelete: vi.fn(),
-    createDialogOpen: false,
-    createParentUid: null,
-    openCreateDialog: vi.fn(),
-    closeCreateDialog: vi.fn(),
-    permissionsPage: null,
-    setPermissionsPage: vi.fn(),
-    editPage: null,
-    setEditPage: vi.fn(),
-  }),
-}));
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }),
-}));
-
-describe("PageIconGrid empty page creation", () => {
-  it("creates an empty markdown page directly from the new page button", async () => {
-    render(
-      <PageIconGrid
-        workspaceId="workspace-1"
-        workspacePath="/workspace"
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Create Page" }));
-
-    await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-        workspace_path: "/workspace",
-        name: "未命名",
-        type: "markdown",
-        empty_body: true,
-      }));
-    });
-    expect(openWorkspacePage).toHaveBeenCalledWith("workspace-1", "page-1", expect.objectContaining({
-      title: "未命名",
-    }));
-  });
+```ts
+await createPageMutation.mutateAsync({
+  workspace_path: workspacePath,
+  type: "markdown",
+  icon: { type: "lucide", value: "file-text" },
+  parent_uid: parentUid,
 });
 ```
 
-`PageIconGrid` 当前导出 props 为 `{ workspaceId: string; workspacePath: string }`，测试必须 mock `usePages()`、`useDesktopRouting()` 和 `usePageDialogs()`，不要给组件传不存在的 `pages/index/onOpenPage` props。
+要求：
 
-- [ ] **Step 2: 跑测试确认失败**
+- 不传 `name`。
+- 不传 `content`。
+- 不传 `empty_body`。
+- 使用 duplicate guard 防止重复提交。
+
+- [x] **Step 3: 创建成功后打开新页面并聚焦标题**
+
+在创建成功后调用：
+
+```ts
+openWorkspacePage(workspaceId, result.page.uid, {
+  title: result.page.name,
+  icon: result.page.icon,
+  focus: "title",
+});
+```
+
+在路由层：
+
+- `/workspace/:workspaceId/page/:uid` 增加 `queryParams: ["focus"]`。
+- `DesktopNavigationOptions` 增加 `focus?: "title"`。
+- `openWorkspacePage()` build URL 时带上 `focus`，最终 URL 为 `?focus=title`。
+
+在页面渲染层：
+
+- `WorkspacePage` 读取 `searchParams.get("focus")`。
+- `PagePreview` 增加 `autoFocusTitle?: boolean`。
+- `YooptaMarkdownRenderer` 增加 `autoFocusTitle?: boolean`。
+- `PageTitleArea` 在 `autoFocusTitle` 为 true 时 `requestAnimationFrame()` 后 focus/select 标题 textarea。
+
+- [x] **Step 4: 空标题保存不回退成 Untitled**
+
+`PagePreview.handleTitleChange()` 保存标题时直接传 `name: newTitle`，不要使用：
+
+```ts
+name: newTitle || t("page.untitled", "Untitled")
+```
+
+- [x] **Step 5: Gateway client 创建请求测试**
+
+`apps/desktop/src/lib/gateway/modules/pages.test.ts` 覆盖：
+
+```ts
+await createPage("http://127.0.0.1:18790", {
+  workspace_path: "/tmp/workspace",
+  type: "markdown",
+});
+
+expect(body).toEqual({
+  workspace_path: "/tmp/workspace",
+  type: "markdown",
+});
+```
+
+- [x] **Step 6: 桌面创建入口测试**
+
+`page-app-grid.test.tsx` 和 `page-section.test.tsx` 断言创建 payload 不含 `name/content/empty_body`，并断言 `openWorkspacePage()` 第三个参数包含 `focus: "title"`。
+
+- [x] **Step 7: 路由 query 测试**
+
+`route-compiler.test.ts` 覆盖：
+
+```ts
+buildUrl(
+  "/workspace/:workspaceId/page/:uid",
+  { workspaceId: "x", uid: "0623-blank", focus: "title" },
+  TEST_ENTRIES,
+);
+// => /workspace/x/page/0623-blank?focus=title
+```
+
+- [x] **Step 8: 跑桌面创建相关测试**
 
 Run:
 
 ```bash
-pnpm --filter @viben/desktop test -- src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx
-```
-
-Expected: FAIL，当前点击会打开 `CreatePageDialog`，不会直接 mutate。
-
-- [ ] **Step 3: 修改新建按钮为直接创建**
-
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.tsx`：
-
-1. 将 hooks import 从 `usePages, useDeletePage` 改为 `usePages, useDeletePage, useCreatePage`。
-2. 新建按钮点击 handler 改为：
-
-```ts
-const createPageMutation = useCreatePage();
-
-const handleCreateBlankMarkdownPage = useCallback(async () => {
-  if (!workspacePath || createPageMutation.isPending) return;
-  try {
-    const result = await createPageMutation.mutateAsync({
-      workspace_path: workspacePath,
-      name: "未命名",
-      type: "markdown",
-      empty_body: true,
-    });
-    if (result.page?.uid) {
-      openWorkspacePage(workspaceId, result.page.uid, {
-        title: result.page.name,
-        icon: result.page.icon,
-      });
-    }
-  } catch (error) {
-    console.error("[PageIconGrid] failed to create blank markdown page:", error);
-    toast.error(t("page.createFailed", "Failed to create page"));
-  }
-}, [workspaceId, workspacePath, createPageMutation, openWorkspacePage, t]);
-```
-
-3. 将空状态和网格末尾两个主新建按钮的 `onClick` 都指向 `handleCreateBlankMarkdownPage`。
-4. 给这两个按钮都增加 `aria-label={t("page.createPage", "Create Page")}`，保证测试可以通过 accessible name 定位图标按钮。
-5. 对需要高级创建的入口保留 `CreatePageDialog`，不要删除组件；子页面创建仍使用 `openCreateDialog(parentUid)`。
-
-- [ ] **Step 4: 调整 CreatePageDialog 默认值**
-
-在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx`：
-
-1. 默认 `pageType` 从 `"static"` 改为 `"markdown"`。
-2. reset 时 `setPageType("markdown")`。
-3. 创建 Markdown params 时加入：
-
-```ts
-params.empty_body = true;
-```
-
-4. 不再设置 `params.file = "content.md"`。
-
-- [ ] **Step 5: 跑新建页面测试**
-
-Run:
-
-```bash
-pnpm --filter @viben/desktop test -- src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx
+pnpm --dir apps/desktop exec vitest run src/lib/gateway/modules/pages.test.ts src/pages/apps/components/page-app-grid.test.tsx src/components/layout/page-section.test.tsx src/navigation/route-compiler.test.ts
+pnpm --dir apps/desktop typecheck
 ```
 
 Expected: PASS。
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 9: Commit**
 
 Run:
 
 ```bash
-git add /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/create-empty-page-flow.test.tsx
+git add /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/page-section.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/hooks/use-desktop-routing.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/navigation/route-registry.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/workspace-page.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-preview.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/create-page-dialog.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/index.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/index.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/gateway/modules/pages.test.ts /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/page-app-grid.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/page-section.test.tsx /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/navigation/route-compiler.test.ts
 git commit -m "feat: create blank markdown pages by default"
 ```
 
@@ -4562,4 +4383,4 @@ git commit -m "test: verify empty page creation flow"
 
 **Placeholder scan:** 本计划没有未细化占位项或无代码的泛化测试要求。每个实现任务都给出文件、代码片段、命令和期望结果。
 
-**Type consistency:** API 和文件字段统一使用 snake_case：`workspace_path`、`parent_uid`、`template_id`、`empty_body`、`source_type`、`source_url`、`source_path`。前端类型与 core 类型保持同名。AI 创建 mode 统一为 `document | static | fullstack`。
+**Type consistency:** API 和文件字段统一使用 snake_case：`workspace_path`、`parent_uid`、`template_id`、`source_type`、`source_url`、`source_path`。前端类型与 core 类型保持同名。AI 创建 mode 统一为 `document | static | fullstack`。

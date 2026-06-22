@@ -1,22 +1,24 @@
 import { useTranslation } from "react-i18next";
 import { SlashCommandMenu } from "@yoopta/ui/slash-command-menu";
-import { BLOCK_ICONS, BLOCK_CATEGORIES, getCategoryOrder } from "./yoopta-constants";
+import { useMemo } from "react";
+import { BLOCK_ICONS, createBlockCategories, getCategoryOrder } from "./constants";
 
 export const YooptaSlashCommandMenu = () => {
   const { t } = useTranslation();
+  const blockCategories = useMemo(() => createBlockCategories(t), [t]);
   return (
   <SlashCommandMenu>
     {(props) => {
       // Group items by category
       const grouped = new Map<string, typeof props.items>();
       for (const item of props.items) {
-        const category = BLOCK_CATEGORIES[item.id] || t("editor.blockCategories.other", "Other");
+        const category = blockCategories[item.id] || t("editor.blockCategories.other", "Other");
         if (!grouped.has(category)) grouped.set(category, []);
         grouped.get(category)!.push(item);
       }
 
       // Sort groups by CATEGORY_ORDER
-      const order = getCategoryOrder();
+      const order = getCategoryOrder(t);
       const sortedGroups = [...grouped.entries()].sort(
         (a, b) => order.indexOf(a[0]) - order.indexOf(b[0]),
       );

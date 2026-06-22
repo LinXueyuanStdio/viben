@@ -1020,7 +1020,7 @@ export class AcpSessionManager {
 
     log.info(sessionLogFields(session, {
       source: session.backend_load_session_id ? "backend/load" : "backend/new",
-      backendLoadSessionId: session.backend_load_session_id,
+      backend_load_session_id: session.backend_load_session_id,
     }), "ACP backend session starting");
 
     const previousIdentity = getStorageIdentity(session);
@@ -1054,7 +1054,7 @@ export class AcpSessionManager {
     log.info({
       ...sessionLogFields(session, {
         source: session.backend_load_session_id ? "backend/load" : "backend/new",
-        backendLoadSessionId: session.backend_load_session_id,
+        backend_load_session_id: session.backend_load_session_id,
       }),
       backendSessionId: backend.backendSessionId,
       backendCapabilities: summarizeBackendCapabilities(backend.agentCapabilities),
@@ -1412,8 +1412,8 @@ export class AcpSessionManager {
       prompt_running: false,
       prompt_queue: [],
       pending_client_side_bridge_tool_calls: [],
-      sdk_session_id: readRecordString(record.acp_record, "sdkSessionId") ?? readRecordString(record.acp_record, "sdk_session_id"),
-      initial_prompt: readRecordString(record.acp_record, "initialPrompt") ?? readRecordString(record.acp_record, "initial_prompt"),
+      sdk_session_id: readRecordString(record.acp_record, "sdk_session_id"),
+      initial_prompt: readRecordString(record.acp_record, "initial_prompt"),
       last_error: record.last_error,
       config_options: readConfigOptions(record.acp_record),
       agent_capabilities: DEFAULT_AGENT_CAPABILITIES,
@@ -1448,9 +1448,7 @@ export class AcpSessionManager {
         sessionId: session.id,
         executor_type: session.executor_type,
         sdk_session_id: session.sdk_session_id,
-        sdkSessionId: session.sdk_session_id,
         backend_load_session_id: session.backend_load_session_id,
-        initialPrompt: session.initial_prompt,
         initial_prompt: session.initial_prompt,
         configOptions: session.config_options,
       },
@@ -1987,12 +1985,12 @@ function recordToSummary(record: AcpSessionRecord): AcpSessionSummary {
     lastActiveAt: record.last_active_at,
     queueDepth: readRecordNumber(record.acp_record, "queueDepth") ?? 0,
     promptRunning: readRecordBoolean(record.acp_record, "promptRunning") ?? false,
-    sdkSessionId: readRecordString(record.acp_record, "sdkSessionId") ?? readRecordString(record.acp_record, "sdk_session_id"),
+    sdkSessionId: readRecordString(record.acp_record, "sdk_session_id"),
     agentName: record.title,
     agentExecutorType: record.executor_type,
     agentConfigPath: record.agent_config_path,
     agentDir: record.agent_dir,
-    initialPrompt: readRecordString(record.acp_record, "initialPrompt") ?? readRecordString(record.acp_record, "initial_prompt"),
+    initialPrompt: readRecordString(record.acp_record, "initial_prompt"),
     agentCapabilities: DEFAULT_AGENT_CAPABILITIES,
     configOptions: readConfigOptions(record.acp_record),
     lastError: record.last_error,
@@ -2023,9 +2021,7 @@ function mergeRecordAgentConfig(
 }
 
 function restoreBackendLoadSessionId(record: AcpSessionRecord): string {
-  return readRecordString(record.acp_record, "backend_load_session_id") ??
-    readRecordString(record.acp_record, "backendLoadSessionId") ??
-    record.session_id;
+  return readRecordString(record.acp_record, "backend_load_session_id") ?? record.session_id;
 }
 
 function parseRecordDate(value: string): Date {

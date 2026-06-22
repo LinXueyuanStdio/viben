@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { GripVertical, PlusIcon } from "lucide-react";
 import { Blocks, useYooptaEditor } from "@yoopta/editor";
 import { DragHandle } from "@yoopta/ui/block-dnd";
-import { YooptaBlockOptions } from "./yoopta-block-options";
-import { ensureBlockFocus } from "./yoopta-focus-utils";
+import { YooptaBlockOptions } from "./block-options";
+import { ensureBlockFocus } from "./focus-utils";
 
 /**
  * Dispatch a synthetic "/" keydown event on the editor's focused contenteditable
