@@ -451,6 +451,149 @@ describe("AcpSessionManager", () => {
     ]);
   });
 
+  it("records active backend session updates and returns them after park and load", async () => {
+    const { storage, events } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const originalConnection = createConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      originalConnection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    await adapter.startContext?.connection.sessionUpdate({
+      sessionId: session.sessionId,
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        content: { type: "text", text: "active backend update" },
+      },
+    });
+
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "session_update",
+        data: {
+          sessionId: session.sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "active backend update" },
+          },
+        },
+      },
+    ]);
+
+    await expect(manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, originalConnection))
+      .resolves.toBe(true);
+    const loaded = await manager.loadSession(
+      { sessionId: session.sessionId, cwd: "/tmp", mcpServers: [] },
+      createConnection()
+    );
+
+    expect(loaded.history).toMatchObject([
+      {
+        seq: 0,
+        type: "session_update",
+        data: {
+          sessionId: session.sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "active backend update" },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("records active client tool calls and marks them resolved", async () => {
+    const { storage, events } = createMemoryStorage();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const connection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      connection
+    );
+
+    await manager.requestClientTool(session.sessionId, "GUI_execute", { action: "test" }, "tool-1");
+
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "client_tool_call",
+        status: "resolved",
+        data: {
+          method: "_viben/client_tool_call",
+          params: {
+            sessionId: session.sessionId,
+            toolCallId: "tool-1",
+            toolName: "GUI_execute",
+            input: { action: "test" },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("updates the active recording connection raw target when a live session is loaded", async () => {
+    const { storage } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage
+    );
+    const firstConnection = createCapturingConnection();
+    const secondConnection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { executor_type: "CODEX" } },
+      firstConnection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    await manager.loadSession(
+      { sessionId: session.sessionId, cwd: "/tmp", mcpServers: [] },
+      secondConnection
+    );
+    await adapter.startContext?.connection.sessionUpdate({
+      sessionId: session.sessionId,
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        content: { type: "text", text: "after load" },
+      },
+    });
+
+    expect(firstConnection.updates).toEqual([]);
+    expect(secondConnection.updates).toMatchObject([
+      {
+        sessionId: session.sessionId,
+        update: {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: "after load" },
+        },
+      },
+    ]);
+    await expect(manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, firstConnection))
+      .resolves.toBe(false);
+  });
+
   it("loads a detached in-memory session and returns recorded history", async () => {
     const { storage, index } = createMemoryStorage();
     const manager = new AcpSessionManager(
