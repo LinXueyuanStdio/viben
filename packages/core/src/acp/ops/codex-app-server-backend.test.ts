@@ -300,7 +300,6 @@ describe("CodexAppServerBackendAdapter", () => {
         append_prompt: "Prefer concise answers.",
         temperature: 0.2,
         max_tokens: 4096,
-        approval_mode: "bypass",
         permission_mode: "plan",
         executor_config: {
           reasoning_effort: "high",
@@ -317,7 +316,6 @@ describe("CodexAppServerBackendAdapter", () => {
       params: {
         model: "gpt-5.4",
         modelProvider: "openai",
-        approvalPolicy: "never",
         personality: "concise",
         settings: {
           developer_instructions: "Use the repo conventions.\n\nPrefer concise answers.",

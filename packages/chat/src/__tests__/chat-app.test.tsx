@@ -73,6 +73,7 @@ vi.mock("../chat-input", async () => {
         : null,
       React.createElement("input", {
         "aria-label": "Mock chat value",
+        ref: props.textareaRef as React.RefObject<HTMLInputElement>,
         value: String(props.value ?? ""),
         onChange: (event: React.ChangeEvent<HTMLInputElement>) => (props.onValueChange as (value: string) => void)?.(event.target.value),
       }),
@@ -754,6 +755,25 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("expanded-overlay").querySelector("[data-shared-element='overlay-header']")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-message-panel")).toHaveAttribute("data-shared-element", "overlay-message-panel");
     expect(screen.getByTestId("expanded-chat-input-container")).toHaveAttribute("data-shared-element", "overlay-input-panel");
+  });
+
+  test("expanded mode forwards inputProps textareaRef to the rendered chat input", () => {
+    const textareaRef = { current: null } as React.RefObject<HTMLInputElement | null>;
+
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        inputProps={{ textareaRef: textareaRef as unknown as React.RefObject<HTMLTextAreaElement | null> }}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const input = screen.getByLabelText("Mock chat value");
+    expect(textareaRef.current).toBe(input);
   });
 
   test("expanded body renders status content and pending input panels", () => {

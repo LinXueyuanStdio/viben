@@ -18,7 +18,7 @@ import { agentManager } from "../../agents";
 import type { AppState } from "../state";
 import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
-import type { ExecutorType, AgentMcpServerEntry } from "../../types";
+import type { AcpPermissionMode, ExecutorType, AgentMcpServerEntry } from "../../types";
 import {
   encodeWorkspacePath,
   getClaudeProjectsDir,
@@ -220,7 +220,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         executor_config: a.executorConfig,
         mcp_servers: a.mcpServers,
         skills: a.skills,
-        approval_mode: a.approvalMode,
+        permission_mode: a.permissionMode,
         created_at: a.created_at,
         updated_at: a.updated_at,
       };
@@ -285,7 +285,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       executor_config?: Record<string, unknown>;
       mcp_servers?: string[];
       skills?: string[];
-      approval_mode?: "bypass" | "rules" | "ai";
+      permission_mode?: AcpPermissionMode;
     };
   }>("/api/agent", async (request, reply) => {
     const body = request.body;
@@ -306,7 +306,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         executor_config: body.executor_config,
         mcp_servers: body.mcp_servers,
         skills: body.skills,
-        approval_mode: body.approval_mode,
+        permission_mode: body.permission_mode,
       });
       reply.code(201);
 
@@ -340,7 +340,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         executor_config: agent.executorConfig,
         mcp_servers: agent.mcpServers,
         skills: agent.skills,
-        approval_mode: agent.approvalMode,
+        permission_mode: agent.permissionMode,
         created_at: agent.created_at,
         updated_at: agent.updated_at,
       };
@@ -518,7 +518,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           executor_config: agent.executorConfig,
           mcp_servers: agent.mcpServers,
           skills: agent.skills,
-          approval_mode: agent.approvalMode,
+          permission_mode: agent.permissionMode,
           created_at: agent.created_at,
           updated_at: agent.updated_at,
         };
@@ -575,7 +575,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         executor_config: agent.executorConfig,
         mcp_servers: agent.mcpServers,
         skills: agent.skills,
-        approval_mode: agent.approvalMode,
+        permission_mode: agent.permissionMode,
         is_template: agent.isTemplate,
         template_description: agent.templateDescription,
         created_at: agent.created_at,
@@ -1109,7 +1109,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       executor_config: agent.executorConfig,
       mcp_servers: agent.mcpServers,
       skills: agent.skills,
-      approval_mode: agent.approvalMode,
+      permission_mode: agent.permissionMode,
       created_at: agent.created_at,
       updated_at: agent.updated_at,
     };
@@ -1137,7 +1137,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       executor_config?: Record<string, unknown>;
       mcp_servers?: (string | AgentMcpServerEntry)[];
       skills?: string[];
-      approval_mode?: "bypass" | "rules" | "ai";
+      permission_mode?: AcpPermissionMode;
       is_template?: boolean;
       template_description?: string;
     };
@@ -1158,7 +1158,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       executorConfig: body.executor_config,
       mcpServers: body.mcp_servers,
       skills: body.skills,
-      approvalMode: body.approval_mode,
+      permissionMode: body.permission_mode,
       isTemplate: body.is_template,
       templateDescription: body.template_description,
     };
@@ -1195,7 +1195,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         executor_config: agent.executorConfig,
         mcp_servers: agent.mcpServers,
         skills: agent.skills,
-        approval_mode: agent.approvalMode,
+        permission_mode: agent.permissionMode,
         is_template: agent.isTemplate,
         template_description: agent.templateDescription,
         created_at: agent.created_at,

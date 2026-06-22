@@ -69,6 +69,7 @@ export function ChatInput({
   queuedInputRecallJoiner = DEFAULT_QUEUE_RECALL_JOINER,
   onQueuedInputRecall,
   inputHistoryItems = [],
+  onRecallSessionList,
   onCancel,
   isLoading,
   allowSendWhileLoading,
@@ -537,6 +538,12 @@ export function ChatInput({
         return;
       }
 
+      if (e.key === "ArrowLeft" && !isComposingInput && content.trim().length === 0) {
+        e.preventDefault();
+        onRecallSessionList?.();
+        return;
+      }
+
       if (e.key === "ArrowUp" && !isComposingInput && content.trim().length === 0) {
         e.preventDefault();
         if (queuedInputRecallItems.length > 0) {
@@ -592,6 +599,7 @@ export function ChatInput({
       isCompactLayout,
       handleSend,
       onRecallQueuedInput,
+      onRecallSessionList,
       onRequestExpand,
       onQueuedInputRecall,
       queuedInputRecallItems,
@@ -619,6 +627,12 @@ export function ChatInput({
 
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
         exitHistoryMode();
+      }
+
+      if (e.key === "ArrowLeft" && !isComposingInput && content.trim().length === 0) {
+        e.preventDefault();
+        onRecallSessionList?.();
+        return;
       }
 
       if (e.key === "ArrowUp" && !isComposingInput && content.trim().length === 0) {
@@ -659,6 +673,7 @@ export function ChatInput({
       handleSend,
       isComposingEvent,
       onRecallQueuedInput,
+      onRecallSessionList,
       onRequestExpand,
       recallInputHistory,
     ]

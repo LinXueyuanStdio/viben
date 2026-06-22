@@ -24,6 +24,7 @@ import type {
   LogEntry,
   CreateAgentOptions,
   AgentUpdate,
+  AcpPermissionMode,
 } from "../types";
 import type { AgentConfigFile, SessionFile } from "./types";
 
@@ -51,12 +52,17 @@ export {
   type PredefinedVariable,
 } from "./variable-resolver";
 
+function normalizePermissionMode(mode?: AcpPermissionMode): AcpPermissionMode {
+  return mode ?? "default";
+}
+
 function agentConfigFileToAgent(
   id: string,
   agentDir: string,
   config: AgentConfigFile,
   systemPrompt: string
 ): Agent {
+  const permissionMode = normalizePermissionMode(config.permission_mode);
   return {
     id,
     name: config.name,
@@ -73,7 +79,7 @@ function agentConfigFileToAgent(
     executorConfig: config.executor_config,
     mcpServers: config.mcp_servers ?? [],
     skills: config.skills ?? [],
-    approvalMode: config.approval_mode ?? "rules",
+    permissionMode,
     isTemplate: config.is_template,
     templateDescription: config.template_description,
     templateTags: config.template_tags,
@@ -103,7 +109,7 @@ function agentToConfigFile(
     executorConfig?: Record<string, unknown>;
     mcpServers?: Agent["mcpServers"];
     skills?: string[];
-    approvalMode?: "bypass" | "rules" | "ai";
+    permissionMode?: AcpPermissionMode;
     isTemplate?: boolean;
     templateDescription?: string;
     templateTags?: Agent["templateTags"];
@@ -114,6 +120,10 @@ function agentToConfigFile(
   }
 ): AgentConfigFile {
   const customVariables = overrides.customVariables ?? agent.customVariables;
+  const permissionMode =
+    overrides.permissionMode ??
+    agent.permissionMode ??
+    "default";
   return {
     name: overrides.name ?? agent.name,
     description: overrides.description ?? agent.description,
@@ -127,7 +137,7 @@ function agentToConfigFile(
     executor_config: overrides.executorConfig ?? agent.executorConfig,
     mcp_servers: overrides.mcpServers ?? agent.mcpServers,
     skills: overrides.skills ?? agent.skills,
-    approval_mode: overrides.approvalMode ?? agent.approvalMode,
+    permission_mode: permissionMode,
     is_template: overrides.isTemplate ?? agent.isTemplate,
     template_description: overrides.templateDescription ?? agent.templateDescription,
     template_tags: overrides.templateTags ?? agent.templateTags,
@@ -229,7 +239,7 @@ export class AgentManager {
           executorConfig: template.executorConfig,
           mcpServers: template.mcpServers,
           skills: template.skills,
-          approvalMode: template.approvalMode,
+          permissionMode: template.permissionMode,
         };
       }
     }
@@ -249,7 +259,10 @@ export class AgentManager {
       executor_config: options.executor_config ?? baseConfig.executorConfig,
       mcp_servers: options.mcp_servers ?? baseConfig.mcpServers ?? [],
       skills: options.skills ?? [],
-      approval_mode: options.approval_mode ?? "rules",
+      permission_mode:
+        options.permission_mode ??
+        baseConfig.permissionMode ??
+        "default",
       is_template: false,
       template_tags: baseConfig.templateTags,
       custom_variables: baseConfig.customVariables?.map(v => ({
@@ -445,7 +458,7 @@ export class AgentManager {
       executor_config: template.executorConfig,
       mcp_servers: template.mcpServers,
       skills: template.skills,
-      approval_mode: template.approvalMode,
+      permission_mode: template.permissionMode,
       is_template: false, // New agent is NOT a template
       template_tags: template.templateTags,
       custom_variables: template.customVariables?.map(v => ({
@@ -506,7 +519,7 @@ export class AgentManager {
       executor_config: agent.executorConfig,
       mcp_servers: agent.mcpServers,
       skills: agent.skills,
-      approval_mode: agent.approvalMode,
+      permission_mode: agent.permissionMode,
       is_template: true,
       template_description: agent.templateDescription,
       template_tags: agent.templateTags,

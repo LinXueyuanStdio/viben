@@ -35,6 +35,8 @@ import { buildAcpAgentConfig } from "./acp-agent-config";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
+  type AcpListSessionItem,
+  type AcpListSessionsResult,
   type AgentConfigPayload,
   type CallToolResult,
   type ClientToolCall,
@@ -93,6 +95,21 @@ export interface AcpSessionItem {
   subtitle?: string;
 }
 
+export interface AcpSessionListItem {
+  sessionId: string;
+  cwd?: string;
+  title?: string;
+  status: string;
+  agent?: string;
+  agentExecutorType?: string;
+  agentConfigPath?: string;
+  agentDir?: string;
+  initialPrompt?: string;
+  promptRunning?: boolean;
+  queueDepth?: number;
+  updatedAt?: string;
+}
+
 // Re-export types from store
 export type { PermissionDialogState, ElicitationDialogState, ElicitationFormField } from "@/stores/acp-session-store";
 
@@ -115,6 +132,7 @@ export interface UseAcpSessionReturn {
   sessionsById: Record<string, UiSessionState>;
   sessionOrder: string[];
   sessions: AcpSessionItem[];
+  acpSessionList: AcpSessionListItem[];
 
   // Active session data
   messages: AgentMessage[];
@@ -167,6 +185,7 @@ export interface UseAcpSessionReturn {
   disconnect: () => void;
   createSession: (agentId?: string) => Promise<void>;
   loadSession: (sessionId: string) => Promise<void>;
+  refreshSessionList: () => Promise<AcpSessionListItem[]>;
   closeActiveSession: () => Promise<void>;
   selectSession: (id: string) => void;
   sendPrompt: (content: string) => Promise<void>;
@@ -250,6 +269,24 @@ function readSessionAvailableCommands(value: unknown): SlashCommand[] | null {
     }];
   });
   return parsed.length > 0 ? parsed : null;
+}
+
+function normalizeAcpSessionListItem(item: AcpListSessionItem): AcpSessionListItem | null {
+  if (!item.sessionId.trim()) return null;
+  return {
+    sessionId: item.sessionId,
+    cwd: item.cwd,
+    title: item.title,
+    status: item.status ?? (item.prompt_running ? "active" : "finished"),
+    agent: item.agent_name ?? item.agent,
+    agentExecutorType: item.agent_executor_type,
+    agentConfigPath: item.agent_config_path,
+    agentDir: item.agent_dir,
+    initialPrompt: item.initial_prompt,
+    promptRunning: item.prompt_running,
+    queueDepth: item.queue_depth,
+    updatedAt: item.updated_at ?? item.updatedAt,
+  };
 }
 
 function summarizeAgentConfigForLog(config: AgentConfigPayload | undefined): Record<string, unknown> | null {
@@ -551,6 +588,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const [toolInspectState, setToolInspectState] = useState<{ message: AgentMessage; result?: AgentMessage } | null>(null);
   const [artifactDialogState, setArtifactDialogState] = useState<{ artifact: Artifact; message?: AgentMessage } | null>(null);
+  const [acpSessionList, setAcpSessionList] = useState<AcpSessionListItem[]>([]);
 
   // Initialize cwd from resolved default on first mount (when cwd is empty)
   // This ensures cwd is set from workspace path when the store is first initialized
@@ -904,6 +942,40 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       setError(connectError instanceof Error ? connectError.message : String(connectError));
     }
   }, [ensureClient, wsUrl, setError, setInitializeResult]);
+
+  const refreshSessionList = useCallback(async (): Promise<AcpSessionListItem[]> => {
+    setError(null);
+    try {
+      const client = ensureClient();
+      await client.connect(wsUrl);
+      if (!initializeResult) {
+        setInitializeResult(await client.initialize());
+      }
+      const listResult = await client.listSessions() as AcpListSessionsResult | null;
+      const nextList = (listResult?.sessions ?? [])
+        .map(normalizeAcpSessionListItem)
+        .filter((item): item is AcpSessionListItem => item !== null);
+      setAcpSessionList(nextList);
+      for (const item of nextList) {
+        setSessionsById((current) => {
+          if (current[item.sessionId]) return current;
+          return {
+            ...current,
+            [item.sessionId]: createUiSession(
+              item.sessionId,
+              item.cwd ?? cwd,
+              { sessionId: item.sessionId }
+            ),
+          };
+        });
+        setSessionOrder((current) => current.includes(item.sessionId) ? current : [...current, item.sessionId]);
+      }
+      return nextList;
+    } catch (listError) {
+      setError(listError instanceof Error ? listError.message : String(listError));
+      return [];
+    }
+  }, [cwd, ensureClient, initializeResult, setError, setInitializeResult, setSessionOrder, setSessionsById, wsUrl]);
 
   const createSession = useCallback(async (agentId?: string) => {
     setError(null);
@@ -1389,6 +1461,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     sessionsById,
     sessionOrder,
     sessions,
+    acpSessionList,
     messages,
     streamingText,
     messageUpdates,
@@ -1422,6 +1495,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     disconnect,
     createSession,
     loadSession,
+    refreshSessionList,
     closeActiveSession,
     selectSession,
     sendPrompt,

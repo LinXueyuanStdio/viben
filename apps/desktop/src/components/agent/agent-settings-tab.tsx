@@ -151,7 +151,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     model,
     temperature,
     executorType,
-    approvalMode,
+    permissionMode,
     models,
     executors,
     selectedMcpServers,
@@ -165,7 +165,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     onModelChange,
     onTemperatureChange,
     onExecutorTypeChange,
-    onApprovalModeChange,
+    onPermissionModeChange,
     onCheckAvailability,
     availability,
     checkingAvailability,
@@ -248,7 +248,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             model={model}
             temperature={temperature}
             executorType={executorType}
-            approvalMode={approvalMode}
+            permissionMode={permissionMode}
             models={models}
             executors={executors}
             selectedMcpServers={selectedMcpServers}
@@ -263,7 +263,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             onModelChange={onModelChange}
             onTemperatureChange={onTemperatureChange}
             onExecutorTypeChange={onExecutorTypeChange}
-            onApprovalModeChange={onApprovalModeChange}
+            onPermissionModeChange={onPermissionModeChange}
             onCheckAvailability={onCheckAvailability}
             availability={availability}
             checkingAvailability={checkingAvailability}

@@ -370,7 +370,9 @@ export function PageSettingPanel({
       });
 
       if (!result.success || !result.url) {
-        throw new Error(result.error ?? "Rollback failed");
+        throw new Error(
+          result.error ?? t("page.settings.rollbackFailed", "Rollback failed")
+        );
       }
 
       publishActions.finishPublish(publishKey, result.url);
@@ -404,7 +406,10 @@ export function PageSettingPanel({
       }
 
       if (!versionResult.success || typeof versionResult.html !== "string") {
-        throw new Error(versionResult.error ?? "Version HTML missing");
+        throw new Error(
+          versionResult.error ??
+            t("page.settings.versionHtmlMissing", "Version HTML missing")
+        );
       }
 
       await writeFile(
@@ -775,15 +780,19 @@ export function PageSettingPanel({
                           >
                             <span className="min-w-0">
                               <span className="block font-medium">
-                                Version {record.version}
+                                {t("page.settings.versionLabel", "Version")}{" "}
+                                {record.version}
                               </span>
                               <span className="block truncate text-xs">
-                                {record.action === "rollback" ? "Rollback" : "Publish"} · {formatPublishRecordTime(record.created_at)}
+                                {record.action === "rollback"
+                                  ? t("page.settings.rollbackAction", "Rollback")
+                                  : t("page.settings.publishAction", "Publish")}{" "}
+                                · {formatPublishRecordTime(record.created_at)}
                               </span>
                             </span>
                             {record.is_current && (
                               <span className="shrink-0 rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
-                                Current
+                                {t("page.settings.currentVersion", "Current")}
                               </span>
                             )}
                           </button>
@@ -799,16 +808,22 @@ export function PageSettingPanel({
                         disabled={!selectedRecord}
                       >
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        Open version
+                        {t("page.settings.openVersion", "Open version")}
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleRollbackSelectedVersion}
-                        disabled={!selectedRecord || selectedRecord.is_current || isRollingBack}
+                        disabled={
+                          !selectedRecord ||
+                          selectedRecord.is_current ||
+                          isRollingBack
+                        }
                       >
                         <RotateCcw className="mr-2 h-4 w-4" />
-                        {isRollingBack ? "Rolling back..." : "Rollback"}
+                        {isRollingBack
+                          ? t("page.settings.rollingBack", "Rolling back...")
+                          : t("page.settings.rollbackAction", "Rollback")}
                       </Button>
                       <Button
                         variant="outline"
@@ -817,7 +832,12 @@ export function PageSettingPanel({
                         disabled={!selectedRecord || isApplyingVersion}
                       >
                         <Download className="mr-2 h-4 w-4" />
-                        {isApplyingVersion ? "Updating..." : "Use as local HTML"}
+                        {isApplyingVersion
+                          ? t("page.settings.updatingLocalHtml", "Updating...")
+                          : t(
+                              "page.settings.useAsLocalHtml",
+                              "Use as local HTML"
+                            )}
                       </Button>
                     </div>
                   </div>

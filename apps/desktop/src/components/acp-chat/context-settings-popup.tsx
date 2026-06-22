@@ -1,16 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { FolderTree, ListTodo, Shrink } from "lucide-react";
 import { cn, Switch, Label } from "@viben/ui";
-import type { ApprovalMode } from "@viben/chat";
-import { APPROVAL_MODE_CONFIG } from "@viben/chat";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 
 export interface ContextSettingsPopupProps {
   hasSession: boolean;
   used: number;
   size: number;
   cost: { amount: number; currency: string } | null;
-  approvalMode: ApprovalMode;
-  onApprovalModeChange: (mode: ApprovalMode) => void;
+  permissionMode: PermissionMode;
+  onPermissionModeChange: (mode: PermissionMode) => void;
   sandbox: boolean;
   onSandboxChange: (v: boolean) => void;
   worktree: boolean;
@@ -33,15 +32,31 @@ function getUsageBarColor(percentage: number): string {
   return "bg-primary";
 }
 
-const MODES: ApprovalMode[] = ["bypass", "rules", "ai"];
+const PERMISSION_MODE_CONFIG: Record<PermissionMode, { label: string }> = {
+  default: { label: "Default" },
+  bypassPermissions: { label: "Bypass" },
+  auto: { label: "Auto" },
+  acceptEdits: { label: "Accept" },
+  dontAsk: { label: "No Ask" },
+  plan: { label: "Plan" },
+};
+
+const MODES: PermissionMode[] = [
+  "default",
+  "bypassPermissions",
+  "auto",
+  "acceptEdits",
+  "dontAsk",
+  "plan",
+];
 
 export function ContextSettingsPopup({
   hasSession,
   used,
   size,
   cost,
-  approvalMode,
-  onApprovalModeChange,
+  permissionMode,
+  onPermissionModeChange,
   sandbox,
   onSandboxChange,
   worktree,
@@ -144,16 +159,15 @@ export function ContextSettingsPopup({
         </div>
       )}
 
-      {/* Approval mode segmented control */}
+      {/* Permission mode segmented control */}
       <div className="mt-3 pt-3 border-t border-border">
         <div className="text-xs font-medium text-muted-foreground mb-2">
-          {t("chat.contextApproval.approvalMode", "审批模式")}
+          {t("chat.contextPermissions.permissionMode", "权限模式")}
         </div>
         <div className="flex h-8 rounded-md border border-border overflow-hidden">
           {MODES.map((mode, idx) => {
-            const config = APPROVAL_MODE_CONFIG[mode];
-            const Icon = config.icon;
-            const isActive = approvalMode === mode;
+            const config = PERMISSION_MODE_CONFIG[mode];
+            const isActive = permissionMode === mode;
             return (
               <button
                 key={mode}
@@ -166,9 +180,8 @@ export function ContextSettingsPopup({
                     ? "bg-accent text-accent-foreground font-medium"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-                onClick={() => onApprovalModeChange(mode)}
+                onClick={() => onPermissionModeChange(mode)}
               >
-                <Icon className="size-3.5" />
                 <span>{config.label}</span>
               </button>
             );

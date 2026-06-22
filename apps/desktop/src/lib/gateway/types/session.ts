@@ -4,6 +4,7 @@
  */
 
 import type { ExecutorType } from "@viben/core/shared";
+import type { PermissionMode } from "./agent";
 
 // ============================================================================
 // Agent Types
@@ -38,7 +39,7 @@ export interface AgentDetails {
 export interface ClaudeCodeConfig {
   append_prompt?: string;
   plan?: boolean;
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: PermissionMode;
   model?: string;
   dangerously_skip_permissions?: boolean;
   base_command_override?: string;

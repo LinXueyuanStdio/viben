@@ -58,6 +58,47 @@ export interface AgentProviderDefaultDecisionInput {
   filteredProviderIds: readonly string[];
 }
 
+export function resolveEffectiveProviderId(input: {
+  selectedAgentProviderId: string | null;
+  selectedProviderId: string | null;
+  providerIds: readonly string[];
+}): string | null {
+  const { selectedAgentProviderId, selectedProviderId, providerIds } = input;
+  if (selectedAgentProviderId && providerIds.includes(selectedAgentProviderId)) {
+    return selectedAgentProviderId;
+  }
+  if (selectedProviderId && providerIds.includes(selectedProviderId)) {
+    return selectedProviderId;
+  }
+  return null;
+}
+
+export function resolveEffectiveModelId(input: {
+  selectedAgentId: string | null;
+  manualModelOverrideAgentId: string | null;
+  selectedAgentModelId: string | null;
+  selectedModelId: string;
+  modelIds: readonly string[];
+}): string {
+  const {
+    selectedAgentId,
+    manualModelOverrideAgentId,
+    selectedAgentModelId,
+    selectedModelId,
+    modelIds,
+  } = input;
+  if (manualModelOverrideAgentId === selectedAgentId && modelIds.includes(selectedModelId)) {
+    return selectedModelId;
+  }
+  if (selectedAgentModelId && modelIds.includes(selectedAgentModelId)) {
+    return selectedAgentModelId;
+  }
+  if (modelIds.includes(selectedModelId)) {
+    return selectedModelId;
+  }
+  return "";
+}
+
 export function useAgentModelSelection(options: UseAgentModelSelectionOptions): UseAgentModelSelectionReturn {
   const {
     workspacePath,
@@ -186,9 +227,17 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
   }, [filteredProviders, selectedAgentProviderId]);
   const preferredAgentProviderId = preferredAgentProvider?.id ?? null;
 
+  const modelProviderId = useMemo(() => {
+    return resolveEffectiveProviderId({
+      selectedAgentProviderId,
+      selectedProviderId,
+      providerIds: filteredProviders.map((provider) => provider.id),
+    });
+  }, [filteredProviders, selectedAgentProviderId, selectedProviderId]);
+
   const selectedProviderForModels = useMemo(
-    () => filteredProviders.find((provider) => provider.id === selectedProviderId),
-    [filteredProviders, selectedProviderId]
+    () => filteredProviders.find((provider) => provider.id === modelProviderId),
+    [filteredProviders, modelProviderId]
   );
 
   const {
@@ -250,9 +299,9 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
   }, [allModels, effectiveExecutorType]);
 
   const filteredModels = useMemo(() => {
-    if (!selectedProviderId) return [];
-    return filterModelsByProvider(modelsFilteredByExecutor, selectedProviderId);
-  }, [modelsFilteredByExecutor, selectedProviderId]);
+    if (!modelProviderId) return [];
+    return filterModelsByProvider(modelsFilteredByExecutor, modelProviderId);
+  }, [modelsFilteredByExecutor, modelProviderId]);
 
   const modelOptions = useMemo<SelectorOption[]>(() => {
     return filteredModels.map((item) => ({
@@ -264,24 +313,18 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
   }, [filteredModels]);
 
   const effectiveSelectedProviderId = useMemo(() => {
-    if (selectedAgentProviderId && providerOptions.some((provider) => provider.id === selectedAgentProviderId)) {
-      return selectedAgentProviderId;
-    }
-    if (selectedProviderId && providerOptions.some((provider) => provider.id === selectedProviderId)) {
-      return selectedProviderId;
-    }
-    return null;
-  }, [providerOptions, selectedAgentProviderId, selectedProviderId]);
+    return modelProviderId;
+  }, [modelProviderId]);
 
   const effectiveSelectedModel = useMemo(() => {
-    if (selectedAgentModelId && modelOptions.some((item) => item.id === selectedAgentModelId)) {
-      return selectedAgentModelId;
-    }
-    if (model && modelOptions.some((item) => item.id === model)) {
-      return model;
-    }
-    return "";
-  }, [model, modelOptions, selectedAgentModelId]);
+    return resolveEffectiveModelId({
+      selectedAgentId,
+      manualModelOverrideAgentId: manualModelOverrideAgentIdRef.current,
+      selectedAgentModelId,
+      selectedModelId: model,
+      modelIds: modelOptions.map((item) => item.id),
+    });
+  }, [model, modelOptions, selectedAgentId, selectedAgentModelId]);
 
   const appliedAgentProviderDefaultsRef = useRef<string | null>(null);
   const appliedAgentModelDefaultsRef = useRef<string | null>(null);

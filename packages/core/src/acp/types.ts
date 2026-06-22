@@ -38,7 +38,10 @@ export type AcpMcpServer = McpServer;
 export type AcpNewSessionRequest = NewSessionRequest & AcpSessionBootstrapFields;
 export type AcpNewSessionResponse = NewSessionResponse;
 export type AcpLoadSessionRequest = LoadSessionRequest & AcpSessionBootstrapFields;
-export type AcpLoadSessionResponse = LoadSessionResponse & { sessionId?: string };
+export type AcpLoadSessionResponse = LoadSessionResponse & {
+  sessionId?: string;
+  history?: AcpSessionEvent[];
+};
 export type AcpPromptRequest = PromptRequest;
 export type AcpPromptResponse = Omit<PromptResponse, "stopReason"> & {
   stopReason: AcpStopReason;
@@ -192,10 +195,17 @@ export interface AgentConfigPayload {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
   dangerously_skip_permissions?: boolean;
-  permission_mode?: string;
+  permission_mode?: AcpPermissionMode;
 }
+
+export type AcpPermissionMode =
+  | "default"
+  | "bypassPermissions"
+  | "auto"
+  | "acceptEdits"
+  | "dontAsk"
+  | "plan";
 
 export interface AcpSandboxConfig {
   enabled: boolean;
@@ -271,9 +281,43 @@ export interface AcpCodexItemSessionUpdate {
 export type AcpSessionStatus =
   | "initializing"
   | "active"
+  | "parked"
   | "cancelled"
   | "finished"
   | "error";
+
+export type AcpSessionEventType =
+  | "prompt"
+  | "session_update"
+  | "permission_request"
+  | "permission_response"
+  | "client_tool_call"
+  | "client_tool_result"
+  | "notification";
+
+export type AcpSessionEventStatus =
+  | "pending"
+  | "resolved"
+  | "cancelled"
+  | "abandoned";
+
+export interface AcpSessionEvent {
+  seq: number;
+  ts: string;
+  type: AcpSessionEventType;
+  id?: string;
+  status?: AcpSessionEventStatus;
+  request_id?: string;
+  data?: unknown;
+}
+
+export interface AcpSessionEventPatch {
+  _type: "patch";
+  target_seq: number;
+  patch: {
+    status: AcpSessionEventStatus;
+  };
+}
 
 export interface AcpSessionSummary {
   id: string;
@@ -284,6 +328,11 @@ export interface AcpSessionSummary {
   queueDepth: number;
   promptRunning: boolean;
   sdkSessionId?: string;
+  agentName?: string;
+  agentExecutorType?: string;
+  agentConfigPath?: string;
+  agentDir?: string;
+  initialPrompt?: string;
   agentCapabilities: AcpAgentCapabilities;
   configOptions?: AcpConfigOption[];
   lastError?: AcpErrorDetail;

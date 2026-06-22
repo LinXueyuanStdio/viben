@@ -8,6 +8,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import i18n from "@/i18n";
 import {
+  emitAgentDataChanged,
+  shouldRefreshAgentList,
+  subscribeAgentDataChanged,
+} from "./agent-data-events";
+import {
   getGatewayClient,
   type ExecutorInfo,
   type AgentInfo,
@@ -382,6 +387,14 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
     loadTemplates();
   }, [loadAgents, loadTemplates]);
 
+  useEffect(() => {
+    return subscribeAgentDataChanged((detail) => {
+      if (shouldRefreshAgentList(detail, workspacePath)) {
+        void loadAgents();
+      }
+    });
+  }, [loadAgents, workspacePath]);
+
   // Read operations
   const getAgent = useCallback(
     (id: string) => {
@@ -409,6 +422,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
       const result = await client.createAgent(optionsWithPath);
       // Refresh agent list after creation
       await loadAgents();
+      emitAgentDataChanged({ workspace_path: workspacePath });
       return result;
     },
     [workspacePath, loadAgents]
@@ -424,6 +438,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
       const result = await client.updateAgent(id, updatesWithPath);
       // Refresh agent list after update
       await loadAgents();
+      emitAgentDataChanged({ workspace_path: workspacePath });
       return result;
     },
     [workspacePath, loadAgents]
@@ -435,6 +450,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
       await client.deleteAgent(id, { workspacePath: workspacePath || undefined });
       // Refresh agent list after deletion
       await loadAgents();
+      emitAgentDataChanged({ workspace_path: workspacePath });
     },
     [workspacePath, loadAgents]
   );
@@ -444,6 +460,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
       const client = getGatewayClient();
       await client.setDefaultAgent(id);
       setDefaultAgentIdState(id);
+      emitAgentDataChanged({ workspace_path: workspacePath });
     },
     []
   );
@@ -473,6 +490,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
       });
       // Refresh agent list after creation
       await loadAgents();
+      emitAgentDataChanged({ workspace_path: workspacePath });
       return result;
     },
     [loadAgents, workspacePath]

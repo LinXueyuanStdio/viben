@@ -31,85 +31,94 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
-    const publishedPage = await db.query.publishedPages.findFirst({
-      where: and(
-        eq(publishedPages.userId, session.userId),
-        eq(publishedPages.uid, uid)
-      ),
-    });
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${session.userId}), hashtext(${uid}))`);
 
-    if (!publishedPage) {
-      return NextResponse.json(
-        { success: false, error: 'Published page not found' },
-        { status: 404 }
-      );
-    }
+      const publishedPage = await tx.query.publishedPages.findFirst({
+        where: and(
+          eq(publishedPages.userId, session.userId),
+          eq(publishedPages.uid, uid)
+        ),
+      });
 
-    if (publishedPage.currentVersion === version) {
-      return NextResponse.json(
-        { success: false, error: 'Selected version is already current' },
-        { status: 400 }
-      );
-    }
+      if (!publishedPage) {
+        return {
+          status: 404,
+          body: { success: false, error: 'Published page not found' },
+        };
+      }
 
-    const publishedVersion = await db.query.publishedPageVersions.findFirst({
-      where: and(
-        eq(publishedPageVersions.userId, session.userId),
-        eq(publishedPageVersions.uid, uid),
-        eq(publishedPageVersions.version, version)
-      ),
-    });
+      if (publishedPage.currentVersion === version) {
+        return {
+          status: 400,
+          body: { success: false, error: 'Selected version is already current' },
+        };
+      }
 
-    if (!publishedVersion) {
-      return NextResponse.json(
-        { success: false, error: 'Published page version not found' },
-        { status: 404 }
-      );
-    }
+      const publishedVersion = await tx.query.publishedPageVersions.findFirst({
+        where: and(
+          eq(publishedPageVersions.userId, session.userId),
+          eq(publishedPageVersions.uid, uid),
+          eq(publishedPageVersions.version, version)
+        ),
+      });
 
-    await db
-      .update(publishedPages)
-      .set({
+      if (!publishedVersion) {
+        return {
+          status: 404,
+          body: { success: false, error: 'Published page version not found' },
+        };
+      }
+
+      await tx
+        .update(publishedPages)
+        .set({
+          title: publishedVersion.title,
+          icon: publishedVersion.icon,
+          description: publishedVersion.description,
+          html: publishedVersion.html,
+          currentVersion: publishedVersion.version,
+          updatedAt: sql`now()`,
+        })
+        .where(
+          and(
+            eq(publishedPages.userId, session.userId),
+            eq(publishedPages.uid, uid)
+          )
+        );
+
+      const latestRecord = await tx.query.publishedPageRecords.findFirst({
+        where: and(
+          eq(publishedPageRecords.userId, session.userId),
+          eq(publishedPageRecords.uid, uid)
+        ),
+        orderBy: [desc(publishedPageRecords.recordNumber)],
+      });
+
+      await tx.insert(publishedPageRecords).values({
+        publishedPageId: publishedPage.id,
+        uid,
+        userId: session.userId,
+        recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
+        version: publishedVersion.version,
+        action: 'rollback',
         title: publishedVersion.title,
         icon: publishedVersion.icon,
         description: publishedVersion.description,
-        html: publishedVersion.html,
-        currentVersion: publishedVersion.version,
-        updatedAt: sql`now()`,
-      })
-      .where(
-        and(
-          eq(publishedPages.userId, session.userId),
-          eq(publishedPages.uid, uid)
-        )
-      );
+      });
 
-    const latestRecord = await db.query.publishedPageRecords.findFirst({
-      where: and(
-        eq(publishedPageRecords.userId, session.userId),
-        eq(publishedPageRecords.uid, uid)
-      ),
-      orderBy: [desc(publishedPageRecords.recordNumber)],
+      return {
+        status: 200,
+        body: {
+          success: true,
+          page_uid: uid,
+          version: publishedVersion.version,
+          url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
+        },
+      };
     });
 
-    await db.insert(publishedPageRecords).values({
-      publishedPageId: publishedPage.id,
-      uid,
-      userId: session.userId,
-      recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
-      version: publishedVersion.version,
-      action: 'rollback',
-      title: publishedVersion.title,
-      icon: publishedVersion.icon,
-      description: publishedVersion.description,
-    });
-
-    return NextResponse.json({
-      success: true,
-      page_uid: uid,
-      version: publishedVersion.version,
-      url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
-    });
+    return NextResponse.json(result.body, { status: result.status });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json(

@@ -16,7 +16,7 @@ const { mockState } = vi.hoisted(() => {
     model?: string;
     mcpServers: string[];
     skills: string[];
-    approvalMode: "bypass" | "rules" | "ai";
+    permissionMode: "default" | "bypassPermissions" | "auto" | "acceptEdits" | "dontAsk" | "plan";
     createdAt: string;
     updatedAt: string;
   };
@@ -92,6 +92,11 @@ vi.mock("../../executors", () => {
   return {
     EXECUTOR_TYPES: MOCK_EXECUTOR_TYPES,
     isExecutorType: vi.fn((type: string) => MOCK_EXECUTOR_TYPES.includes(type)),
+    getExecutor: vi.fn((type: string) => ({
+      supports: (capability: string) =>
+        capability === "CHAT" && MOCK_CHAT_SUPPORTED_EXECUTORS.includes(type),
+    })),
+    getRegisteredTypes: vi.fn(() => MOCK_EXECUTOR_TYPES),
     executorSupportsChat: vi.fn((type: string) =>
       MOCK_CHAT_SUPPORTED_EXECUTORS.includes(type)
     ),
@@ -179,7 +184,7 @@ describe("agent chat command", () => {
           model: "claude-sonnet",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -200,7 +205,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -221,7 +226,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -253,7 +258,7 @@ describe("agent chat command", () => {
           executorType: undefined,
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -273,7 +278,7 @@ describe("agent chat command", () => {
           executorType: "AMP",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -295,7 +300,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -322,7 +327,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -348,7 +353,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -368,7 +373,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -378,7 +383,7 @@ describe("agent chat command", () => {
 
       expect(exitCode).toBe(0);
       const executeCall = (mockState.executeProxy as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(executeCall[0].session_id).toBe("my-session");
+      expect(executeCall[0].sessionId).toBe("my-session");
     });
 
     it("should pass resume with --resume option", async () => {
@@ -389,7 +394,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -413,7 +418,7 @@ describe("agent chat command", () => {
           model: "claude-sonnet",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -435,7 +440,7 @@ describe("agent chat command", () => {
           model: "claude-sonnet",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -458,7 +463,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -478,7 +483,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -500,7 +505,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -529,7 +534,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -551,7 +556,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -574,7 +579,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -597,7 +602,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -620,7 +625,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -640,7 +645,7 @@ describe("agent chat command", () => {
           executorType: "CLAUDE_CODE",
           mcpServers: [],
           skills: [],
-          approvalMode: "rules",
+          permissionMode: "default",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },

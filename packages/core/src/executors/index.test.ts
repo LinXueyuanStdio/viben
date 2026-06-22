@@ -716,8 +716,8 @@ describe("Executor Configuration", () => {
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
-    it("should accept approvalMode config", () => {
-      const executor = getExecutor("CLAUDE_CODE", { approvalMode: "bypass" });
+    it("should accept permissionMode config", () => {
+      const executor = getExecutor("CLAUDE_CODE", { permissionMode: "bypassPermissions" });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 

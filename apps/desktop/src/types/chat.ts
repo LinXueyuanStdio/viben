@@ -2,6 +2,8 @@
  * Chat and Agent types for workspace chat integration
  */
 
+import type { PermissionMode } from "@/lib/gateway/types/agent";
+
 /** Message attachment (image or file) */
 export interface MessageAttachment {
   id: string;
@@ -191,7 +193,7 @@ export interface WsClientMessage {
     executorType?: string;
     mcpServers?: string[];
     skills?: string[];
-    approval_mode?: "bypass" | "rules" | "ai";
+    permission_mode?: PermissionMode;
   };
   // For "answer" - respond to AskUserQuestion
   questionId?: string;

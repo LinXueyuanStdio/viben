@@ -8,6 +8,7 @@
 
 import type { Executor, ExecutorType } from "./index";
 import type { AgentInfo, ExecutorInfo } from "@/lib/gateway";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 
 // Legacy Agent type for backwards compatibility
 export type Agent = AgentInfo;
@@ -77,8 +78,8 @@ export interface UnifiedAgent {
   mcpServers?: string[];
   /** 技能列表 */
   skills?: string[];
-  /** 审批模式 */
-  approvalMode?: "bypass" | "rules" | "ai";
+  /** 权限模式 */
+  permissionMode?: PermissionMode;
   /** 创建时间 */
   createdAt?: string;
   /** 更新时间 */
@@ -156,7 +157,7 @@ export function vibenAgentToUnified(agent: AgentInfo): UnifiedAgent {
     maxTokens: agent.max_tokens,
     mcpServers: agent.mcp_servers,
     skills: agent.skills,
-    approvalMode: agent.approval_mode,
+    permissionMode: agent.permission_mode,
     createdAt: agent.created_at,
     updatedAt: agent.updated_at,
     rawVibenAgent: agent,

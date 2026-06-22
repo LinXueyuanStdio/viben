@@ -185,8 +185,8 @@ export interface Agent {
   mcpServers: (string | AgentMcpServerEntry)[];
   /** List of skill IDs this agent can use */
   skills: string[];
-  /** Approval mode: bypass (skip all), rules (rule-based), ai (AI-evaluated) */
-  approvalMode: "bypass" | "rules" | "ai";
+  /** Permission mode for backend/tool permission handling */
+  permissionMode: AcpPermissionMode;
   /** Whether this agent is a template */
   isTemplate?: boolean;
   /** Template description (shown in template picker) */
@@ -215,7 +215,7 @@ export interface AgentConfig {
   executorConfig?: Record<string, unknown>;
   mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  approvalMode?: "bypass" | "rules" | "ai";
+  permissionMode?: AcpPermissionMode;
   isTemplate?: boolean;
   templateDescription?: string;
   templateTags?: string[];
@@ -263,7 +263,7 @@ export interface CreateAgentOptions {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: AcpPermissionMode;
   from_template?: string;
   /** Custom base path for storing the agent (e.g., workspace path) */
   base_path?: string;
@@ -286,8 +286,16 @@ export interface AgentUpdate {
   executorConfig?: Record<string, unknown>;
   mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  approvalMode?: "bypass" | "rules" | "ai";
+  permissionMode?: AcpPermissionMode;
 }
+
+export type AcpPermissionMode =
+  | "default"
+  | "bypassPermissions"
+  | "auto"
+  | "acceptEdits"
+  | "dontAsk"
+  | "plan";
 
 // ============================================================================
 // Provider Types

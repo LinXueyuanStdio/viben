@@ -59,6 +59,7 @@ import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient } from "@/lib/gateway";
 import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
 import { normalizeAgentMcpEntry } from "@/lib/gateway/types/agent";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 import type { TraceSpanNode, TraceTree } from "@/components/observability";
 import type { AgentMessage } from "@/types";
 import { toast } from "@/hooks/use-toast";
@@ -167,7 +168,7 @@ export function AgentDetailPage() {
   const [formModel, setFormModel] = useState("");
   const [formExecutorType, setFormExecutorType] = useState<ExecutorType>("CLAUDE_CODE");
   const [formExecutorConfig, setFormExecutorConfig] = useState<Record<string, unknown>>({});
-  const [formApprovalMode, setFormApprovalMode] = useState<"bypass" | "rules" | "ai">("rules");
+  const [formPermissionMode, setFormPermissionMode] = useState<PermissionMode>("default");
 
   // Template settings
   const [formIsTemplate, setFormIsTemplate] = useState(false);
@@ -268,7 +269,7 @@ export function AgentDetailPage() {
       setFormModel(agent.model || "");
       setFormExecutorType((agent.executor_type as ExecutorType) || "CLAUDE_CODE");
       setFormExecutorConfig(agent.executor_config ?? {});
-      setFormApprovalMode(agent.approval_mode ?? "rules");
+      setFormPermissionMode(agent.permission_mode ?? "default");
       setSelectedMcpServers((agent.mcp_servers || []).map(normalizeAgentMcpEntry));
       setSelectedSkills(agent.skills || []);
       setFormIsTemplate(agent.is_template ?? false);
@@ -303,7 +304,7 @@ export function AgentDetailPage() {
         formModel !== (agent.model || "") ||
         formExecutorType !== (agent.executor_type || "CLAUDE_CODE") ||
         JSON.stringify(formExecutorConfig) !== JSON.stringify(agent.executor_config ?? {}) ||
-        formApprovalMode !== (agent.approval_mode ?? "rules") ||
+        formPermissionMode !== (agent.permission_mode ?? "default") ||
         JSON.stringify(selectedMcpServers) !== JSON.stringify((agent.mcp_servers || []).map(normalizeAgentMcpEntry)) ||
         !arraysEqual(selectedSkills, agent.skills || []) ||
         formIsTemplate !== (agent.is_template ?? false) ||
@@ -329,7 +330,7 @@ export function AgentDetailPage() {
     formModel,
     formExecutorType,
     formExecutorConfig,
-    formApprovalMode,
+    formPermissionMode,
     selectedMcpServers,
     selectedSkills,
     formIsTemplate,
@@ -370,7 +371,7 @@ export function AgentDetailPage() {
         temperature: formTemperature,
         executor_type: formExecutorType,
         executor_config: Object.keys(formExecutorConfig).length > 0 ? formExecutorConfig : undefined,
-        approval_mode: formApprovalMode,
+        permission_mode: formPermissionMode,
         mcp_servers: selectedMcpServers,
         skills: selectedSkills,
         is_template: formIsTemplate,
@@ -408,7 +409,7 @@ export function AgentDetailPage() {
         name: formName,
         temperature: formTemperature,
         executor_type: formExecutorType,
-        approval_mode: formApprovalMode,
+        permission_mode: formPermissionMode,
         mcp_servers: selectedMcpServers,
         skills: selectedSkills,
         is_template: formIsTemplate,
@@ -447,7 +448,7 @@ export function AgentDetailPage() {
     formModel,
     formExecutorType,
     formExecutorConfig,
-    formApprovalMode,
+    formPermissionMode,
     selectedMcpServers,
     selectedSkills,
     formIsTemplate,
@@ -555,7 +556,7 @@ export function AgentDetailPage() {
       append_prompt: formAppendPrompt || undefined,
       executor_type: formExecutorType,
       executor_config: Object.keys(formExecutorConfig).length > 0 ? formExecutorConfig : undefined,
-      approval_mode: formApprovalMode,
+      permission_mode: formPermissionMode,
       mcp_servers: selectedMcpServers.length > 0 ? selectedMcpServers : undefined,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
     },
@@ -1001,7 +1002,7 @@ export function AgentDetailPage() {
             model={formModel}
             temperature={formTemperature}
             executorType={formExecutorType}
-            approvalMode={formApprovalMode}
+            permissionMode={formPermissionMode}
             models={modelOptions}
             executors={executorOptions}
             selectedMcpServers={selectedMcpServers}
@@ -1015,7 +1016,7 @@ export function AgentDetailPage() {
             onModelChange={setFormModel}
             onTemperatureChange={setFormTemperature}
             onExecutorTypeChange={setFormExecutorType}
-            onApprovalModeChange={setFormApprovalMode}
+            onPermissionModeChange={setFormPermissionMode}
             onCheckAvailability={checkAvailability}
             availability={availability}
             checkingAvailability={checkingAvailability}

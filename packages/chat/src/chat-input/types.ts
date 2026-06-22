@@ -105,6 +105,8 @@ export interface ChatInputProps {
    * ArrowUp recalls the newest entry when the input is empty; ArrowUp/ArrowDown then navigate history.
    */
   inputHistoryItems?: string[];
+  /** Callback when ArrowLeft is pressed while the input is empty. */
+  onRecallSessionList?: () => void;
 
   // === Toolbar Slots ===
   /** Top toolbar content. Shown when showTopToolbar is true. */

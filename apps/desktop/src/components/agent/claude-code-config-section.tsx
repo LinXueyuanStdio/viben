@@ -22,8 +22,16 @@ import {
   CLAUDE_CODE_PROVIDER_ENV_KEYS,
   readEnvRecord,
 } from "./provider-model-selection";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 
-type ApprovalMode = "bypass" | "rules" | "ai";
+const CLAUDE_CODE_PERMISSION_MODES = [
+  { mode: "default", label: "默认" },
+  { mode: "bypassPermissions", label: "绕过权限" },
+  { mode: "auto", label: "自动" },
+  { mode: "acceptEdits", label: "接受编辑" },
+  { mode: "dontAsk", label: "不询问" },
+  { mode: "plan", label: "计划" },
+] as const satisfies ReadonlyArray<{ mode: PermissionMode; label: string }>;
 
 export interface ClaudeCodeConfigSectionProps {
   config?: Record<string, unknown>;
@@ -31,12 +39,12 @@ export interface ClaudeCodeConfigSectionProps {
   selectedProviderId: string;
   models: ModelOption[];
   selectedModel: string;
-  approvalMode: ApprovalMode;
+  permissionMode: PermissionMode;
   onProviderChange: (providerId: string) => void;
   onModelChange: (modelId: string) => void;
   onFamilyModelChange: (envName: string, modelId: string) => void;
   onEnvChange: (env: Record<string, string>) => void;
-  onApprovalModeChange: (mode: ApprovalMode) => void;
+  onPermissionModeChange: (mode: PermissionMode) => void;
 }
 
 const MODEL_ENV_FIELDS = [
@@ -61,12 +69,12 @@ export function ClaudeCodeConfigSection({
   selectedProviderId,
   models,
   selectedModel,
-  approvalMode,
+  permissionMode,
   onProviderChange,
   onModelChange,
   onFamilyModelChange,
   onEnvChange,
-  onApprovalModeChange,
+  onPermissionModeChange,
 }: ClaudeCodeConfigSectionProps) {
   const env = readEnvRecord(config.env);
   const [newEnvName, setNewEnvName] = useState("");
@@ -121,14 +129,10 @@ export function ClaudeCodeConfigSection({
       />
 
       <div className="space-y-1.5">
-        <Label className="text-sm font-normal">审批模式</Label>
+        <Label className="text-sm font-normal">权限模式</Label>
         <div className="flex h-8 rounded-md border border-border overflow-hidden">
-          {([
-            { mode: "bypass" as const, label: "绕过审批" },
-            { mode: "rules" as const, label: "规则审批" },
-            { mode: "ai" as const, label: "AI 审批" },
-          ]).map(({ mode, label }, idx) => {
-            const isActive = approvalMode === mode;
+          {CLAUDE_CODE_PERMISSION_MODES.map(({ mode, label }, idx) => {
+            const isActive = permissionMode === mode;
             return (
               <button
                 key={mode}
@@ -136,12 +140,12 @@ export function ClaudeCodeConfigSection({
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 text-xs transition-colors",
                   "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
-                  idx < 2 && "border-r border-border",
+                  idx < CLAUDE_CODE_PERMISSION_MODES.length - 1 && "border-r border-border",
                   isActive
                     ? "bg-accent text-accent-foreground font-medium"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-                onClick={() => onApprovalModeChange(mode)}
+                onClick={() => onPermissionModeChange(mode)}
               >
                 <span>{label}</span>
               </button>

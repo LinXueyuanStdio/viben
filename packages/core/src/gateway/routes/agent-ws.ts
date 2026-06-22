@@ -23,7 +23,7 @@ import { resetEventMapper } from "../../executors/engines/openclaw/event-mapper"
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
-import type { AgentMcpServerEntry } from "../../types";
+import type { AcpPermissionMode, AgentMcpServerEntry } from "../../types";
 import { logger as globalLogger } from "../../telemetry";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 
@@ -61,7 +61,7 @@ interface AgentConfigPayload {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: AcpPermissionMode;
 }
 
 /**
@@ -221,7 +221,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       executor_config: config.executor_config,
       mcp_servers: config.mcp_servers,
       skills: config.skills,
-      approval_mode: config.approval_mode,
+      permission_mode: config.permission_mode,
     };
   } catch (error) {
     log.error({ err: error, configPath }, "Failed to load agent config");
@@ -354,9 +354,9 @@ async function executeOpenClawAgent(session: WsSession, prompt: string, resume?:
       session.active_openclaw_client = client;
     }
 
-    // Determine approval mode for OpenClaw proxy
-    const approvalMode = agentConfig?.approval_mode === "bypass" ? "yolo" : "interactive";
-    const proxy = new OpenClawChatProxy(client, { approvalMode: approvalMode as "yolo" | "interactive" });
+    // Determine permission mode for OpenClaw proxy
+    const permissionMode = agentConfig?.permission_mode === "bypassPermissions" ? "yolo" : "interactive";
+    const proxy = new OpenClawChatProxy(client, { permissionMode: permissionMode as "yolo" | "interactive" });
     session.active_openclaw_proxy = proxy;
 
     // Stream via OpenClaw (pass resume for multi-turn session continuity)

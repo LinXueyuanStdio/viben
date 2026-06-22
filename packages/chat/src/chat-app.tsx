@@ -311,7 +311,8 @@ export function ChatApp({
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
   const [isWritingMode, setIsWritingMode] = React.useState(false);
   const [isScreenshotCapturing, setIsScreenshotCapturing] = React.useState(false);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const textareaRef = inputProps?.textareaRef ?? internalTextareaRef;
 
   // Resizable panel for expanded mode
   const {

@@ -51,11 +51,8 @@ export function buildAcpAgentConfig(params: {
     temperature: agent?.temperature,
     max_tokens: agent?.max_tokens,
     executor_config: executorConfig,
-    approval_mode: agent?.approval_mode,
     dangerously_skip_permissions: executorBoolean(executorConfig, "dangerously_skip_permissions"),
-    permission_mode: agent?.approval_mode === "bypass"
-      ? "bypass"
-      : executorString(executorConfig, "permission_mode") ?? "default",
+    permission_mode: agent?.permission_mode ?? executorString(executorConfig, "permission_mode") ?? "default",
     mcp_servers: mergeAgentMcpServers(agent?.mcp_servers),
     skills: agent?.skills,
   };

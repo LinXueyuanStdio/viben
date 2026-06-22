@@ -348,6 +348,36 @@ describe("AcpSessionManager", () => {
     }
   });
 
+  it("summarizes agent metadata and initial prompt for session lists", async () => {
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(adapter);
+    const connection = createConnection();
+
+    const session = await manager.createSession(
+      {
+        cwd: "/tmp",
+        mcpServers: [],
+        agent_config: {
+          name: "Desktop Agent",
+          executor_type: "CODEX",
+        },
+      },
+      connection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "inspect the workspace" }],
+    });
+
+    expect(manager.listSessions()[0]).toMatchObject({
+      id: session.sessionId,
+      status: "finished",
+      agentName: "Desktop Agent",
+      agentExecutorType: "CODEX",
+      initialPrompt: "inspect the workspace",
+    });
+  });
+
   it("stores steer prompts in input history when ACP steer prompt is received", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-steer-input-history-test-"));
     try {

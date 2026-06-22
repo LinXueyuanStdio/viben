@@ -226,6 +226,46 @@ describe("ChatInput layout", () => {
     expect(input).toHaveValue("");
   });
 
+  test("expanded input requests session list from empty input with ArrowLeft", async () => {
+    const { ChatInput } = await import("../index");
+    const onRecallSessionList = vi.fn();
+
+    render(
+      <ChatInput
+        defaultValue=""
+        onSend={() => {}}
+        onRecallSessionList={onRecallSessionList}
+        layoutVariant="expanded"
+      />
+    );
+
+    const textbox = screen.getByRole("textbox");
+
+    fireEvent.keyDown(textbox, { key: "ArrowLeft", code: "ArrowLeft" });
+
+    expect(onRecallSessionList).toHaveBeenCalledTimes(1);
+  });
+
+  test("compact input does not request session list when ArrowLeft is pressed with text", async () => {
+    const { ChatInput } = await import("../index");
+    const onRecallSessionList = vi.fn();
+
+    render(
+      <ChatInput
+        defaultValue="draft"
+        onSend={() => {}}
+        onRecallSessionList={onRecallSessionList}
+        layoutVariant="compact"
+      />
+    );
+
+    const input = screen.getByTestId("compact-chat-input-field");
+
+    fireEvent.keyDown(input, { key: "ArrowLeft", code: "ArrowLeft" });
+
+    expect(onRecallSessionList).not.toHaveBeenCalled();
+  });
+
   test("custom toolbar content can be provided directly as ReactNode", async () => {
     const { ChatInput } = await import("../index");
 

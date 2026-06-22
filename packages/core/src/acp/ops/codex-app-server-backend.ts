@@ -462,14 +462,12 @@ function codexApprovalPolicy(agentConfig: AgentConfigPayload | undefined): strin
   const config = asRecord(agentConfig?.executor_config);
   const explicit = readString(config.approval_policy);
   if (explicit) return explicit;
-  if (agentConfig?.dangerously_skip_permissions === true || agentConfig?.approval_mode === "bypass") {
+  if (agentConfig?.dangerously_skip_permissions === true) {
     return "never";
   }
   const permissionMode = agentConfig?.permission_mode;
   switch (permissionMode) {
-    case "bypass":
-    case "none":
-    case "never":
+    case "bypassPermissions":
       return "never";
     case "plan":
     case "default":

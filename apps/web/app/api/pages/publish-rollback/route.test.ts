@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   updateSet: vi.fn(),
   updateWhere: vi.fn(),
   insertValues: vi.fn(),
+  transaction: vi.fn(),
   execute: vi.fn(),
   requireAuth: vi.fn(),
 }));
@@ -45,6 +46,7 @@ vi.mock('@/lib/db', () => ({
     insert: vi.fn(() => ({
       values: mocks.insertValues,
     })),
+    transaction: mocks.transaction,
   },
   publishedPages: {
     uid: 'uid',
@@ -116,6 +118,26 @@ describe('POST /api/pages/publish-rollback', () => {
     mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
     mocks.updateWhere.mockResolvedValue(undefined);
     mocks.insertValues.mockResolvedValue(undefined);
+    mocks.transaction.mockImplementation(async (callback) => callback({
+      query: {
+        publishedPages: {
+          findFirst: mocks.findPublishedPage,
+        },
+        publishedPageVersions: {
+          findFirst: mocks.findVersion,
+        },
+        publishedPageRecords: {
+          findFirst: mocks.findLatestRecord,
+        },
+      },
+      update: vi.fn(() => ({
+        set: mocks.updateSet,
+      })),
+      insert: vi.fn(() => ({
+        values: mocks.insertValues,
+      })),
+      execute: mocks.execute,
+    }));
     mocks.execute.mockResolvedValue(undefined);
   });
 
@@ -148,6 +170,7 @@ describe('POST /api/pages/publish-rollback', () => {
       icon: null,
       description: 'Updated',
     });
+    expect(mocks.transaction).toHaveBeenCalledTimes(1);
   });
 
   it('rejects rollback when the selected version is already current', async () => {

@@ -7,7 +7,18 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
-import { cn, Badge, Button, Popover, PopoverContent, PopoverTrigger } from "@viben/ui";
+import {
+  cn,
+  Badge,
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@viben/ui";
 import type { SelectorOption, TripleSelectorProps } from "./types";
 
 function OptionItem({
@@ -21,26 +32,43 @@ function OptionItem({
   onClick: () => void;
   showArrow?: boolean;
 }) {
+  const accessibilityLabel = [
+    option.label,
+    option.description,
+    option.badge,
+  ].filter(Boolean).join(" ");
+
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className={cn(
-        "w-full justify-start gap-1.5 h-7 px-2",
-        option.disabled && "opacity-50",
-        isSelected && "bg-primary/10"
-      )}
-      onClick={onClick}
-      disabled={option.disabled}
-    >
-      {isSelected ? (
-        <Check className="h-3 w-3 shrink-0 text-primary" />
-      ) : (
-        <span className="h-3 w-3 shrink-0" />
-      )}
-      <span className="flex-1 min-w-0 truncate text-left text-xs">{option.label}</span>
-      {showArrow && <ChevronRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
-    </Button>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={accessibilityLabel}
+            title={accessibilityLabel}
+            className={cn(
+              "w-full justify-start gap-1.5 h-7 px-2",
+              option.disabled && "opacity-50",
+              isSelected && "bg-primary/10"
+            )}
+            onClick={onClick}
+            disabled={option.disabled}
+          >
+            {isSelected ? (
+              <Check className="h-3 w-3 shrink-0 text-primary" />
+            ) : (
+              <span className="h-3 w-3 shrink-0" />
+            )}
+            <span className="flex-1 min-w-0 truncate text-left text-xs">{option.label}</span>
+            {showArrow && <ChevronRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right" align="center" className="max-w-80 break-words">
+          {accessibilityLabel}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

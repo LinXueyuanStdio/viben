@@ -21,7 +21,7 @@ import type { SSEMessage, SSEExecApprovalMessage } from "../../ops/types";
 import { OpenClawEventMapper } from "./event-mapper";
 
 export interface OpenClawChatProxyOptions {
-  approvalMode?: "yolo" | "interactive";
+  permissionMode?: "yolo" | "interactive";
 }
 
 export interface OpenClawChatOptions {
@@ -40,7 +40,7 @@ export interface OpenClawChatOptions {
  */
 export class OpenClawChatProxy {
   private client: OpenClawClient;
-  private approvalMode: "yolo" | "interactive";
+  private permissionMode: "yolo" | "interactive";
   private pendingApprovalResolver: ((decision: string) => void) | null = null;
   private currentSessionKey: string | null = null;
   private aborted = false;
@@ -48,7 +48,7 @@ export class OpenClawChatProxy {
 
   constructor(client: OpenClawClient, options?: OpenClawChatProxyOptions) {
     this.client = client;
-    this.approvalMode = options?.approvalMode ?? "yolo";
+    this.permissionMode = options?.permissionMode ?? "yolo";
   }
 
   /**
@@ -126,7 +126,7 @@ export class OpenClawChatProxy {
       if (mapper.isExecApprovalRequest(frame)) {
         const approvalId = mapper.getApprovalRequestId(frame);
         if (approvalId) {
-          if (this.approvalMode === "interactive") {
+          if (this.permissionMode === "interactive") {
             // Emit tool_use for visibility
             const result = mapper.mapEvent(frame);
             if (result !== null) {

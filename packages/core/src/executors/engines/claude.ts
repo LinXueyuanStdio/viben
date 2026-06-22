@@ -5,7 +5,7 @@
  */
 
 import { spawn } from "node:child_process";
-import type { AvailabilityInfo } from "../../types";
+import type { AcpPermissionMode, AvailabilityInfo } from "../../types";
 import type {
   ExecutorCapability,
   ExecutorConfig,
@@ -22,8 +22,8 @@ import { BaseExecutor } from "./base";
  * Claude Code specific configuration
  */
 export interface ClaudeExecutorConfig extends ExecutorConfig {
-  /** Approval mode: bypass (skip all), rules (rule-based), ai (AI-evaluated) */
-  approvalMode?: "bypass" | "rules" | "ai";
+  /** Permission mode for Claude tool handling */
+  permissionMode?: AcpPermissionMode;
 }
 
 export class ClaudeExecutor extends BaseExecutor {
@@ -179,13 +179,13 @@ export class ClaudeExecutor extends BaseExecutor {
       args.push("--dangerously-skip-permissions");
     }
 
-    if (this.config.approvalMode === "bypass") {
+    if (this.config.permissionMode === "bypassPermissions") {
       args.push("--dangerously-skip-permissions");
-    } else if (this.config.approvalMode === "ai") {
+    } else if (this.config.permissionMode === "auto") {
       args.push("--permission-prompt-tool", "stdio");
       args.push("--permission-mode", "auto");
     }
-    // "rules" mode: no extra flags needed, uses default permission behavior
+    // "default" mode: no extra flags needed, uses default permission behavior
 
     if (jsonOutput) {
       args.push(

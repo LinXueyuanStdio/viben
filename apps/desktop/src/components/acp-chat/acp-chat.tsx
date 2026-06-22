@@ -39,14 +39,12 @@ import {
   ChatAppFullscreenPanel,
   ChatInputBottomToolbar,
   ChatInputTopToolbar,
-  ContextApprovalButton,
   ExpandedHeaderModeControls,
   TodoListPanel,
   TripleSelector,
 } from "@viben/chat";
 import type {
   AgentMessage,
-  ApprovalMode,
   Artifact,
   BackgroundTaskItem,
   BackgroundTasksSummary,
@@ -63,8 +61,11 @@ import type {
   TripleSelectorValue,
   DisplayLabelFormatParams,
 } from "@viben/chat";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 import { PetSprite } from "@viben/pet";
 import {
+  Badge,
+  Button,
   cn,
   Dialog,
   DialogContent,
@@ -77,6 +78,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  ScrollArea,
 } from "@viben/ui";
 import { usePet } from "@/hooks";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
@@ -95,6 +97,7 @@ import { ChatDragProvider } from "@/contexts/chat-drag-context";
 import type { SnapPosition } from "@/stores/chat-position-store";
 import { DraggableExpandedHeader } from "./draggable-expanded-header";
 import { ChatWindowControls } from "./chat-window-controls";
+import type { AcpSessionListItem } from "./use-acp-session";
 
 /** 浮动模式下的边距 */
 const FLOATING_MARGIN = 20;
@@ -190,46 +193,23 @@ async function openChatWindow() {
 
 interface AcpHeaderSessionMenuProps {
   title: string;
-  sessions: Array<{ id: string; title: string; subtitle?: string }>;
-  currentSessionId?: string;
-  onSelectSession: (id: string) => void;
+  onOpenSessionList: () => void;
 }
 
-function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSession }: AcpHeaderSessionMenuProps) {
+function AcpHeaderSessionMenu({ title, onOpenSessionList }: AcpHeaderSessionMenuProps) {
   const { t } = useTranslation();
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex h-8 max-w-44 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
-          data-no-drag
-        >
-          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">{title}</span>
-          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
-        {sessions.length === 0 ? (
-          <div className="px-2 py-4 text-center text-xs text-muted-foreground">{t("chat.noSessionsInPanel")}</div>
-        ) : (
-          sessions.map((session) => (
-            <DropdownMenuItem
-              key={session.id}
-              className={cn(
-                "flex flex-col items-start gap-0.5 py-2 cursor-pointer",
-                currentSessionId === session.id && "bg-accent"
-              )}
-              onClick={() => onSelectSession(session.id)}
-            >
-              <span className="truncate text-sm font-medium">{session.title}</span>
-              <span className="truncate text-[11px] text-muted-foreground">{session.subtitle ?? session.id}</span>
-            </DropdownMenuItem>
-          ))
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <button
+      type="button"
+      className="flex h-8 max-w-44 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+      data-no-drag
+      aria-label={t("chat.acp.openSessionList", "Open session list")}
+      onClick={onOpenSessionList}
+    >
+      <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate">{title}</span>
+      <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+    </button>
   );
 }
 
@@ -496,6 +476,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     error,
     activeSessionId,
     sessions,
+    acpSessionList,
     messages,
     streamingText,
     messageUpdates,
@@ -520,7 +501,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     // Actions
     connect,
     createSession,
-    selectSession,
+    loadSession,
+    refreshSessionList,
     sendPrompt,
     sendSteerPrompt,
     interrupt,
@@ -552,6 +534,62 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   const sessionId = activeSessionId;
   const activeTitle = sessions.find((session) => session.id === sessionId)?.title ?? "ACP Chat";
+  const [isSessionDrawerOpen, setIsSessionDrawerOpen] = useState(false);
+  const [isSessionDrawerMounted, setIsSessionDrawerMounted] = useState(false);
+  const [selectedSessionListIndex, setSelectedSessionListIndex] = useState(0);
+
+  const openSessionDrawer = useCallback(() => {
+    setIsSessionDrawerMounted(true);
+    window.requestAnimationFrame(() => setIsSessionDrawerOpen(true));
+    void refreshSessionList().then((items) => {
+      setSelectedSessionListIndex((current) => {
+        if (items.length === 0) return 0;
+        const activeIndex = sessionId ? items.findIndex((item) => item.sessionId === sessionId) : -1;
+        if (activeIndex >= 0) return activeIndex;
+        return Math.min(current, items.length - 1);
+      });
+    });
+  }, [refreshSessionList, sessionId]);
+
+  const closeSessionDrawer = useCallback(() => {
+    setIsSessionDrawerOpen(false);
+  }, []);
+
+  const closeSessionDrawerAndFocusInput = useCallback(() => {
+    setIsSessionDrawerOpen(false);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+
+  const handleSessionListAttach = useCallback(async (targetSessionId: string) => {
+    closeSessionDrawer();
+    await loadSession(targetSessionId);
+  }, [closeSessionDrawer, loadSession]);
+
+  useEffect(() => {
+    if (!isSessionDrawerOpen) return;
+    setSelectedSessionListIndex((current) => {
+      if (acpSessionList.length === 0) return 0;
+      return Math.min(current, acpSessionList.length - 1);
+    });
+  }, [acpSessionList.length, isSessionDrawerOpen]);
+
+  useEffect(() => {
+    if (isSessionDrawerOpen || !isSessionDrawerMounted) return;
+    const timer = window.setTimeout(() => setIsSessionDrawerMounted(false), 240);
+    return () => window.clearTimeout(timer);
+  }, [isSessionDrawerMounted, isSessionDrawerOpen]);
+
+  const sessionDrawer = isSessionDrawerMounted ? (
+    <AcpSessionListDrawer
+      open={isSessionDrawerOpen}
+      sessions={acpSessionList}
+      activeSessionId={sessionId}
+      selectedIndex={selectedSessionListIndex}
+      onSelectedIndexChange={setSelectedSessionListIndex}
+      onAttach={handleSessionListAttach}
+      onClose={closeSessionDrawerAndFocusInput}
+    />
+  ) : null;
 
   // Attachments state
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
@@ -560,8 +598,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const [worktree, setWorktree] = useState(false);
   const [backgroundTask, setBackgroundTask] = useState(false);
 
-  // Context Approval state
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("rules");
+  // Context permission state
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("default");
   const [isContextPopupOpen, setIsContextPopupOpen] = useState(false);
   const [isContextPopupPinned, setIsContextPopupPinned] = useState(false);
   const contextPopupHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1051,8 +1089,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
                 used={latestUsage.used}
                 size={latestUsage.size}
                 cost={latestUsage.cost}
-                approvalMode={approvalMode}
-                onApprovalModeChange={setApprovalMode}
+                permissionMode={permissionMode}
+                onPermissionModeChange={setPermissionMode}
                 sandbox={sandboxConfig.enabled}
                 onSandboxChange={setSandboxEnabled}
                 worktree={worktree}
@@ -1064,13 +1102,18 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
             </div>
           )}
           {sessionId ? (
-            <ContextApprovalButton
-              breakdown={contextBreakdown}
-              approvalMode={approvalMode}
-              onApprovalModeChange={setApprovalMode}
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2 text-xs transition-colors",
+                "hover:bg-muted/50",
+                "text-muted-foreground hover:text-foreground"
+              )}
               onClick={handleContextPopupClick}
-              externalPopup
-            />
+            >
+              <Settings2 className="h-4 w-4" />
+              <span>{Math.round(contextBreakdown.usedPercent)}%</span>
+            </button>
           ) : (
             <button
               type="button"
@@ -1090,7 +1133,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       </div>
     ),
     [
-      approvalMode,
+      permissionMode,
       backgroundTask,
       contextBreakdown,
       handleCompactContext,
@@ -1129,6 +1172,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       queuedInputRecallItems: steerQueueItems,
       onQueuedInputRecall: handleRecallQueue,
       inputHistoryItems,
+      onRecallSessionList: openSessionDrawer,
       isLoading: isTurnActive,
       allowSendWhileLoading: true,
       sendDisabled: !connected,
@@ -1167,6 +1211,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       handleSlashCommandSelect,
       interrupt,
       isTurnActive,
+      openSessionDrawer,
       slashCommands,
       steerQueueItems,
       topToolbar,
@@ -1200,7 +1245,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           // Windows/Linux: 左侧放菜单
           <>
             <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onCreateSessionWithAgent={createSession} agentOptions={agentOptions} workspaceName={workspaceName} />
-            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
+            <AcpHeaderSessionMenu title={activeTitle} onOpenSessionList={openSessionDrawer} />
           </>
         )
       }
@@ -1210,7 +1255,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           // macOS: 右侧放菜单
           <>
             <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onCreateSessionWithAgent={createSession} agentOptions={agentOptions} workspaceName={workspaceName} />
-            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
+            <AcpHeaderSessionMenu title={activeTitle} onOpenSessionList={openSessionDrawer} />
           </>
         ) : (
           // Windows/Linux: 右侧放窗口控件
@@ -1225,7 +1270,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     <DraggableExpandedHeader
       leftContent={
         <>
-          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
+          <AcpHeaderSessionMenu title={activeTitle} onOpenSessionList={openSessionDrawer} />
           <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onCreateSessionWithAgent={createSession} agentOptions={agentOptions} workspaceName={workspaceName} />
         </>
       }
@@ -1405,12 +1450,13 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   if (windowMode) {
     modeContent = (
       <ChatDragProvider value={dragContextValue}>
-        <div className={cn("flex h-full w-full flex-col overflow-hidden bg-background", className)}>
+        <div className={cn("relative flex h-full w-full flex-col overflow-visible bg-background", className)}>
           {displayError && (
             <div className="absolute left-4 right-4 top-14 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
               {displayError}
             </div>
           )}
+          {sessionDrawer}
           <ChatApp contained {...chatAppProps} />
         </div>
       </ChatDragProvider>
@@ -1429,7 +1475,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
             </div>
           )}
           <motion.div
-            className="pointer-events-auto"
+            className="pointer-events-auto relative overflow-visible"
             style={floatingStyle ?? { position: "absolute" }}
             animate={isDragging ? undefined : positionConfig}
             transition={isDragging ? { duration: 0 } : SNAP_SPRING}
@@ -1437,6 +1483,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
             data-dragging={isDragging}
             data-position={snapPosition}
           >
+            {sessionDrawer}
             <ChatApp contained {...chatAppProps} />
           </motion.div>
         </div>
@@ -1452,12 +1499,13 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       <ChatDragProvider value={dragContextValue}>
         <div
           className={cn(
-            "group/resize relative h-full min-h-[560px] bg-background",
-            enableFullResize ? "flex-shrink-0" : "overflow-hidden",
+            "group/resize relative h-full min-h-[560px] overflow-visible bg-background",
+            enableFullResize && "flex-shrink-0",
             className
           )}
           style={fullModeStyle}
         >
+          {sessionDrawer}
           <ChatApp contained={contained} {...fullModeProps} />
           {enableFullResize && (
             <div
@@ -1527,6 +1575,146 @@ function resolveOutputContentBlocks(output: AgentMessage["output"]): ContentBloc
   } catch {
     return null;
   }
+}
+
+interface AcpSessionListDrawerProps {
+  open: boolean;
+  sessions: AcpSessionListItem[];
+  activeSessionId: string | null;
+  selectedIndex: number;
+  onSelectedIndexChange: (index: number) => void;
+  onAttach: (sessionId: string) => void | Promise<void>;
+  onClose: () => void;
+}
+
+function AcpSessionListDrawer({
+  open,
+  sessions,
+  activeSessionId,
+  selectedIndex,
+  onSelectedIndexChange,
+  onAttach,
+  onClose,
+}: AcpSessionListDrawerProps) {
+  const { t } = useTranslation();
+  const selectedSession = sessions[selectedIndex];
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (sessions.length === 0) return;
+      onSelectedIndexChange(Math.max(0, selectedIndex - 1));
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (sessions.length === 0) return;
+      onSelectedIndexChange(Math.min(sessions.length - 1, selectedIndex + 1));
+      return;
+    }
+    if (event.key === "Enter" && selectedSession) {
+      event.preventDefault();
+      void onAttach(selectedSession.sessionId);
+    }
+  }, [onAttach, onClose, onSelectedIndexChange, selectedIndex, selectedSession, sessions.length]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[70] overflow-hidden" role="presentation">
+      <div
+        className={cn(
+          "absolute bottom-0 left-0 top-0 flex h-full w-[360px] max-w-[88vw] flex-col border-r border-border bg-background shadow-2xl transition-transform duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          open ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"
+        )}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+        ref={(node) => {
+          if (open) node?.focus();
+        }}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-foreground">
+              {t("chat.acp.sessionList", "Sessions")}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {t("chat.acp.sessionListCount", "{{count}} sessions", { count: sessions.length })}
+            </div>
+          </div>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+            {t("common.close", "Close")}
+          </Button>
+        </div>
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="space-y-1 p-2">
+            {sessions.length === 0 ? (
+              <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                {t("chat.acp.noSessions", "No sessions")}
+              </div>
+            ) : sessions.map((session, index) => {
+              const selected = index === selectedIndex;
+              const running = isRunningSession(session);
+              return (
+                <button
+                  key={session.sessionId}
+                  type="button"
+                  className={cn(
+                    "w-full rounded-md border px-3 py-2 text-left transition-colors",
+                    selected
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-transparent hover:border-border hover:bg-muted/60"
+                  )}
+                  onMouseEnter={() => onSelectedIndexChange(index)}
+                  onClick={() => { void onAttach(session.sessionId); }}
+                >
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <div className="min-w-0 truncate text-sm font-medium">
+                      {session.title || shortSessionId(session.sessionId)}
+                    </div>
+                    <Badge variant={running ? "default" : "secondary"} className="shrink-0 text-[10px]">
+                      {running ? t("chat.acp.running", "Running") : t("chat.acp.resume", "Resume")}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                    {session.sessionId}
+                  </div>
+                  <div className="mt-2 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                    <span className="truncate">{session.agent || session.agentExecutorType || t("chat.acp.unknownAgent", "Unknown agent")}</span>
+                    {activeSessionId === session.sessionId ? <span className="shrink-0 text-primary">{t("chat.acp.current", "Current")}</span> : null}
+                  </div>
+                  {session.initialPrompt ? (
+                    <div className="mt-2 line-clamp-2 text-xs leading-snug text-foreground/80">
+                      {session.initialPrompt}
+                    </div>
+                  ) : null}
+                  <div className="mt-2 text-[11px] text-muted-foreground">
+                    {running ? t("chat.acp.enterAttach", "Enter to attach") : t("chat.acp.enterResume", "Enter to resume")}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+function isRunningSession(session: AcpSessionListItem): boolean {
+  return Boolean(session.promptRunning) || session.status === "active" || session.status === "initializing";
+}
+
+function shortSessionId(id: string): string {
+  return id.length <= 12 ? id : `${id.slice(0, 8)}...${id.slice(-4)}`;
 }
 
 function toolOutputToJson(output: AgentMessage["output"]): string {

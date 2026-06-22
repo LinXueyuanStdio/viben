@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 
 export type { CallToolResult };
 
@@ -192,11 +193,10 @@ export interface AgentConfigPayload {
   provider_id?: string;
   model?: string;
   system_prompt?: string;
-  permission_mode?: string;
+  permission_mode?: PermissionMode;
   append_prompt?: string;
   temperature?: number;
   max_tokens?: number;
-  approval_mode?: "bypass" | "rules" | "ai";
   dangerously_skip_permissions?: boolean;
   mcp_servers?: unknown[];
   skills?: string[];
@@ -252,6 +252,27 @@ export interface ConsumedSteerPromptResult {
   promptId: string;
   status: string;
   consumedAt?: string;
+}
+
+export interface AcpListSessionItem {
+  sessionId: string;
+  cwd?: string;
+  title?: string;
+  status?: string;
+  agent?: string;
+  agent_name?: string;
+  agent_executor_type?: string;
+  agent_config_path?: string;
+  agent_dir?: string;
+  initial_prompt?: string;
+  prompt_running?: boolean;
+  queue_depth?: number;
+  updatedAt?: string;
+  updated_at?: string;
+}
+
+export interface AcpListSessionsResult {
+  sessions?: AcpListSessionItem[];
 }
 
 export interface InterruptSessionResult {
@@ -997,7 +1018,6 @@ function summarizeAgentConfig(config: AgentConfigPayload | undefined): Record<st
     executorType: config.executor_type,
     provider_id: config.provider_id,
     model: config.model,
-    approvalMode: config.approval_mode,
     permissionMode: config.permission_mode,
     dangerouslySkipPermissions: config.dangerously_skip_permissions,
     mcpServerCount: Array.isArray(config.mcp_servers) ? config.mcp_servers.length : 0,

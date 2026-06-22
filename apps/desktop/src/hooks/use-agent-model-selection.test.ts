@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveAgentProviderDefault } from "./use-agent-model-selection";
+import {
+  resolveAgentProviderDefault,
+  resolveEffectiveProviderId,
+  resolveEffectiveModelId,
+} from "./use-agent-model-selection";
 
 describe("resolveAgentProviderDefault", () => {
   it("waits for selected agent detail before falling back when list data has no provider", () => {
@@ -22,5 +26,27 @@ describe("resolveAgentProviderDefault", () => {
       preferredAgentProviderId: "deepseek-anthropic",
       filteredProviderIds: ["本地-claude", "deepseek-anthropic"],
     })).toBe("deepseek-anthropic");
+  });
+});
+
+describe("resolveEffectiveProviderId", () => {
+  it("uses the selected agent provider as the model list provider over stale store provider", () => {
+    expect(resolveEffectiveProviderId({
+      selectedAgentProviderId: "deepseek-anthropic",
+      selectedProviderId: "本地-claude",
+      providerIds: ["本地-claude", "deepseek-anthropic"],
+    })).toBe("deepseek-anthropic");
+  });
+});
+
+describe("resolveEffectiveModelId", () => {
+  it("uses a manually selected model over the selected agent default model", () => {
+    expect(resolveEffectiveModelId({
+      selectedAgentId: "deepseek-claudecode",
+      manualModelOverrideAgentId: "deepseek-claudecode",
+      selectedAgentModelId: "deepseek-v4-pro[1m]",
+      selectedModelId: "deepseek-custom",
+      modelIds: ["deepseek-v4-pro[1m]", "deepseek-custom"],
+    })).toBe("deepseek-custom");
   });
 });

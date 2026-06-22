@@ -21,7 +21,7 @@ import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
-import type { AgentMcpServerEntry } from "../../types";
+import type { AcpPermissionMode, AgentMcpServerEntry } from "../../types";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 
 // Module-level logger for agent-run (used by session logger)
@@ -120,7 +120,7 @@ export interface AgentConfigPayload {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: AcpPermissionMode;
 }
 
 /**
@@ -182,7 +182,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       executor_config: config.executor_config,
       mcp_servers: config.mcp_servers,
       skills: config.skills,
-      approval_mode: config.approval_mode,
+      permission_mode: config.permission_mode,
     };
   } catch (error) {
     moduleLog.error({ err: error, configPath }, "Failed to load agent config");
@@ -503,7 +503,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         executor_type: agentConfig.executor_type,
         mcp_servers: agentConfig.mcp_servers,
         skills: agentConfig.skills,
-        approval_mode: agentConfig.approval_mode,
+        permission_mode: agentConfig.permission_mode,
         // Don't log full system prompt, just indicate if present
         hasSystemPrompt: !!agentConfig.system_prompt,
         hasAppendPrompt: !!agentConfig.append_prompt,

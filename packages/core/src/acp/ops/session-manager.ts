@@ -102,6 +102,7 @@ interface AcpSession {
   prompt_queue: AcpPromptQueueItem[];
   pending_client_side_bridge_tool_calls: PendingClientSideBridgeToolCall[];
   sdk_session_id?: string;
+  initial_prompt?: string;
   last_error?: AcpErrorDetail;
   config_options?: AcpConfigOption[];
   agent_capabilities: AcpAgentCapabilities;
@@ -574,6 +575,7 @@ export class AcpSessionManager {
     if (!prompt.trim()) {
       throw new Error("Prompt is required");
     }
+    session.initial_prompt ??= prompt;
     await this.inputHistory.addEntry(createInputHistoryEntry(prompt, {
       source: "desktop_acp_chat",
       session_id: session.id,
@@ -954,7 +956,6 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       executor_config: config.executor_config,
       mcp_servers: config.mcp_servers,
       skills: config.skills,
-      approval_mode: config.approval_mode,
       dangerously_skip_permissions: config.dangerously_skip_permissions,
       permission_mode: config.permission_mode,
     };
@@ -1089,7 +1090,6 @@ function summarizeAgentConfig(config: AgentConfigPayload | undefined): Record<st
     executorType: config.executor_type,
     provider_id: config.provider_id,
     model: config.model,
-    approvalMode: config.approval_mode,
     permissionMode: config.permission_mode,
     dangerouslySkipPermissions: config.dangerously_skip_permissions,
     mcpServerCount: Array.isArray(config.mcp_servers) ? config.mcp_servers.length : 0,
@@ -1307,6 +1307,11 @@ function toSummary(session: AcpSession): AcpSessionSummary {
     queueDepth: session.prompt_queue.length,
     promptRunning: session.prompt_running,
     sdkSessionId: session.sdk_session_id,
+    agentName: session.agent_config?.name,
+    agentExecutorType: session.agent_config?.executor_type,
+    agentConfigPath: session.agent_config_path,
+    agentDir: session.agent_dir,
+    initialPrompt: session.initial_prompt,
     agentCapabilities: session.agent_capabilities,
     configOptions: session.config_options,
     lastError: session.last_error,

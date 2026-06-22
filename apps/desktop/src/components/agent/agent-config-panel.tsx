@@ -47,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { WorkspaceSkill } from "@/types";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 import { useModels } from "@/hooks/use-models";
 import { useProviders } from "@/hooks/use-providers";
 import {
@@ -97,13 +98,13 @@ export interface AgentConfigPanelProps {
   model: string;
   temperature: number;
   executorType: ExecutorType;
-  approvalMode: "bypass" | "rules" | "ai";
+  permissionMode: PermissionMode;
   models: ModelOption[];
   executors: ExecutorOption[];
   onModelChange: (value: string) => void;
   onTemperatureChange: (value: number) => void;
   onExecutorTypeChange: (value: ExecutorType) => void;
-  onApprovalModeChange: (mode: "bypass" | "rules" | "ai") => void;
+  onPermissionModeChange: (mode: PermissionMode) => void;
   onCheckAvailability: () => void;
   availability: AvailabilityInfo | null;
   checkingAvailability?: boolean;
@@ -164,13 +165,13 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       model,
       temperature,
       executorType,
-      approvalMode,
+      permissionMode,
       models,
       executors,
       onModelChange,
       onTemperatureChange,
       onExecutorTypeChange,
-      onApprovalModeChange,
+      onPermissionModeChange,
       onCheckAvailability,
       availability,
       checkingAvailability,
@@ -668,12 +669,12 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   selectedProviderId={selectedClaudeProviderKey}
                   models={claudeModelOptions}
                   selectedModel={selectedClaudeModel}
-                  approvalMode={approvalMode}
+                  permissionMode={permissionMode}
                   onProviderChange={handleClaudeProviderChange}
                   onModelChange={handleClaudeModelChange}
                   onFamilyModelChange={handleClaudeFamilyModelChange}
                   onEnvChange={handleClaudeEnvChange}
-                  onApprovalModeChange={onApprovalModeChange}
+                  onPermissionModeChange={onPermissionModeChange}
                 />
               )}
 

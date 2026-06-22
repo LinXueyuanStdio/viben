@@ -6,6 +6,7 @@
 // Note: Using /shared subpath to avoid Node.js-only dependencies like undici
 export type { ExecutorType } from "@viben/core/shared";
 import type { ExecutorType } from "@viben/core/shared";
+import type { PermissionMode } from "@/lib/gateway/types/agent";
 
 // ============================================================================
 // Availability Info (matching Rust AvailabilityInfo)
@@ -50,8 +51,8 @@ export interface ClaudeCodeConfig {
   append_prompt?: string;
   /** Enable plan mode */
   plan?: boolean;
-  /** Approval mode */
-  approval_mode?: "bypass" | "rules" | "ai";
+  /** Permission mode */
+  permission_mode?: PermissionMode;
   /** Model to use (e.g., claude-3-opus-20240229) */
   model?: string;
   /** Skip permission checks (dangerous) */
@@ -193,7 +194,7 @@ export function getDefaultConfig(agentType: ExecutorType): ExecutorConfig {
         type: "CLAUDE_CODE",
         config: {
           plan: false,
-          approval_mode: "rules",
+          permission_mode: "default",
           dangerously_skip_permissions: false,
         },
       };

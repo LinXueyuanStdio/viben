@@ -7,6 +7,14 @@
 // Agent Create/Update Types
 // ============================================================================
 
+export type PermissionMode =
+  | "default"
+  | "bypassPermissions"
+  | "auto"
+  | "acceptEdits"
+  | "dontAsk"
+  | "plan";
+
 /** Options for creating an agent */
 export interface CreateAgentOptions {
   name: string;
@@ -22,7 +30,7 @@ export interface CreateAgentOptions {
   executor_config?: Record<string, unknown>;
   mcp_servers?: string[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: PermissionMode;
   from_template?: string;
   /** Workspace path for workspace-scoped agents */
   base_path?: string;
@@ -123,8 +131,8 @@ export interface AgentResponse {
   mcp_servers?: (string | AgentMcpEntry)[];
   /** Skills (may be omitted if empty due to skip_serializing_if) */
   skills?: string[];
-  /** Approval mode */
-  approval_mode?: "bypass" | "rules" | "ai";
+  /** Permission mode */
+  permission_mode?: PermissionMode;
   /** Whether this agent is marked as a template */
   is_template?: boolean;
   /** Template description for selection UI */
@@ -156,7 +164,7 @@ export interface UpdateAgentOptions {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpEntry)[];
   skills?: string[];
-  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: PermissionMode;
   /** Whether this agent is marked as a template */
   is_template?: boolean;
   /** Template description for selection UI */

@@ -473,7 +473,7 @@ export class ClientSocketServer {
       }
     }
 
-    // Clean up pending approvals related to this socket
+    // Clean up pending permission requests related to this socket
     for (const [requestId, pending] of this.pendingApprovals) {
       if (pending.originSocketId === socket.id) {
         // Originator disconnected - clean up, no one to notify

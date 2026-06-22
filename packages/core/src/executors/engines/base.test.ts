@@ -465,7 +465,7 @@ describe("executor/engines/base", () => {
       const fullConfig: ExecutorConfig = {
         model: "claude-3",
         appendPrompt: "Test prompt",
-        approvalMode: "bypass",
+        permissionMode: "bypassPermissions",
         dangerouslySkipPermissions: true,
         baseCommandOverride: "custom-cli",
         env: { CUSTOM_VAR: "value" },
@@ -475,7 +475,7 @@ describe("executor/engines/base", () => {
       const internal = configuredExecutor.getInternalConfig();
       expect(internal.model).toBe("claude-3");
       expect(internal.appendPrompt).toBe("Test prompt");
-      expect(internal.approvalMode).toBe("bypass");
+      expect(internal.permissionMode).toBe("bypassPermissions");
       expect(internal.dangerouslySkipPermissions).toBe(true);
       expect(internal.baseCommandOverride).toBe("custom-cli");
       expect(internal.env).toEqual({ CUSTOM_VAR: "value" });

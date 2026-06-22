@@ -62,79 +62,83 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
-    const latestVersion = await db.query.publishedPageVersions.findFirst({
-      where: and(
-        eq(publishedPageVersions.userId, session.userId),
-        eq(publishedPageVersions.uid, uid)
-      ),
-      orderBy: [desc(publishedPageVersions.version)],
-    });
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${session.userId}), hashtext(${uid}))`);
 
-    const nextVersion = (latestVersion?.version ?? 0) + 1;
+      const latestVersion = await tx.query.publishedPageVersions.findFirst({
+        where: and(
+          eq(publishedPageVersions.userId, session.userId),
+          eq(publishedPageVersions.uid, uid)
+        ),
+        orderBy: [desc(publishedPageVersions.version)],
+      });
 
-    await db
-      .insert(publishedPages)
-      .values({
-        uid,
-        userId: session.userId,
-        title,
-        icon: icon ?? null,
-        description: description ?? null,
-        html,
-        currentVersion: nextVersion,
-      })
-      .onConflictDoUpdate({
-        target: [publishedPages.userId, publishedPages.uid],
-        set: {
+      const nextVersion = (latestVersion?.version ?? 0) + 1;
+
+      await tx
+        .insert(publishedPages)
+        .values({
+          uid,
+          userId: session.userId,
           title,
           icon: icon ?? null,
           description: description ?? null,
           html,
           currentVersion: nextVersion,
-          updatedAt: sql`now()`,
-        },
+        })
+        .onConflictDoUpdate({
+          target: [publishedPages.userId, publishedPages.uid],
+          set: {
+            title,
+            icon: icon ?? null,
+            description: description ?? null,
+            html,
+            currentVersion: nextVersion,
+            updatedAt: sql`now()`,
+          },
+        });
+
+      const updatedPublishedPage = await tx.query.publishedPages.findFirst({
+        where: and(
+          eq(publishedPages.userId, session.userId),
+          eq(publishedPages.uid, uid)
+        ),
       });
 
-    const updatedPublishedPage = await db.query.publishedPages.findFirst({
-      where: and(
-        eq(publishedPages.userId, session.userId),
-        eq(publishedPages.uid, uid)
-      ),
-    });
+      if (!updatedPublishedPage) {
+        throw new Error('Published page was not found after upsert');
+      }
 
-    if (!updatedPublishedPage) {
-      throw new Error('Published page was not found after upsert');
-    }
+      await tx.insert(publishedPageVersions).values({
+        publishedPageId: updatedPublishedPage.id,
+        uid,
+        userId: session.userId,
+        version: nextVersion,
+        title,
+        icon: icon ?? null,
+        description: description ?? null,
+        html,
+      });
 
-    await db.insert(publishedPageVersions).values({
-      publishedPageId: updatedPublishedPage.id,
-      uid,
-      userId: session.userId,
-      version: nextVersion,
-      title,
-      icon: icon ?? null,
-      description: description ?? null,
-      html,
-    });
+      const latestRecord = await tx.query.publishedPageRecords.findFirst({
+        where: and(
+          eq(publishedPageRecords.userId, session.userId),
+          eq(publishedPageRecords.uid, uid)
+        ),
+        orderBy: [desc(publishedPageRecords.recordNumber)],
+      });
 
-    const latestRecord = await db.query.publishedPageRecords.findFirst({
-      where: and(
-        eq(publishedPageRecords.userId, session.userId),
-        eq(publishedPageRecords.uid, uid)
-      ),
-      orderBy: [desc(publishedPageRecords.recordNumber)],
-    });
-
-    await db.insert(publishedPageRecords).values({
-      publishedPageId: updatedPublishedPage.id,
-      uid,
-      userId: session.userId,
-      recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
-      version: nextVersion,
-      action: 'publish',
-      title,
-      icon: icon ?? null,
-      description: description ?? null,
+      await tx.insert(publishedPageRecords).values({
+        publishedPageId: updatedPublishedPage.id,
+        uid,
+        userId: session.userId,
+        recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
+        version: nextVersion,
+        action: 'publish',
+        title,
+        icon: icon ?? null,
+        description: description ?? null,
+      });
     });
 
     return NextResponse.json({

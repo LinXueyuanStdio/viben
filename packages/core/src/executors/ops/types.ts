@@ -4,7 +4,13 @@
  * Core type definitions for the unified executor module.
  */
 
-import type { ExecutorType, AvailabilityStatus, AvailabilityInfo, AgentMcpServerEntry } from "../../types";
+import type {
+  AcpPermissionMode,
+  ExecutorType,
+  AvailabilityStatus,
+  AvailabilityInfo,
+  AgentMcpServerEntry,
+} from "../../types";
 
 // Re-export for convenience
 export type { ExecutorType, AvailabilityStatus, AvailabilityInfo };
@@ -291,7 +297,7 @@ export interface RunCommandOptions {
 export interface ExecutorConfig {
   model?: string;
   appendPrompt?: string;
-  approvalMode?: "bypass" | "rules" | "ai";
+  permissionMode?: AcpPermissionMode;
   dangerouslySkipPermissions?: boolean;
   baseCommandOverride?: string;
   env?: Record<string, string>;

@@ -6,6 +6,7 @@
 import type { ExecutorType } from "@viben/core/shared";
 import type { AvailabilityInfo } from "./session";
 import type { ModelResponse } from "./model";
+import type { PermissionMode } from "./agent";
 
 // ============================================================================
 // Executor Types
@@ -159,8 +160,8 @@ export interface AgentInfo {
   mcp_servers?: string[];
   /** Skills (Viben agents only) */
   skills?: string[];
-  /** Approval mode (Viben agents only) */
-  approval_mode?: "bypass" | "rules" | "ai";
+  /** Permission mode (Viben agents only) */
+  permission_mode?: PermissionMode;
   /** Whether this agent is marked as a template (Viben agents only) */
   is_template?: boolean;
   /** Template description for selection UI (Viben agents only) */

@@ -112,7 +112,7 @@ async function createExecutionTestContext(): Promise<ExecutionTestContext> {
         updatedAt: config.updated_at || now,
         mcpServers: config.mcpServers || [],
         skills: config.skills || [],
-        approval_mode: config.approval_mode ?? "rules",
+        permission_mode: config.permission_mode ?? "default",
         ...config,
       };
 
@@ -826,7 +826,7 @@ describe("agent command execution", () => {
       const content = await ctx.tempDir.readFile(
         "agents/make-template/AGENTS.md"
       );
-      expect(content).toContain("isTemplate");
+      expect(content).toContain("is_template");
       expect(content).toContain("true");
     });
 
