@@ -287,30 +287,6 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
   const appliedAgentModelDefaultsRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!import.meta.env.DEV || selectedAgent?.id !== "deepseek-claudecode") return;
-    console.debug("[useAgentModelSelection] DeepSeek ClaudeCode selection", {
-      selectedAgentId,
-      detailLoaded: Boolean(currentSelectedAgentDetail),
-      selectedAgentProviderId,
-      selectedProviderId,
-      selectedAgentModelId,
-      model,
-      providerOptions: providerOptions.map((provider) => provider.id),
-      modelOptions: modelOptions.map((item) => item.id),
-    });
-  }, [
-    currentSelectedAgentDetail,
-    model,
-    modelOptions,
-    providerOptions,
-    selectedAgent?.id,
-    selectedAgentId,
-    selectedAgentModelId,
-    selectedAgentProviderId,
-    selectedProviderId,
-  ]);
-
-  useEffect(() => {
     if (!agentsLoading && allAgents.length > 0 && !selectedAgent) {
       const defaultAgent = workspaceAgents[0] ?? globalAgents[0];
       if (defaultAgent) {
