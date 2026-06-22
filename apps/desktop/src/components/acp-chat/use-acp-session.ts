@@ -153,6 +153,10 @@ export interface UseAcpSessionReturn {
   modelOptions: SelectorOption[];
   /** Currently selected provider ID */
   selectedProviderId: string | null;
+  /** Currently selected provider ID after validating against current agent/options */
+  effectiveSelectedProviderId: string | null;
+  /** Currently selected model ID after validating against current agent/options */
+  effectiveSelectedModel: string;
   /** Config loading state */
   configLoading: boolean;
   /** Config error */
@@ -388,7 +392,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const activeWorkspace = getActiveWorkspace();
   // 优先使用 props 传入的 defaultCwd，其次使用活动 workspace 的路径
   const resolvedDefaultCwd = defaultCwd ?? activeWorkspace?.path ?? "";
-  const workspacePath = activeWorkspace?.path;
+  const workspacePath = activeWorkspace?.path ?? (resolvedDefaultCwd || undefined);
 
   // ========== Global State from Store (survives mode switches) ==========
   const {
@@ -451,6 +455,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     agentOptions,
     providerOptions,
     modelOptions,
+    effectiveSelectedProviderId,
+    effectiveSelectedModel,
     agentSelectionReady,
     configLoading,
     configError,
@@ -1407,6 +1413,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     providerOptions,
     modelOptions,
     selectedProviderId,
+    effectiveSelectedProviderId,
+    effectiveSelectedModel,
     configLoading,
     configError,
     // Actions

@@ -24,6 +24,12 @@ import type {
   PublishPageResult,
   PublishedPageStatusParams,
   PublishedPageStatusResult,
+  PublishedPageHistoryParams,
+  PublishedPageHistoryResult,
+  PublishedPageVersionParams,
+  PublishedPageVersionResult,
+  PublishedPageRollbackParams,
+  PublishedPageRollbackResult,
   ListTemplatesResult,
 } from "../types/page";
 
@@ -54,6 +60,13 @@ export type {
   PublishPageResult,
   PublishedPageStatusParams,
   PublishedPageStatusResult,
+  PublishedPageHistoryParams,
+  PublishedPageHistoryResult,
+  PublishedPageHistoryRecord,
+  PublishedPageVersionParams,
+  PublishedPageVersionResult,
+  PublishedPageRollbackParams,
+  PublishedPageRollbackResult,
   PageTemplate,
   ListTemplatesResult,
 } from "../types/page";
@@ -352,6 +365,87 @@ export async function getPublishedPageStatus(
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to check published page status: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Load append-only publish records for a static page.
+ */
+export async function getPublishedPageHistory(
+  baseUrl: string,
+  params: PublishedPageHistoryParams
+): Promise<PublishedPageHistoryResult> {
+  const response = await fetch(`${baseUrl}/api/page/publish-history`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to load published page history: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Load one immutable cloud version snapshot.
+ */
+export async function getPublishedPageVersion(
+  baseUrl: string,
+  params: PublishedPageVersionParams
+): Promise<PublishedPageVersionResult> {
+  const response = await fetch(`${baseUrl}/api/page/publish-version`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to load published page version: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Roll back the current cloud page to an existing version.
+ */
+export async function rollbackPublishedPage(
+  baseUrl: string,
+  params: PublishedPageRollbackParams
+): Promise<PublishedPageRollbackResult> {
+  const response = await fetch(`${baseUrl}/api/page/publish-rollback`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to rollback published page: ${errorMessage}`,
       response.status
     );
   }

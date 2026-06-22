@@ -223,3 +223,58 @@ export interface PublishedPageStatusResult extends PageResult {
   published: boolean;
   url?: string | null;
 }
+
+export interface PublishedPageHistoryParams {
+  access_token: string;
+  uid: string;
+}
+
+export type PublishRecordAction = "publish" | "rollback";
+
+export interface PublishedPageHistoryRecord {
+  id: string;
+  record_number: number;
+  version: number;
+  action: PublishRecordAction;
+  title: string;
+  icon?: IconData | null;
+  description?: string | null;
+  created_at: string;
+  is_current: boolean;
+  url: string;
+}
+
+export interface PublishedPageHistoryResult extends PageResult {
+  page_uid?: string;
+  current_version?: number | null;
+  records: PublishedPageHistoryRecord[];
+}
+
+export interface PublishedPageVersionParams {
+  access_token: string;
+  uid: string;
+  version: number;
+}
+
+export interface PublishedPageVersionResult extends PageResult {
+  page_uid?: string;
+  version?: number;
+  title?: string;
+  icon?: IconData | null;
+  description?: string | null;
+  html?: string;
+  created_at?: string;
+  url?: string;
+}
+
+export interface PublishedPageRollbackParams {
+  access_token: string;
+  uid: string;
+  version: number;
+}
+
+export interface PublishedPageRollbackResult extends PageResult {
+  page_uid?: string;
+  version?: number;
+  url?: string;
+}

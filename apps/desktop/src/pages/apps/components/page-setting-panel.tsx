@@ -18,11 +18,13 @@ import {
   ExternalLink,
   FolderOpen,
   Globe,
+  History,
   Info,
   Link2,
   Mail,
   MessageCircle,
   Package,
+  RotateCcw,
   Search,
   Share2,
   Tags,
@@ -32,10 +34,15 @@ import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import {
   getPublishedPageStatus,
+  getPublishedPageHistory,
+  getPublishedPageVersion,
   publishPage,
   readFile,
+  rollbackPublishedPage,
   viewPage,
+  writeFile,
 } from "@/lib/gateway";
+import type { PublishedPageHistoryRecord } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +87,15 @@ function buildEmbedCode(url: string): string {
   return `<iframe src="${url}" width="100%" height="600" frameborder="0" allowfullscreen />`;
 }
 
+function formatPublishRecordTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
 interface PublishActionRowProps {
   icon: ComponentType<{ className?: string }>;
   label: string;
@@ -121,6 +137,11 @@ export function PageSettingPanel({
   const [showEmbedTitle, setShowEmbedTitle] = useState(true);
   const [seoTitle, setSeoTitle] = useState(pageName);
   const [seoDescription, setSeoDescription] = useState("");
+  const [publishHistory, setPublishHistory] = useState<PublishedPageHistoryRecord[]>([]);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isRollingBack, setIsRollingBack] = useState(false);
+  const [isApplyingVersion, setIsApplyingVersion] = useState(false);
   const accessToken = useAuthStore((state) => state.user?.accessToken);
   const userSlug = useAuthStore((state) => state.user?.userSlug);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -133,8 +154,37 @@ export function PageSettingPanel({
     ? toExternalPublishedPageUrl(publishedUrl)
     : null;
   const embedCode = externalPublishedUrl ? buildEmbedCode(externalPublishedUrl) : "";
+  const selectedRecord =
+    publishHistory.find((record) => record.id === selectedRecordId) ??
+    publishHistory[0] ??
+    null;
 
   const directoryPath = `pages/${pageUid}`;
+
+  const loadPublishHistory = async (sessionAccessToken: string) => {
+    setIsLoadingHistory(true);
+    try {
+      const result = await getPublishedPageHistory(getGatewayUrl(), {
+        access_token: sessionAccessToken,
+        uid: pageUid,
+      });
+
+      if (result.success) {
+        const records = result.records ?? [];
+        setPublishHistory(records);
+        setSelectedRecordId((current) => {
+          if (current && records.some((record) => record.id === current)) {
+            return current;
+          }
+          return records[0]?.id ?? null;
+        });
+      }
+    } catch (error) {
+      console.error("[PageSettingPanel] load publish history failed:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   useEffect(() => {
     if (pageType !== "static") {
@@ -172,10 +222,13 @@ export function PageSettingPanel({
 
         if (result.success && result.published && result.url) {
           publishActions.finishPublish(publishKey, result.url);
+          void loadPublishHistory(sessionAccessToken);
           return;
         }
 
         publishActions.clearPublish(publishKey);
+        setPublishHistory([]);
+        setSelectedRecordId(null);
       } catch (error) {
         if (!cancelled) {
           console.error("[PageSettingPanel] load publish status failed:", error);
@@ -273,6 +326,7 @@ export function PageSettingPanel({
       }
 
       publishActions.finishPublish(publishKey, result.url);
+      void loadPublishHistory(accessToken);
 
       toast.success(t("page.settings.publishSuccess", "Page published"), {
         description: result.url,
@@ -291,6 +345,79 @@ export function PageSettingPanel({
       await openUrl(externalPublishedUrl);
     } catch {
       window.open(externalPublishedUrl, "_blank");
+    }
+  };
+
+  const handleOpenSelectedVersion = async () => {
+    if (!selectedRecord) return;
+    const versionUrl = toExternalPublishedPageUrl(selectedRecord.url);
+    try {
+      await openUrl(versionUrl);
+    } catch {
+      window.open(versionUrl, "_blank");
+    }
+  };
+
+  const handleRollbackSelectedVersion = async () => {
+    if (!selectedRecord || selectedRecord.is_current || !accessToken) return;
+
+    setIsRollingBack(true);
+    try {
+      const result = await rollbackPublishedPage(getGatewayUrl(), {
+        access_token: accessToken,
+        uid: pageUid,
+        version: selectedRecord.version,
+      });
+
+      if (!result.success || !result.url) {
+        throw new Error(result.error ?? "Rollback failed");
+      }
+
+      publishActions.finishPublish(publishKey, result.url);
+      await loadPublishHistory(accessToken);
+      toast.success(t("page.settings.rollbackComplete", "Rollback complete"));
+    } catch (error) {
+      console.error("[PageSettingPanel] rollback failed:", error);
+      toast.error(t("page.settings.rollbackFailed", "Rollback failed"));
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
+
+  const handleApplySelectedVersionToLocalHtml = async () => {
+    if (!selectedRecord || !accessToken) return;
+
+    setIsApplyingVersion(true);
+    try {
+      const baseUrl = getGatewayUrl();
+      const [{ page }, versionResult] = await Promise.all([
+        viewPage(baseUrl, workspacePath, pageUid),
+        getPublishedPageVersion(baseUrl, {
+          access_token: accessToken,
+          uid: pageUid,
+          version: selectedRecord.version,
+        }),
+      ]);
+
+      if (!page || page.type !== "static") {
+        throw new Error(t("page.settings.publishStaticOnly", "Only static pages can be published"));
+      }
+
+      if (!versionResult.success || typeof versionResult.html !== "string") {
+        throw new Error(versionResult.error ?? "Version HTML missing");
+      }
+
+      await writeFile(
+        baseUrl,
+        `${workspacePath}/pages/${pageUid}/${page.file}`,
+        versionResult.html
+      );
+      toast.success(t("page.settings.localHtmlUpdated", "Local HTML updated"));
+    } catch (error) {
+      console.error("[PageSettingPanel] apply cloud version failed:", error);
+      toast.error(t("page.settings.localHtmlUpdateFailed", "Update failed"));
+    } finally {
+      setIsApplyingVersion(false);
     }
   };
 
@@ -609,6 +736,97 @@ export function PageSettingPanel({
                       trailing={null}
                     />
                   </div>
+                )}
+              </div>
+            )}
+
+            {publishedUrl && (
+              <div className="mb-4 rounded-md border border-border bg-muted/50 p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium text-foreground">
+                      {t("page.settings.publishHistory", "Publish history")}
+                    </h3>
+                  </div>
+                  {isLoadingHistory && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("page.settings.loadingHistory", "Loading...")}
+                    </span>
+                  )}
+                </div>
+
+                {publishHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="max-h-48 space-y-1 overflow-auto">
+                      {publishHistory.map((record) => {
+                        const selected = selectedRecord?.id === record.id;
+                        return (
+                          <button
+                            key={record.id}
+                            type="button"
+                            onClick={() => setSelectedRecordId(record.id)}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors",
+                              selected
+                                ? "bg-background text-foreground"
+                                : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                            )}
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-medium">
+                                Version {record.version}
+                              </span>
+                              <span className="block truncate text-xs">
+                                {record.action === "rollback" ? "Rollback" : "Publish"} · {formatPublishRecordTime(record.created_at)}
+                              </span>
+                            </span>
+                            {record.is_current && (
+                              <span className="shrink-0 rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+                                Current
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenSelectedVersion}
+                        disabled={!selectedRecord}
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open version
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRollbackSelectedVersion}
+                        disabled={!selectedRecord || selectedRecord.is_current || isRollingBack}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        {isRollingBack ? "Rolling back..." : "Rollback"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleApplySelectedVersionToLocalHtml}
+                        disabled={!selectedRecord || isApplyingVersion}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        {isApplyingVersion ? "Updating..." : "Use as local HTML"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {isLoadingHistory
+                      ? t("page.settings.historyLoadingDescription", "Loading publish history.")
+                      : t("page.settings.noPublishHistory", "No publish history yet.")}
+                  </p>
                 )}
               </div>
             )}

@@ -11,6 +11,10 @@ import { usePagePublishStore } from "@/stores/page-publish-store";
 const mocks = vi.hoisted(() => ({
   publishPage: vi.fn(),
   getPublishedPageStatus: vi.fn(),
+  getPublishedPageHistory: vi.fn(),
+  getPublishedPageVersion: vi.fn(),
+  rollbackPublishedPage: vi.fn(),
+  writeFile: vi.fn(),
   openUrl: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -69,6 +73,10 @@ vi.mock("@/lib/gateway", () => ({
   }),
   publishPage: mocks.publishPage,
   getPublishedPageStatus: mocks.getPublishedPageStatus,
+  getPublishedPageHistory: mocks.getPublishedPageHistory,
+  getPublishedPageVersion: mocks.getPublishedPageVersion,
+  rollbackPublishedPage: mocks.rollbackPublishedPage,
+  writeFile: mocks.writeFile,
 }));
 
 vi.mock("@/components/ui/button", () => ({
@@ -96,6 +104,55 @@ describe("PageSettingPanel", () => {
       success: true,
       published: false,
       url: null,
+    });
+    mocks.getPublishedPageHistory.mockResolvedValue({
+      success: true,
+      page_uid: "demo",
+      current_version: 2,
+      records: [
+        {
+          id: "record-2",
+          record_number: 2,
+          version: 2,
+          action: "publish",
+          title: "Demo v2",
+          icon: null,
+          description: "Updated",
+          created_at: "2026-06-22T07:00:00.000Z",
+          is_current: true,
+          url: "/page/alice/demo/versions/2",
+        },
+        {
+          id: "record-1",
+          record_number: 1,
+          version: 1,
+          action: "publish",
+          title: "Demo",
+          icon: null,
+          description: "Initial",
+          created_at: "2026-06-22T06:00:00.000Z",
+          is_current: false,
+          url: "/page/alice/demo/versions/1",
+        },
+      ],
+    });
+    mocks.getPublishedPageVersion.mockResolvedValue({
+      success: true,
+      page_uid: "demo",
+      version: 1,
+      title: "Demo",
+      html: "<html><body>v1</body></html>",
+      url: "/page/alice/demo/versions/1",
+    });
+    mocks.rollbackPublishedPage.mockResolvedValue({
+      success: true,
+      page_uid: "demo",
+      version: 1,
+      url: "/page/alice/demo",
+    });
+    mocks.writeFile.mockResolvedValue({
+      success: true,
+      file: { path: "/tmp/workspace/pages/demo/index.html", type: "file" },
     });
   });
 
@@ -140,6 +197,15 @@ describe("PageSettingPanel", () => {
     });
     expect(await screen.findByText("/page/alice/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
+    await waitFor(() => {
+      expect(mocks.getPublishedPageHistory).toHaveBeenCalledWith(
+        "http://127.0.0.1:18790",
+        {
+          access_token: "session-token",
+          uid: "demo",
+        }
+      );
+    });
   });
 
   it("does not show publish button for non-static pages", () => {
@@ -490,6 +556,106 @@ describe("PageSettingPanel", () => {
     });
     expect(screen.getByText("/page/alice/demo")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
+    await waitFor(() => {
+      expect(mocks.getPublishedPageHistory).toHaveBeenCalled();
+    });
+  });
+
+  it("shows publish history and opens the selected version URL", async () => {
+    mocks.getPublishedPageStatus.mockResolvedValue({
+      success: true,
+      published: true,
+      url: "/page/alice/demo",
+    });
+
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    expect(await screen.findByRole("button", { name: /Version 2/ })).toBeTruthy();
+    const versionOne = await screen.findByRole("button", { name: /Version 1/ });
+    fireEvent.click(versionOne);
+    fireEvent.click(screen.getByRole("button", { name: /Open version/i }));
+
+    await waitFor(() => {
+      expect(mocks.openUrl).toHaveBeenCalledWith(
+        "https://viben-web.vercel.app/page/alice/demo/versions/1"
+      );
+    });
+  });
+
+  it("rolls back a selected non-current publish version", async () => {
+    mocks.getPublishedPageStatus.mockResolvedValue({
+      success: true,
+      published: true,
+      url: "/page/alice/demo",
+    });
+
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /Version 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Rollback/i }));
+
+    await waitFor(() => {
+      expect(mocks.rollbackPublishedPage).toHaveBeenCalledWith(
+        "http://127.0.0.1:18790",
+        {
+          access_token: "session-token",
+          uid: "demo",
+          version: 1,
+        }
+      );
+    });
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Rollback complete");
+  });
+
+  it("downloads a selected cloud version and overwrites the local html file", async () => {
+    mocks.getPublishedPageStatus.mockResolvedValue({
+      success: true,
+      published: true,
+      url: "/page/alice/demo",
+    });
+
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /Version 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Use as local HTML/i }));
+
+    await waitFor(() => {
+      expect(mocks.getPublishedPageVersion).toHaveBeenCalledWith(
+        "http://127.0.0.1:18790",
+        {
+          access_token: "session-token",
+          uid: "demo",
+          version: 1,
+        }
+      );
+    });
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      "http://127.0.0.1:18790",
+      "/tmp/workspace/pages/demo/index.html",
+      "<html><body>v1</body></html>"
+    );
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Local HTML updated");
   });
 
   it("does not enter published state when publish returns a failure", async () => {

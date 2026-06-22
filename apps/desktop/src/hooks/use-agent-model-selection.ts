@@ -38,6 +38,8 @@ export interface UseAgentModelSelectionReturn {
   agentOptions: SelectorOption[];
   providerOptions: SelectorOption[];
   modelOptions: SelectorOption[];
+  effectiveSelectedProviderId: string | null;
+  effectiveSelectedModel: string;
   agentSelectionReady: boolean;
   configLoading: boolean;
   configError: string | null;
@@ -261,6 +263,26 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
     }));
   }, [filteredModels]);
 
+  const effectiveSelectedProviderId = useMemo(() => {
+    if (selectedAgentProviderId && providerOptions.some((provider) => provider.id === selectedAgentProviderId)) {
+      return selectedAgentProviderId;
+    }
+    if (selectedProviderId && providerOptions.some((provider) => provider.id === selectedProviderId)) {
+      return selectedProviderId;
+    }
+    return null;
+  }, [providerOptions, selectedAgentProviderId, selectedProviderId]);
+
+  const effectiveSelectedModel = useMemo(() => {
+    if (selectedAgentModelId && modelOptions.some((item) => item.id === selectedAgentModelId)) {
+      return selectedAgentModelId;
+    }
+    if (model && modelOptions.some((item) => item.id === model)) {
+      return model;
+    }
+    return "";
+  }, [model, modelOptions, selectedAgentModelId]);
+
   const appliedAgentProviderDefaultsRef = useRef<string | null>(null);
   const appliedAgentModelDefaultsRef = useRef<string | null>(null);
 
@@ -402,6 +424,8 @@ export function useAgentModelSelection(options: UseAgentModelSelectionOptions): 
     agentOptions,
     providerOptions,
     modelOptions,
+    effectiveSelectedProviderId,
+    effectiveSelectedModel,
     agentSelectionReady,
     configLoading,
     configError,

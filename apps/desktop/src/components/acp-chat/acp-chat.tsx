@@ -508,13 +508,13 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     isTurnActive,
     isAgentRunning,
     executorType,
-    model,
     // Agent/Provider/Model config (from integrated useAcpChatConfig)
     agentOptions,
     providerOptions,
     modelOptions,
     selectedAgentId,
-    selectedProviderId,
+    effectiveSelectedProviderId,
+    effectiveSelectedModel,
     configLoading,
     configError,
     // Actions
@@ -744,10 +744,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const tripleSelectorValue = useMemo<TripleSelectorValue>(
     () => ({
       first: selectedAgentId ?? executorType,
-      second: selectedProviderId,
-      third: model,
+      second: effectiveSelectedProviderId,
+      third: effectiveSelectedModel || null,
     }),
-    [selectedAgentId, executorType, selectedProviderId, model]
+    [selectedAgentId, executorType, effectiveSelectedProviderId, effectiveSelectedModel]
   );
 
   // TripleSelector 变更处理
@@ -766,15 +766,15 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         }
       }
       // 2. Provider 变更
-      if (value.second !== selectedProviderId) {
+      if (value.second !== effectiveSelectedProviderId) {
         setSelectedProviderId(value.second);
       }
       // 3. Model 变更
-      if (value.third && value.third !== model) {
+      if (value.third && value.third !== effectiveSelectedModel) {
         setModel(value.third);
       }
     },
-    [selectedAgentId, executorType, selectedProviderId, model, agentOptions, setSelectedAgentId, setExecutorType, setSelectedProviderId, setModel]
+    [selectedAgentId, executorType, effectiveSelectedProviderId, effectiveSelectedModel, agentOptions, setSelectedAgentId, setExecutorType, setSelectedProviderId, setModel]
   );
 
   const handleAssistantAvatarClick = useCallback((_message: AgentMessage) => {

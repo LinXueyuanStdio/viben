@@ -70,6 +70,39 @@ function getUnknownErrorDetails(error: unknown): unknown {
   return undefined;
 }
 
+async function parseProxyJsonResponse(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { success: false, error: text };
+  }
+}
+
+async function forwardPagePublishRequest(
+  endpoint: string,
+  accessToken: string,
+  payload: Record<string, unknown>
+): Promise<{ status: number; body: unknown }> {
+  const response = await proxyFetch(`${VIBEN_WEB_URL}${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return {
+    status: response.status,
+    body: await parseProxyJsonResponse(response),
+  };
+}
+
 function readPageSdkAsset(filename: string): string {
   const mapping: Record<string, string> = {
     "viben-page-sdk.js": "@viben/page-sdk/assets/viben-page-sdk.js",
@@ -496,6 +529,187 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to check publish status",
+      };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/page/publish-history - Load append-only publish records
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      access_token: string;
+      uid: string;
+    };
+  }>("/api/page/publish-history", {
+    schema: {
+      description: "Load publish history from viben-web through proxyFetch",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          access_token: { type: "string", description: "Viben web access token" },
+          uid: { type: "string", description: "Page uid" },
+        },
+        required: ["access_token", "uid"],
+      },
+      response: {
+        200: { type: "object", additionalProperties: true },
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        404: errorResponseSchema,
+        500: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { access_token, uid } = request.body;
+
+    if (!access_token.trim()) {
+      reply.code(401);
+      return { success: false, error: "access_token is required" };
+    }
+
+    if (!uid.trim()) {
+      reply.code(400);
+      return { success: false, error: "uid is required" };
+    }
+
+    try {
+      const result = await forwardPagePublishRequest(
+        "/api/pages/publish-history",
+        access_token,
+        { uid }
+      );
+      reply.code(result.status);
+      return result.body;
+    } catch (error) {
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to load publish history",
+        details: getUnknownErrorDetails(error),
+      };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/page/publish-version - Load one immutable published version
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      access_token: string;
+      uid: string;
+      version: number;
+    };
+  }>("/api/page/publish-version", {
+    schema: {
+      description: "Load a published page version from viben-web through proxyFetch",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          access_token: { type: "string", description: "Viben web access token" },
+          uid: { type: "string", description: "Page uid" },
+          version: { type: "number", description: "Published version number" },
+        },
+        required: ["access_token", "uid", "version"],
+      },
+      response: {
+        200: { type: "object", additionalProperties: true },
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        404: errorResponseSchema,
+        500: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { access_token, uid, version } = request.body;
+
+    if (!access_token.trim()) {
+      reply.code(401);
+      return { success: false, error: "access_token is required" };
+    }
+
+    if (!uid.trim() || !Number.isInteger(version) || version < 1) {
+      reply.code(400);
+      return { success: false, error: "uid and version are required" };
+    }
+
+    try {
+      const result = await forwardPagePublishRequest(
+        "/api/pages/publish-version",
+        access_token,
+        { uid, version }
+      );
+      reply.code(result.status);
+      return result.body;
+    } catch (error) {
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to load publish version",
+        details: getUnknownErrorDetails(error),
+      };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/page/publish-rollback - Roll back current cloud page to a version
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      access_token: string;
+      uid: string;
+      version: number;
+    };
+  }>("/api/page/publish-rollback", {
+    schema: {
+      description: "Rollback published page on viben-web through proxyFetch",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          access_token: { type: "string", description: "Viben web access token" },
+          uid: { type: "string", description: "Page uid" },
+          version: { type: "number", description: "Published version number" },
+        },
+        required: ["access_token", "uid", "version"],
+      },
+      response: {
+        200: { type: "object", additionalProperties: true },
+        400: errorResponseSchema,
+        401: errorResponseSchema,
+        404: errorResponseSchema,
+        500: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { access_token, uid, version } = request.body;
+
+    if (!access_token.trim()) {
+      reply.code(401);
+      return { success: false, error: "access_token is required" };
+    }
+
+    if (!uid.trim() || !Number.isInteger(version) || version < 1) {
+      reply.code(400);
+      return { success: false, error: "uid and version are required" };
+    }
+
+    try {
+      const result = await forwardPagePublishRequest(
+        "/api/pages/publish-rollback",
+        access_token,
+        { uid, version }
+      );
+      reply.code(result.status);
+      return result.body;
+    } catch (error) {
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to rollback published page",
+        details: getUnknownErrorDetails(error),
       };
     }
   });

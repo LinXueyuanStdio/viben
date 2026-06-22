@@ -4,6 +4,61 @@
 
 状态：阶段性确认。本文只记录本轮已经讨论并确认的设计，后续仍需继续讨论模板导入、AI 创建状态流、文件监听与测试细节。
 
+## 原始要求
+
+创建新页面时，不需要用户填详细的表格，直接创建一个新的 Markdown 文件，从 markdown 类型开始，并保持空内容（yaml front matter 可以根据需要添加），展示空页面时的 UI。
+
+当打开一个 Markdown 文件时，当文件内容为空时，在 Markdown 编辑界面，icon 和 title 的下面，展示空页面 UI。
+
+空页面 UI 是一个卡片：
+```
++-----------------------------+
+|             开始             |
++-----------------------------+
+| 按 Enter 键开始编辑内容        |
+| [从模板创建] [导入新页面| down triangle]    |
++-----------------------------+
+| 使用 AI 助手创建 [文档* | 静态网页 | 全栈应用 ]           | <- 下面是一个卡片， 卡片里面是 acp-chat input
+|【emoji| file | screenshot】 |
+|【输入框，min lines =3 】|
+|【[agent/provider/model selector][context approval status]     [submit button]】|
++-----------------------------+
+```
+点击“从模板创建页面”按钮时，弹出一个对话框，展示可用的模板列表，用户可以选择一个模板来创建页面。
+```
+[选择模板         x]
+[ search icon ] 搜索模板
++-----------------------------+
+| 模板列表                     |
+| 模板1                        |
+...
++-----------------------------+
+```
+点击“导入新页面”按钮时，弹出一个对话框，展示从网络连接导入或者从文件类型导入
+```
+[选择导入方式         x]
+---
+[[剪藏 icon] 从网络连接导入]
+[[url 输入框] [[loading icon] 开始导入]] <- 爬虫爬取页面后，自动整理为 markdown 添加到 SKILL.md 中
+---
+[[markdown icon] 导入 Markdown 文件] <- 如果是 markdown 文件，将markdown 文件去除 front matter，将内容部分添加到 SKILL.md 中.
+[[html icon] 导入 HTML 文件] <- 如果是 html 文件，自动变为 static 类型的 page，导入文件名称改为 index.html。SKILL.md 内容记录为：“从 /.../xxx.html 导入的页面”
+```
+使用 AI 助手创建 的右边是 segment button。用户在下面输入后点击 submit 后：
+1. 空页面 UI 隐藏，显示创建中的 loading UI(就是 acp-chat 的 compact 模式)
+    ```
+    +-----------------------------+
+    | [avatar] 使用 AI 助手创建 {文档} 中... |
+    | [loading icon]【input】    [停止icon] |
+    +-----------------------------+
+    ```
+    点击停止按钮时，停止创建，根据 SKILL.md 内容，决定是否还展示空页面 UI。
+2. 进入创建中状态后，考虑：
+   1. 生成文档：watch SKILL.md 文件内容变化，diff，anim到新状态，达到实时渲染blocks。此时loading UI 继续存在在最后一个 block 下面。滑动到上面时，loadingUI 粘滞在底部中间，直到用户点击 loading UI 右上角的 x 按钮（在 compact 模式里是 expanded 模式切换按钮）或者用户点击文档外部（边缘）区域，loading UI 消失。
+   2. 生成静态网页：当发现 index.html 存在后，loading UI 消失，切换为 static preview 页面，然后让左侧的 acp-chat 切换到当前正在生成的 session 继续生成
+   3. 生成全栈应用：当发现 package.json  和 vite.config.js 存在后，loading UI 消失，切换为 server preview 页面，然后让左侧的 acp-chat 切换到当前正在生成的 session 继续生成
+3. 用户后续继续通过对话来指导内容生成。
+
 ## 背景
 
 当前 Workspace Pages 已经支持 `static`、`markdown`、`server`、`proxy` 四类页面，并通过 `packages/core/src/page/ops/*` 提供页面能力。桌面端通过 Gateway API 使用这些能力，Markdown 类型页面由 `YooptaMarkdownRenderer` 渲染和编辑 `pages/<uid>/SKILL.md` 的正文内容。
