@@ -15,7 +15,13 @@ import type {
   AcpBackendSession,
   AcpBackendStartContext,
 } from "./backend-adapter";
-import type { AcpConnection, AcpSessionNotification } from "../types";
+import type { PermissionDecision, PermissionHandler } from "./permission-handler";
+import type {
+  AcpConnection,
+  AcpPermissionMode,
+  AcpRequestPermissionRequest,
+  AcpSessionNotification,
+} from "../types";
 
 class FakeBackendSession implements AcpBackendSession {
   readonly prompts: PromptRequest[] = [];
@@ -52,6 +58,23 @@ class CapturingBackendAdapter implements AcpBackendAdapter {
     this.backendSession = new FakeBackendSession(requestedSessionId ?? "backend-session");
     this.backendSessions.push(this.backendSession);
     return this.backendSession;
+  }
+}
+
+class AutoPermissionHandler implements PermissionHandler {
+  readonly calls: Array<{ toolCallId: string; permissionMode: AcpPermissionMode }> = [];
+
+  async evaluate(params: AcpRequestPermissionRequest, permissionMode: AcpPermissionMode): Promise<PermissionDecision> {
+    this.calls.push({ toolCallId: params.toolCall.toolCallId, permissionMode });
+    return {
+      auto: true,
+      response: {
+        outcome: {
+          outcome: "selected",
+          optionId: "auto-allow",
+        },
+      },
+    };
   }
 }
 
@@ -410,6 +433,9 @@ describe("AcpSessionManager", () => {
       event_store_type: "jsonl",
       event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: session.sessionId }),
       event_last_seq: -1,
+    });
+    await expect(index.getRecord("CODEX", session.sessionId)).resolves.toMatchObject({
+      acp_record: {},
     });
   });
 
@@ -1065,7 +1091,7 @@ describe("AcpSessionManager", () => {
         cwd: "/tmp",
         title: `${executorType} Agent`,
         permission_mode: "default",
-        acp_record: { sessionId: "shared-session" },
+        acp_record: {},
         event_store_type: "jsonl",
         event_store_uri: storage.events.getEventStoreUri({ executor_type: executorType, session_id: "shared-session" }),
         event_last_seq: -1,
@@ -1103,10 +1129,9 @@ describe("AcpSessionManager", () => {
       title: "Persisted Codex",
       permission_mode: "plan",
       acp_record: {
-        sessionId: "persisted-session",
         initial_prompt: "from persisted index",
         sdk_session_id: "backend-session-from-index",
-        configOptions: [{ name: "model", values: ["gpt-5"] }],
+        config_options: [{ name: "model", values: ["gpt-5"] }],
       },
       persist_session_id: "persist-session",
       persist_task_id: "persist-task",
@@ -1641,7 +1666,6 @@ describe("AcpSessionManager", () => {
       title: "DB Session",
       permission_mode: "auto",
       acp_record: {
-        sessionId: "db-session",
         initial_prompt: "stored prompt",
         sdk_session_id: "stored-sdk",
       },
@@ -1700,7 +1724,7 @@ describe("AcpSessionManager", () => {
       status: "parked",
       cwd: "/tmp",
       title: "Stored Only",
-      acp_record: { sessionId: "stored-only" },
+      acp_record: {},
       event_store_type: "jsonl",
       event_store_uri: storage.events.getEventStoreUri({ executor_type: "CODEX", session_id: "stored-only" }),
       event_last_seq: -1,

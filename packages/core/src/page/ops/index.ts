@@ -45,6 +45,8 @@ export type {
   TemplateFile,
   TemplateVars,
   ListTemplatesResult,
+  ApplyPageTemplateOptions,
+  ApplyPageTemplateResult,
   ReorderPagesOptions,
   ReorderPagesResult,
   DuplicatePageOptions,
@@ -101,4 +103,5 @@ export {
   getTemplate,
   loadTemplateFiles,
   listTemplatesResult,
+  applyPageTemplate,
 } from "./templates";

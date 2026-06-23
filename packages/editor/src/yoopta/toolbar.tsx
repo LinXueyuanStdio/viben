@@ -194,7 +194,7 @@ export const YooptaToolbar = () => {
         <FloatingToolbar.Content>
           <FloatingToolbar.Group>
             <FloatingToolbar.Button ref={turnIntoRef} onClick={onTurnIntoClick}>
-              {t("editor.toolbar.turnInto")}
+              {t("editor.toolbar.turnInto", "Turn into")}
               <ChevronDownIcon width={16} height={16} />
             </FloatingToolbar.Button>
           </FloatingToolbar.Group>
@@ -258,7 +258,7 @@ export const YooptaToolbar = () => {
                 <div
                   ref={linkPopoverRef}
                   role="dialog"
-                  aria-label={t("editor.toolbar.insertLink")}
+                  aria-label={t("editor.toolbar.insertLink", "Insert link")}
                   className="yoopta-link-popover"
                   style={{
                     position: "absolute",
@@ -282,7 +282,7 @@ export const YooptaToolbar = () => {
                   <input
                     ref={linkInputRef}
                     type="text"
-                    aria-label={t("editor.toolbar.linkUrl")}
+                    aria-label={t("editor.toolbar.linkUrl", "Link URL")}
                     placeholder="https://..."
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
@@ -310,7 +310,7 @@ export const YooptaToolbar = () => {
                   />
                   <button
                     onClick={onLinkApply}
-                    aria-label={t("editor.toolbar.apply")}
+                    aria-label={t("editor.toolbar.apply", "Apply")}
                     style={{
                       border: "1px solid var(--border, #e2e2e2)",
                       borderRadius: 4,
@@ -321,7 +321,7 @@ export const YooptaToolbar = () => {
                       color: "var(--primary-foreground, #fff)",
                     }}
                   >
-                    {t("editor.toolbar.apply")}
+                    {t("editor.toolbar.apply", "Apply")}
                   </button>
                   {isLinkActive() && (
                     <button
@@ -331,8 +331,8 @@ export const YooptaToolbar = () => {
                         setLinkPopoverOpen(false);
                         setLinkUrl("");
                       }}
-                      aria-label={t("editor.toolbar.removeLink")}
-                      title={t("editor.toolbar.removeLink")}
+                      aria-label={t("editor.toolbar.removeLink", "Remove link")}
+                      title={t("editor.toolbar.removeLink", "Remove link")}
                       style={{
                         border: "1px solid var(--border, #e2e2e2)",
                         borderRadius: 4,
@@ -379,7 +379,7 @@ export const YooptaToolbar = () => {
               >
                 <FloatingToolbar.Button
                   active={!!highlightValue?.color}
-                  title={t("editor.toolbar.textColor")}
+                  title={t("editor.toolbar.textColor", "Text color")}
                 >
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                     <BaselineIcon />
@@ -426,7 +426,7 @@ export const YooptaToolbar = () => {
               >
                 <FloatingToolbar.Button
                   active={!!highlightValue?.backgroundColor}
-                  title={t("editor.toolbar.highlight")}
+                  title={t("editor.toolbar.highlight", "Highlight")}
                   style={{
                     backgroundColor: highlightValue?.backgroundColor || undefined,
                   }}
@@ -442,7 +442,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Group>
                 <FloatingToolbar.Button
                   onClick={onInsertMath}
-                  title={t("editor.toolbar.insertInlineMath")}
+                  title={t("editor.toolbar.insertInlineMath", "Insert inline math")}
                 >
                   <SigmaIcon />
                 </FloatingToolbar.Button>

@@ -36,7 +36,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { PageWidth } from "@/lib/gateway/types/page";
-import { IS_MAC } from "./yoopta-constants";
+import { IS_MAC } from "@viben/editor";
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 

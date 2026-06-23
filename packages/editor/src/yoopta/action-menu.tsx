@@ -204,7 +204,7 @@ function ActionMenuFloatingContent({
       >
         {empty ? (
           <div style={{ padding: "0.5rem", fontSize: "0.75rem", color: "hsl(var(--muted-foreground))" }}>
-            {t("editor.actionMenu.noActionsAvailable")}
+            {t("editor.actionMenu.noActionsAvailable", "No actions available")}
           </div>
         ) : (
           sortedGroups.map(([category, items]) => (

@@ -372,13 +372,13 @@ export const YooptaBlockOptions = ({
         <BlockOptionsGroup>
           <BlockOptionsItem variant="destructive" onSelect={onDelete} onOpenChange={handleOpenChange}>
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.delete")}
+              {t("editor.blockOptions.delete", "Delete")}
               <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Del</span>
             </span>
           </BlockOptionsItem>
           <BlockOptionsItem onSelect={onDuplicate} onOpenChange={handleOpenChange}>
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.duplicate")}
+              {t("editor.blockOptions.duplicate", "Duplicate")}
               <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{MOD_KEY}+D</span>
             </span>
           </BlockOptionsItem>
@@ -396,51 +396,51 @@ export const YooptaBlockOptions = ({
             }}
           >
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.turnInto")}
+              {t("editor.blockOptions.turnInto", "Turn into")}
               <ChevronRightIcon size={14} className="text-muted-foreground/50" />
             </span>
           </BlockOptionsItem>
           <BlockOptionsItem onSelect={onCopyLink} onOpenChange={handleOpenChange}>
-            {t("editor.blockOptions.copyLinkToBlock")}
+            {t("editor.blockOptions.copyLinkToBlock", "Copy link to block")}
           </BlockOptionsItem>
         </BlockOptionsGroup>
         <BlockOptionsSeparator />
         <BlockOptionsGroup>
           <BlockOptionsItem icon={<ArrowUpIcon size={16} />} onSelect={onMoveUp} onOpenChange={handleOpenChange}>
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.moveUp")}
+              {t("editor.blockOptions.moveUp", "Move up")}
               <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{IS_MAC ? '⌘⇧↑' : 'Ctrl+Shift+↑'}</span>
             </span>
           </BlockOptionsItem>
           <BlockOptionsItem icon={<ArrowDownIcon size={16} />} onSelect={onMoveDown} onOpenChange={handleOpenChange}>
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.moveDown")}
+              {t("editor.blockOptions.moveDown", "Move down")}
               <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{IS_MAC ? '⌘⇧↓' : 'Ctrl+Shift+↓'}</span>
             </span>
           </BlockOptionsItem>
           <BlockOptionsItem icon={<IndentIncreaseIcon size={16} />} onSelect={onIndent} onOpenChange={handleOpenChange}>
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.indent")}
+              {t("editor.blockOptions.indent", "Indent")}
               <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Tab</span>
             </span>
           </BlockOptionsItem>
           <BlockOptionsItem icon={<IndentDecreaseIcon size={16} />} onSelect={onOutdent} onOpenChange={handleOpenChange}>
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.outdent")}
+              {t("editor.blockOptions.outdent", "Outdent")}
               <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Shift+Tab</span>
             </span>
           </BlockOptionsItem>
         </BlockOptionsGroup>
         <BlockOptionsSeparator />
         <BlockOptionsGroup>
-          <BlockOptionsLabel>{t("editor.blockOptions.align")}</BlockOptionsLabel>
+          <BlockOptionsLabel>{t("editor.blockOptions.align", "Align")}</BlockOptionsLabel>
           <BlockOptionsItem
             icon={<AlignLeft size={16} />}
             onSelect={() => onAlign("left")}
             onOpenChange={handleOpenChange}
           >
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.alignLeft")}
+              {t("editor.blockOptions.alignLeft", "Align left")}
               {currentAlign === "left" && <Check size={14} />}
             </span>
           </BlockOptionsItem>
@@ -450,7 +450,7 @@ export const YooptaBlockOptions = ({
             onOpenChange={handleOpenChange}
           >
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.alignCenter")}
+              {t("editor.blockOptions.alignCenter", "Align center")}
               {currentAlign === "center" && <Check size={14} />}
             </span>
           </BlockOptionsItem>
@@ -460,7 +460,7 @@ export const YooptaBlockOptions = ({
             onOpenChange={handleOpenChange}
           >
             <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              {t("editor.blockOptions.alignRight")}
+              {t("editor.blockOptions.alignRight", "Align right")}
               {currentAlign === "right" && <Check size={14} />}
             </span>
           </BlockOptionsItem>

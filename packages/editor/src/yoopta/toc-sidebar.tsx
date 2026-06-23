@@ -140,7 +140,7 @@ export function YooptaTocSidebar({ className }: { className?: string }) {
   if (items.length === 0) {
     return (
       <div className={cn("text-xs text-muted-foreground/50 px-3 py-4", className)}>
-        {t("editor.toc.emptyState")}
+        {t("editor.toc.emptyState", "No headings")}
       </div>
     );
   }
@@ -148,10 +148,10 @@ export function YooptaTocSidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn("yoopta-toc-sidebar text-sm", className)}
-      aria-label={t("editor.toc.title")}
+      aria-label={t("editor.toc.title", "Table of contents")}
     >
       <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        {t("editor.toc.title")}
+        {t("editor.toc.title", "Table of contents")}
       </div>
       <ul className="space-y-0.5 px-1">
         {items.map((item) => (

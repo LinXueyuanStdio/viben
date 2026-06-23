@@ -321,8 +321,8 @@ export const YooptaFloatingBlockActions = () => {
         type="button"
         className="yoopta-ui-floating-action-button"
         onClick={() => onPlusClick(blockId)}
-        title={t("editor.blockActions.addBlock")}
-        aria-label={t("editor.blockActions.addBlock")}
+        title={t("editor.blockActions.addBlock", "Add block")}
+        aria-label={t("editor.blockActions.addBlock", "Add block")}
       >
         <PlusIcon />
       </button>
@@ -331,8 +331,8 @@ export const YooptaFloatingBlockActions = () => {
           type="button"
           className="yoopta-ui-floating-action-button"
           onClick={() => onDragClick(blockId)}
-          title={t("editor.blockActions.dragToReorder")}
-          aria-label={t("editor.blockActions.dragToReorder")}
+          title={t("editor.blockActions.dragToReorder", "Drag to reorder")}
+          aria-label={t("editor.blockActions.dragToReorder", "Drag to reorder")}
         >
           <GripVertical />
         </button>

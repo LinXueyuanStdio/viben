@@ -26,7 +26,9 @@ export const YooptaSlashCommandMenu = () => {
       return (
         <SlashCommandMenu.Content>
           <SlashCommandMenu.List>
-            <SlashCommandMenu.Empty>{t("editor.slashMenu.noBlocksFound")}</SlashCommandMenu.Empty>
+            <SlashCommandMenu.Empty>
+              {t("editor.slashMenu.noBlocksFound", "No blocks found")}
+            </SlashCommandMenu.Empty>
             {sortedGroups.map(([category, items]) => (
               <SlashCommandMenu.Group key={category} heading={category}>
                 {items.map((item) => {

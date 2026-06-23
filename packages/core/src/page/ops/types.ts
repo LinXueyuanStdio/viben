@@ -253,6 +253,16 @@ export interface ListTemplatesResult extends PageResult {
   templates: PageTemplate[];
 }
 
+export interface ApplyPageTemplateOptions {
+  workspace_path: string;
+  uid: string;
+  template_id: string;
+}
+
+export interface ApplyPageTemplateResult extends PageResult {
+  page?: PageConfig;
+}
+
 // =============================================================================
 // Reorder Types
 // =============================================================================

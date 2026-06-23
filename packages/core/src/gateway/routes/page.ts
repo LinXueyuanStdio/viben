@@ -27,6 +27,7 @@ import {
   listPages,
   viewPage,
   createPage,
+  applyPageTemplate,
   deletePage,
   duplicatePage,
   updatePageContent,
@@ -51,6 +52,7 @@ import type {
   ListPagesResult,
   ViewPageResult,
   CreatePageResult,
+  ApplyPageTemplateResult,
   DeletePageResult,
   UpdatePageContentResult,
   UpdatePageConfigResult,
@@ -228,6 +230,8 @@ const createPageResponseSchema = {
     error: { type: "string", nullable: true },
   },
 } as const;
+
+const applyPageTemplateResponseSchema = createPageResponseSchema;
 
 const deletePageResponseSchema = {
   type: "object",
@@ -829,6 +833,59 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     }
 
     reply.code(201);
+    return result;
+  });
+
+  // ============================================================================
+  // POST /api/page/apply-template - Apply a template to an empty markdown page
+  // ============================================================================
+  fastify.post<{
+    Body: { workspace_path: string; uid: string; template_id: string };
+    Reply: ApplyPageTemplateResult;
+  }>("/api/page/apply-template", {
+    schema: {
+      description: "Apply a page template to an empty markdown page",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
+          template_id: { type: "string", description: "Page template id (required)" },
+        },
+        required: ["workspace_path", "uid", "template_id"],
+      },
+      response: {
+        200: applyPageTemplateResponseSchema,
+        400: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, uid, template_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    if (!uid) {
+      reply.code(400);
+      return { success: false, error: "uid is required" };
+    }
+
+    if (!template_id) {
+      reply.code(400);
+      return { success: false, error: "template_id is required" };
+    }
+
+    const result = await applyPageTemplate({ workspace_path, uid, template_id });
+
+    if (!result.success) {
+      reply.code(result.error?.includes("not found") ? 404 : 400);
+      return result;
+    }
+
     return result;
   });
 

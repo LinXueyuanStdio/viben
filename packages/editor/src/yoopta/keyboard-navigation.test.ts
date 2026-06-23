@@ -5,7 +5,7 @@ import {
   groupRectsByVisualLine,
   type BlockOrderEntry,
   type RectLike,
-} from "../yoopta-keyboard-navigation";
+} from "./keyboard-navigation";
 
 const rect = (top: number, bottom: number, left = 0, right = 100): RectLike => ({
   top,

@@ -1,5 +1,6 @@
 declare module "@yoopta/editor" {
-  import type { ReactElement, ReactNode } from "react";
+  import type { CSSProperties, ReactElement, ReactNode } from "react";
+  import type { Editor as SlateEditor } from "slate";
 
   export type SlateElementTextNode = {
     text: string;
@@ -36,6 +37,19 @@ declare module "@yoopta/editor" {
 
   export type YooptaContentValue = Record<string, YooptaBlockData>;
 
+  export type YooptaPath = {
+    current: number | null;
+    selected?: number[] | null;
+    selection?: unknown;
+    source?:
+      | null
+      | "selection-box"
+      | "native-selection"
+      | "mousemove"
+      | "keyboard"
+      | "copy-paste";
+  };
+
   export type PluginSerializeParser = (
     element: SlateElement,
     content: string,
@@ -44,10 +58,28 @@ declare module "@yoopta/editor" {
     blockData?: YooptaBlockData,
   ) => string;
 
+  export type PluginElement<TProps = Record<string, unknown>> = {
+    render?: (props: unknown) => ReactElement;
+    props?: { nodeType?: "block" | "inline" | "void" | "inlineVoid" } & TProps;
+    asRoot?: boolean;
+    children?: string[];
+    injectElementsFromPlugins?: string[];
+    rootPlugin?: string;
+    placeholder?: string;
+  };
+
+  export type PluginElementsMap = Record<string, PluginElement>;
+
   export type YooptaPluginShape = {
     type: string;
-    elements: Record<string, unknown>;
-    options?: Record<string, unknown>;
+    elements: PluginElementsMap;
+    options?: {
+      display?: {
+        title?: string;
+        description?: string;
+        icon?: ReactNode;
+      };
+    } & Record<string, unknown>;
     parsers?: {
       markdown?: {
         serialize?: PluginSerializeParser;
@@ -77,10 +109,40 @@ declare module "@yoopta/editor" {
   export type YooEditor = {
     id: string;
     readOnly: boolean;
+    refElement: HTMLElement | null;
+    path: YooptaPath;
     children: YooptaContentValue;
+    formats: Record<string, boolean | undefined>;
     plugins: Record<string, YooptaPluginShape>;
+    blockEditorsMap: Record<string, SlateEditor>;
+    historyStack: {
+      undos: unknown[];
+      redos: unknown[];
+    };
+    isEmpty: () => boolean;
     getEditorValue: () => YooptaContentValue;
     setEditorValue: (value: YooptaContentValue) => void;
+    setPath: (path: YooptaPath) => void;
+    insertBlock: (type: string, options?: Record<string, unknown>) => string | undefined;
+    updateBlock: (options: Record<string, unknown>) => void;
+    deleteBlock: (options?: Record<string, unknown>) => void;
+    duplicateBlock: (options?: Record<string, unknown>) => void;
+    toggleBlock: (type: string, options?: Record<string, unknown>) => void;
+    increaseBlockDepth: (options?: Record<string, unknown>) => void;
+    decreaseBlockDepth: (options?: Record<string, unknown>) => void;
+    moveBlock: (blockId: string, order: number) => void;
+    focusBlock: (options?: Record<string, unknown>) => void;
+    applyTransforms: (operations: unknown[]) => void;
+    batchOperations: (fn: () => void) => void;
+    withoutSavingHistory: (fn: () => void) => void;
+    undo: () => void;
+    redo: () => void;
+    on: (event: string, fn: (...args: unknown[]) => void) => void;
+    off: (event: string, fn: (...args: unknown[]) => void) => void;
+    emit: (event: string, payload: unknown) => void;
+    focus: () => void;
+    blur: (options?: Record<string, unknown>) => void;
+    isFocused: () => boolean;
   };
 
   export type YooptaOnChangeOptions = {
@@ -101,6 +163,9 @@ declare module "@yoopta/editor" {
     ) => void;
     children?: ReactNode;
     placeholder?: string;
+    autoFocus?: boolean;
+    className?: string;
+    style?: CSSProperties;
     renderBlock?: (props: RenderBlockProps) => ReactNode;
   };
 
@@ -110,6 +175,38 @@ declare module "@yoopta/editor" {
   export function createYooptaEditor(
     options: CreateYooptaEditorOptions,
   ): YooEditor;
+  export function useYooptaEditor(): YooEditor;
+  export function useYooptaReadOnly(): boolean;
+  export function getRootBlockElement(
+    elements: PluginElementsMap,
+  ): PluginElement | undefined;
+  export function getRootBlockElementType(
+    elements: PluginElementsMap,
+  ): string | undefined;
+
+  export const Blocks: {
+    getBlock: (
+      editor: YooEditor,
+      options: Record<string, unknown>,
+    ) => YooptaBlockData | null;
+    getBlockSlate: (
+      editor: YooEditor,
+      options: Record<string, unknown>,
+    ) => SlateEditor | null;
+    moveBlock: (editor: YooEditor, blockId: string, order: number) => void;
+    toggleBlock: (
+      editor: YooEditor,
+      type: string,
+      options?: Record<string, unknown>,
+    ) => void;
+  };
+
+  export const Marks: {
+    add: (editor: YooEditor, options: Record<string, unknown>) => void;
+    toggle: (editor: YooEditor, options: Record<string, unknown>) => void;
+    isActive: (editor: YooEditor, options: Record<string, unknown>) => boolean;
+    getValue: (editor: YooEditor, options: Record<string, unknown>) => unknown;
+  };
 }
 
 declare module "@yoopta/exports" {
@@ -118,6 +215,156 @@ declare module "@yoopta/exports" {
   export const markdown: {
     deserialize: (editor: YooEditor, value: string) => YooptaContentValue;
     serialize: (editor: YooEditor, value: YooptaContentValue) => string;
+  };
+}
+
+declare module "@yoopta/ui/action-menu-list" {
+  import type { ReactNode } from "react";
+  import type { YooEditor } from "@yoopta/editor";
+
+  export type ActionMenuItem = {
+    type: string;
+    title: string;
+    description?: string;
+    icon?: ReactNode;
+  };
+
+  export function mapActionMenuItems(editor: YooEditor): ActionMenuItem[];
+  export function filterToggleActions(editor: YooEditor, type: string): boolean;
+}
+
+declare module "@yoopta/ui/block-dnd" {
+  import type { ReactElement, ReactNode, Ref } from "react";
+  import type { YooEditor, YooptaBlockData } from "@yoopta/editor";
+
+  export type BlockDndContextProps = {
+    editor: YooEditor;
+    children: ReactNode;
+    onDragStart?: (event: unknown, blocks: YooptaBlockData[]) => void;
+    onDragEnd?: (event: unknown, moved: boolean) => void;
+    renderDragOverlay?: (blocks: YooptaBlockData[]) => ReactNode;
+    enableMultiDrag?: boolean;
+  };
+  export const BlockDndContext: (
+    props: BlockDndContextProps,
+  ) => ReactElement | null;
+
+  export type SortableBlockProps = {
+    id: string;
+    index?: number;
+    children: ReactNode;
+    className?: string;
+    disabled?: boolean;
+    useDragHandle?: boolean;
+  };
+  export const SortableBlock: (props: SortableBlockProps) => ReactElement | null;
+
+  export type DragHandleProps = {
+    blockId: string | null;
+    children: ReactNode;
+    className?: string;
+    onClick?: (event: MouseEvent) => void;
+    asChild?: boolean;
+    ref?: Ref<HTMLButtonElement>;
+  };
+  export const DragHandle: (props: DragHandleProps) => ReactElement | null;
+}
+
+declare module "@yoopta/ui/block-options" {
+  export function useBlockActions(): {
+    duplicateBlock: (blockId: string) => void;
+    copyBlockLink: (blockId: string) => void;
+    deleteBlock: (blockId: string) => void;
+  };
+}
+
+declare module "@yoopta/ui/floating-toolbar" {
+  import type { HTMLAttributes, ReactElement, ReactNode, Ref } from "react";
+
+  type FloatingToolbarApi = {
+    isOpen: boolean;
+  };
+  type FloatingToolbarRootProps = {
+    children: ReactNode | ((api: FloatingToolbarApi) => ReactNode);
+    frozen?: boolean;
+    className?: string;
+  };
+  type FloatingToolbarButtonProps = {
+    active?: boolean;
+    disabled?: boolean;
+    type?: "button" | "submit" | "reset";
+    ref?: Ref<HTMLButtonElement>;
+  } & HTMLAttributes<HTMLButtonElement>;
+
+  export const FloatingToolbar: {
+    (props: FloatingToolbarRootProps): ReactElement | null;
+    Root: (props: FloatingToolbarRootProps) => ReactElement | null;
+    Content: (props: HTMLAttributes<HTMLDivElement>) => ReactElement | null;
+    Group: (props: HTMLAttributes<HTMLDivElement>) => ReactElement | null;
+    Separator: (props: HTMLAttributes<HTMLDivElement>) => ReactElement | null;
+    Button: (props: FloatingToolbarButtonProps) => ReactElement | null;
+  };
+}
+
+declare module "@yoopta/ui/highlight-color-picker" {
+  import type { ReactElement } from "react";
+
+  export type HighlightColorPickerProps = {
+    value?: {
+      color?: string;
+      backgroundColor?: string;
+    };
+    onChange?: (values: { color?: string; backgroundColor?: string }) => void;
+    presets?: string[];
+    showInput?: boolean;
+    className?: string;
+    children: ReactElement;
+    placement?: "top" | "bottom" | "left" | "right";
+    offset?: number;
+  };
+  export const HighlightColorPicker: (
+    props: HighlightColorPickerProps,
+  ) => ReactElement | null;
+}
+
+declare module "@yoopta/ui/slash-command-menu" {
+  import type { ReactElement, ReactNode } from "react";
+
+  export type SlashCommandItem = {
+    id: string;
+    title: string;
+    description?: string;
+    icon?: ReactNode;
+    keywords?: string[];
+    group?: string;
+    disabled?: boolean;
+    onSelect?: () => void;
+  };
+  export type SlashCommandRootChildrenProps = {
+    groupedItems: Map<string, SlashCommandItem[]>;
+    items: SlashCommandItem[];
+  };
+  export type SlashCommandRootProps = {
+    children: ReactNode | ((props: SlashCommandRootChildrenProps) => ReactNode);
+    items?: SlashCommandItem[];
+    trigger?: string;
+    onSelect?: (item: SlashCommandItem) => void;
+    className?: string;
+  };
+  export const SlashCommandMenu: {
+    (props: SlashCommandRootProps): ReactElement | null;
+    Root: (props: SlashCommandRootProps) => ReactElement | null;
+    Content: (props: { children?: ReactNode }) => ReactElement | null;
+    List: (props: { children?: ReactNode }) => ReactElement | null;
+    Empty: (props: { children?: ReactNode }) => ReactElement | null;
+    Group: (props: { children?: ReactNode; heading?: string }) => ReactElement | null;
+    Item: (props: {
+      value: string;
+      title: string;
+      description?: string;
+      icon?: ReactNode;
+    }) => ReactElement | null;
+    Footer: (props: Record<string, never>) => ReactElement | null;
   };
 }
 
@@ -147,10 +394,18 @@ declare module "@yoopta/lists" {
 }
 
 declare module "@yoopta/math" {
-  import type { YooptaPlugin } from "@yoopta/editor";
+  import type { YooEditor, YooptaPlugin } from "@yoopta/editor";
+  import type { Editor as SlateEditor } from "slate";
 
   export const MathInline: YooptaPlugin;
   export const MathBlock: YooptaPlugin;
+  export const MathInlineCommands: {
+    insertMathInline: (
+      editor: YooEditor,
+      value: string,
+      options: { slate: SlateEditor },
+    ) => void;
+  };
 }
 
 declare module "@yoopta/code" {
@@ -187,10 +442,26 @@ declare module "@yoopta/callout" {
 }
 
 declare module "@yoopta/link" {
-  import type { YooptaPlugin } from "@yoopta/editor";
+  import type { YooEditor, YooptaPlugin } from "@yoopta/editor";
+  import type { Editor as SlateEditor } from "slate";
 
   const plugin: YooptaPlugin;
   export default plugin;
+  export const LinkCommands: {
+    deleteLink: (editor: YooEditor, options: { slate: SlateEditor }) => void;
+    insertLink: (
+      editor: YooEditor,
+      options: {
+        slate: SlateEditor;
+        props: {
+          url: string;
+          title?: string;
+          target?: string;
+          rel?: string;
+        };
+      },
+    ) => void;
+  };
 }
 
 declare module "@yoopta/table" {

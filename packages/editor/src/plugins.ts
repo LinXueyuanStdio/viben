@@ -20,18 +20,33 @@ import Mention from '@yoopta/mention';
 import { MathInline, MathBlock } from '@yoopta/math';
 import TableOfContents from '@yoopta/table-of-contents';
 
+export interface YooptaNavigationMeta {
+  includeInPageIndex?: boolean;
+  titleOverride?: string;
+  iconOverride?: unknown;
+  webViewMode?: "embedded" | "external";
+}
+
 export interface YooptaPluginOptions {
   uploadAsset?: (file: File) => Promise<string>;
   searchPages?: (query: string) => Promise<{ id: string; name: string; avatar: string }[]>;
+  buildPageHref?: (pageUid: string) => string;
+  buildPageMeta?: (pageUid: string) => YooptaNavigationMeta | undefined;
 }
 
 /**
  * Create Yoopta plugins with optional handlers for upload and search.
  *
- * @param uploadAsset - Uploads a File and returns a persistent URL.
- * @param searchPages - Searches workspace pages by query for # mentions.
+ * @param options.uploadAsset - Uploads a File and returns a persistent URL.
+ * @param options.searchPages - Searches workspace pages by query for # mentions.
  */
-export function createYooptaPlugins(uploadAsset?: (file: File) => Promise<string>, searchPages?: (query: string) => Promise<{ id: string; name: string; avatar: string }[]>) {
+export function createYooptaPlugins(options: YooptaPluginOptions = {}) {
+  const {
+    uploadAsset,
+    searchPages,
+    buildPageHref,
+    buildPageMeta,
+  } = options;
   const YImage = Image.extend({
     options: {
       upload: async (file: globalThis.File) => {
@@ -172,7 +187,17 @@ export function createYooptaPlugins(uploadAsset?: (file: File) => Promise<string
           const q = query.toLowerCase();
           if (trigger.type === 'page' && searchPages) {
             try {
-              return await searchPages(q);
+              const results = await searchPages(q);
+              return results.map((page) => {
+                const meta = buildPageMeta?.(page.id);
+                return {
+                  ...page,
+                  meta: {
+                    ...(meta ?? {}),
+                    url: buildPageHref?.(page.id),
+                  },
+                };
+              });
             } catch {
               return [];
             }

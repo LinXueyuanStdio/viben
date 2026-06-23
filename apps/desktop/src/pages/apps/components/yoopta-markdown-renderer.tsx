@@ -1,4 +1,4 @@
-import "./yoopta-editor.css";
+import "@viben/editor/yoopta/editor.css";
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
@@ -7,13 +7,25 @@ import { pageKeys } from "@/hooks/use-pages";
 import YooptaEditor, {
   Blocks,
   Marks,
-  createYooptaEditor,
-  RenderBlockProps,
-  SlateElement,
-  YooptaContentValue,
-  YooptaPlugin,
 } from "@yoopta/editor";
-import { deserializeMarkdown, serializeMarkdown } from "./yoopta-markdown";
+import {
+  createYooptaEditor,
+  createYooptaPlugins,
+  deserializeMarkdown,
+  ensureBlockFocus,
+  handleYooptaVerticalNavigation,
+  serializeMarkdown,
+  YOOPTA_MARKS,
+  YooptaErrorBoundary,
+  YooptaFloatingBlockActions,
+  YooptaSlashCommandMenu,
+  YooptaTocSidebar,
+  YooptaToolbar,
+  type RenderBlockProps,
+  type SlateElement,
+  type YooptaContentValue,
+  type YooptaPlugin,
+} from "@viben/editor";
 import { withMentions } from "@yoopta/mention";
 import { withEmoji } from "@yoopta/emoji";
 import { applyTheme } from "@yoopta/themes-shadcn";
@@ -29,19 +41,10 @@ import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { updatePageContent, updatePageConfig, uploadPageAsset, listPages } from "@/lib/gateway/modules/pages";
 import type { IconData, PageWidth } from "@/lib/gateway/types/page";
-import { createYooptaPlugins } from "./yoopta-plugins";
-import { YOOPTA_MARKS } from "./yoopta-marks";
-import { YooptaToolbar } from "./yoopta-toolbar";
-import { YooptaSlashCommandMenu } from "./yoopta-slash-menu";
-import { YooptaFloatingBlockActions } from "./yoopta-block-actions";
 import { YooptaEditorHeader } from "./yoopta-editor-header";
-import { YooptaErrorBoundary } from "./yoopta-error-boundary";
 import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
 import { CoverPicker } from "@/components/ui/cover-picker";
 import { GRADIENT_COLORS } from "@/lib/gradient-colors";
-import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
-import { ensureBlockFocus } from "./yoopta-focus-utils";
-import { handleYooptaVerticalNavigation } from "./yoopta-keyboard-navigation";
 import {
   collectPageNavigationFromDom,
   extractPageNavigation,
@@ -879,7 +882,11 @@ export function YooptaMarkdownRenderer({
         className
       )}
     >
-      <YooptaErrorBoundary>
+      <YooptaErrorBoundary
+        message={t("editor.errorBoundary.message", "Something went wrong loading the editor.")}
+        tryAgainText={t("editor.errorBoundary.tryAgain", "Try again")}
+        errorDetailsText={t("editor.errorBoundary.errorDetails", "Error details")}
+      >
         {/* Editor header: portal to breadcrumb bar if available, otherwise render in-place */}
         {headerPortal ? createPortal(
           <YooptaEditorHeader
@@ -981,7 +988,7 @@ export function YooptaMarkdownRenderer({
               editor={editor}
               style={EDITOR_STYLES}
               renderBlock={renderBlock}
-              placeholder={t("editor.renderer.placeholder")}
+              placeholder={t("editor.renderer.placeholder", "Type '/' for commands")}
               onChange={handleChange}
             >
               {editorChildren}
@@ -1104,7 +1111,7 @@ const PageTitleArea = memo(function PageTitleArea({
             onClick={() => onOpenIconPicker()}
           >
             <SmilePlus size={14} />
-            <span>{t("editor.renderer.addIcon")}</span>
+            <span>{t("editor.renderer.addIcon", "Add icon")}</span>
           </button>
         )}
         {pageIcon && (
@@ -1114,7 +1121,7 @@ const PageTitleArea = memo(function PageTitleArea({
             onClick={() => onOpenIconPicker()}
           >
             <SmilePlus size={14} />
-            <span>{t("editor.renderer.changeIcon")}</span>
+            <span>{t("editor.renderer.changeIcon", "Change icon")}</span>
           </button>
         )}
         {!coverUrl && (
@@ -1124,7 +1131,7 @@ const PageTitleArea = memo(function PageTitleArea({
             onClick={(e) => onOpenCoverPicker(e.currentTarget)}
           >
             <ImageLucideIcon size={14} />
-            <span>{t("editor.renderer.addCover")}</span>
+            <span>{t("editor.renderer.addCover", "Add cover")}</span>
           </button>
         )}
       </div>
@@ -1135,7 +1142,7 @@ const PageTitleArea = memo(function PageTitleArea({
         value={pageTitle}
         onChange={onTitleChange}
         onKeyDown={onTitleKeyDown}
-        placeholder={t("editor.renderer.untitled")}
+        placeholder={t("editor.renderer.untitled", "Untitled")}
         rows={1}
         className="w-full resize-none overflow-hidden bg-transparent text-4xl font-bold leading-tight text-foreground placeholder:text-muted-foreground/30 focus:outline-none"
         style={{ fieldSizing: "content" } as React.CSSProperties}
@@ -1189,7 +1196,7 @@ const CoverBanner = memo(function CoverBanner({
       ) : (
         <img
           src={coverUrl}
-          alt={t("editor.renderer.pageCover")}
+          alt={t("editor.renderer.pageCover", "Page cover")}
           className="h-full w-full object-cover"
         />
       )}
@@ -1206,14 +1213,14 @@ const CoverBanner = memo(function CoverBanner({
               className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
               onClick={(e) => onOpenCoverPicker(e.currentTarget, "end")}
             >
-              {t("editor.renderer.changeCover")}
+              {t("editor.renderer.changeCover", "Change cover")}
             </button>
             <button
               type="button"
               onClick={() => onCoverChange(null)}
               className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
             >
-              {t("editor.renderer.remove")}
+              {t("editor.renderer.remove", "Remove")}
             </button>
           </div>
         </div>

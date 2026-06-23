@@ -6,7 +6,8 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./yoopta/editor.css": "./src/yoopta/editor.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -14,6 +15,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.4",
+    "@floating-ui/react": "^0.27.16",
     "@yoopta/accordion": "workspace:*",
     "@yoopta/blockquote": "workspace:*",
     "@yoopta/callout": "workspace:*",
@@ -39,7 +42,15 @@
     "@yoopta/tabs": "workspace:*",
     "@yoopta/themes-shadcn": "workspace:*",
     "@yoopta/ui": "workspace:*",
-    "@yoopta/video": "workspace:*"
+    "@yoopta/video": "workspace:*",
+    "clsx": "^2.1.1",
+    "i18next": "^26.0.0",
+    "lucide-react": "^1.16.0",
+    "react": "^19.0.0",
+    "react-i18next": "^17.0.0",
+    "slate": "^0.120.0",
+    "slate-react": "^0.120.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "jsdom": "^28.0.0",

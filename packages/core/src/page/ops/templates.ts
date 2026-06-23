@@ -10,8 +10,19 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import type { PageTemplate, PageType, TemplateVars, ListTemplatesResult } from "./types";
+import matter from "gray-matter";
+import type {
+  ApplyPageTemplateOptions,
+  ApplyPageTemplateResult,
+  PageTemplate,
+  PageType,
+  TemplateVars,
+  ListTemplatesResult,
+} from "./types";
 import { getTemplatesDir } from "../../utils/templates";
+import { getPageByUid } from "./discovery";
+import { assertSafePageUid, resolveExistingPageDir } from "./page-paths";
+import { writeTemplateFilesToPageDir } from "./template-files";
 
 export const CUSTOM_PAGE_TEMPLATES_DIR = "docs/page-templates";
 export const BUILTIN_TEMPLATE_IDS = ["static-html", "markdown-docs"] as const;
@@ -188,4 +199,55 @@ export async function listTemplatesResult(
     success: true,
     templates: listTemplates(workspacePath),
   };
+}
+
+export async function applyPageTemplate(
+  options: ApplyPageTemplateOptions
+): Promise<ApplyPageTemplateResult> {
+  try {
+    const { workspace_path, uid, template_id } = options;
+    assertSafePageUid(uid);
+    const page = await getPageByUid(workspace_path, uid);
+    if (!page) {
+      return { success: false, error: `Page not found: ${uid}` };
+    }
+    if (page.type !== "markdown") {
+      return { success: false, error: "Template can only be applied to an empty markdown page" };
+    }
+
+    const pageDir = resolveExistingPageDir(workspace_path, uid);
+    const skillPath = join(pageDir, "SKILL.md");
+    if (!existsSync(skillPath)) {
+      return { success: false, error: `Page SKILL.md not found: ${uid}` };
+    }
+
+    const parsed = matter(readFileSync(skillPath, "utf-8"));
+    if (parsed.content.trim()) {
+      return { success: false, error: "Template can only be applied to an empty page" };
+    }
+
+    const template = getTemplate(template_id, workspace_path);
+    if (!template) {
+      return { success: false, error: `Template not found: ${template_id}` };
+    }
+
+    const vars = {
+      name: page.name,
+      slug: uid,
+      description: page.description ?? "",
+    };
+    const files = loadTemplateFiles(template_id, vars, workspace_path);
+    if (files.size === 0) {
+      return { success: false, error: `Template has no files: ${template_id}` };
+    }
+
+    writeTemplateFilesToPageDir(pageDir, files);
+    const updated = await getPageByUid(workspace_path, uid);
+    return { success: true, page: updated ?? undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to apply page template",
+    };
+  }
 }

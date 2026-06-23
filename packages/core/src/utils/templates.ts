@@ -26,6 +26,7 @@ export function getTemplatesDir(metaUrl: string): string {
   // Try multiple possible locations
   const candidates = [
     // packages/core/templates (monorepo development)
+    resolve(currentDir, "../../../templates"),
     resolve(currentDir, "../../templates"),
     // dist/templates (npm package - templates in same dir as bundled code)
     resolve(currentDir, "./templates"),

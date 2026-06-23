@@ -1,4 +1,4 @@
-import type { Blocks } from "@yoopta/editor";
+import type { YooEditor } from "@yoopta/editor";
 
 /**
  * Reliable DOM-level focus for Yoopta blocks.
@@ -17,7 +17,7 @@ import type { Blocks } from "@yoopta/editor";
  * @param maxRetries Number of rAF frames to wait (default 20 ≈ 330ms at 60fps)
  */
 export function ensureBlockFocus(
-  editor: Parameters<typeof Blocks.getBlock>[0],
+  editor: YooEditor,
   blockId: string,
   onFocused?: () => void,
   maxRetries = 20,

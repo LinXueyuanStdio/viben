@@ -6,7 +6,7 @@
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { nanoid } from "nanoid";
 import matter from "gray-matter";
 import type {
@@ -28,6 +28,8 @@ import type {
 } from "./types";
 import { listPagesInWorkspace, getPageByUid } from "./discovery";
 import { loadTemplateFiles, getTemplate } from "./templates";
+import { resolveExistingPageDir, resolvePageAssetPath, resolvePageDir } from "./page-paths";
+import { writeTemplateFilesToPageDir } from "./template-files";
 
 const PAGES_DIR = "pages";
 const SKILL_FILE = "SKILL.md";
@@ -181,8 +183,15 @@ export async function createPage(
   } = options;
 
   const uid = generatePageUid(slug);
-  const pagesDir = join(workspace_path, PAGES_DIR);
-  const pageDir = join(pagesDir, uid);
+  let pageDir: string;
+  try {
+    pageDir = resolvePageDir(workspace_path, uid);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Invalid page path",
+    };
+  }
   const pageMdPath = join(pageDir, SKILL_FILE);
 
   // Check if page already exists
@@ -208,18 +217,7 @@ export async function createPage(
 
     const vars = { name, slug: uid, description };
     const files = loadTemplateFiles(template_id, vars, workspace_path);
-
-    for (const [filePath, content] of files) {
-      const fullPath = join(pageDir, filePath);
-      // Ensure parent directory exists for nested files
-      const parentDir = dirname(fullPath);
-      if (!existsSync(parentDir)) {
-        mkdirSync(parentDir, { recursive: true });
-      }
-      // Rename SKILL.md to PAGE.md if template uses old name
-      const finalPath = filePath === "SKILL.md" ? join(pageDir, SKILL_FILE) : fullPath;
-      writeFileSync(finalPath, content, "utf-8");
-    }
+    writeTemplateFilesToPageDir(pageDir, files);
   } else {
     // Build SKILL.md content with new frontmatter structure
     // New structure: name, description at top level; icon, cover, page under metadata
@@ -320,8 +318,17 @@ export async function deletePage(
 ): Promise<DeletePageResult> {
   const { workspace_path, uid } = options;
 
-  const pagesDir = join(workspace_path, PAGES_DIR);
-  const pageDir = join(pagesDir, uid);
+  let pageDir: string;
+  try {
+    pageDir = resolveExistingPageDir(workspace_path, uid);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error && error.message.includes("Invalid page uid")
+        ? error.message
+        : `Page not found: ${uid}`,
+    };
+  }
 
   if (!existsSync(pageDir)) {
     return {
@@ -360,8 +367,17 @@ export async function updatePageContent(
 ): Promise<UpdatePageContentResult> {
   const { workspace_path, uid, content } = options;
 
-  const pagesDir = join(workspace_path, PAGES_DIR);
-  const pageDir = join(pagesDir, uid);
+  let pageDir: string;
+  try {
+    pageDir = resolveExistingPageDir(workspace_path, uid);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error && error.message.includes("Invalid page uid")
+        ? error.message
+        : `Page not found: ${uid}`,
+    };
+  }
   const pageMdPath = join(pageDir, SKILL_FILE);
 
   if (!existsSync(pageMdPath)) {
@@ -394,8 +410,17 @@ export async function updatePageConfig(
 ): Promise<UpdatePageConfigResult> {
   const { workspace_path, uid, name, description, icon, cover, page_width, show_toc } = options;
 
-  const pagesDir = join(workspace_path, PAGES_DIR);
-  const pageDir = join(pagesDir, uid);
+  let pageDir: string;
+  try {
+    pageDir = resolveExistingPageDir(workspace_path, uid);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error && error.message.includes("Invalid page uid")
+        ? error.message
+        : `Page not found: ${uid}`,
+    };
+  }
   const pageMdPath = join(pageDir, SKILL_FILE);
 
   if (!existsSync(pageMdPath)) {
@@ -481,8 +506,17 @@ export async function duplicatePage(
 ): Promise<DuplicatePageResult> {
   const { workspace_path, uid } = options;
 
-  const pagesDir = join(workspace_path, PAGES_DIR);
-  const sourceDir = join(pagesDir, uid);
+  let sourceDir: string;
+  try {
+    sourceDir = resolveExistingPageDir(workspace_path, uid);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error && error.message.includes("Invalid page uid")
+        ? error.message
+        : `Page not found: ${uid}`,
+    };
+  }
 
   if (!existsSync(sourceDir)) {
     return {
@@ -497,7 +531,7 @@ export async function duplicatePage(
 
   // Generate a new uid for the copy
   const newUid = generatePageUid();
-  const targetDir = join(pagesDir, newUid);
+  const targetDir = resolvePageDir(workspace_path, newUid);
 
   // Copy the entire directory recursively
   cpSync(sourceDir, targetDir, { recursive: true });
@@ -590,19 +624,24 @@ export async function uploadPageAsset(
     };
   }
 
-  const assetsDir = join(page.path, "_assets");
+  let asset: { assetsDir: string; filePath: string; filename: string };
+  try {
+    const pageDir = resolveExistingPageDir(workspace_path, uid);
+    asset = resolvePageAssetPath(pageDir, filename);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Invalid asset filename",
+    };
+  }
 
   // Create _assets directory if it doesn't exist
-  await mkdir(assetsDir, { recursive: true });
+  await mkdir(asset.assetsDir, { recursive: true });
 
-  // Generate a unique filename to avoid collisions
-  const uniqueFilename = `${Date.now()}-${filename}`;
-  const filePath = join(assetsDir, uniqueFilename);
-
-  await writeFile(filePath, data);
+  await writeFile(asset.filePath, data);
 
   return {
     success: true,
-    filename: uniqueFilename,
+    filename: asset.filename,
   };
 }

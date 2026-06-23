@@ -305,18 +305,21 @@ export class AcpSessionManager {
   private backendAdapter: AcpBackendAdapter;
   private steerPromptStore: AcpSteerPromptStore;
   private inputHistory: InputHistoryService;
+  private permissionHandler: PermissionHandler;
   readonly storage: AcpSessionStorageAdapter;
 
   constructor(
     backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter(),
     steerPromptStore: AcpSteerPromptStore = createDefaultAcpSteerPromptStore(),
     inputHistory: InputHistoryService = inputHistoryService,
-    storage: AcpSessionStorageAdapter = createDefaultAcpSessionStorage()
+    storage: AcpSessionStorageAdapter = createDefaultAcpSessionStorage(),
+    permissionHandler: PermissionHandler = createDefaultPermissionHandler()
   ) {
     this.backendAdapter = backendAdapter;
     this.steerPromptStore = steerPromptStore;
     this.inputHistory = inputHistory;
     this.storage = storage;
+    this.permissionHandler = permissionHandler;
   }
 
   getSession(sessionId: string): AcpSessionSummary | undefined {
@@ -868,7 +871,8 @@ export class AcpSessionManager {
     session.connection = new DetachedConnection(
       session.recorder,
       session.id,
-      session.agent_config?.permission_mode ?? "default"
+      session.agent_config?.permission_mode ?? "default",
+      this.permissionHandler
     );
     session.status = "parked";
     session.last_active_at = new Date();
@@ -1109,7 +1113,7 @@ export class AcpSessionManager {
     recorder: AcpSessionEventRecorder,
     permissionMode: AcpPermissionMode = "default"
   ): RecordingAcpConnection {
-    return new RecordingAcpConnection(sessionId, connection, recorder, permissionMode);
+    return new RecordingAcpConnection(sessionId, connection, recorder, permissionMode, this.permissionHandler);
   }
 
   private async handleBackendSessionUpdate(
@@ -1445,12 +1449,10 @@ export class AcpSessionManager {
       title: session.agent_config?.name,
       permission_mode: session.agent_config?.permission_mode,
       acp_record: {
-        sessionId: session.id,
-        executor_type: session.executor_type,
         sdk_session_id: session.sdk_session_id,
         backend_load_session_id: session.backend_load_session_id,
         initial_prompt: session.initial_prompt,
-        configOptions: session.config_options,
+        config_options: session.config_options,
       },
       persist_session_id: session.persist_session_id,
       persist_task_id: session.persist_task_id,
@@ -1978,7 +1980,7 @@ function toSummary(session: AcpSession): AcpSessionSummary {
 
 function recordToSummary(record: AcpSessionRecord): AcpSessionSummary {
   return {
-    id: readRecordString(record.acp_record, "sessionId") ?? record.session_id,
+    id: record.session_id,
     status: recordStatusToSessionStatus(record.status),
     cwd: record.cwd,
     createdAt: record.created_at,
@@ -2045,7 +2047,7 @@ function readRecordBoolean(record: Record<string, unknown>, key: string): boolea
 }
 
 function readConfigOptions(record: Record<string, unknown>): AcpConfigOption[] | undefined {
-  const value = record.configOptions ?? record.config_options;
+  const value = record.config_options;
   return Array.isArray(value) ? value as AcpConfigOption[] : undefined;
 }
 

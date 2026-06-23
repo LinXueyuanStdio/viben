@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import matter from "gray-matter";
+import { resolveExistingPageDir } from "./page-paths";
 import type {
   PageConfig,
   PageIndex,
@@ -186,6 +187,12 @@ export async function getPageByUid(
   workspacePath: string,
   uid: string
 ): Promise<PageConfig | null> {
-  const skillMdPath = join(workspacePath, PAGES_DIR, uid, SKILL_FILE);
+  let pageDir: string;
+  try {
+    pageDir = resolveExistingPageDir(workspacePath, uid);
+  } catch {
+    return null;
+  }
+  const skillMdPath = join(pageDir, SKILL_FILE);
   return parseSkillMd(skillMdPath, uid);
 }

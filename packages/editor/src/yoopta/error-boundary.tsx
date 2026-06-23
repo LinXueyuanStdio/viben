@@ -3,11 +3,9 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 type Props = {
   children: ReactNode;
   fallback?: ReactNode;
-  labels?: {
-    message?: string;
-    tryAgain?: string;
-    errorDetails?: string;
-  };
+  message: string;
+  tryAgainText: string;
+  errorDetailsText: string;
 };
 
 type State = {
@@ -36,7 +34,6 @@ export class YooptaErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
-      const labels = this.props.labels ?? {};
 
       return (
         <div
@@ -47,7 +44,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
           }}
         >
           <p style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-            {labels.message ?? "Something went wrong loading the editor."}
+            {this.props.message}
           </p>
           <button
             onClick={this.handleRetry}
@@ -61,7 +58,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
               cursor: "pointer",
             }}
           >
-            {labels.tryAgain ?? "Try again"}
+            {this.props.tryAgainText}
           </button>
           {this.state.error && (
             <details
@@ -71,7 +68,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
                 textAlign: "left",
               }}
             >
-              <summary style={{ cursor: "pointer" }}>{labels.errorDetails ?? "Error details"}</summary>
+              <summary style={{ cursor: "pointer" }}>{this.props.errorDetailsText}</summary>
               <pre
                 style={{
                   marginTop: "0.5rem",
