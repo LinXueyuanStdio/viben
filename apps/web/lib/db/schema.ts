@@ -41,6 +41,7 @@ export const users = pgTable(
     })
       .default('developer')
       .notNull(),
+    followersCount: integer('followers_count').default(0).notNull(),
 
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -651,6 +652,32 @@ export const publishedPages = pgTable(
     description: text('description'),
     html: text('html').notNull(),
     currentVersion: integer('current_version'),
+    categoryId: text('category_id'),
+    coverAssetId: text('cover_asset_id'),
+    tags: jsonb('tags').$type<string[]>().default([]).notNull(),
+    visibility: text('visibility', {
+      enum: ['public', 'unlisted', 'private'],
+    })
+      .default('public')
+      .notNull(),
+    moderationStatus: text('moderation_status', {
+      enum: ['pending', 'approved', 'rejected', 'hidden'],
+    })
+      .default('approved')
+      .notNull(),
+    publishedAt: timestamp('published_at').defaultNow().notNull(),
+    lastPublishedAt: timestamp('last_published_at').defaultNow().notNull(),
+    viewCount: integer('view_count').default(0).notNull(),
+    uniqueViewCount: integer('unique_view_count').default(0).notNull(),
+    readCount: integer('read_count').default(0).notNull(),
+    likeCount: integer('like_count').default(0).notNull(),
+    favoriteCount: integer('favorite_count').default(0).notNull(),
+    commentCount: integer('comment_count').default(0).notNull(),
+    shareCount: integer('share_count').default(0).notNull(),
+    repostCount: integer('repost_count').default(0).notNull(),
+    subscriberCount: integer('subscriber_count').default(0).notNull(),
+    versionCount: integer('version_count').default(0).notNull(),
+    statsUpdatedAt: timestamp('stats_updated_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -659,6 +686,12 @@ export const publishedPages = pgTable(
   },
   (table) => [
     index('published_pages_user_id_idx').on(table.userId),
+    index('published_pages_visibility_moderation_idx').on(
+      table.visibility,
+      table.moderationStatus
+    ),
+    index('published_pages_last_published_at_idx').on(table.lastPublishedAt),
+    index('published_pages_category_id_idx').on(table.categoryId),
     uniqueIndex('published_pages_user_id_uid_idx').on(table.userId, table.uid),
   ]
 );
@@ -686,6 +719,20 @@ export const publishedPageVersions = pgTable(
     icon: jsonb('icon').$type<{ type: string; value: string } | null>(),
     description: text('description'),
     html: text('html').notNull(),
+    categoryId: text('category_id'),
+    coverAssetId: text('cover_asset_id'),
+    tags: jsonb('tags').$type<string[]>().default([]).notNull(),
+    visibility: text('visibility', {
+      enum: ['public', 'unlisted', 'private'],
+    })
+      .default('public')
+      .notNull(),
+    moderationStatus: text('moderation_status', {
+      enum: ['pending', 'approved', 'rejected', 'hidden'],
+    })
+      .default('approved')
+      .notNull(),
+    publishedAt: timestamp('published_at').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
@@ -696,6 +743,863 @@ export const publishedPageVersions = pgTable(
       table.uid,
       table.version
     ),
+  ]
+);
+
+// ============================================
+// Web Community Tables
+// ============================================
+
+export const pageCategories = pgTable(
+  'page_categories',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    slug: text('slug').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    icon: jsonb('icon').$type<Record<string, unknown> | string | null>(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('page_categories_slug_idx').on(table.slug),
+    index('page_categories_active_sort_idx').on(table.isActive, table.sortOrder),
+  ]
+);
+
+export const mediaAssets = pgTable(
+  'media_assets',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    ownerUserId: text('owner_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    kind: text('kind').notNull(),
+    source: text('source', {
+      enum: ['external_url', 'object_storage', 'generated'],
+    }).notNull(),
+    url: text('url').notNull(),
+    thumbnailUrl: text('thumbnail_url'),
+    mimeType: text('mime_type'),
+    width: integer('width'),
+    height: integer('height'),
+    sizeBytes: integer('size_bytes'),
+    altText: text('alt_text'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index('media_assets_owner_user_id_idx').on(table.ownerUserId),
+    index('media_assets_kind_idx').on(table.kind),
+  ]
+);
+
+export const entityStatsDaily = pgTable(
+  'entity_stats_daily',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    statDate: timestamp('stat_date').notNull(),
+    viewCount: integer('view_count').default(0).notNull(),
+    uniqueViewCount: integer('unique_view_count').default(0).notNull(),
+    readCount: integer('read_count').default(0).notNull(),
+    likeCount: integer('like_count').default(0).notNull(),
+    favoriteCount: integer('favorite_count').default(0).notNull(),
+    commentCount: integer('comment_count').default(0).notNull(),
+    shareCount: integer('share_count').default(0).notNull(),
+    repostCount: integer('repost_count').default(0).notNull(),
+    subscriberCount: integer('subscriber_count').default(0).notNull(),
+    uniqueViewerCount: integer('unique_viewer_count').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('entity_stats_daily_entity_date_idx').on(
+      table.entityType,
+      table.entityId,
+      table.statDate
+    ),
+    index('entity_stats_daily_date_idx').on(table.statDate),
+  ]
+);
+
+export const communityEntities = pgTable(
+  'community_entities',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    entityType: text('entity_type', {
+      enum: ['published_page', 'moment', 'comment'],
+    }).notNull(),
+    entityId: text('entity_id').notNull(),
+    ownerUserId: text('owner_user_id').references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    visibility: text('visibility', {
+      enum: ['public', 'unlisted', 'private'],
+    })
+      .default('public')
+      .notNull(),
+    status: text('status', { enum: ['active', 'deleted', 'hidden'] })
+      .default('active')
+      .notNull(),
+    title: text('title'),
+    canonicalPath: text('canonical_path'),
+    reactionsCount: integer('reactions_count').default(0).notNull(),
+    favoritesCount: integer('favorites_count').default(0).notNull(),
+    commentsCount: integer('comments_count').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('community_entities_entity_idx').on(table.entityType, table.entityId),
+    index('community_entities_owner_idx').on(table.ownerUserId, table.createdAt),
+    index('community_entities_visibility_idx').on(
+      table.entityType,
+      table.status,
+      table.visibility
+    ),
+  ]
+);
+
+export const communityReactions = pgTable(
+  'community_reactions',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    communityEntityId: text('community_entity_id')
+      .notNull()
+      .references(() => communityEntities.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    reactionType: text('reaction_type').default('like').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('community_reactions_unique_idx').on(
+      table.communityEntityId,
+      table.userId,
+      table.reactionType
+    ),
+    index('community_reactions_entity_idx').on(
+      table.communityEntityId,
+      table.reactionType
+    ),
+    index('community_reactions_user_idx').on(table.userId, table.createdAt),
+  ]
+);
+
+export const communityFavorites = pgTable(
+  'community_favorites',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    communityEntityId: text('community_entity_id')
+      .notNull()
+      .references(() => communityEntities.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('community_favorites_unique_idx').on(
+      table.communityEntityId,
+      table.userId
+    ),
+    index('community_favorites_user_idx').on(table.userId, table.createdAt),
+    index('community_favorites_entity_idx').on(
+      table.communityEntityId,
+      table.createdAt
+    ),
+  ]
+);
+
+export const communityComments = pgTable(
+  'community_comments',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    communityEntityId: text('community_entity_id')
+      .notNull()
+      .references(() => communityEntities.id, { onDelete: 'cascade' }),
+    parentCommentId: text('parent_comment_id'),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    status: text('status', { enum: ['active', 'deleted', 'hidden'] })
+      .default('active')
+      .notNull(),
+    depth: integer('depth').default(0).notNull(),
+    repliesCount: integer('replies_count').default(0).notNull(),
+    reactionsCount: integer('reactions_count').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at'),
+    deletedByUserId: text('deleted_by_user_id').references(() => users.id),
+  },
+  (table) => [
+    index('community_comments_entity_parent_idx').on(
+      table.communityEntityId,
+      table.parentCommentId,
+      table.createdAt
+    ),
+    index('community_comments_user_idx').on(table.userId, table.createdAt),
+    index('community_comments_status_idx').on(table.status, table.createdAt),
+  ]
+);
+
+export const viewEvents = pgTable(
+  'view_events',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    actorUserId: text('actor_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    anonymousViewerHash: text('anonymous_viewer_hash'),
+    sessionIdHash: text('session_id_hash'),
+    source: text('source').notNull(),
+    route: text('route').notNull(),
+    referrerType: text('referrer_type').default('unknown').notNull(),
+    referrerUrlHash: text('referrer_url_hash'),
+    shareLinkId: text('share_link_id'),
+    repostId: text('repost_id'),
+    userAgentHash: text('user_agent_hash'),
+    ipHash: text('ip_hash'),
+    countryCode: text('country_code'),
+    regionCode: text('region_code'),
+    durationMs: integer('duration_ms'),
+    scrollDepth: integer('scroll_depth'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('view_events_entity_created_idx').on(
+      table.entityType,
+      table.entityId,
+      table.createdAt
+    ),
+    index('view_events_actor_created_idx').on(table.actorUserId, table.createdAt),
+  ]
+);
+
+export const userBrowseHistory = pgTable(
+  'user_browse_history',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    lastViewEventId: text('last_view_event_id').references(() => viewEvents.id, {
+      onDelete: 'set null',
+    }),
+    lastViewedAt: timestamp('last_viewed_at').defaultNow().notNull(),
+    firstViewedAt: timestamp('first_viewed_at').defaultNow().notNull(),
+    viewCount: integer('view_count').default(1).notNull(),
+    lastSource: text('last_source'),
+    lastRoute: text('last_route'),
+    lastProgress: jsonb('last_progress').$type<Record<string, unknown>>(),
+    snapshotTitle: text('snapshot_title'),
+    snapshotAuthorUserId: text('snapshot_author_user_id'),
+    snapshotCoverAssetId: text('snapshot_cover_asset_id'),
+    deletedAt: timestamp('deleted_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('user_browse_history_unique_idx').on(
+      table.userId,
+      table.entityType,
+      table.entityId
+    ),
+    index('user_browse_history_user_viewed_idx').on(table.userId, table.lastViewedAt),
+  ]
+);
+
+export const shareLinks = pgTable(
+  'share_links',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    createdByUserId: text('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    visibilitySnapshot: text('visibility_snapshot').notNull(),
+    channel: text('channel').default('copy_link').notNull(),
+    targetUrl: text('target_url').notNull(),
+    htmlDirectUrl: text('html_direct_url'),
+    expiresAt: timestamp('expires_at'),
+    revokedAt: timestamp('revoked_at'),
+    openCount: integer('open_count').default(0).notNull(),
+    uniqueOpenCount: integer('unique_open_count').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('share_links_uid_idx').on(table.uid),
+    index('share_links_entity_idx').on(table.entityType, table.entityId),
+  ]
+);
+
+export const shareEvents = pgTable(
+  'share_events',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    shareLinkId: text('share_link_id').references(() => shareLinks.id, {
+      onDelete: 'set null',
+    }),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    actorUserId: text('actor_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    anonymousActorHash: text('anonymous_actor_hash'),
+    eventType: text('event_type').notNull(),
+    channel: text('channel').default('copy_link').notNull(),
+    target: text('target'),
+    sourceRoute: text('source_route'),
+    viewerHash: text('viewer_hash'),
+    ipHash: text('ip_hash'),
+    userAgentHash: text('user_agent_hash'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('share_events_entity_created_idx').on(
+      table.entityType,
+      table.entityId,
+      table.createdAt
+    ),
+    index('share_events_link_idx').on(table.shareLinkId),
+  ]
+);
+
+export const reposts = pgTable(
+  'reposts',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    momentId: text('moment_id'),
+    comment: text('comment'),
+    visibility: text('visibility', {
+      enum: ['public', 'followers', 'private'],
+    })
+      .default('public')
+      .notNull(),
+    status: text('status', {
+      enum: ['pending', 'active', 'failed', 'deleted'],
+    })
+      .default('pending')
+      .notNull(),
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at'),
+  },
+  (table) => [
+    index('reposts_entity_idx').on(table.entityType, table.entityId),
+    index('reposts_user_idx').on(table.userId, table.createdAt),
+  ]
+);
+
+export const moments = pgTable(
+  'moments',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull(),
+    authorUserId: text('author_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind', {
+      enum: ['post', 'page_update', 'repost', 'system'],
+    })
+      .default('post')
+      .notNull(),
+    body: text('body'),
+    bodyFormat: text('body_format').default('plain_text').notNull(),
+    visibility: text('visibility', {
+      enum: ['public', 'unlisted', 'private'],
+    })
+      .default('public')
+      .notNull(),
+    sourceEventId: text('source_event_id'),
+    sourcePageUpdateEventId: text('source_page_update_event_id'),
+    repostOfMomentId: text('repost_of_moment_id'),
+    replyToMomentId: text('reply_to_moment_id'),
+    likeCount: integer('like_count').default(0).notNull(),
+    commentCount: integer('comment_count').default(0).notNull(),
+    repostCount: integer('repost_count').default(0).notNull(),
+    attachmentCount: integer('attachment_count').default(0).notNull(),
+    topicCount: integer('topic_count').default(0).notNull(),
+    isPinned: boolean('is_pinned').default(false).notNull(),
+    isDeleted: boolean('is_deleted').default(false).notNull(),
+    deletedAt: timestamp('deleted_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('moments_uid_idx').on(table.uid),
+    uniqueIndex('moments_page_update_event_unique_idx').on(
+      table.authorUserId,
+      table.sourcePageUpdateEventId
+    ),
+    index('moments_author_created_idx').on(table.authorUserId, table.createdAt),
+    index('moments_feed_idx').on(table.visibility, table.isDeleted, table.createdAt),
+  ]
+);
+
+export const momentAttachments = pgTable(
+  'moment_attachments',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    momentId: text('moment_id')
+      .notNull()
+      .references(() => moments.id, { onDelete: 'cascade' }),
+    attachmentType: text('attachment_type', {
+      enum: ['published_page', 'collection', 'mcp', 'skill', 'media'],
+    }).notNull(),
+    attachmentId: text('attachment_id').notNull(),
+    attachmentUid: text('attachment_uid'),
+    titleSnapshot: text('title_snapshot').notNull(),
+    descriptionSnapshot: text('description_snapshot'),
+    coverUrlSnapshot: text('cover_url_snapshot'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('moment_attachments_moment_idx').on(table.momentId, table.sortOrder),
+  ]
+);
+
+export const momentTopics = pgTable(
+  'moment_topics',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    slug: text('slug').notNull(),
+    displayName: text('display_name').notNull(),
+    description: text('description'),
+    momentCount: integer('moment_count').default(0).notNull(),
+    lastMomentAt: timestamp('last_moment_at'),
+    isFeatured: boolean('is_featured').default(false).notNull(),
+    isBlocked: boolean('is_blocked').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('moment_topics_slug_idx').on(table.slug),
+    index('moment_topics_featured_idx').on(table.isFeatured, table.lastMomentAt),
+  ]
+);
+
+export const momentTopicItems = pgTable(
+  'moment_topic_items',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    momentId: text('moment_id')
+      .notNull()
+      .references(() => moments.id, { onDelete: 'cascade' }),
+    topicId: text('topic_id')
+      .notNull()
+      .references(() => momentTopics.id, { onDelete: 'cascade' }),
+    source: text('source', { enum: ['body', 'attachment', 'system'] })
+      .default('body')
+      .notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('moment_topic_items_unique_idx').on(table.momentId, table.topicId),
+    index('moment_topic_items_topic_idx').on(table.topicId, table.createdAt),
+  ]
+);
+
+export const activityEvents = pgTable(
+  'activity_events',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    actorUserId: text('actor_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    eventType: text('event_type').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    targetUserId: text('target_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('activity_events_entity_idx').on(table.entityType, table.entityId),
+    index('activity_events_created_idx').on(table.createdAt),
+  ]
+);
+
+export const userFollows = pgTable(
+  'user_follows',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    followerUserId: text('follower_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    followeeUserId: text('followee_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    notifyLevel: text('notify_level', { enum: ['all', 'major', 'none'] })
+      .default('all')
+      .notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('user_follows_unique_idx').on(
+      table.followerUserId,
+      table.followeeUserId
+    ),
+    index('user_follows_followee_idx').on(table.followeeUserId),
+  ]
+);
+
+export const pageSubscriptions = pgTable(
+  'page_subscriptions',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    publishedPageId: text('published_page_id')
+      .notNull()
+      .references(() => publishedPages.id, { onDelete: 'cascade' }),
+    notifyLevel: text('notify_level', { enum: ['all', 'major', 'none'] })
+      .default('all')
+      .notNull(),
+    lastSeenVersion: integer('last_seen_version').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('page_subscriptions_unique_idx').on(
+      table.userId,
+      table.publishedPageId
+    ),
+    index('page_subscriptions_page_idx').on(table.publishedPageId),
+  ]
+);
+
+export const pageUpdateEvents = pgTable(
+  'page_update_events',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    publishedPageId: text('published_page_id')
+      .notNull()
+      .references(() => publishedPages.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    userSlug: text('user_slug').notNull(),
+    pageId: text('page_id').notNull(),
+    version: integer('version').notNull(),
+    eventType: text('event_type', {
+      enum: ['published', 'updated', 'republished', 'unpublished'],
+    }).notNull(),
+    importance: text('importance', { enum: ['normal', 'major'] })
+      .default('normal')
+      .notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    changeSummary: text('change_summary'),
+    visibility: text('visibility').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('page_update_events_unique_idx').on(
+      table.publishedPageId,
+      table.version,
+      table.eventType
+    ),
+    index('page_update_events_page_created_idx').on(
+      table.publishedPageId,
+      table.createdAt
+    ),
+    index('page_update_events_user_created_idx').on(table.userId, table.createdAt),
+    index('page_update_events_created_idx').on(table.createdAt, table.id),
+  ]
+);
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    recipientUserId: text('recipient_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    actorUserId: text('actor_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    type: text('type').notNull(),
+    pageUpdateEventId: text('page_update_event_id').references(
+      () => pageUpdateEvents.id,
+      { onDelete: 'cascade' }
+    ),
+    publishedPageId: text('published_page_id').references(() => publishedPages.id, {
+      onDelete: 'cascade',
+    }),
+    title: text('title').notNull(),
+    body: text('body'),
+    readAt: timestamp('read_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('notifications_event_unique_idx').on(
+      table.recipientUserId,
+      table.pageUpdateEventId,
+      table.type
+    ),
+    index('notifications_recipient_created_idx').on(
+      table.recipientUserId,
+      table.createdAt,
+      table.id
+    ),
+    index('notifications_unread_idx').on(table.recipientUserId, table.readAt),
+  ]
+);
+
+export const rankingSnapshots = pgTable(
+  'ranking_snapshots',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    rankingKey: text('ranking_key').notNull(),
+    entityType: text('entity_type').notNull(),
+    timeWindow: text('time_window').default('7d').notNull(),
+    scopeType: text('scope_type').default('global').notNull(),
+    scopeId: text('scope_id'),
+    algorithmVersion: text('algorithm_version').notNull(),
+    status: text('status', {
+      enum: ['building', 'ready', 'failed', 'expired'],
+    })
+      .default('building')
+      .notNull(),
+    generatedAt: timestamp('generated_at'),
+    validFrom: timestamp('valid_from').defaultNow().notNull(),
+    validUntil: timestamp('valid_until'),
+    sourceFrom: timestamp('source_from'),
+    sourceUntil: timestamp('source_until'),
+    itemCount: integer('item_count').default(0).notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index('ranking_snapshots_lookup_idx').on(
+      table.rankingKey,
+      table.timeWindow,
+      table.scopeType,
+      table.scopeId,
+      table.status,
+      table.validFrom
+    ),
+  ]
+);
+
+export const rankingItems = pgTable(
+  'ranking_items',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    snapshotId: text('snapshot_id')
+      .notNull()
+      .references(() => rankingSnapshots.id, { onDelete: 'cascade' }),
+    rank: integer('rank').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    score: real('score').default(0).notNull(),
+    rawScore: real('raw_score').default(0).notNull(),
+    decayFactor: real('decay_factor').default(1).notNull(),
+    reason: text('reason').notNull(),
+    breakdown: jsonb('breakdown').$type<Record<string, unknown>>(),
+    title: text('title').notNull(),
+    description: text('description'),
+    userId: text('user_id'),
+    userSlug: text('user_slug'),
+    pageId: text('page_id'),
+    categoryId: text('category_id'),
+    coverAssetId: text('cover_asset_id'),
+    tags: jsonb('tags').$type<string[]>().default([]).notNull(),
+    publishedAt: timestamp('published_at'),
+    lastPublishedAt: timestamp('last_published_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('ranking_items_snapshot_entity_idx').on(
+      table.snapshotId,
+      table.entityType,
+      table.entityId
+    ),
+    uniqueIndex('ranking_items_snapshot_rank_idx').on(table.snapshotId, table.rank),
+    index('ranking_items_entity_idx').on(table.entityType, table.entityId),
+  ]
+);
+
+export const operationSlots = pgTable(
+  'operation_slots',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull(),
+    surface: text('surface').notNull(),
+    slotKey: text('slot_key').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    layoutType: text('layout_type').notNull(),
+    locale: text('locale').default('default').notNull(),
+    minItems: integer('min_items').default(0).notNull(),
+    maxItems: integer('max_items').default(10).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    fallbackStrategy: text('fallback_strategy').default('none').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdBy: text('created_by').references(() => users.id),
+    updatedBy: text('updated_by').references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('operation_slots_surface_locale_key_idx').on(
+      table.surface,
+      table.locale,
+      table.slotKey
+    ),
+    uniqueIndex('operation_slots_uid_idx').on(table.uid),
+  ]
+);
+
+export const operationItems = pgTable(
+  'operation_items',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull(),
+    slotId: text('slot_id')
+      .notNull()
+      .references(() => operationSlots.id, { onDelete: 'cascade' }),
+    itemType: text('item_type').notNull(),
+    targetEntityType: text('target_entity_type'),
+    targetEntityId: text('target_entity_id'),
+    targetEntityUid: text('target_entity_uid'),
+    targetUrl: text('target_url'),
+    title: text('title').notNull(),
+    subtitle: text('subtitle'),
+    description: text('description'),
+    imageAssetId: text('image_asset_id'),
+    imageUrl: text('image_url'),
+    ctaLabel: text('cta_label'),
+    badgeLabel: text('badge_label'),
+    locale: text('locale').default('default').notNull(),
+    startsAt: timestamp('starts_at'),
+    endsAt: timestamp('ends_at'),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    visibility: text('visibility', {
+      enum: ['draft', 'scheduled', 'published', 'archived'],
+    })
+      .default('draft')
+      .notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdBy: text('created_by').references(() => users.id),
+    updatedBy: text('updated_by').references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('operation_items_uid_idx').on(table.uid),
+    index('operation_items_slot_idx').on(table.slotId, table.sortOrder),
+  ]
+);
+
+export const operationRevisions = pgTable(
+  'operation_revisions',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull(),
+    surface: text('surface').notNull(),
+    locale: text('locale').notNull(),
+    revisionNumber: integer('revision_number').notNull(),
+    status: text('status', {
+      enum: ['draft', 'published', 'rolled_back', 'archived'],
+    })
+      .default('draft')
+      .notNull(),
+    snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+    validationReport: jsonb('validation_report').$type<Record<string, unknown>>(),
+    publishedAt: timestamp('published_at'),
+    publishedBy: text('published_by').references(() => users.id),
+    createdBy: text('created_by').references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('operation_revisions_number_idx').on(
+      table.surface,
+      table.locale,
+      table.revisionNumber
+    ),
+    uniqueIndex('operation_revisions_uid_idx').on(table.uid),
+    index('operation_revisions_active_idx').on(table.surface, table.locale, table.status),
   ]
 );
 

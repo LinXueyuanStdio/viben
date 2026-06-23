@@ -23,11 +23,14 @@ vi.mock('@/lib/db', () => ({
   },
   publishedPages: {
     userId: 'userId',
+    visibility: 'visibility',
+    moderationStatus: 'moderationStatus',
     updatedAt: 'updatedAt',
   },
 }));
 
 vi.mock('drizzle-orm', () => ({
+  and: vi.fn((...conditions) => ({ type: 'and', conditions })),
   desc: vi.fn((field) => ({ direction: 'desc', field })),
   eq: vi.fn((field, value) => ({ field, value })),
 }));
@@ -66,12 +69,19 @@ describe('/[user_id]/page', () => {
       where: { field: 'id', value: 'user-1' },
     });
     expect(mocks.findMany).toHaveBeenCalledWith({
-      where: { field: 'userId', value: 'user-1' },
+      where: {
+        type: 'and',
+        conditions: [
+          { field: 'userId', value: 'user-1' },
+          { field: 'visibility', value: 'public' },
+          { field: 'moderationStatus', value: 'approved' },
+        ],
+      },
       orderBy: [{ direction: 'desc', field: 'updatedAt' }],
     });
     expect(screen.getByRole('link', { name: /Demo Demo description/i })).toHaveAttribute(
       'href',
-      '/page/alice/demo'
+      '/read/alice/demo'
     );
   });
 });

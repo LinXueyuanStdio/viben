@@ -1,5 +1,8 @@
 import { and, eq } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { getOptionalSession } from '@/lib/auth/middleware';
 import { db, publishedPages, users } from '@/lib/db';
+import { canReadPage, recordPageView } from '@/lib/services/community';
 
 interface PublishedPageRouteContext {
   params: Promise<{
@@ -9,7 +12,7 @@ interface PublishedPageRouteContext {
 }
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   { params }: PublishedPageRouteContext
 ) {
   const { user_slug: userSlug, page_id: pageId } = await params;
@@ -41,6 +44,25 @@ export async function GET(
       },
     });
   }
+
+  const session = await getOptionalSession(request);
+  if (!canReadPage(page, session)) {
+    return new Response('Not found', {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+      },
+    });
+  }
+
+  void recordPageView({
+    context: { page, author: user },
+    session,
+    source: 'html_direct',
+    route: '/page',
+  }).catch((error) => {
+    console.error('Failed to record html_direct page view:', error);
+  });
 
   return new Response(page.html, {
     status: 200,

@@ -7,8 +7,10 @@ const mocks = vi.hoisted(() => ({
   findLatestRecord: vi.fn(),
   insertValues: vi.fn(),
   onConflictDoUpdate: vi.fn(),
+  onConflictDoNothing: vi.fn(),
   transaction: vi.fn(),
   execute: vi.fn(),
+  findMediaAsset: vi.fn(),
   requireAuth: vi.fn(),
 }));
 
@@ -37,6 +39,9 @@ vi.mock('@/lib/db', () => ({
       },
       publishedPageRecords: {
         findFirst: mocks.findLatestRecord,
+      },
+      mediaAssets: {
+        findFirst: mocks.findMediaAsset,
       },
     },
     insert: vi.fn(() => ({
@@ -75,6 +80,22 @@ vi.mock('@/lib/db', () => ({
     title: 'recordTitle',
     icon: 'recordIcon',
     description: 'recordDescription',
+  },
+  pageUpdateEvents: {
+    publishedPageId: 'eventPublishedPageId',
+    userId: 'eventUserId',
+    userSlug: 'eventUserSlug',
+    pageId: 'eventPageId',
+    version: 'eventVersion',
+    eventType: 'eventType',
+    importance: 'eventImportance',
+    title: 'eventTitle',
+    description: 'eventDescription',
+    visibility: 'eventVisibility',
+  },
+  mediaAssets: {
+    id: 'assetId',
+    ownerUserId: 'assetOwnerUserId',
   },
 }));
 
@@ -115,8 +136,14 @@ describe('POST /api/pages/publish', () => {
     mocks.findLatestRecord.mockResolvedValue(null);
     mocks.insertValues.mockReturnValue({
       onConflictDoUpdate: mocks.onConflictDoUpdate,
+      onConflictDoNothing: mocks.onConflictDoNothing,
     });
     mocks.onConflictDoUpdate.mockResolvedValue(undefined);
+    mocks.onConflictDoNothing.mockResolvedValue(undefined);
+    mocks.findMediaAsset.mockResolvedValue({
+      id: 'asset-1',
+      ownerUserId: 'user-1',
+    });
     mocks.transaction.mockImplementation(async (callback) => callback({
       query: {
         publishedPages: {
@@ -127,6 +154,9 @@ describe('POST /api/pages/publish', () => {
         },
         publishedPageRecords: {
           findFirst: mocks.findLatestRecord,
+        },
+        mediaAssets: {
+          findFirst: mocks.findMediaAsset,
         },
       },
       insert: vi.fn(() => ({
@@ -151,6 +181,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/alice/demo',
+      read_url: '/read/alice/demo',
       updated: true,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -161,6 +192,14 @@ describe('POST /api/pages/publish', () => {
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
       currentVersion: 1,
+      categoryId: null,
+      coverAssetId: null,
+      tags: [],
+      visibility: 'public',
+      moderationStatus: 'approved',
+      publishedAt: { type: 'sql', sql: 'now()' },
+      lastPublishedAt: { type: 'sql', sql: 'now()' },
+      versionCount: 1,
     });
     expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
       target: ['userId', 'uid'],
@@ -170,6 +209,13 @@ describe('POST /api/pages/publish', () => {
         description: 'Demo page',
         html: '<!doctype html><html><body>Demo</body></html>',
         currentVersion: 1,
+        categoryId: null,
+        coverAssetId: null,
+        tags: [],
+        visibility: 'public',
+        moderationStatus: 'approved',
+        lastPublishedAt: { type: 'sql', sql: 'now()' },
+        versionCount: 1,
         updatedAt: { type: 'sql', sql: 'now()' },
       },
     });
@@ -182,6 +228,12 @@ describe('POST /api/pages/publish', () => {
       icon: { type: 'lucide', value: 'file-text' },
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
+      categoryId: null,
+      coverAssetId: null,
+      tags: [],
+      visibility: 'public',
+      moderationStatus: 'approved',
+      publishedAt: expect.any(Date),
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
       publishedPageId: 'published-1',
@@ -193,6 +245,18 @@ describe('POST /api/pages/publish', () => {
       title: 'Demo',
       icon: { type: 'lucide', value: 'file-text' },
       description: 'Demo page',
+    });
+    expect(mocks.insertValues).toHaveBeenCalledWith({
+      publishedPageId: 'published-1',
+      userId: 'user-1',
+      userSlug: 'alice',
+      pageId: 'demo',
+      version: 1,
+      eventType: 'published',
+      importance: 'normal',
+      title: 'Demo',
+      description: 'Demo page',
+      visibility: 'public',
     });
     expect(mocks.execute).toHaveBeenCalled();
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
@@ -223,6 +287,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/alice/demo',
+      read_url: '/read/alice/demo',
       updated: true,
     });
     expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
@@ -233,6 +298,13 @@ describe('POST /api/pages/publish', () => {
         description: 'Updated',
         html: '<html><body>Updated</body></html>',
         currentVersion: 4,
+        categoryId: null,
+        coverAssetId: null,
+        tags: [],
+        visibility: 'public',
+        moderationStatus: 'approved',
+        lastPublishedAt: { type: 'sql', sql: 'now()' },
+        versionCount: 4,
         updatedAt: { type: 'sql', sql: 'now()' },
       },
     });
@@ -245,8 +317,14 @@ describe('POST /api/pages/publish', () => {
       icon: null,
       description: 'Updated',
       html: '<html><body>Updated</body></html>',
+      categoryId: null,
+      coverAssetId: null,
+      tags: [],
+      visibility: 'public',
+      moderationStatus: 'approved',
+      publishedAt: expect.any(Date),
     });
-    expect(mocks.insertValues).toHaveBeenLastCalledWith({
+    expect(mocks.insertValues).toHaveBeenCalledWith({
       publishedPageId: 'published-1',
       uid: 'demo',
       userId: 'user-1',
@@ -286,6 +364,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/bob_builder/demo',
+      read_url: '/read/bob_builder/demo',
       updated: true,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -296,6 +375,14 @@ describe('POST /api/pages/publish', () => {
       description: null,
       html: '<html><body>Bob Demo</body></html>',
       currentVersion: 1,
+      categoryId: null,
+      coverAssetId: null,
+      tags: [],
+      visibility: 'public',
+      moderationStatus: 'approved',
+      publishedAt: { type: 'sql', sql: 'now()' },
+      lastPublishedAt: { type: 'sql', sql: 'now()' },
+      versionCount: 1,
     });
   });
 
@@ -311,6 +398,23 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'icon must be an object with string type and value',
     });
+  });
+
+  it('rejects a cover asset that does not belong to the publisher', async () => {
+    mocks.findMediaAsset.mockResolvedValue(null);
+
+    const response = await POST(requestWithBody({
+      uid: 'demo',
+      title: 'Demo',
+      html: '<html><body>Demo</body></html>',
+      cover_asset_id: 'asset-from-another-user',
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'cover_asset_id is invalid or not owned by the current user',
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it('returns database error details for unexpected publish failures', async () => {

@@ -70,7 +70,7 @@ describe('requireAuth', () => {
     });
 
     await expect(requireAuth(request as any)).rejects.toThrow(AuthError);
-    await expect(requireAuth(request as any)).rejects.toThrow('Invalid API key');
+    await expect(requireAuth(request as any)).rejects.toThrow('Invalid token');
   });
 
   it('should fall back to cookie session when no Bearer token', async () => {

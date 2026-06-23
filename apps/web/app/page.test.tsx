@@ -1,14 +1,16 @@
 import { render, screen } from '@testing-library/react';
-import HomePage from './page';
+import { describe, expect, it, vi } from 'vitest';
+import Page from './page';
 
-describe('HomePage', () => {
-  it('renders optimized lifecycle and faq sections', () => {
-    render(<HomePage />);
+vi.mock('./components/community/community-home', () => ({
+  CommunityHome: () => <main><h1>Discover published work</h1><a href="/landing">/landing</a></main>,
+}));
 
-    expect(screen.getByRole('tab', { name: 'Board' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Tests' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '完整生命周期，你始终在控制中' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '常见问题' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '进入 MCP 市场' })).toHaveAttribute('href', '/mcp');
+describe('CommunityHomePage', () => {
+  it('renders the community discovery homepage at root', async () => {
+    render(await Page());
+
+    expect(screen.getByRole('heading', { name: 'Discover published work' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '/landing' })).toHaveAttribute('href', '/landing');
   });
 });

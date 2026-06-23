@@ -32,7 +32,7 @@ export function PublishedPageList({ userSlug, pages }: PublishedPageListProps) {
             {pages.map((page) => (
               <Link
                 key={page.uid}
-                href={`/page/${encodeURIComponent(userSlug)}/${encodeURIComponent(page.uid)}`}
+                href={`/read/${encodeURIComponent(userSlug)}/${encodeURIComponent(page.uid)}`}
                 className="group flex min-h-[320px] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground transition-colors duration-200 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="aspect-[4/3] overflow-hidden border-b border-border bg-muted">

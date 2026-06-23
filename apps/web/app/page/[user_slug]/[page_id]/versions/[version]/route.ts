@@ -1,5 +1,8 @@
 import { and, eq } from 'drizzle-orm';
-import { db, publishedPageVersions, users } from '@/lib/db';
+import type { NextRequest } from 'next/server';
+import { getOptionalSession } from '@/lib/auth/middleware';
+import { db, publishedPages, publishedPageVersions, users } from '@/lib/db';
+import { canReadPage } from '@/lib/services/community';
 
 interface PublishedPageVersionRouteContext {
   params: Promise<{
@@ -19,7 +22,7 @@ function notFoundResponse() {
 }
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   { params }: PublishedPageVersionRouteContext
 ) {
   const { user_slug: userSlug, page_id: pageId, version } = await params;
@@ -34,6 +37,22 @@ export async function GET(
   });
 
   if (!user) {
+    return notFoundResponse();
+  }
+
+  const page = await db.query.publishedPages.findFirst({
+    where: and(
+      eq(publishedPages.userId, user.id),
+      eq(publishedPages.uid, pageId)
+    ),
+  });
+
+  if (!page) {
+    return notFoundResponse();
+  }
+
+  const session = await getOptionalSession(request);
+  if (!canReadPage(page, session)) {
     return notFoundResponse();
   }
 

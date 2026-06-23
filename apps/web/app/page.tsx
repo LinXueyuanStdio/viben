@@ -1,8 +1,7 @@
-import { HomePage } from './components/home-page';
+import { CommunityHome } from './components/community/community-home';
 
-// Force dynamic rendering to avoid SSG timeout with client-side i18n
 export const dynamic = 'force-dynamic';
 
-export default function Page() {
-  return <HomePage />;
+export default async function Page() {
+  return <CommunityHome />;
 }

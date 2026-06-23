@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { db, publishedPageRecords, publishedPages, publishedPageVersions } from '@/lib/db';
+import {
+  db,
+  mediaAssets,
+  pageUpdateEvents,
+  publishedPageRecords,
+  publishedPages,
+  publishedPageVersions,
+} from '@/lib/db';
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -37,7 +44,18 @@ export async function POST(request: NextRequest) {
     const session = await requireAuth(request);
     const body = await request.json();
 
-    const { uid, title, icon, description, html } = body;
+    const {
+      uid,
+      title,
+      icon,
+      description,
+      html,
+      category_id: categoryId,
+      cover_asset_id: coverAssetId,
+      tags,
+      visibility,
+      importance,
+    } = body;
 
     if (typeof uid !== 'string' || !uid.trim() || typeof title !== 'string' || !title.trim() || typeof html !== 'string' || !html) {
       return NextResponse.json(
@@ -60,7 +78,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedTags = Array.isArray(tags)
+      ? tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 12)
+      : [];
+    const normalizedCoverAssetId = typeof coverAssetId === 'string' ? coverAssetId : null;
+    const normalizedVisibility =
+      visibility === 'unlisted' || visibility === 'private' ? visibility : 'public';
+    const normalizedImportance = importance === 'major' ? 'major' : 'normal';
+
     await ensurePublishedPagesTable();
+
+    if (normalizedCoverAssetId) {
+      const coverAsset = await db.query.mediaAssets.findFirst({
+        where: and(
+          eq(mediaAssets.id, normalizedCoverAssetId),
+          eq(mediaAssets.ownerUserId, session.userId)
+        ),
+      });
+
+      if (!coverAsset) {
+        return NextResponse.json(
+          { error: 'cover_asset_id is invalid or not owned by the current user' },
+          { status: 400 }
+        );
+      }
+    }
 
     await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${session.userId}), hashtext(${uid}))`);
@@ -74,6 +116,7 @@ export async function POST(request: NextRequest) {
       });
 
       const nextVersion = (latestVersion?.version ?? 0) + 1;
+      const eventType = latestVersion ? 'updated' : 'published';
 
       await tx
         .insert(publishedPages)
@@ -85,6 +128,14 @@ export async function POST(request: NextRequest) {
           description: description ?? null,
           html,
           currentVersion: nextVersion,
+          categoryId: typeof categoryId === 'string' ? categoryId : null,
+          coverAssetId: normalizedCoverAssetId,
+          tags: normalizedTags,
+          visibility: normalizedVisibility,
+          moderationStatus: 'approved',
+          publishedAt: sql`now()`,
+          lastPublishedAt: sql`now()`,
+          versionCount: nextVersion,
         })
         .onConflictDoUpdate({
           target: [publishedPages.userId, publishedPages.uid],
@@ -94,6 +145,13 @@ export async function POST(request: NextRequest) {
             description: description ?? null,
             html,
             currentVersion: nextVersion,
+            categoryId: typeof categoryId === 'string' ? categoryId : null,
+            coverAssetId: normalizedCoverAssetId,
+            tags: normalizedTags,
+            visibility: normalizedVisibility,
+            moderationStatus: 'approved',
+            lastPublishedAt: sql`now()`,
+            versionCount: nextVersion,
             updatedAt: sql`now()`,
           },
         });
@@ -118,6 +176,12 @@ export async function POST(request: NextRequest) {
         icon: icon ?? null,
         description: description ?? null,
         html,
+        categoryId: typeof categoryId === 'string' ? categoryId : null,
+        coverAssetId: normalizedCoverAssetId,
+        tags: normalizedTags,
+        visibility: normalizedVisibility,
+        moderationStatus: 'approved',
+        publishedAt: new Date(),
       });
 
       const latestRecord = await tx.query.publishedPageRecords.findFirst({
@@ -139,12 +203,29 @@ export async function POST(request: NextRequest) {
         icon: icon ?? null,
         description: description ?? null,
       });
+
+      await tx
+        .insert(pageUpdateEvents)
+        .values({
+          publishedPageId: updatedPublishedPage.id,
+          userId: session.userId,
+          userSlug: session.userSlug,
+          pageId: uid,
+          version: nextVersion,
+          eventType,
+          importance: normalizedImportance,
+          title,
+          description: description ?? null,
+          visibility: normalizedVisibility,
+        })
+        .onConflictDoNothing();
     });
 
     return NextResponse.json({
       success: true,
       page_uid: uid,
       url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
+      read_url: `/read/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
       updated: true,
     });
   } catch (error) {
