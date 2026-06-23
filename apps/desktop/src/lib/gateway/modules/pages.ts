@@ -31,6 +31,8 @@ import type {
   PublishedPageRollbackParams,
   PublishedPageRollbackResult,
   ListTemplatesResult,
+  ApplyPageTemplateParams,
+  ApplyPageTemplateResult,
 } from "../types/page";
 
 // Re-export types for convenience
@@ -69,6 +71,8 @@ export type {
   PublishedPageRollbackResult,
   PageTemplate,
   ListTemplatesResult,
+  ApplyPageTemplateParams,
+  ApplyPageTemplateResult,
 } from "../types/page";
 
 // =============================================================================
@@ -556,6 +560,33 @@ export async function listTemplates(
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to list templates: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Apply a page template to an existing empty markdown page.
+ */
+export async function applyPageTemplate(
+  baseUrl: string,
+  params: ApplyPageTemplateParams
+): Promise<ApplyPageTemplateResult> {
+  const response = await fetch(`${baseUrl}/api/page/apply-template`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to apply page template: ${errorMessage}`,
       response.status
     );
   }

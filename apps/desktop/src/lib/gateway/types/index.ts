@@ -254,4 +254,6 @@ export type {
   DuplicatePageResult,
   PageTemplate,
   ListTemplatesResult,
+  ApplyPageTemplateParams,
+  ApplyPageTemplateResult,
 } from "./page";

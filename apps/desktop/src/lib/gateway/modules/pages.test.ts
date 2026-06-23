@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createPage } from "./pages";
+import { applyPageTemplate, createPage } from "./pages";
 
 describe("pages gateway module", () => {
   beforeEach(() => {
@@ -38,5 +38,46 @@ describe("pages gateway module", () => {
       workspace_path: "/tmp/workspace",
       type: "markdown",
     });
+  });
+
+  it("posts snake_case body when applying a page template", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          page: {
+            uid: "0623-blank",
+            name: "",
+            type: "markdown",
+            permission: ["read", "write"],
+            path: "/tmp/workspace/pages/0623-blank",
+            skill_content: "## Getting Started",
+          },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyPageTemplate("http://127.0.0.1:18790", {
+      workspace_path: "/tmp/workspace",
+      uid: "0623-blank",
+      template_id: "markdown-docs",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:18790/api/page/apply-template",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          workspace_path: "/tmp/workspace",
+          uid: "0623-blank",
+          template_id: "markdown-docs",
+        }),
+      })
+    );
   });
 });

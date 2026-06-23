@@ -20,8 +20,15 @@ import {
   updatePageConfig as updatePageConfigApi,
   reorderPages as reorderPagesApi,
   listTemplates as listTemplatesApi,
+  applyPageTemplate as applyPageTemplateApi,
 } from "@/lib/gateway";
-import type { CreatePageParams, UpdatePageConfigParams, ReorderPagesParams, DuplicatePageParams } from "@/lib/gateway";
+import type {
+  ApplyPageTemplateParams,
+  CreatePageParams,
+  DuplicatePageParams,
+  ReorderPagesParams,
+  UpdatePageConfigParams,
+} from "@/lib/gateway";
 
 // Re-export types for convenience
 export type {
@@ -34,6 +41,7 @@ export type {
   ServerPageConfig,
   ProxyPageConfig,
   PageTemplate,
+  ApplyPageTemplateParams,
   CreatePageParams,
   UpdatePageConfigParams,
 } from "@/lib/gateway";
@@ -201,5 +209,25 @@ export function usePageTemplates(workspacePath: string | undefined) {
     queryKey: templateKeys.list(workspacePath),
     queryFn: () => listTemplatesApi(getGatewayUrl(), workspacePath),
     select: (data) => data.templates,
+  });
+}
+
+/**
+ * Hook for applying a template to an existing empty markdown page.
+ */
+export function useApplyPageTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ApplyPageTemplateParams) =>
+      applyPageTemplateApi(getGatewayUrl(), params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: pageKeys.list(variables.workspace_path),
+      });
+      queryClient.invalidateQueries({
+        queryKey: pageKeys.detail(variables.workspace_path, variables.uid),
+      });
+    },
   });
 }
