@@ -340,6 +340,9 @@ importers:
       '@viben/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@viben/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
       '@viben/kanban':
         specifier: workspace:*
         version: link:../../packages/kanban
@@ -361,84 +364,6 @@ importers:
       '@vocalbridgeai/sdk':
         specifier: ^0.1.1
         version: 0.1.1(@types/dom-mediacapture-record@1.0.22)
-      '@yoopta/accordion':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/accordion
-      '@yoopta/blockquote':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/blockquote
-      '@yoopta/callout':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/callout
-      '@yoopta/carousel':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/carousel
-      '@yoopta/code':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/code
-      '@yoopta/divider':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/divider
-      '@yoopta/editor':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/core/editor
-      '@yoopta/embed':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/embed
-      '@yoopta/emoji':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/emoji
-      '@yoopta/exports':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/core/exports
-      '@yoopta/file':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/file
-      '@yoopta/headings':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/headings
-      '@yoopta/image':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/image
-      '@yoopta/link':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/link
-      '@yoopta/lists':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/lists
-      '@yoopta/marks':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/marks
-      '@yoopta/math':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/math
-      '@yoopta/mention':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/mention
-      '@yoopta/paragraph':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/paragraph
-      '@yoopta/steps':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/steps
-      '@yoopta/table':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/table
-      '@yoopta/table-of-contents':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/table-of-contents
-      '@yoopta/tabs':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/tabs
-      '@yoopta/themes-shadcn':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/themes/shadcn
-      '@yoopta/ui':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/core/ui
-      '@yoopta/video':
-        specifier: workspace:*
-        version: link:../../infra/Yoopta-Editor/packages/plugins/video
       ahooks:
         specifier: ^3.9.7
         version: 3.9.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -514,9 +439,6 @@ importers:
       remark-gfm:
         specifier: ^4.0.0
         version: 4.0.1
-      slate:
-        specifier: ^0.120.0
-        version: 0.120.0
       socket.io-client:
         specifier: ^4.8.3
         version: 4.8.3
@@ -1836,6 +1758,12 @@ importers:
 
   packages/editor:
     dependencies:
+      '@floating-ui/dom':
+        specifier: ^1.7.4
+        version: 1.7.6
+      '@floating-ui/react':
+        specifier: ^0.27.16
+        version: 0.27.19(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@yoopta/accordion':
         specifier: workspace:*
         version: link:../../infra/Yoopta-Editor/packages/plugins/accordion
@@ -1914,10 +1842,40 @@ importers:
       '@yoopta/video':
         specifier: workspace:*
         version: link:../../infra/Yoopta-Editor/packages/plugins/video
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      i18next:
+        specifier: ^26.0.0
+        version: 26.3.0(typescript@5.9.3)
+      katex:
+        specifier: ^0.16.11
+        version: 0.16.47
+      lucide-react:
+        specifier: ^1.16.0
+        version: 1.16.0(react@19.2.7)
+      react:
+        specifier: 19.2.7
+        version: 19.2.7
+      react-i18next:
+        specifier: ^17.0.0
+        version: 17.0.8(i18next@26.3.0(typescript@5.9.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
+      slate:
+        specifier: ^0.120.0
+        version: 0.120.0
+      slate-react:
+        specifier: ^0.120.0
+        version: 0.120.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(slate-dom@0.119.0(slate@0.120.0))(slate@0.120.0)
+      tailwind-merge:
+        specifier: ^3.4.0
+        version: 3.5.0
     devDependencies:
       jsdom:
         specifier: ^28.0.0
         version: 28.0.0
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.21))(jiti@2.7.0)(postcss@8.5.15)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -34756,7 +34714,7 @@ snapshots:
       dagre-d3-es: 7.0.14
       dayjs: 1.11.20
       dompurify: 3.4.5
-      katex: 0.16.45
+      katex: 0.16.47
       khroma: 2.1.0
       lodash-es: 4.18.1
       marked: 16.4.2
