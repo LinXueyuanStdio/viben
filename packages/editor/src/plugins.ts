@@ -20,6 +20,34 @@ import Mention from '@yoopta/mention';
 import { MathInline, MathBlock } from '@yoopta/math';
 import TableOfContents from '@yoopta/table-of-contents';
 
+export {
+  HeadingOne,
+  HeadingTwo,
+  HeadingThree,
+  Paragraph,
+  Blockquote,
+  Callout,
+  BulletedList,
+  NumberedList,
+  TodoList,
+  Code,
+  Divider,
+  Link,
+  Table,
+  Image,
+  Embed,
+  Video,
+  File,
+  Accordion,
+  Steps,
+  Tabs,
+  Carousel,
+  Mention,
+  MathInline,
+  MathBlock,
+  TableOfContents,
+};
+
 export interface YooptaNavigationMeta {
   includeInPageIndex?: boolean;
   titleOverride?: string;

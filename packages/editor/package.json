@@ -3,14 +3,26 @@
   "version": "1.0.0",
   "private": true,
   "description": "Yoopta editor markdown roundtrip utilities and plugin registry for Viben",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
     "./yoopta/editor.css": "./src/yoopta/editor.css"
   },
+  "files": [
+    "dist",
+    "src/yoopta/editor.css"
+  ],
   "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -45,6 +57,7 @@
     "@yoopta/video": "workspace:*",
     "clsx": "^2.1.1",
     "i18next": "^26.0.0",
+    "katex": "^0.16.11",
     "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-i18next": "^17.0.0",
@@ -54,6 +67,7 @@
   },
   "devDependencies": {
     "jsdom": "^28.0.0",
+    "tsup": "^8.3.5",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

@@ -10,8 +10,9 @@
  *    Fix: post-process serialized output to use `\n\n` between blocks.
  * 2. YAML frontmatter is corrupted (marked parses `---` as `<hr>`).
  *    Fix: strip frontmatter before deserialize, prepend it back on serialize.
- * 3. Math blocks `$$..$$` are not recognized by marked.
- *    Fix: pre-process math fences into `<div data-math-block>` before marked.
+ * 3. Older Yoopta markdown builds dropped TOC and math nodes.
+ *    Current @yoopta/exports handles `[TOC]`, `$$..$$`, and `$..$` directly;
+ *    this wrapper only serializes unsupported legacy shapes manually.
  */
 
 import { markdown } from "@yoopta/exports";
@@ -66,14 +67,18 @@ export function preprocessMathForDeserialize(md: string): string {
   let result = md.replace(
     /^\$\$\r?\n([\s\S]*?)\r?\n\$\$$/gm,
     (_match, latex: string) =>
-      `<div data-math-block="true">${escapeHtml(latex.trim())}</div>`,
+      `<div data-math-block="true" data-latex="${escapeHtml(
+        latex.trim(),
+      )}"></div>`,
   );
 
   // Inline math: $..$ (not preceded by $ or followed by $)
   result = result.replace(
     /(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g,
     (_match, latex: string) =>
-      `<span data-math-inline="true">${escapeHtml(latex)}</span>`,
+      `<span data-math-inline="true" data-latex="${escapeHtml(
+        latex,
+      )}"></span>`,
   );
 
   return result;
@@ -156,16 +161,14 @@ export function normalizeBlockSeparators(md: string): string {
 
 /**
  * Deserialize markdown string to Yoopta editor content.
- * Handles frontmatter stripping and math pre-processing.
+ * Handles frontmatter stripping before delegating to Yoopta's markdown parser.
  */
 export function deserializeMarkdown(
   editor: YooEditor,
   md: string,
 ): { value: YooptaContentValue; frontmatter: string } {
   const { frontmatter, body } = extractFrontmatter(md);
-  const withToc = preprocessTocForDeserialize(body);
-  const preprocessed = preprocessMathForDeserialize(withToc);
-  const value = markdown.deserialize(editor, preprocessed);
+  const value = markdown.deserialize(editor, body);
   return { value, frontmatter };
 }
 
@@ -224,18 +227,37 @@ function serializeInlineContent(children: any[]): string {
   }).join("");
 }
 
+function replaceInlineMathWithText(children: any[]): any[] {
+  if (!children) return [];
+  return children.map((child: any) => {
+    if (child.type === "math-inline" && child.props?.latex) {
+      return { text: `$${child.props.latex}$` };
+    }
+
+    if (child.children) {
+      return {
+        ...child,
+        children: replaceInlineMathWithText(child.children),
+      };
+    }
+
+    return child;
+  });
+}
+
 /**
  * Check if a block contains any MathInline elements.
  */
 function blockHasInlineMath(block: { value: any[] }): boolean {
   if (!block?.value) return false;
-  for (const element of block.value) {
-    if (!element?.children) continue;
-    for (const child of element.children as any[]) {
-      if (child.type === "math-inline") return true;
-    }
-  }
-  return false;
+  return block.value.some((element) => hasInlineMathNode(element));
+}
+
+function hasInlineMathNode(node: any): boolean {
+  if (!node) return false;
+  if (node.type === "math-inline") return true;
+  if (!Array.isArray(node.children)) return false;
+  return node.children.some((child: any) => hasInlineMathNode(child));
 }
 
 /**
@@ -269,9 +291,17 @@ export function serializeMarkdown(
       const plugin = editor.plugins[block.type];
       if (plugin?.parsers?.markdown?.serialize) {
         const element = block.value[0] as any;
+        const elementWithMath = {
+          ...element,
+          children: replaceInlineMathWithText(element?.children ?? []),
+        };
         // Build text with inline math preserved
-        const childText = serializeInlineContent(element?.children ?? []);
-        const result = plugin.parsers.markdown.serialize(element, childText, block.meta);
+        const childText = serializeInlineContent(elementWithMath.children);
+        const result = plugin.parsers.markdown.serialize(
+          elementWithMath,
+          childText,
+          block.meta,
+        );
         if (result) {
           parts.push(result);
           continue;

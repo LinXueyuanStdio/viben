@@ -216,6 +216,26 @@ declare module "@yoopta/exports" {
     deserialize: (editor: YooEditor, value: string) => YooptaContentValue;
     serialize: (editor: YooEditor, value: YooptaContentValue) => string;
   };
+  export const html: {
+    serialize: (editor: YooEditor, value: YooptaContentValue) => string;
+    deserialize: (editor: YooEditor, value: string) => YooptaContentValue;
+  };
+}
+
+declare module "@yoopta/themes-shadcn" {
+  export function applyTheme(theme: unknown): unknown;
+}
+
+declare module "@yoopta/themes-shadcn/mention" {
+  import type { ReactElement } from "react";
+
+  export const MentionDropdown: () => ReactElement | null;
+}
+
+declare module "@yoopta/themes-shadcn/emoji" {
+  import type { ReactElement } from "react";
+
+  export const EmojiDropdown: () => ReactElement | null;
 }
 
 declare module "@yoopta/ui/action-menu-list" {
@@ -368,6 +388,15 @@ declare module "@yoopta/ui/slash-command-menu" {
   };
 }
 
+declare module "@yoopta/ui/selection-box" {
+  import type { ReactElement } from "react";
+
+  export type SelectionBoxProps = {
+    selectionBoxElement?: HTMLElement | { current: HTMLElement | null } | null;
+  };
+  export const SelectionBox: (props: SelectionBoxProps) => ReactElement | null;
+}
+
 declare module "@yoopta/marks" {
   export const Bold: unknown;
   export const Italic: unknown;
@@ -507,10 +536,11 @@ declare module "@yoopta/video" {
 }
 
 declare module "@yoopta/emoji" {
-  import type { YooptaPlugin } from "@yoopta/editor";
+  import type { YooEditor, YooptaPlugin } from "@yoopta/editor";
 
   const plugin: YooptaPlugin;
   export default plugin;
+  export function withEmoji(editor: YooEditor): YooEditor;
 }
 
 declare module "@yoopta/file" {
@@ -542,10 +572,11 @@ declare module "@yoopta/carousel" {
 }
 
 declare module "@yoopta/mention" {
-  import type { YooptaPlugin } from "@yoopta/editor";
+  import type { YooEditor, YooptaPlugin } from "@yoopta/editor";
 
   const plugin: YooptaPlugin;
   export default plugin;
+  export function withMentions(editor: YooEditor): YooEditor;
 }
 
 declare module "@yoopta/table-of-contents" {

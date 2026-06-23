@@ -17,6 +17,7 @@ export type { YooptaPluginOptions } from "./plugins";
 export { YOOPTA_MARKS } from "./marks";
 
 // Yoopta UI adapter
+export * from "./yoopta/runtime";
 export { YooptaActionMenuList } from "./yoopta/action-menu";
 export { YooptaFloatingBlockActions } from "./yoopta/block-actions";
 export { YooptaBlockOptions } from "./yoopta/block-options";
@@ -44,7 +45,3 @@ export type {
 export { YooptaSlashCommandMenu } from "./yoopta/slash-menu";
 export { YooptaTocSidebar } from "./yoopta/toc-sidebar";
 export { YooptaToolbar } from "./yoopta/toolbar";
-
-// Re-export core types for convenience
-export type { RenderBlockProps, SlateElement, YooEditor, YooptaContentValue, YooptaPlugin } from "@yoopta/editor";
-export { createYooptaEditor } from "@yoopta/editor";

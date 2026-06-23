@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Blocks, Marks, useYooptaEditor } from "@yoopta/editor";
 import { MathInlineCommands } from "@yoopta/math";
-// @ts-ignore - LinkCommands is exported from @yoopta/link
 import { LinkCommands } from "@yoopta/link";
 import { Editor, Element as SlateElement, Range } from "slate";
 import { FloatingToolbar } from "@yoopta/ui/floating-toolbar";
@@ -204,7 +203,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "bold" })}
                 active={Marks.isActive(editor, { type: "bold" })}
-                title={t("editor.toolbar.bold", { shortcut: `${mod}+B` })}
+                title={t("editor.toolbar.bold", "Bold ({{shortcut}})", { shortcut: `${mod}+B` })}
               >
                 <BoldIcon />
               </FloatingToolbar.Button>
@@ -213,7 +212,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "italic" })}
                 active={Marks.isActive(editor, { type: "italic" })}
-                title={t("editor.toolbar.italic", { shortcut: `${mod}+I` })}
+                title={t("editor.toolbar.italic", "Italic ({{shortcut}})", { shortcut: `${mod}+I` })}
               >
                 <ItalicIcon />
               </FloatingToolbar.Button>
@@ -222,7 +221,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "underline" })}
                 active={Marks.isActive(editor, { type: "underline" })}
-                title={t("editor.toolbar.underline", { shortcut: `${mod}+U` })}
+                title={t("editor.toolbar.underline", "Underline ({{shortcut}})", { shortcut: `${mod}+U` })}
               >
                 <Underline />
               </FloatingToolbar.Button>
@@ -231,7 +230,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "strike" })}
                 active={Marks.isActive(editor, { type: "strike" })}
-                title={t("editor.toolbar.strikethrough", { shortcut: `${mod}+Shift+S` })}
+                title={t("editor.toolbar.strikethrough", "Strikethrough ({{shortcut}})", { shortcut: `${mod}+Shift+S` })}
               >
                 <Strikethrough />
               </FloatingToolbar.Button>
@@ -240,7 +239,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "code" })}
                 active={Marks.isActive(editor, { type: "code" })}
-                title={t("editor.toolbar.code", { shortcut: `${mod}+E` })}
+                title={t("editor.toolbar.code", "Code ({{shortcut}})", { shortcut: `${mod}+E` })}
               >
                 <CodeIcon />
               </FloatingToolbar.Button>
@@ -250,7 +249,7 @@ export const YooptaToolbar = () => {
                 ref={linkButtonRef}
                 onClick={onLinkClick}
                 active={isLinkActive()}
-                title={t("editor.toolbar.link", { shortcut: `${mod}+K` })}
+                title={t("editor.toolbar.link", "Link ({{shortcut}})", { shortcut: `${mod}+K` })}
               >
                 <LinkIcon />
               </FloatingToolbar.Button>
