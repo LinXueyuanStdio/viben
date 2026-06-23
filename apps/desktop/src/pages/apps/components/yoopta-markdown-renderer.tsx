@@ -4,11 +4,16 @@ import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { pageKeys } from "@/hooks/use-pages";
-import YooptaEditor, {
-  Blocks,
-  Marks,
-} from "@yoopta/editor";
 import {
+  Blocks,
+  BlockDndContext,
+  EmojiDropdown,
+  Marks,
+  MentionDropdown,
+  SelectionBox,
+  SortableBlock,
+  Transforms,
+  YooptaEditor,
   createYooptaEditor,
   createYooptaPlugins,
   deserializeMarkdown,
@@ -21,21 +26,14 @@ import {
   YooptaSlashCommandMenu,
   YooptaTocSidebar,
   YooptaToolbar,
+  applyTheme,
   type RenderBlockProps,
   type SlateElement,
   type YooptaContentValue,
   type YooptaPlugin,
+  withEmoji,
+  withMentions,
 } from "@viben/editor";
-import { withMentions } from "@yoopta/mention";
-import { withEmoji } from "@yoopta/emoji";
-import { applyTheme } from "@yoopta/themes-shadcn";
-import { SelectionBox } from "@yoopta/ui/selection-box";
-// @ts-ignore - subpath exports not resolved by moduleResolution
-import { MentionDropdown } from '@yoopta/themes-shadcn/mention';
-// @ts-ignore - subpath exports not resolved by moduleResolution
-import { EmojiDropdown } from '@yoopta/themes-shadcn/emoji';
-import { BlockDndContext, SortableBlock } from "@yoopta/ui/block-dnd";
-import { Transforms } from "slate";
 import { SmilePlus, ImageIcon as ImageLucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
@@ -577,7 +575,7 @@ export function YooptaMarkdownRenderer({
       const isMod = e.metaKey || e.ctrlKey;
 
       // Cmd+/ or Ctrl+/ - Open slash command menu
-      if (isMod && !e.shiftKey && e.key === "/") {
+      if (isMod && !e.shiftKey && (e.key === "/" || e.key === "/")) {
         e.preventDefault();
         if (editor.path.current === null) return;
         // Dispatch a synthetic "/" keydown on the editor's contenteditable
@@ -587,7 +585,7 @@ export function YooptaMarkdownRenderer({
           editor.refElement?.querySelector("[contenteditable]");
         if (target) {
           const syntheticEvent = new KeyboardEvent("keydown", {
-            key: "/",
+            key: e.key,
             code: "Slash",
             keyCode: 191,
             which: 191,
@@ -964,7 +962,7 @@ export function YooptaMarkdownRenderer({
         )}
         {!isEditable && (pageTitle || pageIcon) && (
           <div className={cn(
-            "px-14 pb-2",
+            "pb-2",
             coverUrl && pageIcon ? "-mt-6" : "pt-8"
           )}>
             {pageIcon && (

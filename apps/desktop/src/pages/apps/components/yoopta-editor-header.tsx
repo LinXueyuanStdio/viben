@@ -18,9 +18,7 @@ import {
   MaximizeIcon,
   ListTreeIcon,
 } from "lucide-react";
-import { html } from "@yoopta/exports";
-import { serializeMarkdown } from "./yoopta-markdown";
-import type { YooEditor } from "@yoopta/editor";
+import { IS_MAC, serializeMarkdown, yooptaHtml, type YooEditor } from "@viben/editor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +34,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { PageWidth } from "@/lib/gateway/types/page";
-import { IS_MAC } from "@viben/editor";
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
@@ -104,7 +101,7 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
 
   const handleExportHTML = useCallback(() => {
     try {
-      const htmlStr = html.serialize(editor, editor.children);
+      const htmlStr = yooptaHtml.serialize(editor, editor.children);
       const blob = new Blob([htmlStr], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -155,16 +152,16 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
   const canRedo = editor.historyStack.redos.length > 0;
 
   return (
-    <div role="toolbar" aria-label={t("editor.header.editorActions")} className="flex items-center justify-end gap-1">
+    <div role="toolbar" aria-label={t("editor.header.editorActions", "Editor actions")} className="flex items-center justify-end gap-1">
       {saveStatus !== "idle" && (
         <span
           aria-live="polite"
           className={`text-xs mr-auto ${saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground/50'}`}
         >
-          {saveStatus === 'pending' && t("editor.header.editing")}
-          {saveStatus === 'saving' && t("editor.header.saving")}
-          {saveStatus === 'saved' && t("editor.header.saved")}
-          {saveStatus === 'error' && t("editor.header.saveFailed")}
+          {saveStatus === 'pending' && t("editor.header.editing", "Editing")}
+          {saveStatus === 'saving' && t("editor.header.saving", "Saving...")}
+          {saveStatus === 'saved' && t("editor.header.saved", "Saved")}
+          {saveStatus === 'error' && t("editor.header.saveFailed", "Save failed")}
         </span>
       )}
       <button
@@ -172,8 +169,8 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
         onClick={handleUndo}
         disabled={!canUndo}
         className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        title={t("editor.header.undo", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Z` })}
-        aria-label={t("editor.header.undo", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Z` })}
+        title={t("editor.header.undo", "Undo ({{shortcut}})", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Z` })}
+        aria-label={t("editor.header.undo", "Undo ({{shortcut}})", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Z` })}
       >
         <Undo2Icon className="h-4 w-4" />
       </button>
@@ -182,8 +179,8 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
         onClick={handleRedo}
         disabled={!canRedo}
         className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        title={t("editor.header.redo", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Shift+Z` })}
-        aria-label={t("editor.header.redo", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Shift+Z` })}
+        title={t("editor.header.redo", "Redo ({{shortcut}})", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Shift+Z` })}
+        aria-label={t("editor.header.redo", "Redo ({{shortcut}})", { shortcut: `${isMac ? '\u2318' : 'Ctrl'}+Shift+Z` })}
       >
         <Redo2Icon className="h-4 w-4" />
       </button>
@@ -192,8 +189,8 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
           <button
             type="button"
             className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground transition-colors"
-            title={t("editor.header.moreOptions")}
-            aria-label={t("editor.header.moreOptions")}
+            title={t("editor.header.moreOptions", "More options")}
+            aria-label={t("editor.header.moreOptions", "More options")}
           >
             <MoreHorizontalIcon className="h-4 w-4" />
           </button>
@@ -201,11 +198,11 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onSelect={handleExportMarkdown}>
             <FileTextIcon className="mr-2 h-4 w-4" />
-            {t("editor.header.exportMarkdown")}
+            {t("editor.header.exportMarkdown", "Export Markdown")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleExportHTML}>
             <CodeIcon className="mr-2 h-4 w-4" />
-            {t("editor.header.exportHtml")}
+            {t("editor.header.exportHtml", "Export HTML")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleCopyMarkdown}>
             {copied ? (
@@ -213,12 +210,12 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
             ) : (
               <CopyIcon className="mr-2 h-4 w-4" />
             )}
-            {copied ? t("editor.header.copied") : t("editor.header.copyAsMarkdown")}
+            {copied ? t("editor.header.copied", "Copied") : t("editor.header.copyAsMarkdown", "Copy as Markdown")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={handlePrint}>
             <PrinterIcon className="mr-2 h-4 w-4" />
-            {t("editor.header.print")}
+            {t("editor.header.print", "Print")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={handleToggleLock}>
@@ -227,7 +224,7 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
             ) : (
               <LockIcon className="mr-2 h-4 w-4" />
             )}
-            {isLocked ? t("editor.header.unlockEditing") : t("editor.header.lockEditing")}
+            {isLocked ? t("editor.header.unlockEditing", "Unlock editing") : t("editor.header.lockEditing", "Lock editing")}
           </DropdownMenuItem>
           {onPageWidthChange && (
             <>
@@ -235,21 +232,21 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
               <DropdownMenuItem onSelect={() => onPageWidthChange("default")}>
                 <AlignLeftIcon className="mr-2 h-4 w-4" />
                 <span className="flex items-center justify-between flex-1">
-                  {t("editor.header.defaultWidth")}
+                  {t("editor.header.defaultWidth", "Default width")}
                   {pageWidth === "default" && <CheckIcon className="ml-2 h-3.5 w-3.5" />}
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onPageWidthChange("wide")}>
                 <AlignCenterIcon className="mr-2 h-4 w-4" />
                 <span className="flex items-center justify-between flex-1">
-                  {t("editor.header.wideLayout")}
+                  {t("editor.header.wideLayout", "Wide layout")}
                   {pageWidth === "wide" && <CheckIcon className="ml-2 h-3.5 w-3.5" />}
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onPageWidthChange("full")}>
                 <MaximizeIcon className="mr-2 h-4 w-4" />
                 <span className="flex items-center justify-between flex-1">
-                  {t("editor.header.fullWidth")}
+                  {t("editor.header.fullWidth", "Full width")}
                   {pageWidth === "full" && <CheckIcon className="ml-2 h-3.5 w-3.5" />}
                 </span>
               </DropdownMenuItem>
@@ -258,7 +255,7 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
           {onShowTocChange && (
             <DropdownMenuItem onSelect={() => onShowTocChange(!showToc)}>
               <ListTreeIcon className="mr-2 h-4 w-4" />
-              {showToc ? t("editor.header.hideToc") : t("editor.header.showToc")}
+              {showToc ? t("editor.header.hideToc", "Hide table of contents") : t("editor.header.showToc", "Show table of contents")}
             </DropdownMenuItem>
           )}
           {(wordCount || updatedAt) && (
@@ -266,10 +263,10 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
               <DropdownMenuSeparator />
               <div className="px-2 py-1.5 text-xs text-muted-foreground space-y-0.5">
                 {wordCount && (
-                  <div>{t("editor.header.wordCount", { words: wordCount.words, characters: wordCount.characters })}</div>
+                  <div>{t("editor.header.wordCount", "{{words}} words, {{characters}} characters", { words: wordCount.words, characters: wordCount.characters })}</div>
                 )}
                 {updatedAt && (
-                  <div>{t("editor.header.lastEdited", { time: formatRelativeTime(updatedAt) })}</div>
+                  <div>{t("editor.header.lastEdited", "Last edited {{time}}", { time: formatRelativeTime(updatedAt) })}</div>
                 )}
               </div>
             </>
@@ -281,60 +278,60 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
           <button
             type="button"
             className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground transition-colors"
-            title={t("editor.header.keyboardShortcuts")}
-            aria-label={t("editor.header.keyboardShortcuts")}
+            title={t("editor.header.keyboardShortcuts", "Keyboard shortcuts")}
+            aria-label={t("editor.header.keyboardShortcuts", "Keyboard shortcuts")}
           >
             <KeyboardIcon className="h-4 w-4" />
           </button>
         </DialogTrigger>
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t("editor.header.keyboardShortcuts")}</DialogTitle>
+            <DialogTitle>{t("editor.header.keyboardShortcuts", "Keyboard shortcuts")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 text-sm">
-            <ShortcutSection title={t("editor.header.shortcuts.textFormatting")}>
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+B`} label={t("editor.header.shortcuts.bold")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+I`} label={t("editor.header.shortcuts.italic")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+U`} label={t("editor.header.shortcuts.underline")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+E`} label={t("editor.header.shortcuts.inlineCode")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+S`} label={t("editor.header.shortcuts.strikethrough")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+H`} label={t("editor.header.shortcuts.highlight")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+K`} label={t("editor.header.shortcuts.insertLink")} />
+            <ShortcutSection title={t("editor.header.shortcuts.textFormatting", "Text formatting")}>
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+B`} label={t("editor.header.shortcuts.bold", "Bold")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+I`} label={t("editor.header.shortcuts.italic", "Italic")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+U`} label={t("editor.header.shortcuts.underline", "Underline")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+E`} label={t("editor.header.shortcuts.inlineCode", "Inline code")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+S`} label={t("editor.header.shortcuts.strikethrough", "Strikethrough")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+H`} label={t("editor.header.shortcuts.highlight", "Highlight")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+K`} label={t("editor.header.shortcuts.insertLink", "Insert link")} />
             </ShortcutSection>
-            <ShortcutSection title={t("editor.header.shortcuts.blockTypes")}>
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+0`} label={t("editor.header.shortcuts.text")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+1`} label={t("editor.header.shortcuts.heading1")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+2`} label={t("editor.header.shortcuts.heading2")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+3`} label={t("editor.header.shortcuts.heading3")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+4`} label={t("editor.header.shortcuts.todoList")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+5`} label={t("editor.header.shortcuts.bulletedList")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+6`} label={t("editor.header.shortcuts.numberedList")} />
+            <ShortcutSection title={t("editor.header.shortcuts.blockTypes", "Block types")}>
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+0`} label={t("editor.header.shortcuts.text", "Text")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+1`} label={t("editor.header.shortcuts.heading1", "Heading 1")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+2`} label={t("editor.header.shortcuts.heading2", "Heading 2")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+3`} label={t("editor.header.shortcuts.heading3", "Heading 3")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+4`} label={t("editor.header.shortcuts.todoList", "To-do list")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+5`} label={t("editor.header.shortcuts.bulletedList", "Bulleted list")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+6`} label={t("editor.header.shortcuts.numberedList", "Numbered list")} />
             </ShortcutSection>
-            <ShortcutSection title={t("editor.header.shortcuts.blockActions")}>
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+/`} label={t("editor.header.shortcuts.openSlashMenu")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Enter`} label={t("editor.header.shortcuts.toggleCheckbox")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+↑`} label={t("editor.header.shortcuts.moveBlockUp")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+↓`} label={t("editor.header.shortcuts.moveBlockDown")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+D`} label={t("editor.header.shortcuts.duplicateBlock")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+⌫`} label={t("editor.header.shortcuts.deleteBlock")} />
-              <Shortcut keys="Tab" label={t("editor.header.shortcuts.indent")} />
-              <Shortcut keys="Shift+Tab" label={t("editor.header.shortcuts.outdent")} />
+            <ShortcutSection title={t("editor.header.shortcuts.blockActions", "Block actions")}>
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+/`} label={t("editor.header.shortcuts.openSlashMenu", "Open slash menu")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Enter`} label={t("editor.header.shortcuts.toggleCheckbox", "Toggle checkbox")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+↑`} label={t("editor.header.shortcuts.moveBlockUp", "Move block up")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+↓`} label={t("editor.header.shortcuts.moveBlockDown", "Move block down")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+D`} label={t("editor.header.shortcuts.duplicateBlock", "Duplicate block")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+⌫`} label={t("editor.header.shortcuts.deleteBlock", "Delete block")} />
+              <Shortcut keys="Tab" label={t("editor.header.shortcuts.indent", "Indent")} />
+              <Shortcut keys="Shift+Tab" label={t("editor.header.shortcuts.outdent", "Outdent")} />
             </ShortcutSection>
-            <ShortcutSection title={t("editor.header.shortcuts.markdownShortcuts")}>
-              <Shortcut keys="# " label={t("editor.header.shortcuts.heading1")} />
-              <Shortcut keys="## " label={t("editor.header.shortcuts.heading2")} />
-              <Shortcut keys="### " label={t("editor.header.shortcuts.heading3")} />
-              <Shortcut keys="- " label={t("editor.header.shortcuts.bulletedList")} />
-              <Shortcut keys="1. " label={t("editor.header.shortcuts.numberedList")} />
-              <Shortcut keys="[] " label={t("editor.header.shortcuts.todoList")} />
-              <Shortcut keys="> " label={t("editor.header.shortcuts.quote")} />
-              <Shortcut keys="--- " label={t("editor.header.shortcuts.divider")} />
-              <Shortcut keys="```" label={t("editor.header.shortcuts.codeBlock")} />
+            <ShortcutSection title={t("editor.header.shortcuts.markdownShortcuts", "Markdown shortcuts")}>
+              <Shortcut keys="# " label={t("editor.header.shortcuts.heading1", "Heading 1")} />
+              <Shortcut keys="## " label={t("editor.header.shortcuts.heading2", "Heading 2")} />
+              <Shortcut keys="### " label={t("editor.header.shortcuts.heading3", "Heading 3")} />
+              <Shortcut keys="- " label={t("editor.header.shortcuts.bulletedList", "Bulleted list")} />
+              <Shortcut keys="1. " label={t("editor.header.shortcuts.numberedList", "Numbered list")} />
+              <Shortcut keys="[] " label={t("editor.header.shortcuts.todoList", "To-do list")} />
+              <Shortcut keys="> " label={t("editor.header.shortcuts.quote", "Quote")} />
+              <Shortcut keys="--- " label={t("editor.header.shortcuts.divider", "Divider")} />
+              <Shortcut keys="```" label={t("editor.header.shortcuts.codeBlock", "Code block")} />
             </ShortcutSection>
-            <ShortcutSection title={t("editor.header.shortcuts.general")}>
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+S`} label={t("editor.header.shortcuts.save")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Z`} label={t("editor.header.shortcuts.undo")} />
-              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+Z`} label={t("editor.header.shortcuts.redo")} />
+            <ShortcutSection title={t("editor.header.shortcuts.general", "General")}>
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+S`} label={t("editor.header.shortcuts.save", "Save")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Z`} label={t("editor.header.shortcuts.undo", "Undo")} />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+Z`} label={t("editor.header.shortcuts.redo", "Redo")} />
             </ShortcutSection>
           </div>
         </DialogContent>
