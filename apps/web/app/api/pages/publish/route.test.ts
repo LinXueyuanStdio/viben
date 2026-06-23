@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
   findMediaAsset: vi.fn(),
   requireAuth: vi.fn(),
+  recordPageUpdateAndNotify: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/middleware', () => ({
@@ -26,6 +27,10 @@ vi.mock('@/lib/auth/middleware', () => ({
 
 vi.mock('@/lib/db/published-pages', () => ({
   ensurePublishedPagesTable: mocks.execute,
+}));
+
+vi.mock('@/lib/services/community', () => ({
+  recordPageUpdateAndNotify: mocks.recordPageUpdateAndNotify,
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -144,6 +149,7 @@ describe('POST /api/pages/publish', () => {
       id: 'asset-1',
       ownerUserId: 'user-1',
     });
+    mocks.recordPageUpdateAndNotify.mockResolvedValue(undefined);
     mocks.transaction.mockImplementation(async (callback) => callback({
       query: {
         publishedPages: {
@@ -246,7 +252,25 @@ describe('POST /api/pages/publish', () => {
       icon: { type: 'lucide', value: 'file-text' },
       description: 'Demo page',
     });
-    expect(mocks.insertValues).toHaveBeenCalledWith({
+    expect(mocks.recordPageUpdateAndNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: expect.any(Object),
+        insert: expect.any(Function),
+      }),
+      {
+        publishedPageId: 'published-1',
+        userId: 'user-1',
+        userSlug: 'alice',
+        pageId: 'demo',
+        version: 1,
+        eventType: 'published',
+        importance: 'normal',
+        title: 'Demo',
+        description: 'Demo page',
+        visibility: 'public',
+      }
+    );
+    expect(mocks.insertValues).not.toHaveBeenCalledWith({
       publishedPageId: 'published-1',
       userId: 'user-1',
       userSlug: 'alice',

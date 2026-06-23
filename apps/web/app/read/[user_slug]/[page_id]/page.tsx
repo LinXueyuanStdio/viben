@@ -28,11 +28,13 @@ export default async function ReadPage({ params }: ReadPageProps) {
   }
 
   const communityEntity = await ensureCommunityEntityForPage(context);
-  await recordPageView({
+  void recordPageView({
     context,
     session,
     source: 'read_shell',
     route: '/read',
+  }).catch((error) => {
+    console.error('Failed to record read_shell page view:', error);
   });
 
   return (

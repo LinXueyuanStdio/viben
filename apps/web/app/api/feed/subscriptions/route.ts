@@ -8,7 +8,17 @@ export async function GET(request: NextRequest) {
     const session = await requireAuth(request);
     const rawLimit = Number(request.nextUrl.searchParams.get('limit'));
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 30;
-    return NextResponse.json(await listSubscriptionFeed(session, limit));
+    const cursor = request.nextUrl.searchParams.get('cursor');
+    const includeSeen = request.nextUrl.searchParams.get('include_seen') !== 'false';
+    const rawSource = request.nextUrl.searchParams.get('source');
+    const source =
+      rawSource === 'followed_authors' || rawSource === 'subscribed_pages'
+        ? rawSource
+        : 'all';
+
+    return NextResponse.json(
+      await listSubscriptionFeed(session, { limit, cursor, includeSeen, source })
+    );
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

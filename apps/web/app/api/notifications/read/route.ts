@@ -1,8 +1,7 @@
-import { and, inArray, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { AuthError, requireAuth } from '@/lib/auth/middleware';
-import { db, notifications } from '@/lib/db';
+import { markNotificationsRead } from '@/lib/services/community';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,21 +11,16 @@ export async function POST(request: NextRequest) {
       ? body.notification_ids.filter((id: unknown): id is string => typeof id === 'string')
       : [];
 
-    if (notificationIds.length === 0) {
-      return NextResponse.json({ success: true, updated_count: 0 });
-    }
+    const beforeCursor =
+      typeof body.before_cursor === 'string' ? body.before_cursor : null;
 
-    await db
-      .update(notifications)
-      .set({ readAt: new Date() })
-      .where(
-        and(
-          eq(notifications.recipientUserId, session.userId),
-          inArray(notifications.id, notificationIds)
-        )
-      );
-
-    return NextResponse.json({ success: true, updated_count: notificationIds.length });
+    return NextResponse.json(
+      await markNotificationsRead({
+        session,
+        notificationIds,
+        beforeCursor,
+      })
+    );
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

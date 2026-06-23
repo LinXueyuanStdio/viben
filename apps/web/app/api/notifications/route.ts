@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
     const rawLimit = Number(request.nextUrl.searchParams.get('limit'));
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 30;
     const unreadOnly = request.nextUrl.searchParams.get('unread_only') === 'true';
-    return NextResponse.json(await listNotifications(session, limit, unreadOnly));
+    const cursor = request.nextUrl.searchParams.get('cursor');
+    return NextResponse.json(await listNotifications(session, limit, unreadOnly, cursor));
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

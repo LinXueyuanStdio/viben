@@ -3,13 +3,13 @@ import type { NextRequest } from 'next/server';
 import {
   db,
   mediaAssets,
-  pageUpdateEvents,
   publishedPageRecords,
   publishedPages,
   publishedPageVersions,
 } from '@/lib/db';
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
+import { recordPageUpdateAndNotify } from '@/lib/services/community';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 interface IconPayload {
@@ -204,21 +204,18 @@ export async function POST(request: NextRequest) {
         description: description ?? null,
       });
 
-      await tx
-        .insert(pageUpdateEvents)
-        .values({
-          publishedPageId: updatedPublishedPage.id,
-          userId: session.userId,
-          userSlug: session.userSlug,
-          pageId: uid,
-          version: nextVersion,
-          eventType,
-          importance: normalizedImportance,
-          title,
-          description: description ?? null,
-          visibility: normalizedVisibility,
-        })
-        .onConflictDoNothing();
+      await recordPageUpdateAndNotify(tx, {
+        publishedPageId: updatedPublishedPage.id,
+        userId: session.userId,
+        userSlug: session.userSlug,
+        pageId: uid,
+        version: nextVersion,
+        eventType,
+        importance: normalizedImportance,
+        title,
+        description: description ?? null,
+        visibility: normalizedVisibility,
+      });
     });
 
     return NextResponse.json({

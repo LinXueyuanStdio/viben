@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     entityId,
     parentCommentId: searchParams.get('parent_comment_id'),
     limit: toLimit(searchParams.get('limit'), 20, 100),
+    cursor: searchParams.get('cursor'),
     session,
   });
 

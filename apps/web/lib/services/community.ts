@@ -25,6 +25,8 @@ import {
 } from '@/lib/db';
 import type { Session } from '@/lib/auth/types';
 
+type PageUpdateNotificationTx = Pick<typeof db, 'insert' | 'query'>;
+
 export type PublicPageContext = {
   page: typeof publishedPages.$inferSelect;
   author: typeof users.$inferSelect;
@@ -98,6 +100,7 @@ function canUseCommunityEntity(entity: typeof communityEntities.$inferSelect): b
 
 export async function ensureCommunityEntityForPage(context: PublicPageContext) {
   const canonicalPath = `/read/${encodeURIComponent(context.author.userSlug)}/${encodeURIComponent(context.page.uid)}`;
+  const status = isPublicPage(context.page) ? 'active' : 'hidden';
 
   await db
     .insert(communityEntities)
@@ -106,7 +109,7 @@ export async function ensureCommunityEntityForPage(context: PublicPageContext) {
       entityId: context.page.id,
       ownerUserId: context.page.userId,
       visibility: context.page.visibility,
-      status: isPublicPage(context.page) || context.page.visibility !== 'private' ? 'active' : 'hidden',
+      status,
       title: context.page.title,
       canonicalPath,
     })
@@ -115,7 +118,7 @@ export async function ensureCommunityEntityForPage(context: PublicPageContext) {
       set: {
         ownerUserId: context.page.userId,
         visibility: context.page.visibility,
-        status: isPublicPage(context.page) || context.page.visibility !== 'private' ? 'active' : 'hidden',
+        status,
         title: context.page.title,
         canonicalPath,
         updatedAt: sql`now()`,
@@ -192,6 +195,7 @@ export async function listCommunityComments(params: {
   entityId: string;
   parentCommentId: string | null;
   limit: number;
+  cursor?: string | null;
   session: Session | null;
 }) {
   const entity = await db.query.communityEntities.findFirst({
@@ -204,6 +208,19 @@ export async function listCommunityComments(params: {
   if (!entity || !canUseCommunityEntity(entity)) {
     return { comments: [], next_cursor: null };
   }
+
+  const decodedCursor = decodeCursor(params.cursor ?? null);
+  const cursorCreatedAt = decodedCursor ? new Date(decodedCursor.created_at) : null;
+  const cursorPredicate =
+    decodedCursor && cursorCreatedAt && !Number.isNaN(cursorCreatedAt.getTime())
+      ? or(
+          lt(communityComments.createdAt, cursorCreatedAt),
+          and(
+            eq(communityComments.createdAt, cursorCreatedAt),
+            lt(communityComments.id, decodedCursor.id)
+          )
+        )
+      : undefined;
 
   const rows = await db
     .select({
@@ -223,7 +240,8 @@ export async function listCommunityComments(params: {
         params.parentCommentId
           ? eq(communityComments.parentCommentId, params.parentCommentId)
           : isNull(communityComments.parentCommentId),
-        eq(communityComments.status, 'active')
+        eq(communityComments.status, 'active'),
+        cursorPredicate
       )
     )
     .orderBy(desc(communityComments.createdAt), desc(communityComments.id))
@@ -360,6 +378,118 @@ export async function createCommunityComment(params: {
   });
 }
 
+export async function updateCommunityComment(params: {
+  commentId: string;
+  content: string;
+  session: Session;
+}) {
+  const content = params.content.trim();
+  if (!content) throw new Error('comment_content_empty');
+  if (content.length > 2000) throw new Error('comment_content_too_long');
+
+  const comment = await db.query.communityComments.findFirst({
+    where: and(
+      eq(communityComments.id, params.commentId),
+      eq(communityComments.status, 'active')
+    ),
+  });
+  if (!comment) throw new Error('comment_not_found');
+  const entity = await db.query.communityEntities.findFirst({
+    where: eq(communityEntities.id, comment.communityEntityId),
+  });
+  if (!canManageComment(params.session, comment, entity)) throw new Error('permission_denied');
+
+  const [updated] = await db
+    .update(communityComments)
+    .set({ content, updatedAt: sql`now()` })
+    .where(eq(communityComments.id, params.commentId))
+    .returning();
+
+  return {
+    comment: {
+      id: updated?.id ?? comment.id,
+      content: updated?.content ?? content,
+      updated_at: (updated?.updatedAt ?? new Date()).toISOString(),
+    },
+  };
+}
+
+export async function deleteCommunityComment(params: {
+  commentId: string;
+  session: Session;
+}) {
+  return db.transaction(async (tx) => {
+    const comment = await tx.query.communityComments.findFirst({
+      where: and(
+        eq(communityComments.id, params.commentId),
+        eq(communityComments.status, 'active')
+      ),
+    });
+    if (!comment) throw new Error('comment_not_found');
+    const entity = await tx.query.communityEntities.findFirst({
+      where: eq(communityEntities.id, comment.communityEntityId),
+    });
+    if (!canManageComment(params.session, comment, entity)) throw new Error('permission_denied');
+
+    const replies =
+      comment.parentCommentId === null
+        ? await tx.query.communityComments.findMany({
+            where: and(
+              eq(communityComments.parentCommentId, params.commentId),
+              eq(communityComments.status, 'active')
+            ),
+          })
+        : [];
+    const deletedCount = 1 + replies.length;
+
+    await tx
+      .update(communityComments)
+      .set({
+        status: 'deleted',
+        deletedAt: new Date(),
+        deletedByUserId: params.session.userId,
+      })
+      .where(eq(communityComments.id, params.commentId));
+    if (replies.length > 0) {
+      await tx
+        .update(communityComments)
+        .set({
+          status: 'deleted',
+          deletedAt: new Date(),
+          deletedByUserId: params.session.userId,
+        })
+        .where(inArray(communityComments.id, replies.map((reply) => reply.id)));
+    }
+    await tx
+      .update(communityEntities)
+      .set({ commentsCount: sql`greatest(${communityEntities.commentsCount} - ${deletedCount}, 0)` })
+      .where(eq(communityEntities.id, comment.communityEntityId));
+
+    if (comment.parentCommentId) {
+      await tx
+        .update(communityComments)
+        .set({ repliesCount: sql`greatest(${communityComments.repliesCount} - 1, 0)` })
+        .where(eq(communityComments.id, comment.parentCommentId));
+    }
+
+    return { success: true, deleted_count: deletedCount };
+  });
+}
+
+function canManageComment(
+  session: Session,
+  comment: typeof communityComments.$inferSelect,
+  entity?: typeof communityEntities.$inferSelect | null
+): boolean {
+  return (
+    session.userId === comment.userId ||
+    session.userId === entity?.ownerUserId ||
+    session.role === 'admin' ||
+    session.role === 'super_admin' ||
+    session.role === 'moderator'
+  );
+}
+
 export async function toggleReaction(params: {
   entityType: 'published_page' | 'moment' | 'comment';
   entityId: string;
@@ -367,6 +497,7 @@ export async function toggleReaction(params: {
   session: Session;
 }) {
   return db.transaction(async (tx) => {
+    let comment: typeof communityComments.$inferSelect | undefined;
     let entity = await tx.query.communityEntities.findFirst({
       where: and(
         eq(communityEntities.entityType, params.entityType),
@@ -376,11 +507,26 @@ export async function toggleReaction(params: {
       ),
     });
 
-    if (!entity && params.entityType === 'comment') {
-      const comment = await tx.query.communityComments.findFirst({
-        where: eq(communityComments.id, params.entityId),
+    if (params.entityType === 'comment') {
+      comment = await tx.query.communityComments.findFirst({
+        where: and(
+          eq(communityComments.id, params.entityId),
+          eq(communityComments.status, 'active')
+        ),
       });
       if (!comment) throw new Error('community_entity_not_found');
+
+      const parentEntity = await tx.query.communityEntities.findFirst({
+        where: and(
+          eq(communityEntities.id, comment.communityEntityId),
+          eq(communityEntities.status, 'active'),
+          eq(communityEntities.visibility, 'public')
+        ),
+      });
+      if (!parentEntity) throw new Error('community_entity_not_found');
+    }
+
+    if (!entity && params.entityType === 'comment' && comment) {
       const [created] = await tx
         .insert(communityEntities)
         .values({
@@ -503,6 +649,80 @@ export async function toggleFavorite(params: {
       favorites_count: updated?.favoritesCount ?? 0,
     };
   });
+}
+
+export async function listCommunityFavorites(params: {
+  session: Session;
+  entityType?: 'published_page' | 'moment';
+  limit: number;
+  cursor: string | null;
+}) {
+  const decodedCursor = decodeCursor(params.cursor);
+  const cursorCreatedAt = decodedCursor ? new Date(decodedCursor.created_at) : null;
+  const cursorPredicate =
+    decodedCursor && cursorCreatedAt && !Number.isNaN(cursorCreatedAt.getTime())
+      ? or(
+          lt(communityFavorites.createdAt, cursorCreatedAt),
+          and(
+            eq(communityFavorites.createdAt, cursorCreatedAt),
+            lt(communityFavorites.id, decodedCursor.id)
+          )
+        )
+      : undefined;
+
+  const rows = await db
+    .select({
+      favorite: communityFavorites,
+      entity: communityEntities,
+      page: publishedPages,
+    })
+    .from(communityFavorites)
+    .innerJoin(communityEntities, eq(communityEntities.id, communityFavorites.communityEntityId))
+    .leftJoin(
+      publishedPages,
+      and(
+        eq(communityEntities.entityType, 'published_page'),
+        eq(publishedPages.id, communityEntities.entityId)
+      )
+    )
+    .where(
+      and(
+        eq(communityFavorites.userId, params.session.userId),
+        params.entityType ? eq(communityEntities.entityType, params.entityType) : undefined,
+        eq(communityEntities.status, 'active'),
+        eq(communityEntities.visibility, 'public'),
+        or(
+          eq(communityEntities.entityType, 'moment'),
+          and(
+            eq(publishedPages.visibility, 'public'),
+            eq(publishedPages.moderationStatus, 'approved')
+          )
+        ),
+        cursorPredicate
+      )
+    )
+    .orderBy(desc(communityFavorites.createdAt), desc(communityFavorites.id))
+    .limit(params.limit + 1);
+
+  const visibleRows = rows.slice(0, params.limit);
+  return {
+    items: visibleRows.map(({ favorite, entity }) => ({
+      id: favorite.id,
+      entity_type: entity.entityType,
+      entity_id: entity.entityId,
+      title: entity.title,
+      canonical_path: entity.canonicalPath,
+      created_at: favorite.createdAt.toISOString(),
+    })),
+    next_cursor:
+      rows.length > params.limit
+        ? encodeCursor({
+            created_at: visibleRows[visibleRows.length - 1].favorite.createdAt.toISOString(),
+            id: visibleRows[visibleRows.length - 1].favorite.id,
+          })
+        : null,
+    has_more: rows.length > params.limit,
+  };
 }
 
 export async function recordPageView(params: {
@@ -797,7 +1017,170 @@ export async function unsubscribeFromPage(params: {
   return { subscribed: false, subscriber_count: updated?.subscriberCount ?? 0 };
 }
 
-export async function listSubscriptionFeed(session: Session, limit: number) {
+export async function updatePageSubscription(params: {
+  context: PublicPageContext;
+  session: Session;
+  notifyLevel?: 'all' | 'major' | 'none';
+  lastSeenVersion?: number;
+}) {
+  if (!canReadPage(params.context.page, params.session)) throw new Error('permission_denied');
+
+  const existing = await db.query.pageSubscriptions.findFirst({
+    where: and(
+      eq(pageSubscriptions.userId, params.session.userId),
+      eq(pageSubscriptions.publishedPageId, params.context.page.id)
+    ),
+  });
+  if (!existing) throw new Error('subscription_not_found');
+
+  const nextLastSeenVersion =
+    typeof params.lastSeenVersion === 'number'
+      ? Math.max(existing.lastSeenVersion, params.lastSeenVersion)
+      : existing.lastSeenVersion;
+  const nextNotifyLevel = params.notifyLevel ?? existing.notifyLevel;
+
+  await db
+    .update(pageSubscriptions)
+    .set({
+      notifyLevel: nextNotifyLevel,
+      lastSeenVersion: nextLastSeenVersion,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(pageSubscriptions.id, existing.id));
+
+  return {
+    subscribed: true,
+    notify_level: nextNotifyLevel,
+    last_seen_version: nextLastSeenVersion,
+  };
+}
+
+export async function recordPageUpdateAndNotify(
+  tx: PageUpdateNotificationTx,
+  params: {
+    publishedPageId: string;
+    userId: string;
+    userSlug: string;
+    pageId: string;
+    version: number;
+    eventType: 'published' | 'updated' | 'republished' | 'unpublished';
+    importance: 'normal' | 'major';
+    title: string;
+    description: string | null;
+    visibility: string;
+  }
+) {
+  const [createdEvent] = await tx
+    .insert(pageUpdateEvents)
+    .values({
+      publishedPageId: params.publishedPageId,
+      userId: params.userId,
+      userSlug: params.userSlug,
+      pageId: params.pageId,
+      version: params.version,
+      eventType: params.eventType,
+      importance: params.importance,
+      title: params.title,
+      description: params.description,
+      visibility: params.visibility,
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  const event =
+    createdEvent ??
+    (await tx.query.pageUpdateEvents.findFirst({
+      where: and(
+        eq(pageUpdateEvents.publishedPageId, params.publishedPageId),
+        eq(pageUpdateEvents.version, params.version),
+        eq(pageUpdateEvents.eventType, params.eventType)
+      ),
+    }));
+
+  if (!event || params.eventType === 'unpublished' || params.visibility !== 'public') return;
+
+  const recipients = await getPageUpdateNotificationRecipients(tx, params);
+  if (recipients.length === 0) return;
+
+  await tx
+    .insert(notifications)
+    .values(
+      recipients.map((recipientUserId) => ({
+        recipientUserId,
+        actorUserId: params.userId,
+        type: params.eventType === 'published' ? 'page_published' : 'page_updated',
+        pageUpdateEventId: event.id,
+        publishedPageId: params.publishedPageId,
+        title: params.title,
+        body: params.description,
+      }))
+    )
+    .onConflictDoNothing();
+}
+
+async function getPageUpdateNotificationRecipients(
+  tx: PageUpdateNotificationTx,
+  params: {
+    publishedPageId: string;
+    userId: string;
+    importance: 'normal' | 'major';
+  }
+) {
+  const [subscriptions, follows] = await Promise.all([
+    tx.query.pageSubscriptions.findMany({
+      where: eq(pageSubscriptions.publishedPageId, params.publishedPageId),
+    }),
+    tx.query.userFollows.findMany({
+      where: eq(userFollows.followeeUserId, params.userId),
+    }),
+  ]);
+
+  const recipients = new Set<string>();
+  for (const subscription of subscriptions) {
+    addNotificationRecipient(recipients, {
+      recipientUserId: subscription.userId,
+      actorUserId: params.userId,
+      notifyLevel: subscription.notifyLevel,
+      importance: params.importance,
+    });
+  }
+  for (const follow of follows) {
+    addNotificationRecipient(recipients, {
+      recipientUserId: follow.followerUserId,
+      actorUserId: params.userId,
+      notifyLevel: follow.notifyLevel,
+      importance: params.importance,
+    });
+  }
+
+  return [...recipients];
+}
+
+function addNotificationRecipient(
+  recipients: Set<string>,
+  params: {
+    recipientUserId: string;
+    actorUserId: string;
+    notifyLevel: 'all' | 'major' | 'none';
+    importance: 'normal' | 'major';
+  }
+) {
+  if (params.recipientUserId === params.actorUserId) return;
+  if (params.notifyLevel === 'none') return;
+  if (params.notifyLevel === 'major' && params.importance !== 'major') return;
+  recipients.add(params.recipientUserId);
+}
+
+export async function listSubscriptionFeed(
+  session: Session,
+  options: {
+    limit: number;
+    cursor?: string | null;
+    includeSeen?: boolean;
+    source?: 'all' | 'followed_authors' | 'subscribed_pages';
+  }
+) {
+  const limit = options.limit;
   const follows = await db.query.userFollows.findMany({
     where: eq(userFollows.followerUserId, session.userId),
   });
@@ -808,13 +1191,45 @@ export async function listSubscriptionFeed(session: Session, limit: number) {
   const followeeIds = follows.map((follow) => follow.followeeUserId);
   const subscribedPageIds = subscriptions.map((subscription) => subscription.publishedPageId);
 
-  if (followeeIds.length === 0 && subscribedPageIds.length === 0) {
+  const source = options.source ?? 'all';
+  const sourcePredicates = [];
+  if (source !== 'subscribed_pages' && followeeIds.length > 0) {
+    sourcePredicates.push(inArray(pageUpdateEvents.userId, followeeIds));
+  }
+  if (source !== 'followed_authors' && subscribedPageIds.length > 0) {
+    sourcePredicates.push(inArray(pageUpdateEvents.publishedPageId, subscribedPageIds));
+  }
+
+  if (sourcePredicates.length === 0) {
     return { items: [], next_cursor: null, has_more: false };
   }
 
-  const predicates = [];
-  if (followeeIds.length > 0) predicates.push(inArray(pageUpdateEvents.userId, followeeIds));
-  if (subscribedPageIds.length > 0) predicates.push(inArray(pageUpdateEvents.publishedPageId, subscribedPageIds));
+  const decodedCursor = decodeCursor(options.cursor ?? null);
+  const cursorCreatedAt = decodedCursor ? new Date(decodedCursor.created_at) : null;
+  const cursorPredicate =
+    decodedCursor && cursorCreatedAt && !Number.isNaN(cursorCreatedAt.getTime())
+      ? or(
+          lt(pageUpdateEvents.createdAt, cursorCreatedAt),
+          and(
+            eq(pageUpdateEvents.createdAt, cursorCreatedAt),
+            lt(pageUpdateEvents.id, decodedCursor.id)
+          )
+        )
+      : undefined;
+
+  const includeSeen = options.includeSeen ?? true;
+  const unseenPredicates = includeSeen
+    ? []
+    : subscriptions
+        .filter((subscription) => subscribedPageIds.includes(subscription.publishedPageId))
+        .map((subscription) =>
+          and(
+            eq(pageUpdateEvents.publishedPageId, subscription.publishedPageId),
+            gt(pageUpdateEvents.version, subscription.lastSeenVersion)
+          )
+        );
+  const seenPredicate =
+    includeSeen || unseenPredicates.length === 0 ? undefined : or(...unseenPredicates);
 
   const rows = await db
     .select({
@@ -825,7 +1240,9 @@ export async function listSubscriptionFeed(session: Session, limit: number) {
     .innerJoin(publishedPages, eq(publishedPages.id, pageUpdateEvents.publishedPageId))
     .where(
       and(
-        or(...predicates),
+        or(...sourcePredicates),
+        cursorPredicate,
+        seenPredicate,
         eq(publishedPages.visibility, 'public'),
         eq(publishedPages.moderationStatus, 'approved')
       )
@@ -833,7 +1250,33 @@ export async function listSubscriptionFeed(session: Session, limit: number) {
     .orderBy(desc(pageUpdateEvents.createdAt), desc(pageUpdateEvents.id))
     .limit(limit + 1);
 
-  const visibleRows = rows.slice(0, limit);
+  const eventIds = rows.map(({ event }) => event.id);
+  const readNotifications =
+    eventIds.length > 0
+      ? await db.query.notifications.findMany({
+          where: and(
+            eq(notifications.recipientUserId, session.userId),
+            inArray(notifications.pageUpdateEventId, eventIds)
+          ),
+        })
+      : [];
+  const readEventIds = new Set(
+    readNotifications
+      .filter((notification) => notification.readAt)
+      .map((notification) => notification.pageUpdateEventId)
+      .filter((eventId): eventId is string => Boolean(eventId))
+  );
+
+  const filteredRows = includeSeen
+    ? rows
+    : rows.filter(({ event }) => {
+        const subscription = subscriptions.find(
+          (item) => item.publishedPageId === event.publishedPageId
+        );
+        const subscriptionSeen = (subscription?.lastSeenVersion ?? -1) >= event.version;
+        return !subscriptionSeen && !readEventIds.has(event.id);
+      });
+  const visibleRows = filteredRows.slice(0, limit);
   return {
     items: visibleRows.map(({ event }) => ({
       event_id: event.id,
@@ -853,47 +1296,75 @@ export async function listSubscriptionFeed(session: Session, limit: number) {
       ],
       is_seen:
         (subscriptions.find((subscription) => subscription.publishedPageId === event.publishedPageId)
-          ?.lastSeenVersion ?? -1) >= event.version,
+          ?.lastSeenVersion ?? -1) >= event.version || readEventIds.has(event.id),
       url: `/read/${encodeURIComponent(event.userSlug)}/${encodeURIComponent(event.pageId)}`,
     })),
     next_cursor:
-      rows.length > limit
+      filteredRows.length > limit
         ? encodeCursor({
             created_at: visibleRows[visibleRows.length - 1].event.createdAt.toISOString(),
             id: visibleRows[visibleRows.length - 1].event.id,
           })
         : null,
-    has_more: rows.length > limit,
+    has_more: filteredRows.length > limit,
   };
 }
 
-export async function listNotifications(session: Session, limit: number, unreadOnly: boolean) {
-  const rows = await db.query.notifications.findMany({
-    where: and(
-      eq(notifications.recipientUserId, session.userId),
-      unreadOnly ? isNull(notifications.readAt) : undefined
-    ),
-    orderBy: [desc(notifications.createdAt), desc(notifications.id)],
-    limit: limit + 1,
-    with: {
-      publishedPage: true,
-    },
-  });
+export async function listNotifications(
+  session: Session,
+  limit: number,
+  unreadOnly: boolean,
+  cursor: string | null = null
+) {
+  const decodedCursor = decodeCursor(cursor);
+  const cursorCreatedAt = decodedCursor ? new Date(decodedCursor.created_at) : null;
+  const cursorPredicate =
+    decodedCursor && cursorCreatedAt && !Number.isNaN(cursorCreatedAt.getTime())
+      ? or(
+          lt(notifications.createdAt, cursorCreatedAt),
+          and(
+            eq(notifications.createdAt, cursorCreatedAt),
+            lt(notifications.id, decodedCursor.id)
+          )
+        )
+      : undefined;
+
+  const notificationVisibilityPredicate = getNotificationVisibilityPredicate(session);
+  const rows = await db
+    .select({
+      notification: notifications,
+    })
+    .from(notifications)
+    .leftJoin(publishedPages, eq(publishedPages.id, notifications.publishedPageId))
+    .where(
+      and(
+        eq(notifications.recipientUserId, session.userId),
+        unreadOnly ? isNull(notifications.readAt) : undefined,
+        cursorPredicate,
+        notificationVisibilityPredicate
+      )
+    )
+    .orderBy(desc(notifications.createdAt), desc(notifications.id))
+    .limit(limit + 1);
 
   const unreadCount = await db
     .select({ value: count() })
     .from(notifications)
-    .where(and(eq(notifications.recipientUserId, session.userId), isNull(notifications.readAt)));
+    .leftJoin(publishedPages, eq(publishedPages.id, notifications.publishedPageId))
+    .where(
+      and(
+        eq(notifications.recipientUserId, session.userId),
+        isNull(notifications.readAt),
+        notificationVisibilityPredicate
+      )
+    );
 
-  const visibleRows = rows
-    .filter((notification) => {
-      if (!notification.publishedPageId) return true;
-      if (!('publishedPage' in notification) || !notification.publishedPage) return false;
-      return canReadPage(notification.publishedPage, session);
-    })
-    .slice(0, limit);
+  const visibleRows = rows.slice(0, limit);
+  const hasMore = rows.length > limit;
+  const cursorSource = hasMore ? visibleRows.at(-1)?.notification : null;
+
   return {
-    items: visibleRows.map((notification) => ({
+    items: visibleRows.map(({ notification }) => ({
       id: notification.id,
       type: notification.type,
       title: notification.title,
@@ -903,16 +1374,127 @@ export async function listNotifications(session: Session, limit: number, unreadO
       published_page_id: notification.publishedPageId,
       page_update_event_id: notification.pageUpdateEventId,
     })),
-    next_cursor:
-      rows.length > limit
-        ? encodeCursor({
-            created_at: visibleRows[visibleRows.length - 1].createdAt.toISOString(),
-            id: visibleRows[visibleRows.length - 1].id,
-          })
-        : null,
-    has_more: rows.length > limit,
+    next_cursor: cursorSource
+      ? encodeCursor({
+          created_at: cursorSource.createdAt.toISOString(),
+          id: cursorSource.id,
+        })
+      : null,
+    has_more: hasMore,
     unread_count: unreadCount[0]?.value ?? 0,
   };
+}
+
+export async function markNotificationsRead(params: {
+  session: Session;
+  notificationIds: string[];
+  beforeCursor: string | null;
+}) {
+  if (params.notificationIds.length === 0 && !params.beforeCursor) {
+    return { success: true, updated_count: 0 };
+  }
+
+  const cursor = decodeCursor(params.beforeCursor);
+  if (params.beforeCursor && !cursor) {
+    throw new Error('invalid_cursor');
+  }
+  const cursorCreatedAt = cursor ? new Date(cursor.created_at) : null;
+  const cursorPredicate =
+    cursor && cursorCreatedAt && !Number.isNaN(cursorCreatedAt.getTime())
+      ? or(
+          lt(notifications.createdAt, cursorCreatedAt),
+          and(
+            eq(notifications.createdAt, cursorCreatedAt),
+            lt(notifications.id, cursor.id)
+          )
+        )
+      : undefined;
+  const idPredicate =
+    params.notificationIds.length > 0
+      ? inArray(notifications.id, params.notificationIds)
+      : undefined;
+  const where = and(
+    eq(notifications.recipientUserId, params.session.userId),
+    idPredicate,
+    cursorPredicate
+  );
+
+  const rows = await db.query.notifications.findMany({
+    where,
+  });
+  const pageUpdateEventIds = rows
+    .map((notification) => notification.pageUpdateEventId)
+    .filter((eventId): eventId is string => Boolean(eventId));
+  const events =
+    pageUpdateEventIds.length > 0
+      ? await db.query.pageUpdateEvents.findMany({
+          where: inArray(pageUpdateEvents.id, pageUpdateEventIds),
+        })
+      : [];
+  const eventById = new Map(events.map((event) => [event.id, event]));
+
+  await db
+    .update(notifications)
+    .set({ readAt: new Date() })
+    .where(where);
+
+  for (const notification of rows) {
+    const event = notification.pageUpdateEventId
+      ? eventById.get(notification.pageUpdateEventId)
+      : null;
+    if (!event) continue;
+    await advancePageSubscriptionSeenVersion({
+      userId: params.session.userId,
+      publishedPageId: event.publishedPageId,
+      version: event.version,
+    });
+  }
+
+  return {
+    success: true,
+    updated_count: rows.length,
+  };
+}
+
+async function advancePageSubscriptionSeenVersion(params: {
+  userId: string;
+  publishedPageId: string;
+  version: number;
+}) {
+  const subscription = await db.query.pageSubscriptions.findFirst({
+    where: and(
+      eq(pageSubscriptions.userId, params.userId),
+      eq(pageSubscriptions.publishedPageId, params.publishedPageId)
+    ),
+  });
+  if (!subscription) return;
+
+  const nextLastSeenVersion = Math.max(subscription.lastSeenVersion, params.version);
+  if (nextLastSeenVersion === subscription.lastSeenVersion) return;
+
+  await db
+    .update(pageSubscriptions)
+    .set({
+      lastSeenVersion: nextLastSeenVersion,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(pageSubscriptions.id, subscription.id));
+}
+
+function getNotificationVisibilityPredicate(session: Session) {
+  return or(
+    isNull(notifications.publishedPageId),
+    and(
+      eq(publishedPages.id, notifications.publishedPageId),
+      or(
+        and(
+          inArray(publishedPages.visibility, ['public', 'unlisted']),
+          eq(publishedPages.moderationStatus, 'approved')
+        ),
+        eq(publishedPages.userId, session.userId)
+      )
+    )
+  );
 }
 
 export async function listMoments(params: {
