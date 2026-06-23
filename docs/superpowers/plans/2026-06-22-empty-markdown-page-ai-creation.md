@@ -2515,7 +2515,7 @@ git commit -m "feat: create blank markdown pages by default"
 - Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/empty-markdown-page-utils.test.ts`
 - Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/yoopta-markdown-renderer-content.test.tsx`
 
-- [ ] **Step 1: 写空正文工具测试**
+- [x] **Step 1: 写空正文工具测试**
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/empty-markdown-page-utils.test.ts` 新增：
 
@@ -2546,7 +2546,7 @@ describe("empty markdown page utils", () => {
 });
 ```
 
-- [ ] **Step 2: 实现空正文工具**
+- [x] **Step 2: 实现空正文工具**
 
 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/empty-markdown-page-utils.ts`：
 
@@ -2608,7 +2608,7 @@ export function buildPageCreationPrompt(input: {
 }
 ```
 
-- [ ] **Step 3: 跑工具测试**
+- [x] **Step 3: 跑工具测试**
 
 Run:
 
@@ -2755,7 +2755,7 @@ git commit -m "fix: handle empty markdown renderer content"
 - Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-import-dialog.test.tsx`
 - Test: `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/yoopta-markdown-renderer-empty.test.tsx`
 
-- [ ] **Step 1: 写空页面卡片交互测试**
+- [x] **Step 1: 写空页面卡片交互测试**
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/empty-markdown-page-card.test.tsx` 新增：
 
@@ -2811,7 +2811,7 @@ describe("EmptyMarkdownPageCard", () => {
 });
 ```
 
-- [ ] **Step 2: 实现空页面卡片**
+- [x] **Step 2: 实现空页面卡片**
 
 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/empty-markdown-page-card.tsx`：
 
@@ -2905,7 +2905,7 @@ export function EmptyMarkdownPageCard({
 }
 ```
 
-- [ ] **Step 3: 实现模板对话框**
+- [x] **Step 3: 实现模板对话框**
 
 先写模板对话框测试。在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-template-dialog.test.tsx` 新增：
 
@@ -3036,7 +3036,7 @@ export function PageTemplateDialog({
 }
 ```
 
-- [ ] **Step 4: 实现导入对话框**
+- [x] **Step 4: 实现导入对话框**
 
 先写导入对话框测试。在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/__tests__/page-import-dialog.test.tsx` 新增：
 
@@ -3213,7 +3213,7 @@ export function PageImportDialog({ open: isOpen, isImporting, onOpenChange, onIm
 }
 ```
 
-- [ ] **Step 5: 将空态卡片接入 Yoopta**
+- [ ] **Step 5: 将空态卡片接入 Yoopta**（按当前决策暂缓：先实现空 UI 和其他组件，不接入 `YooptaMarkdownRenderer`）
 
 在 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pages/apps/components/yoopta-markdown-renderer.tsx`：
 
@@ -3375,7 +3375,7 @@ describe("YooptaMarkdownRenderer empty markdown card", () => {
 });
 ```
 
-- [ ] **Step 7: 跑空态 UI 测试**
+- [x] **Step 7: 跑空态 UI 测试**
 
 Run:
 
