@@ -96,7 +96,7 @@
 - Modify: `apps/desktop/src/i18n/locales/en.json`
 - Modify: `apps/desktop/src/i18n/locales/zh-CN.json`
 
-- [ ] **Step 1: 在 `packages/core/src/acp/types.ts` 中新增 `AcpPermissionMode`**
+- [x] **Step 1: 在 `packages/core/src/acp/types.ts` 中新增 `AcpPermissionMode`**
 
 在 ACP session 类型附近新增：
 
@@ -118,7 +118,7 @@ permission_mode?: AcpPermissionMode;
 
 删除 `AgentConfigPayload` 中的旧权限字段；新代码不读取旧 YAML 字段，也不在类型中暴露旧字段。
 
-- [ ] **Step 2: 扩展 session 状态和 loadSession 响应**
+- [x] **Step 2: 扩展 session 状态和 loadSession 响应**
 
 将 `AcpSessionStatus` 增加 `"parked"`：
 
@@ -168,7 +168,7 @@ export type AcpLoadSessionResponse = LoadSessionResponse & {
 };
 ```
 
-- [ ] **Step 3: 同步 agent 配置类型**
+- [x] **Step 3: 同步 agent 配置类型**
 
 在 `packages/core/src/agents/types.ts` 和 `packages/core/src/types/index.ts` 中只保留 permission 命名：
 
@@ -194,7 +194,7 @@ export interface CreateAgentOptions {
 }
 ```
 
-- [ ] **Step 4: 改造 YAML 读取和写入路径**
+- [x] **Step 4: 改造 YAML 读取和写入路径**
 
 在 `packages/core/src/agents/index.ts` 中使用单一归一化函数，不读取旧字段：
 
@@ -223,7 +223,7 @@ return {
 permission_mode: overrides.permissionMode ?? agent.permissionMode ?? "default",
 ```
 
-- [ ] **Step 5: 改造 Gateway agent API**
+- [x] **Step 5: 改造 Gateway agent API**
 
 在 `packages/core/src/gateway/routes/agents.ts` 和 `packages/core/src/gateway/routes/agent-run.ts` 中：
 
@@ -245,7 +245,7 @@ permissionMode: body.permission_mode,
 
 不再接受或返回旧权限字段。
 
-- [ ] **Step 6: 改造 executor config**
+- [x] **Step 6: 改造 executor config**
 
 在 `packages/core/src/executors/ops/types.ts` 和 `packages/core/src/executors/engines/claude.ts` 中把执行器配置改为：
 
@@ -263,7 +263,7 @@ if (this.config.permissionMode === "bypassPermissions") {
 }
 ```
 
-- [ ] **Step 7: 改造 ACP session config 传递**
+- [x] **Step 7: 改造 ACP session config 传递**
 
 `packages/core/src/acp/ops/session-manager.ts` 和 `packages/core/src/acp/ops/codex-app-server-backend.ts` 中只从 `permission_mode` 读取权限模式：
 
@@ -278,7 +278,7 @@ if (agentConfig?.dangerously_skip_permissions === true) {
 return agentConfig?.permission_mode ?? "default";
 ```
 
-- [ ] **Step 8: 改造 desktop 类型和 UI 命名**
+- [x] **Step 8: 改造 desktop 类型和 UI 命名**
 
 Desktop gateway client、agent 类型、表单 state、props 和 locale key 全部改成：
 
@@ -290,7 +290,7 @@ permissionMode: PermissionMode;
 
 UI 文案 key 使用 `permissionMode` / `permissions`，不再使用旧权限命名。
 
-- [ ] **Step 9: 增加/调整测试**
+- [x] **Step 9: 增加/调整测试**
 
 单测覆盖：
 - `permission_mode: "plan"` 读取后 `Agent.permissionMode === "plan"`，保存后 YAML 仍为 `permission_mode: plan`
@@ -309,7 +309,7 @@ rg -n "approvalMode|approval_mode|approvals" packages/core/src apps/desktop/src 
 
 预期：仅允许第三方协议固定文本、用户可见历史聊天内容、或非权限语义的自然语言文本；项目自有权限配置类型、字段、路由、YAML、UI state 中无匹配。
 
-- [ ] **Step 10: 运行类型检查**
+- [x] **Step 10: 运行类型检查**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
@@ -319,7 +319,7 @@ pnpm --filter @viben/desktop typecheck 2>&1 | head -30
 
 预期：无新增类型错误。
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add packages/core/src apps/desktop/src
@@ -334,7 +334,7 @@ git commit -m "refactor: migrate approval naming to permission mode"
 - Create: `packages/core/src/acp/ops/session-index-store.ts`
 - Create: `packages/core/src/acp/ops/session-index-store.test.ts`
 
-- [ ] **Step 1: 创建 `session-index-store.ts` 的接口和类型**
+- [x] **Step 1: 创建 `session-index-store.ts` 的接口和类型**
 
 ```typescript
 import { mkdirSync } from "node:fs";
@@ -412,7 +412,7 @@ export interface AcpSessionIndexStore {
 }
 ```
 
-- [ ] **Step 2: 实现 SQLite schema**
+- [x] **Step 2: 实现 SQLite schema**
 
 在 `SqliteAcpSessionIndexStore` 构造函数中创建表和索引：
 
@@ -481,7 +481,7 @@ function loadDatabaseSync(): DatabaseSyncConstructor {
 }
 ```
 
-- [ ] **Step 3: 实现复合身份校验**
+- [x] **Step 3: 实现复合身份校验**
 
 ```typescript
 const VALID_SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -499,7 +499,7 @@ export function validateAcpSessionIdentity(executorType: string, sessionId: stri
 
 所有 public 方法在读写前调用校验。禁止把 `session_id` 提升成 Gateway 全局 ID；同名 `session_id` 必须允许存在于不同 `executor_type` 下。
 
-- [ ] **Step 4: 实现 `upsertRecord()`**
+- [x] **Step 4: 实现 `upsertRecord()`**
 
 使用 `INSERT ... ON CONFLICT(executor_type, session_id) DO UPDATE`，并保留原 `created_at`：
 
@@ -539,7 +539,7 @@ this.db.prepare(`
 
 `acp_record_json` 只保存 ACP `session/list`、`session/new`、`session/load` 响应转换后的 list/cache 记录，不保存执行器内部完整 session 记录。
 
-- [ ] **Step 5: 实现查询、状态更新和删除**
+- [x] **Step 5: 实现查询、状态更新和删除**
 
 实现以下行为：
 - `getRecord(executorType, sessionId)` 使用复合主键读取
@@ -550,7 +550,7 @@ this.db.prepare(`
 - `hardDeleteRecord()` 删除数据库记录，不删除事件文件；物理事件删除由 storage adapter 编排
 - JSON 字段解析失败时返回默认值并 `log.warn`
 
-- [ ] **Step 6: 编写 `session-index-store.test.ts`**
+- [x] **Step 6: 编写 `session-index-store.test.ts`**
 
 测试用临时 SQLite 文件实例化 `SqliteAcpSessionIndexStore`，覆盖：
 
@@ -600,7 +600,7 @@ it.each(["", "../x", "a/b", "..", ".".repeat(129)])("rejects invalid session_id 
 });
 ```
 
-- [ ] **Step 7: 运行测试**
+- [x] **Step 7: 运行测试**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
@@ -609,7 +609,7 @@ pnpm --filter @viben/core test -- session-index-store 2>&1 | tail -30
 
 预期：新增测试全部 PASS。
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/core/src/acp/ops/session-index-store.ts packages/core/src/acp/ops/session-index-store.test.ts
@@ -624,7 +624,7 @@ git commit -m "feat(acp): add sqlite session index store"
 - Create: `packages/core/src/acp/ops/session-event-store.ts`
 - Create: `packages/core/src/acp/ops/session-event-store.test.ts`
 
-- [ ] **Step 1: 创建 event store 接口**
+- [x] **Step 1: 创建 event store 接口**
 
 ```typescript
 import * as fs from "node:fs/promises";
@@ -656,7 +656,7 @@ export interface AcpSessionEventStore {
 }
 ```
 
-- [ ] **Step 2: 实现 `JsonlAcpSessionEventStore`**
+- [x] **Step 2: 实现 `JsonlAcpSessionEventStore`**
 
 默认路径必须带 `executor_type`：
 
@@ -693,7 +693,7 @@ export class JsonlAcpSessionEventStore implements AcpSessionEventStore {
 }
 ```
 
-- [ ] **Step 3: 实现 seq、append、patch 和读取**
+- [x] **Step 3: 实现 seq、append、patch 和读取**
 
 `appendEvent()` 和 `updateEventStatus()` 都必须使用 `${executor_type}:${session_id}` 写锁：
 
@@ -722,7 +722,7 @@ async updateEventStatus(
 
 `loadEvents()` 逐行解析 JSONL，跳过坏行并记录 warning；patch 行 last-write-wins；返回按 `seq` 升序排序的事件。`deleteEvents()` 只删除 `~/.viben/acp/sessions/<executor_type>/<session_id>/` 目录。
 
-- [ ] **Step 4: 编写 event store 测试**
+- [x] **Step 4: 编写 event store 测试**
 
 覆盖：
 - 同一 identity 下 seq 从 0 递增
@@ -733,14 +733,14 @@ async updateEventStatus(
 - 损坏 JSONL 行被跳过，不影响其他事件
 - 并发 100 个 append 不产生重复 seq
 
-- [ ] **Step 5: 运行测试**
+- [x] **Step 5: 运行测试**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core test -- session-event-store 2>&1 | tail -30
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/acp/ops/session-event-store.ts packages/core/src/acp/ops/session-event-store.test.ts
@@ -756,7 +756,7 @@ git commit -m "feat(acp): add jsonl session event store"
 - Modify: `packages/core/src/acp/ops/session-index-store.ts`
 - Modify: `packages/core/src/acp/ops/session-event-store.ts`
 
-- [ ] **Step 1: 创建 storage adapter**
+- [x] **Step 1: 创建 storage adapter**
 
 ```typescript
 import type { AcpSessionIndexStore } from "./session-index-store";
@@ -790,7 +790,7 @@ export function createDefaultAcpSessionStorage(): AcpSessionStorageAdapter {
 }
 ```
 
-- [ ] **Step 2: 增加默认工厂**
+- [x] **Step 2: 增加默认工厂**
 
 `session-index-store.ts`：
 
@@ -815,14 +815,14 @@ export function createDefaultAcpSessionEventStore(): AcpSessionEventStore {
 
 `InMemoryAcpSessionIndexStore` 只用于测试和 SQLite 不可用时的降级，必须保持复合 key 语义。
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core test -- session-index-store session-event-store 2>&1 | tail -30
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/core/src/acp/ops/session-storage.ts packages/core/src/acp/ops/session-index-store.ts packages/core/src/acp/ops/session-event-store.ts
@@ -838,7 +838,7 @@ git commit -m "feat(acp): add session storage adapter"
 - Create: `packages/core/src/acp/ops/detached-connection.ts`
 - Create: `packages/core/src/acp/ops/permission-handler.ts`
 
-- [ ] **Step 1: 创建 `permission-handler.ts`**
+- [x] **Step 1: 创建 `permission-handler.ts`**
 
 ```typescript
 import type { AcpPermissionMode, AcpRequestPermissionRequest } from "../types";
@@ -868,7 +868,7 @@ export function createDefaultPermissionHandler(): PermissionHandler {
 }
 ```
 
-- [ ] **Step 2: 创建 `session-event-recorder.ts`**
+- [x] **Step 2: 创建 `session-event-recorder.ts`**
 
 ```typescript
 import type { AcpSessionEvent } from "../types";
@@ -909,7 +909,7 @@ export class AcpSessionEventRecorder {
 }
 ```
 
-- [ ] **Step 3: 创建 `detached-connection.ts`**
+- [x] **Step 3: 创建 `detached-connection.ts`**
 
 实现 `AcpConnection`，核心规则：
 - `sessionUpdate()` 只通过 recorder 追加 `session_update`，不推送旧 WebSocket
@@ -930,7 +930,7 @@ interface PendingRequest<T> {
 }
 ```
 
-- [ ] **Step 4: 增加 detached connection 测试**
+- [x] **Step 4: 增加 detached connection 测试**
 
 覆盖：
 - detached 状态下 `sessionUpdate()` 写入 event store
@@ -938,14 +938,14 @@ interface PendingRequest<T> {
 - close 后 pending patch 为 `cancelled`
 - client tool 60 秒超时 patch 为 `abandoned`（使用 fake timers）
 
-- [ ] **Step 5: 运行测试**
+- [x] **Step 5: 运行测试**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core test -- detached-connection session-event-recorder 2>&1 | tail -30
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/acp/ops/permission-handler.ts packages/core/src/acp/ops/session-event-recorder.ts packages/core/src/acp/ops/detached-connection.ts
@@ -959,7 +959,7 @@ git commit -m "feat(acp): add detached connection event recording"
 **Files:**
 - Modify: `packages/core/src/acp/ops/session-manager.ts`
 
-- [ ] **Step 1: 扩展内部 session 结构**
+- [x] **Step 1: 扩展内部 session 结构**
 
 为 `AcpSession` 增加：
 
@@ -981,7 +981,7 @@ recorder: AcpSessionEventRecorder;
 
 `this.sessions` 的 key 必须从裸 `sessionId` 改为 `sessionKey({ executor_type, session_id })`。若现有代码里仍有执行器侧 session id 的运行期兼容字段，只能作为内存兼容状态使用，不写入 SQLite；数据库 `session_id` 始终使用 ACP/执行器侧可恢复的 `session_id`，并和 `executor_type` 组成复合身份。
 
-- [ ] **Step 2: 构造函数注入 storage**
+- [x] **Step 2: 构造函数注入 storage**
 
 ```typescript
 constructor(
@@ -992,7 +992,7 @@ constructor(
 ) {}
 ```
 
-- [ ] **Step 3: 新建 session 时写入 SQLite index**
+- [x] **Step 3: 新建 session 时写入 SQLite index**
 
 在 `createSessionRecord()` 解析 `agent_config.executor_type` 或 backend 默认值后创建 identity：
 
@@ -1031,7 +1031,7 @@ await this.storage.index.upsertRecord({
 
 `getStorageIdentity(session)` 是唯一允许把运行期 session 转为存储 identity 的 helper；storage 调用禁止裸用 `session.id`。
 
-- [ ] **Step 4: backend 初始化后更新 ACP cache**
+- [x] **Step 4: backend 初始化后更新 ACP cache**
 
 `ensureBackend()` 得到 backend capabilities 后，调用 `storage.index.upsertRecord()` 更新：
 - `backend_id`
@@ -1041,7 +1041,7 @@ await this.storage.index.upsertRecord({
 
 不要写执行器内部完整 session 记录，不要写完整 `agent_config`、`mcp_servers`、`agent_capabilities` JSON。
 
-- [ ] **Step 5: 实现 `parkSession()`**
+- [x] **Step 5: 实现 `parkSession()`**
 
 ```typescript
 async parkSession(identity: AcpSessionIdentity, closingConnection?: AcpConnection): Promise<void> {
@@ -1065,7 +1065,7 @@ async parkSession(identity: AcpSessionIdentity, closingConnection?: AcpConnectio
 }
 ```
 
-- [ ] **Step 6: 改造 `loadSession()`**
+- [x] **Step 6: 改造 `loadSession()`**
 
 三种路径：
 - 内存有 + detached：按 `executor_type + session_id` 调用 backend `session/resume`，`detached.resume(newConnection)` 返回 history，index 状态改 active
@@ -1078,18 +1078,19 @@ async parkSession(identity: AcpSessionIdentity, closingConnection?: AcpConnectio
 ACP session_id is ambiguous across executor_type; provide executor context
 ```
 
-- [ ] **Step 7: 改造 `listSessions()`**
+- [x] **Step 7: 改造 `listSessions()`**
 
-将 `listSessions()` 改为 async。SQLite index 是返回事实来源；内存 Map 和 backend 原生 `session/list` 只负责刷新 DB cache，不能绕过 DB 直接成为返回结果：
+将 `listSessions()` 改为 async。SQLite index 是返回事实来源；内存 Map 只负责刷新 DB cache，不能绕过 DB 直接成为返回结果。
+
+当前 `AcpBackendAdapter` 只抽象了 `start()` 和启动后单 session 生命周期，`@agentclientprotocol/sdk` 当前接入层也没有稳定暴露独立的 backend 原生 `session/list` 调用；因此本轮不要求 manager 主动向每个 backend 查询 `session/list`。后续如 adapter 增加稳定 `listSessions()` 能力，只能作为刷新 DB cache 的输入，仍不得替代 SQLite 返回列表。
 
 1. 将内存 Map 中的 active/parked session 转换为 `AcpSessionRecord`，按复合 key upsert 到 `storage.index`
-2. 向 backend 查询 ACP `session/list`，把响应转换为 `acp_record` 并按 `executor_type + session_id` upsert 到 `storage.index`
-3. 调用 `storage.index.listRecords()` 读取最终返回列表
-4. 默认返回 active/parked，按 `last_active_at` 降序
+2. 调用 `storage.index.listRecords()` 读取最终返回列表
+3. 默认返回 active/parked，按 `last_active_at` 降序
 
 实现中所有合并、去重和 Map key 都必须使用 `${executor_type}:${session_id}`。
 
-- [ ] **Step 8: active connection 也通过 recorder 写事件**
+- [x] **Step 8: active connection 也通过 recorder 写事件**
 
 `SdkAcpConnection` 或 manager 分发层在活跃 WebSocket 状态下也必须复用同一个 `AcpSessionEventRecorder`：
 
@@ -1100,7 +1101,7 @@ ACP session_id is ambiguous across executor_type; provide executor context
 
 补测试：active session 产生 `session_update` 后断开重连，`loadSession.history` 能从 JSONL 读到该 active 阶段事件。
 
-- [ ] **Step 9: 改造 `closeSession()` 和删除逻辑**
+- [x] **Step 9: 改造 `closeSession()` 和删除逻辑**
 
 用户主动 close：
 - 调 backend `session/close { sessionId }`
@@ -1114,7 +1115,7 @@ ACP session_id is ambiguous across executor_type; provide executor context
 物理删除：
 - `storage.hardDeleteSession({ executor_type, session_id })`
 
-- [ ] **Step 10: session manager 测试**
+- [x] **Step 10: session manager 测试**
 
 覆盖：
 - create 后 SQLite 有 active 记录
@@ -1129,14 +1130,14 @@ ACP session_id is ambiguous across executor_type; provide executor context
 - close 后 status 为 finished，JSONL 未删除
 - 旧 socket close 不会 park 已被新 socket 接管的 session
 
-- [ ] **Step 11: 运行测试**
+- [x] **Step 11: 运行测试**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core test -- session-manager 2>&1 | tail -30
 ```
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add packages/core/src/acp/ops/session-manager.ts
@@ -1151,7 +1152,7 @@ git commit -m "feat(acp): persist session index and park detached sessions"
 - Modify: `packages/core/src/gateway/routes/agent-acp.ts`
 - Modify: `packages/core/src/gateway/index.ts`
 
-- [ ] **Step 1: WebSocket close 改为 park**
+- [x] **Step 1: WebSocket close 改为 park**
 
 ```typescript
 const cleanup = async () => {
@@ -1166,7 +1167,7 @@ socket.once("close", () => {
 });
 ```
 
-- [ ] **Step 2: `loadSession` 传入新连接和上下文**
+- [x] **Step 2: `loadSession` 传入新连接和上下文**
 
 ```typescript
 async loadSession(request: AcpLoadSessionRequest) {
@@ -1179,7 +1180,7 @@ async loadSession(request: AcpLoadSessionRequest) {
 }
 ```
 
-- [ ] **Step 3: `listSessions` await manager**
+- [x] **Step 3: `listSessions` await manager**
 
 ```typescript
 async listSessions(_request: ListSessionsRequest): Promise<ListSessionsResponse> {
@@ -1196,7 +1197,7 @@ async listSessions(_request: ListSessionsRequest): Promise<ListSessionsResponse>
 }
 ```
 
-- [ ] **Step 4: `unstable_closeSession` await close**
+- [x] **Step 4: `unstable_closeSession` await close**
 
 ```typescript
 async unstable_closeSession(request: CloseSessionRequest) {
@@ -1209,7 +1210,7 @@ async unstable_closeSession(request: CloseSessionRequest) {
 }
 ```
 
-- [ ] **Step 5: Gateway 启动时运行清理**
+- [x] **Step 5: Gateway 启动时运行清理**
 
 在 `packages/core/src/gateway/index.ts` 启动 listen 前调用：
 
@@ -1219,14 +1220,14 @@ cleanupStaleAcpSessions(acpSessionManager.storage).catch((err) => {
 });
 ```
 
-- [ ] **Step 6: 运行 typecheck**
+- [x] **Step 6: 运行 typecheck**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core typecheck 2>&1 | head -30
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/core/src/gateway/routes/agent-acp.ts packages/core/src/gateway/index.ts
@@ -1240,7 +1241,7 @@ git commit -m "feat(acp): park sessions on websocket disconnect"
 **Files:**
 - Modify: `packages/core/src/gateway/routes/agent-acp.ts`
 
-- [ ] **Step 1: 给 `SdkAcpConnection` 注入 PermissionHandler**
+- [x] **Step 1: 给 `SdkAcpConnection` 注入 PermissionHandler**
 
 ```typescript
 import {
@@ -1268,7 +1269,7 @@ class SdkAcpConnection implements AcpConnection {
 }
 ```
 
-- [ ] **Step 2: 在 `requestPermission()` 前置过滤**
+- [x] **Step 2: 在 `requestPermission()` 前置过滤**
 
 ```typescript
 async requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequestPermissionResponse> {
@@ -1290,7 +1291,7 @@ async requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequest
 }
 ```
 
-- [ ] **Step 3: new/load session 后更新 permission mode**
+- [x] **Step 3: new/load session 后更新 permission mode**
 
 在 `newSession` 和 `loadSession` handler 中，从 request/context 解析：
 
@@ -1301,21 +1302,21 @@ connection.setPermissionMode(mode, false);
 
 若已有全局 `dangerously_skip_permissions` 偏好，传入第二个参数。
 
-- [ ] **Step 4: 测试 active permission 过滤**
+- [x] **Step 4: 测试 active permission 过滤**
 
 覆盖：
 - `DefaultPermissionHandler` 返回 `auto: false` 时仍走 WebSocket requestPermission
 - 自定义 handler 返回 `auto: true` 时不推送 UI，直接 resolve option
 - `bypassPermissions` 防御路径不推送 UI
 
-- [ ] **Step 5: 运行测试**
+- [x] **Step 5: 运行测试**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core test -- agent-acp 2>&1 | tail -30
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/gateway/routes/agent-acp.ts
@@ -1332,7 +1333,7 @@ git commit -m "feat(acp): apply permission handler to active sessions"
 - Modify: `apps/desktop/src/components/acp-chat/acp-chat-state.ts`
 - Modify: session 列表 UI 组件和 locale 文件
 
-- [ ] **Step 1: 同步前端 ACP 类型**
+- [x] **Step 1: 同步前端 ACP 类型**
 
 在 `acp-client.ts` 中新增：
 
@@ -1365,7 +1366,7 @@ export interface AcpSessionEvent {
 
 `loadSession()` 响应类型增加 `history?: AcpSessionEvent[]`。
 
-- [ ] **Step 2: 提取同步 UI step apply 函数**
+- [x] **Step 2: 提取同步 UI step apply 函数**
 
 在 `acp-chat-state.ts` 中从现有队列应用逻辑提取 `applyUiStep()`，并新增：
 
@@ -1386,7 +1387,7 @@ export function applyUiStepsImmediately(
 }
 ```
 
-- [ ] **Step 3: `use-acp-session.ts` 处理 history**
+- [x] **Step 3: `use-acp-session.ts` 处理 history**
 
 ```typescript
 const response = await acpClient.loadSession(request);
@@ -1402,7 +1403,7 @@ if (response.history && response.history.length > 0) {
 
 history 批量渲染不走 streaming 动画队列，避免 chunk 重复拼接和 UI 闪烁。
 
-- [ ] **Step 4: session list 展示 parked**
+- [x] **Step 4: session list 展示 parked**
 
 session item 中展示：
 
@@ -1430,14 +1431,14 @@ locale：
 }
 ```
 
-- [ ] **Step 5: 运行 desktop typecheck**
+- [x] **Step 5: 运行 desktop typecheck**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/desktop typecheck 2>&1 | head -30
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/desktop/src/
@@ -1453,7 +1454,7 @@ git commit -m "feat(desktop): render restored ACP session history"
 - Modify: `packages/core/src/acp/ops/session-storage.ts`
 - Modify: `packages/core/src/gateway/index.ts`
 
-- [ ] **Step 1: 导出新模块**
+- [x] **Step 1: 导出新模块**
 
 在 `packages/core/src/acp/index.ts` 中追加：
 
@@ -1489,7 +1490,7 @@ export { createDefaultPermissionHandler, DefaultPermissionHandler } from "./ops/
 export { DetachedConnection } from "./ops/detached-connection";
 ```
 
-- [ ] **Step 2: 实现 stale cleanup**
+- [x] **Step 2: 实现 stale cleanup**
 
 在 `session-storage.ts` 增加：
 
@@ -1512,7 +1513,7 @@ export async function cleanupStaleAcpSessions(
 }
 ```
 
-- [ ] **Step 3: 自动化测试补齐**
+- [x] **Step 3: 自动化测试补齐**
 
 确保至少覆盖：
 - SQLite `PRIMARY KEY (executor_type, session_id)` 可保存同名 session
@@ -1524,7 +1525,7 @@ export async function cleanupStaleAcpSessions(
 - gateway restart 恢复时 pending 事件 patch 为 `abandoned`
 - active 和 detached 都通过同一个 recorder 写事件
 
-- [ ] **Step 4: Core typecheck**
+- [x] **Step 4: Core typecheck**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
@@ -1533,7 +1534,7 @@ pnpm --filter @viben/core typecheck 2>&1 | head -50
 
 预期：0 错误。
 
-- [ ] **Step 5: Core tests**
+- [x] **Step 5: Core tests**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
@@ -1542,7 +1543,7 @@ pnpm --filter @viben/core test 2>&1 | tail -50
 
 预期：新增测试和既有测试全部 PASS。
 
-- [ ] **Step 6: Workspace verification**
+- [x] **Step 6: Workspace verification**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
@@ -1555,7 +1556,7 @@ pnpm typecheck 2>&1 | head -80
 pnpm build 2>&1 | head -80
 ```
 
-- [ ] **Step 7: 手动 smoke test**
+- [x] **Step 7: 手动 smoke test**
 
 启动 gateway：
 
@@ -1576,7 +1577,18 @@ ls ~/.viben/acp/sessions/<executor_type>/<session_id>/
 - `event_store_uri` 指向 `<executor_type>/<session_id>/events.jsonl`
 - 目录中只有事件缓冲文件，不创建 `meta.json`
 
-- [ ] **Step 8: Commit**
+实际 smoke 覆盖结果：
+- `GET /health` 返回 `status: "ok"`，gateway 运行在 `127.0.0.1:18790`
+- 通过 WebSocket `/ws/agent/acp` 创建 fake Codex ACP session：`CODEX + thr_full_smoke_1782207141663`
+- `session/prompt` 返回 `stopReason: "end_turn"`，收到 `session/update`，`_meta.executor_type === "CODEX"`
+- `session/list` 能找到该 session，重连 `session/load` 返回 `historyLength: 1`，history 包含断线前的 `session_update`
+- 重连后再次 `session/prompt` 成功，并收到第二条 `session_update`
+- 断开后 SQLite 行为 `parked`，`session/close` 后 SQLite 行为 `finished`
+- SQLite `event_store_uri` 为 `CODEX/thr_full_smoke_1782207141663/events.jsonl`
+- `~/.viben/acp/sessions/CODEX/thr_full_smoke_1782207141663/` 目录只有 `events.jsonl`
+- `events.jsonl` 保留两条 `session_update`，分别为 `full smoke first update` 和 `full smoke second update`
+
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/core/src/acp/index.ts packages/core/src/acp/ops/session-storage.ts packages/core/src/gateway/index.ts

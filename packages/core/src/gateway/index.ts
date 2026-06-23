@@ -70,6 +70,18 @@ export interface GatewayConfig {
   runtime?: boolean;
 }
 
+type CleanupStaleAcpSessionsFn = typeof cleanupStaleAcpSessions;
+
+let cleanupStaleAcpSessionsForStartup: CleanupStaleAcpSessionsFn = cleanupStaleAcpSessions;
+
+export function setCleanupStaleAcpSessionsForTests(cleanup: CleanupStaleAcpSessionsFn): void {
+  cleanupStaleAcpSessionsForStartup = cleanup;
+}
+
+export function resetCleanupStaleAcpSessionsForTests(): void {
+  cleanupStaleAcpSessionsForStartup = cleanupStaleAcpSessions;
+}
+
 /**
  * Create and configure the gateway server
  *
@@ -210,7 +222,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   await registerRoutes(app, state);
 
   try {
-    await cleanupStaleAcpSessions(acpSessionManager.storage);
+    await cleanupStaleAcpSessionsForStartup(acpSessionManager.storage);
   } catch (err) {
     log.warn({ err }, "Stale ACP session cleanup failed");
   }

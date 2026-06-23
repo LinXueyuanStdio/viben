@@ -703,6 +703,102 @@ describe("AcpSessionManager", () => {
     ]);
   });
 
+  it("uses the injected permission handler for active permission requests", async () => {
+    const { storage, events } = createMemoryStorage();
+    const adapter = new CapturingBackendAdapter();
+    const permissionHandler = new AutoPermissionHandler();
+    const manager = new AcpSessionManager(
+      adapter,
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage,
+      permissionHandler
+    );
+    const clientConnection = createCapturingConnection();
+    const session = await manager.createSession(
+      {
+        cwd: "/tmp",
+        mcpServers: [],
+        agent_config: {
+          executor_type: "CODEX",
+          permission_mode: "auto",
+        },
+      },
+      clientConnection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "start backend" }],
+    });
+
+    const response = await adapter.startContext?.connection.requestPermission({
+      sessionId: session.sessionId,
+      toolCall: {
+        toolCallId: "permission-1",
+        title: "Edit file",
+        kind: "edit",
+      },
+      options: [{ optionId: "allow_once", name: "Allow once", kind: "allow_once" }],
+    });
+
+    expect(response).toEqual({ outcome: { outcome: "selected", optionId: "auto-allow" } });
+    expect(permissionHandler.calls).toEqual([{ toolCallId: "permission-1", permissionMode: "auto" }]);
+    expect(clientConnection.permissionRequests).toEqual([]);
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_response",
+        data: { outcome: { outcome: "selected", optionId: "auto-allow" } },
+      },
+    ]);
+  });
+
+  it("uses the injected permission handler after a session is parked", async () => {
+    const { storage, events } = createMemoryStorage();
+    const permissionHandler = new AutoPermissionHandler();
+    const manager = new AcpSessionManager(
+      new CapturingBackendAdapter(),
+      new InMemoryAcpSteerPromptStore(),
+      inputHistoryService,
+      storage,
+      permissionHandler
+    );
+    const clientConnection = createCapturingConnection();
+    const session = await manager.createSession(
+      {
+        cwd: "/tmp",
+        mcpServers: [],
+        agent_config: {
+          executor_type: "CODEX",
+          permission_mode: "auto",
+        },
+      },
+      clientConnection
+    );
+
+    await manager.parkSession({ executor_type: "CODEX", session_id: session.sessionId }, clientConnection);
+    const response = await getInternalConnection(manager, `CODEX:${session.sessionId}`).requestPermission({
+      sessionId: session.sessionId,
+      toolCall: {
+        toolCallId: "permission-2",
+        title: "Edit file",
+        kind: "edit",
+      },
+      options: [{ optionId: "allow_once", name: "Allow once", kind: "allow_once" }],
+    });
+
+    expect(response).toEqual({ outcome: { outcome: "selected", optionId: "auto-allow" } });
+    expect(permissionHandler.calls).toEqual([{ toolCallId: "permission-2", permissionMode: "auto" }]);
+    expect(clientConnection.permissionRequests).toEqual([]);
+    await expect(events.loadEvents({ executor_type: "CODEX", session_id: session.sessionId })).resolves.toMatchObject([
+      {
+        seq: 0,
+        type: "permission_response",
+        data: { outcome: { outcome: "selected", optionId: "auto-allow" } },
+      },
+    ]);
+  });
+
   it("updates the active recording connection raw target when a live session is loaded", async () => {
     const { storage } = createMemoryStorage();
     const adapter = new CapturingBackendAdapter();
