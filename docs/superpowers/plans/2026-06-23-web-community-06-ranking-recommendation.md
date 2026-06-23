@@ -131,7 +131,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write UI tests**
 
-Assert "热门榜单" heading, ranking type switch, time window switch, category filter, tags, summary, heat score, generated/updated time, page preview card content, rank number, author info, title, published time, like count, repost count, empty state, logged-out read affordance, mobile single column, long title wrapping, focus-visible controls, sticky bottom bar non-overlap, and icon button accessible names.
+Assert "热门榜单" heading, ranking type switch, time window switch, category filter, tags, summary, heat score, generated/updated time, page preview card content, rank number, author info, title, published time, key stats for unique views, likes, favorites, comments, and reposts, empty state, logged-out read affordance, mobile single column, long title wrapping, focus-visible controls, sticky bottom bar non-overlap, and icon button accessible names.
 
 - [ ] **Step 2: Run UI tests**
 
@@ -143,7 +143,7 @@ Expected: FAIL until UI exists.
 
 - [ ] **Step 3: Implement components and route**
 
-Render `/leaderboard` from ranking service. Cards show cover, author, title, summary, category, tags, published time, heat score, generated/updated time, like count, repost count, and stable actions. Provide controls for ranking type and time window.
+Render `/leaderboard` from ranking service. Cards show cover, author, title, summary, category, tags, published time, heat score, generated/updated time, unique view count, like count, favorite count, comment count, repost count, and stable actions. Provide controls for ranking type and time window.
 
 - [ ] **Step 4: Re-run UI tests**
 

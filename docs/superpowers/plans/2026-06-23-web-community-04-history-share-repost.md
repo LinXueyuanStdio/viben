@@ -39,12 +39,14 @@
 - `share_links`: `id`, `uid`, `entity_type`, `entity_id`, `created_by_user_id`, `visibility_snapshot`, `channel`, `target_url`, `html_direct_url`, `expires_at`, `revoked_at`, `open_count`, `unique_open_count`, timestamps.
 - `share_events`: `id`, `share_link_id`, `entity_type`, `entity_id`, `actor_user_id`, `anonymous_actor_hash`, `event_type`, `channel`, `target`, `source_route`, `viewer_hash`, `ip_hash`, `user_agent_hash`, `created_at`.
 - `reposts`: `id`, `entity_type`, `entity_id`, `user_id`, `moment_id`, `comment`, `visibility`, `status`, `failure_reason`, timestamps, `deleted_at`.
-- Hash identifiers (`anonymous_viewer_hash`, `anonymous_actor_hash`, `viewer_hash`, `session_id_hash`, `ip_hash`, `user_agent_hash`, `referrer_url_hash`) must be generated with a server-side salt and support salt version metadata. No raw IP, full user agent, full referrer, or directly reusable anonymous id is stored.
+- Hash identifiers (`anonymous_viewer_hash`, `anonymous_actor_hash`, `viewer_hash`, `session_id_hash`, `ip_hash`, `user_agent_hash`, `referrer_url_hash`) must be generated with a server-side salt and include a versioned hash format such as `v1:<digest>` or separate salt-version metadata. No raw IP, full user agent, full referrer, or directly reusable anonymous id is stored.
 - `share_links.uid` is unique, random, non-enumerable, and does not encode `entity_id` or `user_id`.
 - The public share-open entrypoint is `/share/{share_uid}`. It resolves `share_links.uid`, re-checks current entity visibility, records `share_events.event_type = link_opened`, records a `view_events` row with `source = share_link` and `share_link_id`, increments `open_count`/`unique_open_count`, then redirects or renders `/read/{user_slug}/{page_id}`.
+- `createOrReuseShareLink` response includes `share_url = /share/{share_uid}`, `target_url`, and `html_direct_url`. Copy-link and native-share actions use `share_url` by default; `target_url` is internal landing metadata, not the copied public URL.
+- MVP share count policy: `link_copied`, `native_share_opened`, and `share_target_clicked` increment `published_pages.share_count`; `link_created` does not; `link_opened` only increments `share_links.open_count`/`unique_open_count` and event analytics.
 - `/read/{user_slug}/{page_id}` must record `source = read_shell` view events and upsert logged-in history. `/page/{user_slug}/{page_id}` must record `source = html_direct` view events without blocking raw HTML output if telemetry fails.
 - Share creation must reject `private`, `hidden`, `rejected`, deleted, and currently unauthorized entities; existing links must stop opening publicly after an entity becomes non-public or unauthorized.
-- Repost creation failure after Moment failure writes `reposts.status = failed`, stores `failure_reason`, and does not increment `repost_count`. Repost deletion is only allowed for the repost owner or moderator and is soft-delete only.
+- Repost creation failure after Moment failure writes `reposts.status = failed`, stores `failure_reason`, and does not increment `repost_count`. Repost deletion is only allowed for the repost owner and is soft-delete only.
 
 ## Tasks
 
@@ -52,7 +54,7 @@
 
 - [ ] **Step 1: Write schema tests**
 
-Assert every field in Required Data Contract exists. Assert no table stores full IP, full user agent, full external referrer URL, or unsalted anonymous identifiers. Assert indexes for `view_events(entity_type, entity_id, created_at)`, unique `share_links.uid`, and active repost dedupe.
+Assert every field in Required Data Contract exists. Assert no table stores full IP, full user agent, full external referrer URL, or unsalted anonymous identifiers. Assert versioned hash format or salt-version fields, indexes for `view_events(entity_type, entity_id, created_at)`, unique `share_links.uid`, and active repost dedupe.
 
 - [ ] **Step 2: Run schema tests**
 
@@ -104,7 +106,7 @@ Expected: PASS for history cases.
 
 - [ ] **Step 1: Extend service tests**
 
-Cover public page share, private page rejection, hidden/rejected/deleted rejection, current user losing access after link creation, unlisted share allowed by default, revoked link rejection, expired link rejection, `link_created` and `link_copied` event creation, `link_opened` open count increment, and page `share_count` counting policy.
+Cover public page share, `share_url = /share/{share_uid}` default returned URL, private page rejection, hidden/rejected/deleted rejection, current user losing access after link creation, unlisted share allowed by default, revoked link rejection, expired link rejection, `link_created` and `link_copied` event creation, `link_opened` open count increment without page `share_count`, and page `share_count` counting policy for copied/native/target-click events.
 
 - [ ] **Step 2: Run tests**
 
@@ -116,7 +118,7 @@ Expected: FAIL on share cases.
 
 - [ ] **Step 3: Implement `share.ts`**
 
-Create `createOrReuseShareLink`, `recordShareEvent`, `openShareLink`. Return both `target_url = /read/{user_slug}/{page_id}` and `html_direct_url = /page/{user_slug}/{page_id}` for published pages.
+Create `createOrReuseShareLink`, `recordShareEvent`, `openShareLink`. Return `share_url = /share/{share_uid}`, `target_url = /read/{user_slug}/{page_id}`, and `html_direct_url = /page/{user_slug}/{page_id}` for published pages. UI copy/share actions use `share_url`.
 
 - [ ] **Step 4: Re-run service tests**
 
@@ -142,7 +144,7 @@ Expected: command exits `0`.
 
 - [ ] **Step 2: Write repost tests**
 
-Cover login required, private page rejection, hidden/rejected/deleted rejection, unauthorized rejection, active repost creates a Moment, `moment_id` is stored, duplicate active repost is rejected or returned idempotently, Moment creation failure writes `status = failed` and `failure_reason`, failed repost does not increment `repost_count`, owner delete soft-deletes repost and hides linked Moment, and non-owner delete is rejected.
+Cover login required, private page rejection, hidden/rejected/deleted rejection, unauthorized rejection, active repost creates a Moment, `moment_id` is stored, duplicate active repost is rejected or returned idempotently, Moment creation failure writes `status = failed` and `failure_reason`, failed repost does not increment `repost_count`, owner delete soft-deletes repost and hides linked Moment, moderator delete is rejected in this spec, and non-owner delete is rejected.
 
 - [ ] **Step 3: Implement `reposts.ts`**
 
@@ -206,6 +208,6 @@ Expected: PASS.
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/lib/db apps/web/lib/services/community apps/web/app/api/community apps/web/app/api/users/me
+git add apps/web/lib/db apps/web/lib/services/community apps/web/app/api/community apps/web/app/api/users/me apps/web/app/share apps/web/app/read apps/web/app/page
 git commit -m "feat(web): add community history sharing and reposts"
 ```

@@ -26,8 +26,8 @@
 - Modify: `apps/web/app/api/auth/callback/github/route.ts`
 - Modify: `apps/web/app/api/auth/github/callback/route.ts`
 - Create: `apps/web/app/api/pages/route.ts`
-- Create: `apps/web/app/api/pages/[page_id]/route.ts`
-- Create: `apps/web/app/api/pages/[page_id]/metadata/route.ts`
+- Create: `apps/web/app/api/page-directory/[user_slug]/[page_id]/route.ts`
+- Create: `apps/web/app/api/page-directory/[user_slug]/[page_id]/metadata/route.ts`
 - Create: `apps/web/app/api/page-categories/route.ts`
 - Create: `apps/web/app/api/community/stats/route.ts`
 - Modify or move: `apps/web/app/[user_id]/page/page.tsx`
@@ -58,10 +58,13 @@
 - Publish API compatibility must preserve old request bodies and add `html_url = /page/{user_slug}/{page_id}` and `read_url = /read/{user_slug}/{page_id}` to successful responses.
 - Stats read/write routes must accept only `snake_case` fields and must not reveal private, hidden, or rejected page metadata to unauthorized viewers.
 - `GET /api/pages/[page_id]` and `GET /api/pages/[page_id]/metadata` treat `page_id` as `published_pages.uid`; public reads require `user_slug` query param to avoid cross-author ambiguity. Missing `user_slug` returns `400`.
+- Do not create new detail routes under `/api/pages/[page_id]` because existing static routes such as `/api/pages/publish` must keep priority and page uid values may collide with those names. Detail reads use `/api/page-directory/{user_slug}/{page_id}` and metadata reads use `/api/page-directory/{user_slug}/{page_id}/metadata`.
 - `/read/{user_slug}/{page_id}` must render published HTML through a sandboxed iframe without `allow-same-origin`; the iframe cannot access main-site cookies, localStorage, or parent DOM. The reader shell links or embeds `/page/{user_slug}/{page_id}` but never injects raw HTML into the shell DOM.
 - `/page/{user_slug}/{page_id}` remains raw HTML output but must use `canViewPublishedPage`: public approved allowed, unlisted direct allowed, private owner only, hidden/rejected return `404` for non-owner and never reveal moderation state.
 - User slug creation/update paths must reject reserved public slugs. Initial reserved set includes all current top-level app routes: `admin`, `analytics`, `api`, `code-stats`, `collections`, `components`, `landing`, `leaderboard`, `login`, `mcp`, `moment`, `my-packages`, `page`, `profile`, `publish`, `read`, `register`, `settings`, `skills`, `subscription`, `web`.
+- Migration must detect existing `users.user_slug` values that are now reserved. The migration or repair script writes a deterministic non-reserved replacement and records the mapping for redirects or audit.
 - Migration must backfill existing rows: `published_at = created_at`, `last_published_at = updated_at`, count fields `0`, `tags = []`, `visibility = public`, `moderation_status = approved`, and version-table metadata from the current page where historical values are unavailable.
+- Count fields have non-negative checks at the schema or service boundary. `entity_stats_daily.stat_date` uses UTC dates.
 
 ## Tasks
 
@@ -169,7 +172,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write visibility tests**
 
-Create tests for public approved, public hidden, unlisted direct access, private owner access, private non-owner denial, rejected denial, and HTML direct route permission decisions using the same helper.
+Create tests for public approved, public pending, public hidden, unlisted direct access, private owner access, private non-owner denial, rejected denial, and HTML direct route permission decisions using the same helper.
 
 - [ ] **Step 2: Run visibility tests**
 
@@ -230,7 +233,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Implement directory and stats API route tests**
 
-Create `apps/web/app/api/community-page-directory-routes.test.ts`. Cover `GET /api/pages`, `GET /api/pages/[page_id]?user_slug=alice`, missing `user_slug` 400, `GET /api/pages/[page_id]/metadata?user_slug=alice`, `GET /api/page-categories`, `GET /api/community/stats`, stats write, category/tag/author filters, latest/recently_updated/most_viewed/trending sorts, stable cursor pagination, publish response URLs, new publish fields, and non-owner `cover_asset_id` rejection.
+Create `apps/web/app/api/community-page-directory-routes.test.ts`. Cover `GET /api/pages`, `GET /api/page-directory/[user_slug]/[page_id]`, `GET /api/page-directory/[user_slug]/[page_id]/metadata`, static `/api/pages/publish*` routes still winning over similarly named page uid values, `GET /api/page-categories`, `GET /api/community/stats`, stats write, category/tag/author filters, author public-state filtering, latest/recently_updated/most_viewed/trending sorts, stable cursor pagination, publish response URLs, new publish fields, `moderation_status` default, `published_at` first write, `last_published_at` update, `version_count`, version table metadata snapshot, and non-owner `cover_asset_id` rejection.
 
 - [ ] **Step 2: Run directory and stats API route tests**
 
@@ -244,7 +247,7 @@ Expected: FAIL until API routes exist and publish response includes both URLs.
 
 - [ ] **Step 3: Implement directory and stats API routes**
 
-Create the route files listed in Files. Use `getCommunityPageBySlugs` and visibility helpers for every read. Add `read_url` and `html_url` to the existing publish response without removing old response fields. Publish accepts `category_id`, `cover_asset_id`, `tags`, and `visibility`, and validates that `media_assets.owner_user_id` matches the publishing user.
+Create the route files listed in Files. Use `getCommunityPageBySlugs` and visibility helpers for every read. Add `read_url` and `html_url` to the existing publish response without removing old response fields. Publish accepts `category_id`, `cover_asset_id`, `tags`, and `visibility`, sets default `moderation_status = approved`, updates `published_at`, `last_published_at`, `version_count`, snapshots directory metadata to `published_page_versions`, and validates that `media_assets.owner_user_id` matches the publishing user.
 
 - [ ] **Step 4: Implement stats idempotency and aggregation**
 

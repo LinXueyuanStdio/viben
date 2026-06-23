@@ -18,6 +18,8 @@
 
 - Modify: `apps/web/lib/db/schema.ts`
 - Modify: `apps/web/app/api/pages/publish/route.ts`
+- Modify UI: `apps/web/components/community/author-profile-page.tsx`
+- Modify UI: `apps/web/components/community/reader-shell.tsx`
 - Create: `apps/web/lib/services/community/subscriptions.ts`
 - Create: `apps/web/app/api/users/[username]/follow/route.ts`
 - Create: `apps/web/app/api/read/[user_slug]/[page_id]/subscription/route.ts`
@@ -44,6 +46,9 @@
 - Notification creation must honor `notify_level = all | major | none`, dedupe users who match both followed author and subscribed page, skip the actor, skip recipients who cannot currently view the page, and never create notifications for `notify_level = none`.
 - `GET /api/notifications` must support `unread_only`, stable `created_at + id` cursor pagination, and return `unread_count`.
 - PATCH follow and subscription APIs must be tested: `PATCH /api/users/[username]/follow` updates `notify_level`; `PATCH /api/read/[user_slug]/[page_id]/subscription` updates `notify_level` and only advances `last_seen_version`.
+- `page_update_events` must have indexes `published_page_id + created_at`, `user_id + created_at`, and `created_at + id`.
+- Migration must backfill `users.followers_count` from `user_follows` and `published_pages.subscriber_count` from `page_subscriptions`; tests verify counters match relation counts.
+- `/{user_slug}` author profile renders follow/unfollow, `followers_count`, own-profile no self-follow control, and public page permission filtering. `/read/{user_slug}/{page_id}` renders follow author, subscribe page, `subscriber_count`, `notify_level`, and login prompts for anonymous actions.
 
 ## Tasks
 
@@ -51,7 +56,7 @@
 
 - [ ] **Step 1: Write schema tests**
 
-Assert the four tables and two counter fields exist with the exact field names above, including `created_at`, `updated_at`, unique constraints, self-follow rejection, critical indexes, and counter backfill/consistency checks.
+Assert the four tables and two counter fields exist with the exact field names above, including `created_at`, `updated_at`, unique constraints, self-follow rejection, the exact `page_update_events` indexes listed above, and counter backfill/consistency checks.
 
 - [ ] **Step 2: Run schema tests**
 
@@ -103,7 +108,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write publish integration test**
 
-Assert first publish creates `event_type = published`, next version creates `event_type = updated`, title/description/visibility changes create `updated`, identical content does not create a duplicate event, retry does not create duplicate event, `importance` defaults to `normal`, explicit `major` is preserved, and old publish request body still succeeds.
+Assert first publish creates `event_type = published`, next version creates `event_type = updated`, title/description/visibility changes create `updated`, identical content does not create a duplicate event, retry does not create duplicate event, `importance` defaults to `normal`, explicit `major` is preserved, old publish request body still succeeds, publish flow invokes notification generation, `notify_level` filtering is honored end-to-end, and followed-author plus subscribed-page recipients are deduped.
 
 - [ ] **Step 2: Run publish integration test**
 
@@ -129,7 +134,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write route and UI tests**
 
-Test `/api/users/[username]/follow` using `username` as `user_slug`, PATCH follow notify level, `/api/read/[user_slug]/[page_id]/subscription`, PATCH subscription notify level and forward-only `last_seen_version`, `/api/feed/subscriptions`, `/api/notifications` with `unread_only`, `unread_count`, stable cursor, explicit `notification_ids` batch read, `before_cursor` batch read, current-user-only read protection, `/subscription` empty state, logged-out state, unread marker, `next_cursor/has_more` load more, followed-author source, subscribed-page source, mobile layout, long title wrapping, focus-visible controls, and list rendering.
+Test `/api/users/[username]/follow` using `username` as `user_slug`, PATCH follow notify level, `/api/read/[user_slug]/[page_id]/subscription`, PATCH subscription notify level and forward-only `last_seen_version`, `/api/feed/subscriptions`, feed hiding an event after viewer loses private-page access, `/api/notifications` with `unread_only`, `unread_count`, stable cursor, explicit `notification_ids` batch read, `before_cursor` batch read, notification hiding after viewer loses private-page access, current-user-only read protection, `/{user_slug}` follow UI, author `followers_count`, self-profile no follow button, author public-page filtering, `/read` follow author UI, subscribe page UI, `subscriber_count`, `notify_level`, `/subscription` empty state, logged-out state, unread marker, `next_cursor/has_more` load more, followed-author source, subscribed-page source, mobile layout, long title wrapping, focus-visible controls, and list rendering.
 
 - [ ] **Step 2: Run tests**
 
@@ -141,7 +146,7 @@ Expected: FAIL until routes and UI exist.
 
 - [ ] **Step 3: Implement routes and page**
 
-Use `requireAuth` for relationship writes and feed reads. Use cursor pagination with `next_cursor` and `has_more`. Feed and notification reads must re-check current page visibility before returning items. UI renders "我的订阅", page cards, source reasons, unread state, load more, and login guidance.
+Use `requireAuth` for relationship writes and feed reads. Use cursor pagination with `next_cursor` and `has_more`. Feed and notification reads must re-check current page visibility before returning items. Update author profile and reader shell components with follow/subscribe state. UI renders "我的订阅", page cards, source reasons, unread state, load more, and login guidance.
 
 - [ ] **Step 4: Re-run tests**
 

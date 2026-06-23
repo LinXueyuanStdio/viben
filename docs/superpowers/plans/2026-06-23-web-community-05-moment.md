@@ -43,6 +43,9 @@
 - Moment creation must call the interactions service to create or update `community_entities(entity_type = "moment", entity_id = moments.id)` with `owner_user_id`, `title`, `canonical_path`, `visibility`, and active status so Moment can receive likes, favorites, and comments.
 - Page-update Moment generation must be connected to `page_update_events`: each newly created page update event is consumed once, creates or reuses one `kind = page_update` Moment, binds a `published_page` attachment, uses server-side body templates, and does not expose private or non-approved pages in public Feed.
 - Attachment creation/update must validate binding permission for each target. Feed rendering must hide or downgrade attachments that later become private, deleted, hidden, or otherwise inaccessible.
+- Schema constraints must enforce or service tests must reject duplicate `moments.uid`, invalid `moment_topics.slug`, `kind = page_update` without source event, `kind = repost` without `repost_of_moment_id`, and editing a soft-deleted Moment. Soft delete preserves attachments and topic relations for audit.
+- Moment writes create `activity_events` for `moment.created`, `moment.updated`, and `moment.deleted`. Like/favorite actions do not create public `activity_events`.
+- Feed response shape is `{ items, next_cursor, feed_type, fallback_feed_type }`; each item contains `moment`, `author`, `attachments`, `topics`, `viewer_state`, and `repost_context`.
 
 ## Tasks
 
@@ -50,7 +53,7 @@
 
 - [ ] **Step 1: Write schema tests**
 
-Assert all fields above exist and that `author_user_id + source_page_update_event_id` is unique for non-null page update events.
+Assert all fields above exist, `moments.uid` is unique, `moment_topics.slug` is unique and normalized, `kind = page_update` requires a source event, `kind = repost` requires `repost_of_moment_id`, soft delete preserves attachments/topics, and `author_user_id + source_page_update_event_id` is unique for non-null page update events.
 
 - [ ] **Step 2: Run schema tests**
 
@@ -78,7 +81,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write service tests**
 
-Cover creating text post, creating `community_entities(moment)`, rejecting empty post without attachments, attachment limit `4`, topic limit `5`, topic normalization, attachment permission checks, attachment later-private/deleted feed downgrade, feed `latest`, feed `following` fallback to `recommended`, feed `recommended`, cursor/limit pagination, topic filtering, author_user_slug filtering, invalid feed_type, logged-out following behavior, soft delete, edit own post, reject edit of `page_update` body, page_update idempotent consumption, page_update published_page attachment, page_update server body template, and private page update excluded from public feed.
+Cover creating text post, creating `community_entities(moment)`, writing `activity_events` for created/updated/deleted, no public `activity_events` for likes, rejecting empty post without attachments, attachment limit `4`, topic limit `5`, topic normalization, attachment permission checks, attachment later-private/deleted feed downgrade, feed response shape, feed `latest`, feed `following` fallback to `recommended`, feed `recommended`, cursor/limit pagination, topic filtering, author_user_slug filtering, invalid feed_type, logged-out following behavior, soft delete, reject edit of soft-deleted Moment, edit own post, reject edit of `page_update` body and attachments, page_update idempotent consumption, page_update published_page attachment, page_update server body template, and private page update excluded from public feed.
 
 - [ ] **Step 2: Run service tests**
 
@@ -132,7 +135,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write route tests**
 
-Test `GET /api/moments/feed?feed_type=latest`, `recommended`, following fallback response `fallback_feed_type`, cursor/limit pagination, topic filter, author_user_slug filter, invalid feed_type, logged-out following behavior, `POST /api/moments`, empty body without attachments 400, attachment unauthorized 403/404, topic/attachment limit 400, `PATCH /api/moments/{moment_id}`, non-author edit 403, `DELETE /api/moments/{moment_id}`, non-author delete 403, repeated delete behavior, and `GET /api/moment-topics`.
+Test `GET /api/moments/feed?feed_type=latest`, `recommended`, following fallback response `fallback_feed_type`, full feed response shape, cursor/limit pagination, topic filter, author_user_slug filter, invalid feed_type, logged-out following behavior, unauthenticated POST/PATCH/DELETE 401, `POST /api/moments`, client-submitted `author_user_id`, counters, `kind = page_update`, and source ids rejected, empty body without attachments 400, attachment unauthorized 403/404, topic/attachment limit 400, `PATCH /api/moments/{moment_id}`, missing target 404, deleted target 404, non-author edit 403, page_update body/attachment edit rejection, `DELETE /api/moments/{moment_id}`, missing target 404, non-author delete 403, repeated delete behavior, and `GET /api/moment-topics`.
 
 - [ ] **Step 2: Run route tests**
 
