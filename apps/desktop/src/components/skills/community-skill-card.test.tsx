@@ -47,7 +47,7 @@ describe("CommunitySkillCard", () => {
     expect(screen.getByText("Jane Doe")).toBeTruthy();
   });
 
-  it("installs without opening details and opens details from title", () => {
+  it("installs without opening details and opens details from card", () => {
     const onInstall = vi.fn();
     const onViewDetails = vi.fn();
 
@@ -67,11 +67,47 @@ describe("CommunitySkillCard", () => {
     });
     expect(onViewDetails).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("heading", { name: "Cloud Runner" }));
+    fireEvent.click(screen.getByRole("button", { name: /cloud runner/i }));
 
     expect(onViewDetails).toHaveBeenCalledWith({
       source: "community",
       data: skill,
     });
+  });
+
+  it("opens details from keyboard activation", () => {
+    const onViewDetails = vi.fn();
+
+    render(<CommunitySkillCard skill={skill} onViewDetails={onViewDetails} />);
+
+    const card = screen.getByRole("button", { name: /cloud runner/i });
+
+    fireEvent.keyDown(card, { key: "Enter" });
+    fireEvent.keyDown(card, { key: " " });
+
+    expect(onViewDetails).toHaveBeenCalledTimes(2);
+    expect(onViewDetails).toHaveBeenLastCalledWith({
+      source: "community",
+      data: skill,
+    });
+  });
+
+  it("does not open details when clicking a disabled install area", () => {
+    const onInstall = vi.fn();
+    const onViewDetails = vi.fn();
+
+    render(
+      <CommunitySkillCard
+        skill={skill}
+        onInstall={onInstall}
+        onViewDetails={onViewDetails}
+        isInstalled
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /installed/i }).parentElement!);
+
+    expect(onInstall).not.toHaveBeenCalled();
+    expect(onViewDetails).not.toHaveBeenCalled();
   });
 });

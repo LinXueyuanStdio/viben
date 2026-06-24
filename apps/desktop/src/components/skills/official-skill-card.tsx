@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from "react";
-import type { MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import {
   Check,
   Code2,
@@ -62,6 +62,13 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
     [detailItem, isInstalled, isInstalling, onInstall]
   );
 
+  const handleInstallAreaClick = useCallback(
+    (event: MouseEvent<HTMLSpanElement>) => {
+      event.stopPropagation();
+    },
+    []
+  );
+
   const handleOpenClawhub = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
@@ -74,13 +81,35 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
     [skill.slug]
   );
 
+  const handleCardKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (event.currentTarget !== event.target) return;
+
+      if (event.key === "Enter") {
+        handleViewDetails();
+        return;
+      }
+
+      if (event.key === " ") {
+        event.preventDefault();
+        handleViewDetails();
+      }
+    },
+    [handleViewDetails]
+  );
+
   return (
     <article
       className={cn(
         "flex min-h-[236px] cursor-pointer flex-col rounded-lg border bg-card p-4",
-        "transition-colors hover:border-primary/50 focus-within:border-primary/50"
+        "transition-colors hover:border-primary/50 focus-within:border-primary/50",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       )}
       onClick={handleViewDetails}
+      onKeyDown={handleCardKeyDown}
+      aria-label={`${skill.name} details`}
+      role="button"
+      tabIndex={0}
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -148,31 +177,36 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
         </Button>
         <div className="flex-1" />
         {onInstall && (
-          <Button
-            type="button"
-            variant={isInstalled ? "outline" : "default"}
-            size="sm"
-            onClick={handleInstall}
-            disabled={isInstalled || isInstalling}
-            className="h-8 min-w-24 text-xs"
+          <span
+            className="inline-flex"
+            onClick={handleInstallAreaClick}
           >
-            {isInstalling ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {t("common.loading", "Loading")}
-              </>
-            ) : isInstalled ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                {t("common.installed", "Installed")}
-              </>
-            ) : (
-              <>
-                <Download className="h-3.5 w-3.5" />
-                {t("skillsMarket.install", "Install")}
-              </>
-            )}
-          </Button>
+            <Button
+              type="button"
+              variant={isInstalled ? "outline" : "default"}
+              size="sm"
+              onClick={handleInstall}
+              disabled={isInstalled || isInstalling}
+              className="h-8 min-w-24 text-xs"
+            >
+              {isInstalling ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {t("common.loading", "Loading")}
+                </>
+              ) : isInstalled ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  {t("common.installed", "Installed")}
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  {t("skillsMarket.install", "Install")}
+                </>
+              )}
+            </Button>
+          </span>
         )}
       </div>
     </article>

@@ -19,7 +19,7 @@ const skill: ClawhubSkillDisplay = {
   version: "2.0.0",
   description: "Runs official workflows",
   ownerHandle: "clawhub",
-  ownerName: "Clawhub Team",
+  ownerName: "Owner Team",
   ownerAvatar: "https://example.com/clawhub.png",
   isOfficial: true,
   executesCode: true,
@@ -39,10 +39,10 @@ describe("OfficialSkillCard", () => {
     expect(screen.getByText("clawhub/official-runner")).toBeTruthy();
     expect(screen.getByText("1.2K")).toBeTruthy();
     expect(screen.getByText("42")).toBeTruthy();
-    expect(screen.getByText("Clawhub Team")).toBeTruthy();
+    expect(screen.getByText("Owner Team")).toBeTruthy();
   });
 
-  it("installs without opening details and opens details from title", () => {
+  it("installs without opening details and opens details from card", () => {
     const onInstall = vi.fn();
     const onViewDetails = vi.fn();
 
@@ -59,11 +59,47 @@ describe("OfficialSkillCard", () => {
     expect(onInstall).toHaveBeenCalledWith({ source: "official", data: skill });
     expect(onViewDetails).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("heading", { name: "Official Runner" }));
+    fireEvent.click(screen.getByRole("button", { name: /official runner/i }));
 
     expect(onViewDetails).toHaveBeenCalledWith({
       source: "official",
       data: skill,
     });
+  });
+
+  it("opens details from keyboard activation", () => {
+    const onViewDetails = vi.fn();
+
+    render(<OfficialSkillCard skill={skill} onViewDetails={onViewDetails} />);
+
+    const card = screen.getByRole("button", { name: /official runner/i });
+
+    fireEvent.keyDown(card, { key: "Enter" });
+    fireEvent.keyDown(card, { key: " " });
+
+    expect(onViewDetails).toHaveBeenCalledTimes(2);
+    expect(onViewDetails).toHaveBeenLastCalledWith({
+      source: "official",
+      data: skill,
+    });
+  });
+
+  it("does not open details when clicking a disabled install area", () => {
+    const onInstall = vi.fn();
+    const onViewDetails = vi.fn();
+
+    render(
+      <OfficialSkillCard
+        skill={skill}
+        onInstall={onInstall}
+        onViewDetails={onViewDetails}
+        isInstalled
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /installed/i }).parentElement!);
+
+    expect(onInstall).not.toHaveBeenCalled();
+    expect(onViewDetails).not.toHaveBeenCalled();
   });
 });
