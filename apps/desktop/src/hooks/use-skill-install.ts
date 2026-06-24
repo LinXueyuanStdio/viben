@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -81,6 +81,8 @@ export function getInstallErrorTranslationKey(
 
 export function useSkillInstall() {
   const { t } = useTranslation();
+  const installingIdsRef = useRef<Set<string>>(new Set());
+  const progressCleanupTimersRef = useRef<Map<string, number>>(new Map());
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
   const [installProgress, setInstallProgress] = useState<
@@ -91,8 +93,15 @@ export function useSkillInstall() {
     async (skill: InstallableSkill): Promise<InstallSkillResult | null> => {
       const id = getSkillInstallId(skill);
 
-      if (installingIds.has(id)) {
+      if (installingIdsRef.current.has(id)) {
         return null;
+      }
+
+      installingIdsRef.current.add(id);
+      const cleanupTimer = progressCleanupTimersRef.current.get(id);
+      if (cleanupTimer !== undefined) {
+        window.clearTimeout(cleanupTimer);
+        progressCleanupTimersRef.current.delete(id);
       }
 
       setInstallingIds((prev) => new Set(prev).add(id));
@@ -169,22 +178,25 @@ export function useSkillInstall() {
           errorCode: "UNKNOWN_ERROR",
         };
       } finally {
+        installingIdsRef.current.delete(id);
         setInstallingIds((prev) => {
           const next = new Set(prev);
           next.delete(id);
           return next;
         });
 
-        window.setTimeout(() => {
+        const nextCleanupTimer = window.setTimeout(() => {
+          progressCleanupTimersRef.current.delete(id);
           setInstallProgress((prev) => {
             const next = new Map(prev);
             next.delete(id);
             return next;
           });
         }, 2000);
+        progressCleanupTimersRef.current.set(id, nextCleanupTimer);
       }
     },
-    [installingIds, t]
+    [t]
   );
 
   const isInstalling = useCallback(

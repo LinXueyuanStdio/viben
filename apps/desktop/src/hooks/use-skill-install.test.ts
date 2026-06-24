@@ -1,13 +1,38 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CloudSkillPackage } from "@/hooks/use-cloud-skills";
+import type { InstallProgress, InstallSkillResult } from "@/lib/skill-installer";
 import type { ClawhubSkillDisplay } from "@/types/clawhub-registry";
 import {
   getInstallErrorTranslationKey,
   getSkillInstallId,
+  useSkillInstall,
 } from "./use-skill-install";
+import {
+  downloadAndInstallClawhubSkill,
+  downloadAndInstallSkill,
+} from "@/lib/skill-installer";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
+vi.mock("@/hooks/use-toast", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/skill-installer", () => ({
+  downloadAndInstallClawhubSkill: vi.fn(),
+  downloadAndInstallSkill: vi.fn(),
+}));
 
 const communitySkill: CloudSkillPackage = {
   id: "cloud-1",
@@ -51,6 +76,44 @@ const officialSkill: ClawhubSkillDisplay = {
   updatedAt: 1717286400000,
 };
 
+const installResult: InstallSkillResult = {
+  success: true,
+  name: "Official Skill",
+  version: "2.0.0",
+  path: "/skills/official-skill",
+  message: "Installed",
+};
+
+const communityInstallableSkill = {
+  source: "community" as const,
+  data: communitySkill,
+};
+
+const officialInstallableSkill = {
+  source: "official" as const,
+  data: officialSkill,
+};
+
+const downloadAndInstallSkillMock = vi.mocked(downloadAndInstallSkill);
+const downloadAndInstallClawhubSkillMock = vi.mocked(
+  downloadAndInstallClawhubSkill
+);
+
+function createDeferred<T>() {
+  let resolve: (value: T) => void;
+  let reject: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return {
+    promise,
+    resolve: resolve!,
+    reject: reject!,
+  };
+}
+
 describe("use-skill-install helpers", () => {
   it("extracts the install ID from community and official skills", () => {
     expect(
@@ -85,6 +148,99 @@ describe("use-skill-install helpers", () => {
     );
     expect(getInstallErrorTranslationKey({ error: "unexpected" })).toBe(
       "skillsMarket.installErrorUnknown"
+    );
+  });
+});
+
+describe("useSkillInstall", () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("ignores duplicate same-id install calls before React commits installing state", async () => {
+    const installDeferred = createDeferred<InstallSkillResult>();
+    downloadAndInstallSkillMock.mockReturnValue(installDeferred.promise);
+
+    const { result } = renderHook(() => useSkillInstall());
+    let firstInstall: Promise<InstallSkillResult | null>;
+    let secondInstall: Promise<InstallSkillResult | null>;
+
+    act(() => {
+      firstInstall = result.current.install(communityInstallableSkill);
+      secondInstall = result.current.install(communityInstallableSkill);
+    });
+
+    expect(downloadAndInstallSkillMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      installDeferred.resolve(installResult);
+      await expect(firstInstall).resolves.toEqual(installResult);
+      await expect(secondInstall).resolves.toBeNull();
+    });
+  });
+
+  it("keeps retry progress when the previous cleanup timer fires", async () => {
+    vi.useFakeTimers();
+    downloadAndInstallSkillMock
+      .mockImplementationOnce(async ({ onProgress }) => {
+        onProgress?.({
+          stage: "downloading",
+          progress: 40,
+          message: "first attempt",
+        });
+        return installResult;
+      })
+      .mockImplementationOnce(async ({ onProgress }) => {
+        onProgress?.({
+          stage: "downloading",
+          progress: 70,
+          message: "retry attempt",
+        } satisfies InstallProgress);
+        return installResult;
+      });
+
+    const { result } = renderHook(() => useSkillInstall());
+
+    await act(async () => {
+      await result.current.install(communityInstallableSkill);
+    });
+
+    expect(result.current.getProgress("cloud-1")?.progress).toBe(40);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+      await result.current.install(communityInstallableSkill);
+    });
+
+    expect(result.current.getProgress("cloud-1")?.progress).toBe(70);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(result.current.getProgress("cloud-1")?.progress).toBe(70);
+  });
+
+  it("installs official skills through the ClaWHub installer", async () => {
+    downloadAndInstallClawhubSkillMock.mockResolvedValue(installResult);
+
+    const { result } = renderHook(() => useSkillInstall());
+
+    await act(async () => {
+      await result.current.install(officialInstallableSkill);
+    });
+
+    expect(downloadAndInstallClawhubSkillMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slug: "owner/official-skill",
+        name: "Official Skill",
+        version: "2.0.0",
+      })
     );
   });
 });

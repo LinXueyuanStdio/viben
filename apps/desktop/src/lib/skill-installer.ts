@@ -121,6 +121,21 @@ function sanitizeTempFilePart(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "skill";
 }
 
+function isUnknownClawhubVersion(version: string): boolean {
+  const normalized = version.trim();
+  return normalized === "" || normalized === "0.0.0";
+}
+
+function getClawhubDownloadEndpoint(slug: string, version: string): string {
+  const baseEndpoint = `https://clawhub.ai/api/v1/packages/${encodeURIComponent(slug)}/download`;
+
+  if (isUnknownClawhubVersion(version)) {
+    return baseEndpoint;
+  }
+
+  return `${baseEndpoint}?version=${encodeURIComponent(version)}`;
+}
+
 function getInstallErrorCode(errorMessage: string): InstallErrorCode {
   const normalized = errorMessage.toLowerCase();
 
@@ -316,7 +331,7 @@ export async function downloadAndInstallClawhubSkill(
       message: i18n.t('installation.downloading', { name }),
     });
 
-    const endpoint = `https://clawhub.ai/api/v1/packages/${encodeURIComponent(slug)}/download?version=${encodeURIComponent(version)}`;
+    const endpoint = getClawhubDownloadEndpoint(slug, version);
     const response = await fetch(endpoint, {
       headers: { Accept: 'application/zip' },
     });

@@ -40,6 +40,7 @@ const getGatewayClientMock = vi.mocked(getGatewayClient);
 describe("downloadAndInstallClawhubSkill", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
 
     appDataDirMock.mockResolvedValue("/tmp/viben-data");
     joinMock.mockImplementation(async (...parts: string[]) => parts.join("/"));
@@ -78,7 +79,8 @@ describe("downloadAndInstallClawhubSkill", () => {
     const tempZipPath =
       "/tmp/viben-data/temp/owner-official-skill-2.0.0.zip";
     const fetchMock = vi.mocked(globalThis.fetch);
-    const gatewayClient = getGatewayClientMock.mock.results[0].value;
+    const gatewayClient = getGatewayClientMock.mock.results.at(-1)?.value;
+    expect(gatewayClient).toBeDefined();
     const postMock = vi.mocked(gatewayClient.post);
 
     expect(result.success).toBe(true);
@@ -102,5 +104,33 @@ describe("downloadAndInstallClawhubSkill", () => {
       version: "2.0.0",
     });
     expect(removeMock).toHaveBeenCalledWith(tempZipPath);
+  });
+
+  it('omits the ClaWHub download version query when display version is "0.0.0"', async () => {
+    const result = await downloadAndInstallClawhubSkill({
+      slug: "owner/latest-only-skill",
+      name: "Latest Only Skill",
+      version: "0.0.0",
+      force: false,
+    });
+
+    const tempZipPath =
+      "/tmp/viben-data/temp/owner-latest-only-skill-0.0.0.zip";
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const gatewayClient = getGatewayClientMock.mock.results.at(-1)?.value;
+    expect(gatewayClient).toBeDefined();
+    const postMock = vi.mocked(gatewayClient.post);
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://clawhub.ai/api/v1/packages/owner%2Flatest-only-skill/download",
+      { headers: { Accept: "application/zip" } }
+    );
+    expect(postMock).toHaveBeenCalledWith("/api/skill/install", {
+      name: "owner/latest-only-skill",
+      zip_path: tempZipPath,
+      force: false,
+      version: "0.0.0",
+    });
   });
 });
