@@ -4,6 +4,7 @@ import type {
   ClawhubPackageListResponse,
   ClawhubSearchResponse,
   ClawhubSkillDisplay,
+  ClawhubSkillSortOption,
 } from "@/types/clawhub-registry";
 
 // ============================================================================
@@ -24,6 +25,8 @@ export interface UseClawhubRegistrySkillsOptions {
   limit?: number;
   /** Whether to fetch on mount */
   enabled?: boolean;
+  /** Sort order for package listing */
+  sort?: ClawhubSkillSortOption;
 }
 
 /**
@@ -38,6 +41,10 @@ export interface UseClawhubRegistrySkillsReturn {
   loadMore: () => Promise<void>;
   /** Refresh the list */
   refresh: () => Promise<void>;
+  /** Set the active skill sort order */
+  setSort: (sort: ClawhubSkillSortOption) => void;
+  /** Active skill sort order */
+  currentSort: ClawhubSkillSortOption;
 }
 
 /**
@@ -72,6 +79,8 @@ export interface UseClawhubRegistryOptions {
   searchDebounceMs?: number;
   /** Whether to fetch on mount */
   fetchOnMount?: boolean;
+  /** Sort order for package listing */
+  sort?: ClawhubSkillSortOption;
 }
 
 // ============================================================================
@@ -111,15 +120,17 @@ function transformPackageToDisplay(item: ClawhubPackageItem): ClawhubSkillDispla
 export function useClawhubRegistrySkills(
   options: UseClawhubRegistrySkillsOptions = {}
 ): UseClawhubRegistrySkillsReturn {
-  const { limit = 50, enabled = true } = options;
+  const { limit = 50, enabled = true, sort = "updated" } = options;
 
   const [skills, setSkills] = useState<ClawhubSkillDisplay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const [currentSort, setCurrentSort] = useState<ClawhubSkillSortOption>(sort);
 
   const isInitialFetch = useRef(true);
+  const didSortEffectMountRef = useRef(false);
 
   const fetchSkills = useCallback(
     async (currentCursor: string | null, isRefresh = false) => {
@@ -132,6 +143,7 @@ export function useClawhubRegistrySkills(
         const url = new URL(`${CLAWHUB_BASE_URL}/packages`);
         url.searchParams.set("family", "skill");
         url.searchParams.set("limit", String(Math.min(limit, 100)));
+        url.searchParams.set("sort", currentSort);
         if (currentCursor) {
           url.searchParams.set("cursor", currentCursor);
         }
@@ -163,7 +175,7 @@ export function useClawhubRegistrySkills(
         setLoading(false);
       }
     },
-    [enabled, limit]
+    [enabled, limit, currentSort]
   );
 
   // Initial fetch
@@ -185,6 +197,21 @@ export function useClawhubRegistrySkills(
     await fetchSkills(null, true);
   }, [fetchSkills]);
 
+  useEffect(() => {
+    if (!didSortEffectMountRef.current) {
+      didSortEffectMountRef.current = true;
+      return;
+    }
+
+    if (enabled) {
+      void refresh();
+    }
+  }, [currentSort, enabled, refresh]);
+
+  const setSort = useCallback((nextSort: ClawhubSkillSortOption) => {
+    setCurrentSort(nextSort);
+  }, []);
+
   return {
     skills,
     loading,
@@ -192,6 +219,8 @@ export function useClawhubRegistrySkills(
     hasMore,
     loadMore,
     refresh,
+    setSort,
+    currentSort,
   };
 }
 
@@ -322,12 +351,18 @@ export function useClawhubRegistrySearch(
  * Combined hook for all ClaWHub registry operations
  */
 export function useClawhubRegistry(options: UseClawhubRegistryOptions = {}) {
-  const { limit = 50, searchDebounceMs = 300, fetchOnMount = true } = options;
+  const {
+    limit = 50,
+    searchDebounceMs = 300,
+    fetchOnMount = true,
+    sort = "updated",
+  } = options;
 
   // Skills list hook
   const skillsHook = useClawhubRegistrySkills({
     limit,
     enabled: fetchOnMount,
+    sort,
   });
 
   // Search hook
@@ -373,6 +408,8 @@ export function useClawhubRegistry(options: UseClawhubRegistryOptions = {}) {
     skillsError: skillsHook.error,
     skillsHasMore: skillsHook.hasMore,
     refreshSkills: skillsHook.refresh,
+    setSort: skillsHook.setSort,
+    currentSort: skillsHook.currentSort,
 
     // Search
     searchResults: searchHook.results,
@@ -392,4 +429,8 @@ export function useClawhubRegistry(options: UseClawhubRegistryOptions = {}) {
 }
 
 // Re-export types
-export type { ClawhubSkillDisplay, ClawhubPackageItem } from "@/types/clawhub-registry";
+export type {
+  ClawhubPackageItem,
+  ClawhubSkillDisplay,
+  ClawhubSkillSortOption,
+} from "@/types/clawhub-registry";
