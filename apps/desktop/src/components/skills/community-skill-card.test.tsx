@@ -47,7 +47,7 @@ describe("CommunitySkillCard", () => {
     expect(screen.getByText("Jane Doe")).toBeTruthy();
   });
 
-  it("installs without opening details and opens details from card", () => {
+  it("installs without opening details and opens details from the title region", () => {
     const onInstall = vi.fn();
     const onViewDetails = vi.fn();
 
@@ -67,12 +67,46 @@ describe("CommunitySkillCard", () => {
     });
     expect(onViewDetails).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /cloud runner/i }));
+    fireEvent.click(screen.getByText("Cloud Runner"));
 
     expect(onViewDetails).toHaveBeenCalledWith({
       source: "community",
       data: skill,
     });
+  });
+
+  it("keeps footer actions out of the details activation region", () => {
+    render(
+      <CommunitySkillCard
+        skill={skill}
+        onInstall={vi.fn()}
+        onViewDetails={vi.fn()}
+      />
+    );
+
+    const installButton = screen.getByRole("button", { name: /install/i });
+    const card = installButton.closest("article");
+
+    expect(card?.getAttribute("role")).toBeNull();
+    expect(card?.getAttribute("tabindex")).toBeNull();
+  });
+
+  it("opens the repository without opening details", () => {
+    const onViewDetails = vi.fn();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(<CommunitySkillCard skill={skill} onViewDetails={onViewDetails} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /repository/i }));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://example.com/cloud-runner",
+      "_blank",
+      "noopener,noreferrer"
+    );
+    expect(onViewDetails).not.toHaveBeenCalled();
+
+    openSpy.mockRestore();
   });
 
   it("opens details from keyboard activation", () => {

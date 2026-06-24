@@ -81,7 +81,7 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
     [skill.slug]
   );
 
-  const handleCardKeyDown = useCallback(
+  const handleDetailsKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
       if (event.currentTarget !== event.target) return;
 
@@ -101,57 +101,63 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
   return (
     <article
       className={cn(
-        "flex min-h-[236px] cursor-pointer flex-col rounded-lg border bg-card p-4",
-        "transition-colors hover:border-primary/50 focus-within:border-primary/50",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        "flex min-h-[236px] flex-col rounded-lg border bg-card p-4",
+        "transition-colors hover:border-primary/50 focus-within:border-primary/50"
       )}
-      onClick={handleViewDetails}
-      onKeyDown={handleCardKeyDown}
-      aria-label={`${skill.name} details`}
-      role="button"
-      tabIndex={0}
     >
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <Avatar size="lg" className="mt-0.5">
-            <AvatarImage src={skill.ownerAvatar ?? undefined} alt={ownerName} />
-            <AvatarFallback>{getSkillInitials(ownerName)}</AvatarFallback>
-          </Avatar>
+      <div
+        className={cn(
+          "cursor-pointer rounded-sm focus-visible:outline-none",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        )}
+        onClick={handleViewDetails}
+        onKeyDown={handleDetailsKeyDown}
+        aria-label={`${skill.name} details`}
+        role="button"
+        tabIndex={0}
+      >
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <Avatar size="lg" className="mt-0.5">
+              <AvatarImage src={skill.ownerAvatar ?? undefined} alt={ownerName} />
+              <AvatarFallback>{getSkillInitials(ownerName)}</AvatarFallback>
+            </Avatar>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-semibold leading-5 text-card-foreground">
-                {skill.name}
-              </h3>
-              <SkillSourceBadge source="official" />
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                v{skill.version}
-              </Badge>
-            </div>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <Code2 className="h-3.5 w-3.5 shrink-0" />
-              <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono">
-                {skill.slug}
-              </code>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h3 className="truncate text-sm font-semibold leading-5 text-card-foreground">
+                  {skill.name}
+                </h3>
+                <SkillSourceBadge source="official" />
+                <Badge variant="outline" className="shrink-0 text-[10px]">
+                  v{skill.version}
+                </Badge>
+              </div>
+              <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                <Code2 className="h-3.5 w-3.5 shrink-0" />
+                <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono">
+                  {skill.slug}
+                </code>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <p className="mt-3 line-clamp-2 min-h-[40px] text-sm leading-5 text-muted-foreground">
-        {description}
-      </p>
+        <p className="mt-3 line-clamp-2 min-h-[40px] text-sm leading-5 text-muted-foreground">
+          {description}
+        </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <Download className="h-3.5 w-3.5" />
-          <span>{formatSkillCount(skill.downloads)}</span>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Download className="h-3.5 w-3.5" />
+            <span>{formatSkillCount(skill.downloads)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            <span>{formatSkillCount(skill.stars)}</span>
+          </div>
+          <span className="truncate">{ownerName}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-          <span>{formatSkillCount(skill.stars)}</span>
-        </div>
-        <span className="truncate">{ownerName}</span>
       </div>
 
       {isInstalling && (

@@ -101,7 +101,7 @@ export const CommunitySkillCard = memo(function CommunitySkillCard({
     [skill.repositoryUrl]
   );
 
-  const handleCardKeyDown = useCallback(
+  const handleDetailsKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
       if (event.currentTarget !== event.target) return;
 
@@ -121,99 +121,105 @@ export const CommunitySkillCard = memo(function CommunitySkillCard({
   return (
     <article
       className={cn(
-        "flex min-h-[272px] cursor-pointer flex-col rounded-lg border bg-card p-4",
-        "transition-colors hover:border-primary/50 focus-within:border-primary/50",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        "flex min-h-[272px] flex-col rounded-lg border bg-card p-4",
+        "transition-colors hover:border-primary/50 focus-within:border-primary/50"
       )}
-      onClick={handleViewDetails}
-      onKeyDown={handleCardKeyDown}
-      aria-label={`${skill.name} details`}
-      role="button"
-      tabIndex={0}
     >
-      <div className="flex min-w-0 items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Zap className="h-5 w-5" />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-semibold leading-5 text-card-foreground">
-              {skill.name}
-            </h3>
-            <SkillSourceBadge source="community" />
-            <Badge
-              variant={getSkillTypeBadgeVariant(skill.skillType)}
-              className="shrink-0 text-[10px]"
-            >
-              {skill.skillType}
-            </Badge>
+      <div
+        className={cn(
+          "cursor-pointer rounded-sm focus-visible:outline-none",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        )}
+        onClick={handleViewDetails}
+        onKeyDown={handleDetailsKeyDown}
+        aria-label={`${skill.name} details`}
+        role="button"
+        tabIndex={0}
+      >
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Zap className="h-5 w-5" />
           </div>
-          <p className="mt-1 line-clamp-2 min-h-[40px] text-sm leading-5 text-muted-foreground">
-            {description}
-          </p>
-        </div>
-      </div>
 
-      {triggerPatterns.length > 0 && (
-        <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1">
-          {triggerPatterns.slice(0, 2).map((pattern) => (
-            <code
-              key={pattern}
-              className="max-w-[150px] truncate rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
-            >
-              {pattern}
-            </code>
-          ))}
-          {triggerPatterns.length > 2 && (
-            <span className="text-xs text-muted-foreground">
-              +{triggerPatterns.length - 2}
-            </span>
-          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h3 className="truncate text-sm font-semibold leading-5 text-card-foreground">
+                {skill.name}
+              </h3>
+              <SkillSourceBadge source="community" />
+              <Badge
+                variant={getSkillTypeBadgeVariant(skill.skillType)}
+                className="shrink-0 text-[10px]"
+              >
+                {skill.skillType}
+              </Badge>
+            </div>
+            <p className="mt-1 line-clamp-2 min-h-[40px] text-sm leading-5 text-muted-foreground">
+              {description}
+            </p>
+          </div>
         </div>
-      )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-        {skill.ratingAvg > 0 && (
-          <div className="flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span>{skill.ratingAvg.toFixed(1)}</span>
+        {triggerPatterns.length > 0 && (
+          <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1">
+            {triggerPatterns.slice(0, 2).map((pattern) => (
+              <code
+                key={pattern}
+                className="max-w-[150px] truncate rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
+              >
+                {pattern}
+              </code>
+            ))}
+            {triggerPatterns.length > 2 && (
+              <span className="text-xs text-muted-foreground">
+                +{triggerPatterns.length - 2}
+              </span>
+            )}
           </div>
         )}
-        <div className="flex items-center gap-1">
-          <Download className="h-3.5 w-3.5" />
-          <span>{formatSkillCount(skill.downloadsCount)}</span>
-        </div>
-        <span className="font-mono">v{skill.version}</span>
-      </div>
 
-      <div className="mt-3 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-        <Avatar size="sm">
-          <AvatarImage src={skill.author?.avatarUrl ?? undefined} alt={authorName} />
-          <AvatarFallback>{getSkillInitials(authorName)}</AvatarFallback>
-        </Avatar>
-        <User className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{authorName}</span>
-      </div>
-
-      {tags.length > 0 && (
-        <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1">
-          <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="max-w-[96px] truncate rounded bg-muted/70 px-1.5 py-0.5 text-xs text-muted-foreground"
-            >
-              {tag}
-            </span>
-          ))}
-          {tags.length > 3 && (
-            <span className="text-xs text-muted-foreground">
-              +{tags.length - 3}
-            </span>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          {skill.ratingAvg > 0 && (
+            <div className="flex items-center gap-1">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              <span>{skill.ratingAvg.toFixed(1)}</span>
+            </div>
           )}
+          <div className="flex items-center gap-1">
+            <Download className="h-3.5 w-3.5" />
+            <span>{formatSkillCount(skill.downloadsCount)}</span>
+          </div>
+          <span className="font-mono">v{skill.version}</span>
         </div>
-      )}
+
+        <div className="mt-3 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <Avatar size="sm">
+            <AvatarImage src={skill.author?.avatarUrl ?? undefined} alt={authorName} />
+            <AvatarFallback>{getSkillInitials(authorName)}</AvatarFallback>
+          </Avatar>
+          <User className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{authorName}</span>
+        </div>
+
+        {tags.length > 0 && (
+          <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1">
+            <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            {tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="max-w-[96px] truncate rounded bg-muted/70 px-1.5 py-0.5 text-xs text-muted-foreground"
+              >
+                {tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="text-xs text-muted-foreground">
+                +{tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
       {isInstalling && (
         <div className="mt-3 space-y-1.5">

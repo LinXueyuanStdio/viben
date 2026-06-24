@@ -42,7 +42,7 @@ describe("OfficialSkillCard", () => {
     expect(screen.getByText("Owner Team")).toBeTruthy();
   });
 
-  it("installs without opening details and opens details from card", () => {
+  it("installs without opening details and opens details from the title region", () => {
     const onInstall = vi.fn();
     const onViewDetails = vi.fn();
 
@@ -59,12 +59,46 @@ describe("OfficialSkillCard", () => {
     expect(onInstall).toHaveBeenCalledWith({ source: "official", data: skill });
     expect(onViewDetails).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /official runner/i }));
+    fireEvent.click(screen.getByText("Official Runner"));
 
     expect(onViewDetails).toHaveBeenCalledWith({
       source: "official",
       data: skill,
     });
+  });
+
+  it("keeps footer actions out of the details activation region", () => {
+    render(
+      <OfficialSkillCard
+        skill={skill}
+        onInstall={vi.fn()}
+        onViewDetails={vi.fn()}
+      />
+    );
+
+    const installButton = screen.getByRole("button", { name: /install/i });
+    const card = installButton.closest("article");
+
+    expect(card?.getAttribute("role")).toBeNull();
+    expect(card?.getAttribute("tabindex")).toBeNull();
+  });
+
+  it("opens ClawHub without opening details", () => {
+    const onViewDetails = vi.fn();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(<OfficialSkillCard skill={skill} onViewDetails={onViewDetails} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /clawhub/i }));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://clawhub.ai/skills/clawhub%2Fofficial-runner",
+      "_blank",
+      "noopener,noreferrer"
+    );
+    expect(onViewDetails).not.toHaveBeenCalled();
+
+    openSpy.mockRestore();
   });
 
   it("opens details from keyboard activation", () => {
