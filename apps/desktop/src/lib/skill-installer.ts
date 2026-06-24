@@ -43,9 +43,27 @@ export type ProgressCallback = (progress: InstallProgress) => void;
 /**
  * Options for skill installation
  */
+export type InstallableSkillPackage = Pick<SkillPackage, "id" | "name" | "slug" | "version">;
+
 export interface InstallSkillOptions {
   /** Skill package to install */
-  package: SkillPackage;
+  package: InstallableSkillPackage;
+  /** Progress callback */
+  onProgress?: ProgressCallback;
+  /** Force reinstall if already exists */
+  force?: boolean;
+}
+
+/**
+ * Options for ClaWHub skill installation
+ */
+export interface InstallClawhubSkillOptions {
+  /** ClaWHub package slug */
+  slug: string;
+  /** Display name */
+  name: string;
+  /** Version to install */
+  version: string;
   /** Progress callback */
   onProgress?: ProgressCallback;
   /** Force reinstall if already exists */
@@ -98,6 +116,47 @@ interface GatewayInstallResponse {
 // ============================================
 // Installation
 // ============================================
+
+function sanitizeTempFilePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "skill";
+}
+
+function getInstallErrorCode(errorMessage: string): InstallErrorCode {
+  const normalized = errorMessage.toLowerCase();
+
+  if (errorMessage.includes('ALREADY_EXISTS') || normalized.includes('already exists')) {
+    return 'ALREADY_EXISTS';
+  }
+  if (errorMessage.includes('FILE_CONFLICT')) {
+    return 'FILE_CONFLICT';
+  }
+  if (
+    errorMessage.includes('VALIDATION_ERROR') ||
+    normalized.includes('invalid') ||
+    normalized.includes('corrupt') ||
+    normalized.includes('zip')
+  ) {
+    return 'VALIDATION_ERROR';
+  }
+  if (
+    errorMessage.includes('NETWORK_ERROR') ||
+    normalized.includes('network') ||
+    normalized.includes('fetch') ||
+    normalized.includes('download')
+  ) {
+    return 'NETWORK_ERROR';
+  }
+  if (
+    errorMessage.includes('PERMISSION_ERROR') ||
+    normalized.includes('permission') ||
+    normalized.includes('access') ||
+    errorMessage.includes('EACCES')
+  ) {
+    return 'PERMISSION_ERROR';
+  }
+
+  return 'UNKNOWN_ERROR';
+}
 
 /**
  * Download and install a skill package
@@ -210,19 +269,7 @@ export async function downloadAndInstallSkill(
     const errorMessage =
       error instanceof Error ? error.message : i18n.t('common.unknownError');
 
-    // Determine structured error code from the error
-    let errorCode: InstallErrorCode = 'UNKNOWN_ERROR';
-    if (errorMessage.includes('ALREADY_EXISTS')) {
-      errorCode = 'ALREADY_EXISTS';
-    } else if (errorMessage.includes('FILE_CONFLICT')) {
-      errorCode = 'FILE_CONFLICT';
-    } else if (errorMessage.includes('VALIDATION_ERROR')) {
-      errorCode = 'VALIDATION_ERROR';
-    } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('download')) {
-      errorCode = 'NETWORK_ERROR';
-    } else if (errorMessage.includes('permission') || errorMessage.includes('access') || errorMessage.includes('EACCES')) {
-      errorCode = 'PERMISSION_ERROR';
-    }
+    const errorCode = getInstallErrorCode(errorMessage);
 
     // Report error
     onProgress?.({
@@ -243,6 +290,116 @@ export async function downloadAndInstallSkill(
     };
   } finally {
     // Clean up temporary file regardless of success or failure
+    if (tempZipPath) {
+      try {
+        await remove(tempZipPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+}
+
+/**
+ * Download and install a ClaWHub skill package
+ */
+export async function downloadAndInstallClawhubSkill(
+  options: InstallClawhubSkillOptions
+): Promise<InstallSkillResult> {
+  const { slug, name, version, onProgress, force = false } = options;
+  let tempZipPath: string | undefined;
+
+  try {
+    onProgress?.({
+      stage: 'downloading',
+      progress: 0,
+      message: i18n.t('installation.downloading', { name }),
+    });
+
+    const endpoint = `https://clawhub.ai/api/v1/packages/${encodeURIComponent(slug)}/download?version=${encodeURIComponent(version)}`;
+    const response = await fetch(endpoint, {
+      headers: { Accept: 'application/zip' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`ClaWHub download failed: ${response.status}`);
+    }
+
+    onProgress?.({
+      stage: 'downloading',
+      progress: 100,
+      message: i18n.t('installation.downloadComplete'),
+    });
+
+    const dataDir = await appDataDir();
+    const tempDir = await join(dataDir, 'temp');
+
+    if (!(await exists(tempDir))) {
+      await mkdir(tempDir, { recursive: true });
+    }
+
+    tempZipPath = await join(
+      tempDir,
+      `${sanitizeTempFilePart(slug)}-${sanitizeTempFilePart(version)}.zip`
+    );
+    const arrayBuffer = await response.arrayBuffer();
+    await writeFile(tempZipPath, new Uint8Array(arrayBuffer));
+
+    onProgress?.({
+      stage: 'extracting',
+      progress: 0,
+      message: i18n.t('installation.extractingPackage'),
+    });
+
+    const result = await getGatewayClient().post<GatewayInstallResponse>(
+      '/api/skill/install',
+      {
+        name: slug,
+        zip_path: tempZipPath,
+        force,
+        version,
+      }
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Installation failed');
+    }
+
+    onProgress?.({
+      stage: 'complete',
+      progress: 100,
+      message: i18n.t('installation.complete'),
+    });
+
+    return {
+      success: true,
+      name: result.name,
+      version: result.version,
+      path: result.path,
+      message: result.message,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : i18n.t('common.unknownError');
+    const errorCode = getInstallErrorCode(errorMessage);
+
+    onProgress?.({
+      stage: 'error',
+      progress: 0,
+      message: i18n.t('installation.failed'),
+      error: errorMessage,
+    });
+
+    return {
+      success: false,
+      name,
+      version,
+      path: '',
+      message: i18n.t('installation.failed'),
+      error: errorMessage,
+      errorCode,
+    };
+  } finally {
     if (tempZipPath) {
       try {
         await remove(tempZipPath);
