@@ -2367,7 +2367,12 @@
     "gridView": "Grid View",
     "listView": "List View",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "channel": "Channel",
+    "downloads": "다운로드",
+    "stars": "Stars",
+    "rating": "평점",
+    "favorites": "즐겨찾기"
   },
   "marketplace": {
     "title": "MCP 마켓플레이스",

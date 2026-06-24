@@ -2604,7 +2604,9 @@
     "gridView": "Grid View",
     "listView": "List View",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "rating": "Rating",
+    "favorites": "Favorites"
   },
   "marketplace": {
     "title": "MCP Marketplace",

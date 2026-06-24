@@ -2367,7 +2367,12 @@
     "gridView": "Grid View",
     "listView": "List View",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "channel": "Channel",
+    "downloads": "ダウンロード数",
+    "stars": "Stars",
+    "rating": "評価",
+    "favorites": "お気に入り"
   },
   "marketplace": {
     "title": "MCPマーケットプレイス",

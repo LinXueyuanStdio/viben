@@ -2340,7 +2340,12 @@
     "gridView": "Grid View",
     "listView": "List View",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "channel": "Channel",
+    "downloads": "Downloads",
+    "stars": "Stars",
+    "rating": "Rating",
+    "favorites": "Favorites"
   },
   "marketplace": {
     "title": "MCP Marketplace",
