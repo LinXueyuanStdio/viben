@@ -268,12 +268,17 @@ export function useClawhubRegistrySearch(
   const [searchQuery, setSearchQuery] = useState("");
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestSeqRef = useRef(0);
 
   const executeSearch = useCallback(
     async (query: string) => {
+      const requestSeq = ++requestSeqRef.current;
+      const isLatestRequest = () => requestSeq === requestSeqRef.current;
+
       if (!query.trim()) {
         setResults([]);
         setError(null);
+        setLoading(false);
         return;
       }
 
@@ -290,11 +295,19 @@ export function useClawhubRegistrySearch(
           headers: { Accept: "application/json" },
         });
 
+        if (!isLatestRequest()) {
+          return;
+        }
+
         if (!res.ok) {
           throw new Error(`ClaWHub API error: ${res.status} ${res.statusText}`);
         }
 
         const response = (await res.json()) as ClawhubSearchResponse;
+
+        if (!isLatestRequest()) {
+          return;
+        }
 
         // Transform search results to ClawhubSkillDisplay format
         const transformed: ClawhubSkillDisplay[] = response.results.map(
@@ -319,11 +332,17 @@ export function useClawhubRegistrySearch(
 
         setResults(transformed);
       } catch (err) {
+        if (!isLatestRequest()) {
+          return;
+        }
+
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
         setResults([]);
       } finally {
-        setLoading(false);
+        if (isLatestRequest()) {
+          setLoading(false);
+        }
       }
     },
     [limit]

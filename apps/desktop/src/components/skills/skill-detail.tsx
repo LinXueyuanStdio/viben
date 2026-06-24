@@ -96,6 +96,10 @@ export function SkillDetail({
     data.description ?? t("skillsMarket.noDescription", "No description available");
   const downloads = isOfficial ? data.downloads : data.downloadsCount;
   const version = data.version;
+  const downloadsLabel = t("skillsMarket.downloads", "Downloads");
+  const starsLabel = t("skillsMarket.stars", "Stars");
+  const ratingLabel = t("skillsMarket.rating", "Rating");
+  const favoritesLabel = t("skillsMarket.favorites", "Favorites");
 
   const handleCopySlug = async () => {
     const copiedSlug = slug;
@@ -184,22 +188,30 @@ export function SkillDetail({
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Download className="h-4 w-4" />
-              <span>Downloads: {formatSkillCount(downloads)}</span>
+              <span>
+                {downloadsLabel}: {formatSkillCount(downloads)}
+              </span>
             </div>
             {isOfficial ? (
               <div className="flex items-center gap-1.5">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                <span>Stars: {formatSkillCount(data.stars)}</span>
+                <span>
+                  {starsLabel}: {formatSkillCount(data.stars)}
+                </span>
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-1.5">
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  <span>Rating: {data.ratingAvg.toFixed(1)}</span>
+                  <span>
+                    {ratingLabel}: {data.ratingAvg.toFixed(1)}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Heart className="h-4 w-4" />
-                  <span>Favorites: {formatSkillCount(data.favoritesCount)}</span>
+                  <span>
+                    {favoritesLabel}: {formatSkillCount(data.favoritesCount)}
+                  </span>
                 </div>
               </>
             )}
@@ -284,6 +296,11 @@ function OfficialDetails({ skill }: { skill: OfficialSkill }) {
   const ownerName =
     skill.ownerName ?? skill.ownerHandle ?? t("skillsMarket.clawhub", "ClaWHub");
   const ownerHandle = skill.ownerHandle ?? "clawhub";
+  const channelLabel = t("skillsMarket.channel", "Channel");
+  const downloadsLabel = t("skillsMarket.downloads", "Downloads");
+  const starsLabel = t("skillsMarket.stars", "Stars");
+  const createdLabel = t("skillsMarket.createdAt", "Created");
+  const updatedLabel = t("skillsMarket.updatedAt", "Updated");
 
   return (
     <>
@@ -314,11 +331,17 @@ function OfficialDetails({ skill }: { skill: OfficialSkill }) {
           {t("skillsMarket.metadata", "Metadata")}
         </h4>
         <div className="space-y-2 text-sm text-muted-foreground">
-          <div>Channel: {skill.channel}</div>
-          <div>Downloads: {formatSkillCount(skill.downloads)}</div>
-          <div>Stars: {formatSkillCount(skill.stars)}</div>
-          <DateRow label="Created" value={skill.createdAt} />
-          <DateRow label="Updated" value={skill.updatedAt} />
+          <div>
+            {channelLabel}: {skill.channel}
+          </div>
+          <div>
+            {downloadsLabel}: {formatSkillCount(skill.downloads)}
+          </div>
+          <div>
+            {starsLabel}: {formatSkillCount(skill.stars)}
+          </div>
+          <DateRow label={createdLabel} value={skill.createdAt} />
+          <DateRow label={updatedLabel} value={skill.updatedAt} />
         </div>
       </section>
     </>
@@ -333,6 +356,8 @@ function CommunityDetails({ skill }: { skill: CommunitySkill }) {
     t("skillsMarket.unknownAuthor", "Unknown author");
   const triggerPatterns = skill.triggerPatterns ?? [];
   const tags = skill.tags ?? [];
+  const createdLabel = t("skillsMarket.createdAt", "Created");
+  const updatedLabel = t("skillsMarket.updatedAt", "Updated");
 
   return (
     <>
@@ -427,8 +452,8 @@ function CommunityDetails({ skill }: { skill: CommunitySkill }) {
           {t("skillsMarket.metadata", "Metadata")}
         </h4>
         <div className="space-y-2 text-sm text-muted-foreground">
-          <DateRow label="Created" value={skill.createdAt} />
-          <DateRow label="Updated" value={skill.updatedAt} />
+          <DateRow label={createdLabel} value={skill.createdAt} />
+          <DateRow label={updatedLabel} value={skill.updatedAt} />
         </div>
       </section>
     </>

@@ -5,6 +5,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   useClawhubRegistry,
+  useClawhubRegistrySearch,
   useClawhubRegistrySkills,
 } from "./use-clawhub-registry";
 import type {
@@ -54,6 +55,26 @@ function createPackageResponse(displayName: string) {
   return {
     items: [createPackageItem(displayName)],
     nextCursor: null,
+  };
+}
+
+function createSearchResponse(displayName: string) {
+  return {
+    results: [
+      {
+        slug: displayName.toLowerCase().replace(/\s+/g, "-"),
+        displayName,
+        summary: "A search skill",
+        version: "1.0.0",
+        updatedAt: 2,
+        ownerHandle: "tester",
+        owner: {
+          handle: "tester",
+          displayName: "Tester",
+          image: null,
+        },
+      },
+    ],
   };
 }
 
@@ -265,6 +286,77 @@ describe("useClawhubRegistry", () => {
 
     await waitFor(() => {
       expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe("stars");
+    });
+  });
+});
+
+describe("useClawhubRegistrySearch", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps latest search results when an older request resolves after a newer one", async () => {
+    const oldSearch = createDeferred<Response>();
+    const newSearch = createDeferred<Response>();
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(oldSearch.promise)
+      .mockReturnValueOnce(newSearch.promise);
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useClawhubRegistrySearch({ debounceMs: 0, limit: 24 })
+    );
+
+    act(() => {
+      result.current.search("old");
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.search("new");
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      newSearch.resolve({
+        ok: true,
+        json: async () => createSearchResponse("New Search Skill"),
+      } as Response);
+      await newSearch.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.results.map((skill) => skill.name)).toEqual([
+        "New Search Skill",
+      ]);
+      expect(result.current.searchQuery).toBe("new");
+    });
+
+    await act(async () => {
+      oldSearch.resolve({
+        ok: true,
+        json: async () => createSearchResponse("Old Search Skill"),
+      } as Response);
+      await oldSearch.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.results.map((skill) => skill.name)).toEqual([
+        "New Search Skill",
+      ]);
+      expect(result.current.loading).toBe(false);
     });
   });
 });
