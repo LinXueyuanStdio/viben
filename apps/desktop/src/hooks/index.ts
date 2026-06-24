@@ -32,11 +32,13 @@ export {
 } from "./use-viben";
 export {
   useCloudSkillPackages,
+  useCloudSkillPackagesInfinite,
   useCloudSkillSearch,
   useCloudSkillPackage,
   useCloudSkillCategories,
 } from "./use-cloud-skills";
 export type {
+  CloudSkillSortOption,
   CloudSkillPackage,
   CloudPackageAuthor as CloudSkillPackageAuthor,
   SkillCategory,

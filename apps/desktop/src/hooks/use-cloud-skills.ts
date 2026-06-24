@@ -224,8 +224,10 @@ export function useCloudSkillPackagesInfinite(
   const pageRef = useRef(1);
   const loadingRef = useRef(false);
   const packagesRef = useRef<CloudSkillPackage[]>([]);
+  const requestSeqRef = useRef(0);
 
   const fetchPage = useCallback(async (page: number, replace: boolean) => {
+    const requestId = ++requestSeqRef.current;
     loadingRef.current = true;
     setLoading(true);
     setError(null);
@@ -238,6 +240,11 @@ export function useCloudSkillPackagesInfinite(
         sort,
       });
       const mappedPackages = response.data.map(mapCloudSkillPackage);
+
+      if (requestId !== requestSeqRef.current) {
+        return null;
+      }
+
       const pageResult = appendCloudSkillPage(
         packagesRef.current,
         mappedPackages,
@@ -256,12 +263,18 @@ export function useCloudSkillPackagesInfinite(
         pagination: response.pagination,
       };
     } catch (err) {
+      if (requestId !== requestSeqRef.current) {
+        return null;
+      }
+
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
       return null;
     } finally {
-      loadingRef.current = false;
-      setLoading(false);
+      if (requestId === requestSeqRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
   }, [limit, sort]);
 
