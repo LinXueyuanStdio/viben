@@ -43,6 +43,28 @@ function mockFetchPackageList() {
   return fetchMock;
 }
 
+function createPackageResponse(displayName: string) {
+  return {
+    items: [createPackageItem(displayName)],
+    nextCursor: null,
+  };
+}
+
+function createDeferred<T>() {
+  let resolve: (value: T) => void;
+  let reject: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return {
+    promise,
+    resolve: resolve!,
+    reject: reject!,
+  };
+}
+
 function getLastFetchUrl(fetchMock: ReturnType<typeof vi.fn>): URL {
   const lastCall = fetchMock.mock.calls.at(-1);
   expect(lastCall).toBeDefined();
@@ -98,6 +120,100 @@ describe("useClawhubRegistrySkills", () => {
 
     const url = getLastFetchUrl(fetchMock);
     expect(url.searchParams.get("sort")).toBe("updated");
+  });
+
+  it("updates current sort and refetches when the external sort option changes", async () => {
+    const fetchMock = mockFetchPackageList();
+
+    const { result, rerender } = renderHook(
+      ({ sort }) =>
+        useClawhubRegistrySkills({ limit: 24, enabled: true, sort }),
+      {
+        initialProps: { sort: "downloads" as const },
+      }
+    );
+
+    await waitFor(() => {
+      expect(result.current.currentSort).toBe("downloads");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe(
+      "downloads"
+    );
+
+    rerender({ sort: "stars" });
+
+    await waitFor(() => {
+      expect(result.current.currentSort).toBe("stars");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe("stars");
+  });
+
+  it("keeps latest sort results when an older request resolves after a newer one", async () => {
+    const updatedFetch = createDeferred<Response>();
+    const starsFetch = createDeferred<Response>();
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(updatedFetch.promise)
+      .mockReturnValueOnce(starsFetch.promise);
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result, rerender } = renderHook(
+      ({ sort }) =>
+        useClawhubRegistrySkills({ limit: 24, enabled: true, sort }),
+      {
+        initialProps: { sort: "updated" as const },
+      }
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe(
+      "updated"
+    );
+
+    rerender({ sort: "stars" });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe("stars");
+
+    await act(async () => {
+      starsFetch.resolve({
+        ok: true,
+        json: async () => createPackageResponse("New Skill"),
+      } as Response);
+      await starsFetch.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.skills.map((skill) => skill.name)).toEqual([
+        "New Skill",
+      ]);
+      expect(result.current.currentSort).toBe("stars");
+    });
+
+    await act(async () => {
+      updatedFetch.resolve({
+        ok: true,
+        json: async () => createPackageResponse("Old Skill"),
+      } as Response);
+      await updatedFetch.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.skills.map((skill) => skill.name)).toEqual([
+        "New Skill",
+      ]);
+      expect(result.current.currentSort).toBe("stars");
+      expect(result.current.loading).toBe(false);
+    });
   });
 });
 

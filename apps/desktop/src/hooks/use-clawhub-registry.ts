@@ -132,10 +132,14 @@ export function useClawhubRegistrySkills(
   const isInitialFetch = useRef(true);
   const didSortEffectMountRef = useRef(false);
   const previousSortRef = useRef(currentSort);
+  const requestSeqRef = useRef(0);
 
   const fetchSkills = useCallback(
     async (currentCursor: string | null, isRefresh = false) => {
       if (!enabled) return;
+
+      const requestSeq = ++requestSeqRef.current;
+      const isLatestRequest = () => requestSeq === requestSeqRef.current;
 
       setLoading(true);
       setError(null);
@@ -153,11 +157,20 @@ export function useClawhubRegistrySkills(
           headers: { Accept: "application/json" },
         });
 
+        if (!isLatestRequest()) {
+          return;
+        }
+
         if (!res.ok) {
           throw new Error(`ClaWHub API error: ${res.status} ${res.statusText}`);
         }
 
         const response = (await res.json()) as ClawhubPackageListResponse;
+
+        if (!isLatestRequest()) {
+          return;
+        }
+
         const transformed = response.items.map(transformPackageToDisplay);
 
         if (isRefresh || currentCursor === null) {
@@ -170,10 +183,16 @@ export function useClawhubRegistrySkills(
         setCursor(nextCursor);
         setHasMore(nextCursor !== null);
       } catch (err) {
+        if (!isLatestRequest()) {
+          return;
+        }
+
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
       } finally {
-        setLoading(false);
+        if (isLatestRequest()) {
+          setLoading(false);
+        }
       }
     },
     [enabled, limit, currentSort]
@@ -197,6 +216,10 @@ export function useClawhubRegistrySkills(
     setHasMore(true);
     await fetchSkills(null, true);
   }, [fetchSkills]);
+
+  useEffect(() => {
+    setCurrentSort(sort);
+  }, [sort]);
 
   useEffect(() => {
     if (!didSortEffectMountRef.current) {
