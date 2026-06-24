@@ -3,6 +3,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Children, isValidElement } from "react";
 import type { ReactNode } from "react";
 import type {
   CloudSkillPackage,
@@ -47,11 +48,15 @@ vi.mock("@/components/ui/select", () => ({
     children: ReactNode;
   }) => (
     <select
-      aria-label="sort"
+      aria-label={
+        Children.toArray(children).map(getAriaLabel).find(Boolean) ?? "sort"
+      }
       value={value}
       onChange={(event) => onValueChange(event.currentTarget.value)}
     >
-      {children}
+      {Children.toArray(children).filter(
+        (child) => !getAriaLabel(child)
+      )}
     </select>
   ),
   SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -62,7 +67,13 @@ vi.mock("@/components/ui/select", () => ({
     value: string;
     children: ReactNode;
   }) => <option value={value}>{children}</option>,
-  SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectTrigger: ({
+    children,
+    "aria-label": ariaLabel,
+  }: {
+    children: ReactNode;
+    "aria-label"?: string;
+  }) => <span aria-label={ariaLabel}>{children}</span>,
   SelectValue: () => null,
 }));
 
@@ -70,6 +81,14 @@ class MockIntersectionObserver {
   observe = vi.fn();
   unobserve = vi.fn();
   disconnect = vi.fn();
+}
+
+function getAriaLabel(child: ReactNode): string | undefined {
+  if (!isValidElement<{ "aria-label"?: string }>(child)) {
+    return undefined;
+  }
+
+  return child.props["aria-label"];
 }
 
 function createCommunitySkill(id: string): CloudSkillPackage {
@@ -229,7 +248,7 @@ describe("CommunitySkillGrid", () => {
 
     expect(screen.getByText(/Community beta:false:true:65/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /load more/i })).toBeNull();
-    expect(screen.queryByLabelText("sort")).toBeNull();
+    expect(screen.queryByLabelText("Sort by")).toBeNull();
   });
 
   it("changes sort while browsing", () => {
@@ -237,7 +256,7 @@ describe("CommunitySkillGrid", () => {
 
     renderGrid();
 
-    fireEvent.change(screen.getByLabelText("sort"), {
+    fireEvent.change(screen.getByLabelText("Sort by"), {
       target: { value: "downloads" },
     });
 
@@ -283,5 +302,42 @@ describe("CommunitySkillGrid", () => {
 
     expect(searchState.search).toHaveBeenCalledWith("broken");
     expect(infiniteState.refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps populated cards visible when a browse error is present and retries inline", () => {
+    const { infiniteState, searchState } = mockCloudState({
+      infinite: {
+        packages: [createCommunitySkill("alpha")],
+        error: "Browse failed",
+      },
+    });
+
+    renderGrid();
+
+    expect(screen.getByText(/Community alpha:true:false:0/)).toBeTruthy();
+    expect(screen.getByText("Browse failed")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    expect(infiniteState.refresh).toHaveBeenCalledTimes(1);
+    expect(searchState.search).not.toHaveBeenCalled();
+  });
+
+  it("retries browse refresh instead of stale search when not in search mode", () => {
+    const { infiniteState, searchState } = mockCloudState({
+      infinite: {
+        packages: [],
+      },
+      search: {
+        error: "Stale search failed",
+      },
+    });
+
+    renderGrid();
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    expect(infiniteState.refresh).toHaveBeenCalledTimes(1);
+    expect(searchState.search).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Children, isValidElement } from "react";
 import type { ReactNode } from "react";
 import type {
   ClawhubSkillDisplay,
@@ -45,11 +46,15 @@ vi.mock("@/components/ui/select", () => ({
     children: ReactNode;
   }) => (
     <select
-      aria-label="sort"
+      aria-label={
+        Children.toArray(children).map(getAriaLabel).find(Boolean) ?? "sort"
+      }
       value={value}
       onChange={(event) => onValueChange(event.currentTarget.value)}
     >
-      {children}
+      {Children.toArray(children).filter(
+        (child) => !getAriaLabel(child)
+      )}
     </select>
   ),
   SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -60,7 +65,13 @@ vi.mock("@/components/ui/select", () => ({
     value: string;
     children: ReactNode;
   }) => <option value={value}>{children}</option>,
-  SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectTrigger: ({
+    children,
+    "aria-label": ariaLabel,
+  }: {
+    children: ReactNode;
+    "aria-label"?: string;
+  }) => <span aria-label={ariaLabel}>{children}</span>,
   SelectValue: () => null,
 }));
 
@@ -68,6 +79,14 @@ class MockIntersectionObserver {
   observe = vi.fn();
   unobserve = vi.fn();
   disconnect = vi.fn();
+}
+
+function getAriaLabel(child: ReactNode): string | undefined {
+  if (!isValidElement<{ "aria-label"?: string }>(child)) {
+    return undefined;
+  }
+
+  return child.props["aria-label"];
 }
 
 function createOfficialSkill(
@@ -178,8 +197,7 @@ describe("OfficialSkillGrid", () => {
       skills: [],
       displaySkills: [skill],
       searchResults: [skill],
-      searchQuery: "",
-      isSearching: true,
+      searchQuery: " beta ",
     });
 
     renderGrid("beta");
@@ -189,9 +207,27 @@ describe("OfficialSkillGrid", () => {
       fetchOnMount: true,
     });
     await waitFor(() => {
-      expect(state.search).toHaveBeenCalledWith("beta");
+      expect(state.search).not.toHaveBeenCalled();
     });
     expect(screen.getByText(/Official beta:false:true:42/)).toBeTruthy();
+  });
+
+  it("does not render stale hook search results when the external query is not synced", async () => {
+    const state = mockRegistryState({
+      displaySkills: [createOfficialSkill("alpha")],
+      searchResults: [createOfficialSkill("stale")],
+      searchQuery: "old-query",
+      searchLoading: true,
+      isSearching: true,
+    });
+
+    renderGrid("new-query");
+
+    expect(screen.queryByText(/Official stale/)).toBeNull();
+    expect(screen.getAllByTestId("official-skeleton")).toHaveLength(8);
+    await waitFor(() => {
+      expect(state.search).toHaveBeenCalledWith("new-query");
+    });
   });
 
   it("loads more results from the explicit load more button", () => {
@@ -212,7 +248,7 @@ describe("OfficialSkillGrid", () => {
 
     renderGrid();
 
-    fireEvent.change(screen.getByLabelText("sort"), {
+    fireEvent.change(screen.getByLabelText("Sort by"), {
       target: { value: "downloads" },
     });
 
@@ -252,5 +288,22 @@ describe("OfficialSkillGrid", () => {
 
     expect(state.search).toHaveBeenCalledWith("broken");
     expect(state.refreshSkills).not.toHaveBeenCalled();
+  });
+
+  it("keeps populated cards visible when a browse error is present and retries inline", () => {
+    const state = mockRegistryState({
+      displaySkills: [createOfficialSkill("alpha")],
+      skillsError: "Refresh failed",
+    });
+
+    renderGrid();
+
+    expect(screen.getByText(/Official alpha:true:false:0/)).toBeTruthy();
+    expect(screen.getByText("Refresh failed")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    expect(state.refreshSkills).toHaveBeenCalledTimes(1);
+    expect(state.search).not.toHaveBeenCalled();
   });
 });

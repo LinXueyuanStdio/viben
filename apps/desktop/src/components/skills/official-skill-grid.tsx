@@ -66,35 +66,37 @@ export function OfficialSkillGrid({
     searchQuery: hookSearchQuery,
     displaySkills,
     isLoading,
-    isSearching,
     hasMore,
     loadMore,
   } = useClawhubRegistry({ limit: 24, fetchOnMount: true });
 
-  const externalSearchQuery = searchQuery.trim();
-  const isSearchMode = externalSearchQuery.length > 0 || isSearching;
+  const normalizedSearchQuery = searchQuery.trim();
+  const normalizedHookSearchQuery = hookSearchQuery.trim();
+  const isSearchMode = normalizedSearchQuery.length > 0;
+  const isSearchSynced = normalizedHookSearchQuery === normalizedSearchQuery;
+  const useSearchResults = isSearchMode && isSearchSynced;
   const visibleSkills = useMemo(
-    () => (isSearchMode ? searchResults : displaySkills),
-    [displaySkills, isSearchMode, searchResults]
+    () => (useSearchResults ? searchResults : isSearchMode ? [] : displaySkills),
+    [displaySkills, isSearchMode, searchResults, useSearchResults]
   );
-  const error = isSearchMode ? searchError : skillsError;
-  const loading = isSearchMode ? searchLoading : isLoading;
+  const error = isSearchMode ? (isSearchSynced ? searchError : null) : skillsError;
+  const loading = isSearchMode ? searchLoading || !isSearchSynced : isLoading;
   const canLoadMore = !isSearchMode && hasMore && visibleSkills.length > 0;
 
   useEffect(() => {
-    if (searchQuery !== hookSearchQuery) {
+    if (normalizedHookSearchQuery !== normalizedSearchQuery) {
       search(searchQuery);
     }
-  }, [hookSearchQuery, search, searchQuery]);
+  }, [normalizedHookSearchQuery, normalizedSearchQuery, search, searchQuery]);
 
   const handleRetry = useCallback(() => {
-    if (isSearchMode || searchError) {
+    if (isSearchMode) {
       search(searchQuery);
       return;
     }
 
     void refreshSkills();
-  }, [isSearchMode, refreshSkills, search, searchError, searchQuery]);
+  }, [isSearchMode, refreshSkills, search, searchQuery]);
 
   const handleLoadMore = useCallback(() => {
     void loadMore();
@@ -131,7 +133,10 @@ export function OfficialSkillGrid({
             value={currentSort}
             onValueChange={(value) => setSort(value as ClawhubSkillSortOption)}
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger
+              aria-label={t("skillsMarket.sortBy", "Sort by")}
+              className="w-40"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -145,7 +150,7 @@ export function OfficialSkillGrid({
         </div>
       )}
 
-      {error ? (
+      {error && visibleSkills.length === 0 ? (
         <SkillGridError message={error} onRetry={handleRetry} />
       ) : loading && visibleSkills.length === 0 ? (
         <SkillGridShell>
@@ -188,6 +193,14 @@ export function OfficialSkillGrid({
                 {t("common.loadMore", "Load more")}
               </Button>
             </div>
+          )}
+
+          {error && (
+            <SkillGridError
+              message={error}
+              onRetry={handleRetry}
+              className="min-h-0 py-4"
+            />
           )}
         </>
       )}

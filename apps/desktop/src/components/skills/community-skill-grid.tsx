@@ -84,13 +84,13 @@ export function CommunitySkillGrid({
   const canLoadMore = !isSearchMode && hasMore && visibleSkills.length > 0;
 
   const handleRetry = useCallback(() => {
-    if (isSearchMode || searchError) {
+    if (isSearchMode) {
       void search(searchQuery);
       return;
     }
 
     void refresh();
-  }, [isSearchMode, refresh, search, searchError, searchQuery]);
+  }, [isSearchMode, refresh, search, searchQuery]);
 
   const handleLoadMore = useCallback(() => {
     void loadMore();
@@ -129,7 +129,10 @@ export function CommunitySkillGrid({
               setCurrentSort(value as CloudSkillSortOption)
             }
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger
+              aria-label={t("skillsMarket.sortBy", "Sort by")}
+              className="w-40"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -143,7 +146,7 @@ export function CommunitySkillGrid({
         </div>
       )}
 
-      {error ? (
+      {error && visibleSkills.length === 0 ? (
         <SkillGridError message={error} onRetry={handleRetry} />
       ) : loading && visibleSkills.length === 0 ? (
         <SkillGridShell>
@@ -181,6 +184,14 @@ export function CommunitySkillGrid({
                 {t("common.loadMore", "Load more")}
               </Button>
             </div>
+          )}
+
+          {error && (
+            <SkillGridError
+              message={error}
+              onRetry={handleRetry}
+              className="min-h-0 py-4"
+            />
           )}
         </>
       )}
