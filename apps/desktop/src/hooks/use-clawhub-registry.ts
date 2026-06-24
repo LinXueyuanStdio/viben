@@ -131,6 +131,7 @@ export function useClawhubRegistrySkills(
 
   const isInitialFetch = useRef(true);
   const didSortEffectMountRef = useRef(false);
+  const previousSortRef = useRef(currentSort);
 
   const fetchSkills = useCallback(
     async (currentCursor: string | null, isRefresh = false) => {
@@ -202,6 +203,12 @@ export function useClawhubRegistrySkills(
       didSortEffectMountRef.current = true;
       return;
     }
+
+    if (previousSortRef.current === currentSort) {
+      return;
+    }
+
+    previousSortRef.current = currentSort;
 
     if (enabled) {
       void refresh();
