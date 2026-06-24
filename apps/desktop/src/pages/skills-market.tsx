@@ -29,6 +29,8 @@ export function SkillsMarketPage() {
   const handleSourceChange = useCallback((nextSource: SkillSource) => {
     setSource(nextSource);
     setSearchQuery("");
+    setSelectedSkill(null);
+    setDetailOpen(false);
 
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;

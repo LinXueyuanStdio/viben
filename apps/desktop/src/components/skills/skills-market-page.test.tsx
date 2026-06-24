@@ -4,6 +4,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import type { ClawhubSkillDisplay } from "@/types/clawhub-registry";
 import type { SkillSource } from "./types";
 import { SkillsMarketPage } from "@/pages/skills-market";
 
@@ -151,6 +152,58 @@ describe("SkillsMarketPage", () => {
     expect(skillsComponents.communityGrid).toHaveBeenLastCalledWith(
       expect.objectContaining({
         searchQuery: "",
+      }),
+      undefined
+    );
+  });
+
+  it("closes stale details when switching source", () => {
+    const officialSkill: ClawhubSkillDisplay = {
+      id: "owner/official-skill",
+      name: "Official Skill",
+      slug: "owner/official-skill",
+      version: "1.0.0",
+      description: "Official description",
+      ownerHandle: "owner",
+      ownerName: "Owner Team",
+      ownerAvatar: null,
+      isOfficial: true,
+      executesCode: false,
+      channel: "official",
+      downloads: 1,
+      stars: 1,
+      createdAt: 1717200000000,
+      updatedAt: 1717286400000,
+    };
+
+    skillsComponents.officialGrid.mockImplementation(({ onViewDetails }) => (
+      <button
+        type="button"
+        onClick={() =>
+          onViewDetails({ source: "official", data: officialSkill })
+        }
+      >
+        open details
+      </button>
+    ));
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "open details" }));
+    expect(skillsComponents.skillDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        skill: { source: "official", data: officialSkill },
+      }),
+      undefined
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "community" }));
+
+    expect(skillsComponents.skillDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: false,
+        skill: null,
       }),
       undefined
     );
