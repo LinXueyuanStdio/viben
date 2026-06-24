@@ -7,7 +7,14 @@ import {
   useClawhubRegistry,
   useClawhubRegistrySkills,
 } from "./use-clawhub-registry";
-import type { ClawhubPackageItem } from "@/types/clawhub-registry";
+import type {
+  ClawhubPackageItem,
+  ClawhubSkillSortOption,
+} from "@/types/clawhub-registry";
+
+interface SortHookProps {
+  sort: ClawhubSkillSortOption;
+}
 
 function createPackageItem(displayName: string): ClawhubPackageItem {
   return {
@@ -126,10 +133,10 @@ describe("useClawhubRegistrySkills", () => {
     const fetchMock = mockFetchPackageList();
 
     const { result, rerender } = renderHook(
-      ({ sort }) =>
+      ({ sort }: SortHookProps) =>
         useClawhubRegistrySkills({ limit: 24, enabled: true, sort }),
       {
-        initialProps: { sort: "downloads" as const },
+        initialProps: { sort: "downloads" },
       }
     );
 
@@ -163,10 +170,10 @@ describe("useClawhubRegistrySkills", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { result, rerender } = renderHook(
-      ({ sort }) =>
+      ({ sort }: SortHookProps) =>
         useClawhubRegistrySkills({ limit: 24, enabled: true, sort }),
       {
-        initialProps: { sort: "updated" as const },
+        initialProps: { sort: "updated" },
       }
     );
 
