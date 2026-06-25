@@ -1,79 +1,115 @@
-import "@viben/editor/yoopta/editor.css";
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
-import { useTranslation } from "react-i18next";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import Editor, { type OnChange, type OnMount } from "@monaco-editor/react";
+import type { editor as MonacoEditor } from "monaco-editor";
+import {
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  FileTextIcon,
+  ImageIcon as ImageLucideIcon,
+  Loader2,
+  MoreHorizontalIcon,
+  SmilePlus,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { pageKeys } from "@/hooks/use-pages";
-import {
-  Blocks,
-  BlockDndContext,
-  EmojiDropdown,
-  Marks,
-  MentionDropdown,
-  SelectionBox,
-  SortableBlock,
-  Transforms,
-  YooptaEditor,
-  createYooptaEditor,
-  createYooptaPlugins,
-  deserializeMarkdown,
-  ensureBlockFocus,
-  handleYooptaVerticalNavigation,
-  serializeMarkdown,
-  YOOPTA_MARKS,
-  YooptaErrorBoundary,
-  YooptaFloatingBlockActions,
-  YooptaSlashCommandMenu,
-  YooptaTocSidebar,
-  YooptaToolbar,
-  applyTheme,
-  type RenderBlockProps,
-  type SlateElement,
-  type YooptaContentValue,
-  type YooptaPlugin,
-  withEmoji,
-  withMentions,
-} from "@viben/editor";
-import { SmilePlus, ImageIcon as ImageLucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getGatewayUrl } from "@/lib/gateway/config";
-import { updatePageContent, updatePageConfig, uploadPageAsset, listPages } from "@/lib/gateway/modules/pages";
-import type { IconData, PageWidth } from "@/lib/gateway/types/page";
-import { YooptaEditorHeader } from "./yoopta-editor-header";
-import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
 import { CoverPicker } from "@/components/ui/cover-picker";
-import { GRADIENT_COLORS } from "@/lib/gradient-colors";
 import {
-  collectPageNavigationFromDom,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { IconDisplay, IconPicker } from "@/components/ui/icon-picker";
+import { getGatewayUrl } from "@/lib/gateway/config";
+import { updatePageConfig, updatePageContent } from "@/lib/gateway/modules/pages";
+import type { IconData, PageWidth } from "@/lib/gateway/types/page";
+import { cn } from "@/lib/utils";
+import { GRADIENT_COLORS } from "@/lib/gradient-colors";
+import { pageKeys, useApplyPageTemplate, usePageTemplates } from "@/hooks/use-pages";
+import { useTheme } from "@/hooks/use-theme";
+import {
   extractPageNavigation,
   type PageNavigationExtract,
 } from "@/navigation/page-navigation-extractor";
-import { getPageHref } from "@/pages/apps/utils/page-href";
+import { EmptyMarkdownPageCard } from "./empty-markdown-page-card";
+import {
+  isMarkdownBodyEmpty,
+  stripYamlFrontmatter,
+  type PageCreationMode,
+} from "./empty-markdown-page-utils";
+import { PageAiCreateCompact } from "./page-ai-create-compact";
+import { PageImportDialog } from "./page-import-dialog";
+import { PageTemplateDialog } from "./page-template-dialog";
+import { usePageAiCreation } from "./use-page-ai-creation";
 
 const SOLID_COLOR_MAP: Record<string, string> = {
-  "warm-gray": "#d6d3d1", slate: "#94a3b8", stone: "#a8a29e", neutral: "#a3a3a3",
+  "warm-gray": "#d6d3d1",
+  slate: "#94a3b8",
+  stone: "#a8a29e",
+  neutral: "#a3a3a3",
 };
 
-/** Parse a cover value into CSS background style. */
+const SAVE_DEBOUNCE_MS = 1000;
+const EMPTY_PAGE_REAPPEAR_BUFFER_MS = 250;
+const EMPTY_PAGE_INTERACTIVE_SELECTOR =
+  "input, textarea, select, button, [role='button'], [contenteditable='true'], [data-empty-page-action='true']";
+
+type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
+type WordCount = { words: number; characters: number };
+
+function isEmptyPageInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(EMPTY_PAGE_INTERACTIVE_SELECTOR) !== null;
+}
+
+function hasAnyMarkdownBodyInput(markdown: string | null | undefined): boolean {
+  return stripYamlFrontmatter(markdown ?? "").length > 0;
+}
+
 function parseCoverBackground(cover: string): React.CSSProperties {
   if (cover.startsWith("gradient:")) {
     const key = cover.slice(9) as keyof typeof GRADIENT_COLORS;
-    const g = GRADIENT_COLORS[key];
-    if (g) return { background: `linear-gradient(135deg, ${g.from}, ${g.to})` };
+    const gradient = GRADIENT_COLORS[key];
+    if (gradient) return { background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` };
   }
   if (cover.startsWith("solid:")) {
     const color = SOLID_COLOR_MAP[cover.slice(6)];
     if (color) return { background: color };
   }
-  // URL — use as background-image for img tag (handled separately)
   return {};
 }
 
-const SAVE_DEBOUNCE_MS = 1000;
+function countMarkdown(markdown: string): WordCount {
+  const text = stripYamlFrontmatter(markdown)
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+    .replace(/[#>*_\-[\]()`~|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    words: text ? text.split(/\s+/).length : 0,
+    characters: text.length,
+  };
+}
 
-const EDITOR_STYLES = {
-  width: "100%",
-};
+function downloadText(filename: string, content: string, type: string): void {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  setTimeout(() => {
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
 
 export interface YooptaMarkdownRendererProps {
   content: string;
@@ -87,22 +123,18 @@ export interface YooptaMarkdownRendererProps {
   cover?: string | null;
   pageWidth?: PageWidth;
   showToc?: boolean;
-  /** ISO timestamp of the page's last modification */
   updatedAt?: string;
   onTitleChange?: (newTitle: string) => void;
   onNavigationExtract?: (extract: PageNavigationExtract) => void;
   onOpenPage?: (pageUid: string) => void;
   onOpenWeb?: (url: string, title?: string) => void;
-  /** Portal target for editor header buttons. If provided, header renders into this DOM element instead of inside the editor. */
   headerPortal?: HTMLElement | null;
-  /** Focus the editable page title when the renderer mounts */
   autoFocusTitle?: boolean;
 }
 
 export function YooptaMarkdownRenderer({
   content,
   className,
-  workspaceId,
   workspacePath,
   uid,
   editable,
@@ -114,53 +146,266 @@ export function YooptaMarkdownRenderer({
   updatedAt,
   onTitleChange,
   onNavigationExtract,
-  onOpenPage,
-  onOpenWeb,
   headerPortal,
   autoFocusTitle = false,
 }: YooptaMarkdownRendererProps) {
-  const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  const queryClient = useQueryClient();
   const canSave = !!(workspacePath && uid);
   const isEditable = editable ?? canSave;
-  const queryClient = useQueryClient();
-
-  const containerBoxRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
-  const [wordCount, setWordCount] = useState({ words: 0, characters: 0 });
-  const deferredWordCount = useDeferredValue(wordCount);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
-  const saveStatusRef = useRef(saveStatus);
-  saveStatusRef.current = saveStatus;
-  // Initialize to empty so the first useEffect always triggers deserialization
-  const lastContentRef = useRef<string>("");
-  const frontmatterRef = useRef<string>("");
-  const [pageTitle, setPageTitle] = useState(title || "");
-  const [pageIcon, setPageIcon] = useState<IconData | null>(icon ?? null);
-  const [showIconPicker, setShowIconPicker] = useState(false);
+  const pendingContentRef = useRef<string | null>(null);
   const iconAnchorRef = useRef<HTMLDivElement | null>(null);
-  // Single CoverPicker instance — lifted to editor level (like IconPicker)
-  const [showCoverPicker, setShowCoverPicker] = useState(false);
-  const [coverPickerAlign, setCoverPickerAlign] = useState<"start" | "center" | "end">("start");
   const coverPickerAnchorRef = useRef<HTMLElement | null>(null);
   const iconSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const coverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const configSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emptyPageReappearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasHadBodyInputRef = useRef(hasAnyMarkdownBodyInput(content));
+  const previousBodyEmptyRef = useRef(isMarkdownBodyEmpty(content));
+  const previousBodyHadInputRef = useRef(hasAnyMarkdownBodyInput(content));
+
+  const [localContent, setLocalContent] = useState(content);
+  const [pageTitle, setPageTitle] = useState(title || "");
+  const [pageIcon, setPageIcon] = useState<IconData | null>(icon ?? null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(cover || null);
   const [currentPageWidth, setCurrentPageWidth] = useState<PageWidth>(pageWidth || "default");
   const [currentShowToc, setCurrentShowToc] = useState(showToc ?? false);
-  const configSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const [coverPickerAlign, setCoverPickerAlign] = useState<"start" | "center" | "end">("start");
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [copied, setCopied] = useState(false);
+  const [isEmptyPageCardDismissed, setIsEmptyPageCardDismissed] = useState(false);
 
-  // Sync props to local state — single effect to reduce per-render overhead
+  const wordCount = useMemo(() => countMarkdown(localContent), [localContent]);
+  const deferredWordCount = useDeferredValue(wordCount);
+  const contentWidthClass = useMemo(
+    () => currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl",
+    [currentPageWidth]
+  );
+  const isBodyEmpty = isMarkdownBodyEmpty(localContent);
+  const shouldShowEmptyPageCard = isEditable && isBodyEmpty && !isEmptyPageCardDismissed;
+  const pageTemplates = usePageTemplates(workspacePath);
+  const applyTemplate = useApplyPageTemplate();
+  const aiCreation = usePageAiCreation();
+
+  useEffect(() => {
+    const nextBodyEmpty = isMarkdownBodyEmpty(content);
+    if (emptyPageReappearTimerRef.current) {
+      clearTimeout(emptyPageReappearTimerRef.current);
+      emptyPageReappearTimerRef.current = null;
+    }
+    setLocalContent(content);
+    previousBodyEmptyRef.current = nextBodyEmpty;
+    previousBodyHadInputRef.current = hasAnyMarkdownBodyInput(content);
+    hasHadBodyInputRef.current = previousBodyHadInputRef.current;
+    setIsEmptyPageCardDismissed(false);
+  }, [content]);
   useEffect(() => { setPageTitle(title || ""); }, [title]);
   useEffect(() => { setPageIcon(icon ?? null); }, [icon]);
+  useEffect(() => { setCoverUrl(cover || null); }, [cover]);
   useEffect(() => { setCurrentPageWidth(pageWidth || "default"); }, [pageWidth]);
   useEffect(() => { setCurrentShowToc(showToc ?? false); }, [showToc]);
 
+  useEffect(() => {
+    if (!uid || !onNavigationExtract) return;
+    onNavigationExtract(extractPageNavigation(uid, localContent));
+  }, [localContent, onNavigationExtract, uid]);
+
+  const handleSave = useCallback(
+    async (markdown: string) => {
+      if (!canSave) return;
+      if (isSavingRef.current) {
+        pendingContentRef.current = markdown;
+        setSaveStatus("pending");
+        return;
+      }
+
+      isSavingRef.current = true;
+      setSaveStatus("saving");
+      try {
+        await updatePageContent(getGatewayUrl(), workspacePath!, uid!, markdown);
+        setSaveStatus("saved");
+        queryClient.invalidateQueries({ queryKey: pageKeys.detail(workspacePath!, uid!) });
+        setTimeout(() => setSaveStatus((status) => status === "saved" ? "idle" : status), 1800);
+      } catch (error) {
+        console.error("[YooptaMarkdownRenderer] save failed:", error);
+        setSaveStatus("error");
+      } finally {
+        isSavingRef.current = false;
+        const pending = pendingContentRef.current;
+        if (pending !== null) {
+          pendingContentRef.current = null;
+          void handleSave(pending);
+        }
+      }
+    },
+    [canSave, queryClient, uid, workspacePath]
+  );
+
+  const scheduleSave = useCallback(
+    (markdown: string) => {
+      if (!canSave) return;
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus((status) => status === "idle" || status === "saved" ? "pending" : status);
+      saveTimerRef.current = setTimeout(() => {
+        void handleSave(markdown);
+      }, SAVE_DEBOUNCE_MS);
+    },
+    [canSave, handleSave]
+  );
+
+  const flushSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    void handleSave(localContent);
+  }, [handleSave, localContent]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (iconSaveTimerRef.current) clearTimeout(iconSaveTimerRef.current);
+      if (coverSaveTimerRef.current) clearTimeout(coverSaveTimerRef.current);
+      if (configSaveTimerRef.current) clearTimeout(configSaveTimerRef.current);
+      if (emptyPageReappearTimerRef.current) clearTimeout(emptyPageReappearTimerRef.current);
+    };
+  }, []);
+
+  const handleMonacoMount: OnMount = useCallback(
+    (editor, monaco) => {
+      editorRef.current = editor;
+      editor.addAction({
+        id: "viben-save-markdown-page",
+        label: "Save Markdown Page",
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+        run: () => {
+          flushSave();
+        },
+      });
+    },
+    [flushSave]
+  );
+
+  const scheduleEmptyPageReappear = useCallback(() => {
+    if (emptyPageReappearTimerRef.current) {
+      clearTimeout(emptyPageReappearTimerRef.current);
+    }
+    emptyPageReappearTimerRef.current = setTimeout(() => {
+      if (previousBodyEmptyRef.current) {
+        setIsEmptyPageCardDismissed(false);
+      }
+      emptyPageReappearTimerRef.current = null;
+    }, EMPTY_PAGE_REAPPEAR_BUFFER_MS);
+  }, []);
+
+  const handleContentChange: OnChange = useCallback(
+    (nextValue) => {
+      const nextContent = nextValue ?? "";
+      const nextBodyEmpty = isMarkdownBodyEmpty(nextContent);
+      const nextBodyHasInput = hasAnyMarkdownBodyInput(nextContent);
+      if (nextBodyHasInput) {
+        if (emptyPageReappearTimerRef.current) {
+          clearTimeout(emptyPageReappearTimerRef.current);
+          emptyPageReappearTimerRef.current = null;
+        }
+        hasHadBodyInputRef.current = true;
+      }
+      if (nextBodyEmpty && hasHadBodyInputRef.current && previousBodyHadInputRef.current) {
+        scheduleEmptyPageReappear();
+      }
+      previousBodyEmptyRef.current = nextBodyEmpty;
+      previousBodyHadInputRef.current = nextBodyHasInput;
+      setLocalContent(nextContent);
+      scheduleSave(nextContent);
+    },
+    [scheduleEmptyPageReappear, scheduleSave]
+  );
+
+  const handleEditorKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!isEditable || !isBodyEmpty || !isEmptyPageCardDismissed) return;
+      if (event.key !== "Backspace" && event.key !== "Delete") return;
+      scheduleEmptyPageReappear();
+    },
+    [isBodyEmpty, isEditable, isEmptyPageCardDismissed, scheduleEmptyPageReappear]
+  );
+
+  const focusEditor = useCallback(() => {
+    editorRef.current?.focus();
+  }, []);
+
+  const enterEditor = useCallback(() => {
+    if (!isEditable) return;
+    setIsEmptyPageCardDismissed(true);
+    requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      editor?.focus();
+      editor?.setPosition({ lineNumber: 1, column: 1 });
+    });
+  }, [isEditable]);
+
+  const handleEmptyPageKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "Enter") return;
+      if (isEmptyPageInteractiveTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      enterEditor();
+    },
+    [enterEditor]
+  );
+
+  const handleEmptyPageClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isEmptyPageInteractiveTarget(event.target)) {
+        return;
+      }
+      enterEditor();
+    },
+    [enterEditor]
+  );
+
+  useEffect(() => {
+    if (!shouldShowEmptyPageCard || aiCreation.isCreating) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter") return;
+      if (isEmptyPageInteractiveTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      enterEditor();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [aiCreation.isCreating, enterEditor, shouldShowEmptyPageCard]);
+
   const handleTitleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newTitle = e.target.value.replace(/\n/g, "");
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newTitle = event.target.value.replace(/\n/g, "");
       setPageTitle(newTitle);
       onTitleChange?.(newTitle);
     },
     [onTitleChange]
+  );
+
+  const handleTitleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        focusEditor();
+      }
+    },
+    [focusEditor]
   );
 
   const persistIcon = useCallback(
@@ -169,22 +414,40 @@ export function YooptaMarkdownRenderer({
       if (iconSaveTimerRef.current) clearTimeout(iconSaveTimerRef.current);
       iconSaveTimerRef.current = setTimeout(async () => {
         try {
-          const baseUrl = getGatewayUrl();
-          await updatePageConfig(baseUrl, {
+          await updatePageConfig(getGatewayUrl(), {
             workspace_path: workspacePath!,
             uid: uid!,
             icon: iconData,
           });
-          // Invalidate page list cache so sidebar tree updates
-          queryClient.invalidateQueries({
-            queryKey: pageKeys.list(workspacePath!),
-          });
-        } catch (err) {
-          console.error("[YooptaMarkdownRenderer] icon save failed:", err);
+          queryClient.invalidateQueries({ queryKey: pageKeys.list(workspacePath!) });
+          queryClient.invalidateQueries({ queryKey: pageKeys.detail(workspacePath!, uid!) });
+        } catch (error) {
+          console.error("[YooptaMarkdownRenderer] icon save failed:", error);
         }
       }, 500);
     },
-    [canSave, workspacePath, uid, queryClient]
+    [canSave, queryClient, uid, workspacePath]
+  );
+
+  const persistCover = useCallback(
+    (nextCover: string | null) => {
+      if (!canSave) return;
+      if (coverSaveTimerRef.current) clearTimeout(coverSaveTimerRef.current);
+      coverSaveTimerRef.current = setTimeout(async () => {
+        try {
+          await updatePageConfig(getGatewayUrl(), {
+            workspace_path: workspacePath!,
+            uid: uid!,
+            cover: nextCover,
+          });
+          queryClient.invalidateQueries({ queryKey: pageKeys.list(workspacePath!) });
+          queryClient.invalidateQueries({ queryKey: pageKeys.detail(workspacePath!, uid!) });
+        } catch (error) {
+          console.error("[YooptaMarkdownRenderer] cover save failed:", error);
+        }
+      }, 500);
+    },
+    [canSave, queryClient, uid, workspacePath]
   );
 
   const persistLayoutConfig = useCallback(
@@ -193,84 +456,17 @@ export function YooptaMarkdownRenderer({
       if (configSaveTimerRef.current) clearTimeout(configSaveTimerRef.current);
       configSaveTimerRef.current = setTimeout(async () => {
         try {
-          const baseUrl = getGatewayUrl();
-          await updatePageConfig(baseUrl, {
+          await updatePageConfig(getGatewayUrl(), {
             workspace_path: workspacePath!,
             uid: uid!,
             ...updates,
           });
-        } catch (err) {
-          console.error("[YooptaMarkdownRenderer] layout config save failed:", err);
+        } catch (error) {
+          console.error("[YooptaMarkdownRenderer] layout config save failed:", error);
         }
       }, 300);
     },
-    [canSave, workspacePath, uid]
-  );
-
-  const handlePageWidthChange = useCallback(
-    (width: PageWidth) => {
-      setCurrentPageWidth(width);
-      persistLayoutConfig({ page_width: width });
-    },
-    [persistLayoutConfig]
-  );
-
-  const handleShowTocChange = useCallback(
-    (show: boolean) => {
-      setCurrentShowToc(show);
-      persistLayoutConfig({ show_toc: show });
-    },
-    [persistLayoutConfig]
-  );
-
-  const [coverUrl, setCoverUrl] = useState<string | null>(cover || null);
-  const coverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Sync cover from props
-  useEffect(() => {
-    setCoverUrl(cover || null);
-  }, [cover]);
-
-  const persistCover = useCallback(
-    (url: string | null) => {
-      if (!canSave) return;
-      if (coverSaveTimerRef.current) clearTimeout(coverSaveTimerRef.current);
-      coverSaveTimerRef.current = setTimeout(async () => {
-        try {
-          const baseUrl = getGatewayUrl();
-          await updatePageConfig(baseUrl, {
-            workspace_path: workspacePath!,
-            uid: uid!,
-            cover: url,
-          });
-          // Invalidate page cache so other views reflect the cover change
-          queryClient.invalidateQueries({
-            queryKey: pageKeys.list(workspacePath!),
-          });
-        } catch (err) {
-          console.error("[YooptaMarkdownRenderer] cover save failed:", err);
-        }
-      }, 500);
-    },
-    [canSave, workspacePath, uid, queryClient]
-  );
-
-  const handleCoverChange = useCallback(
-    (newCover: string | null) => {
-      setCoverUrl(newCover);
-      persistCover(newCover);
-    },
-    [persistCover]
-  );
-
-  /** Open the single CoverPicker, anchoring to the given element. */
-  const openCoverPicker = useCallback(
-    (anchor: HTMLElement, align: "start" | "center" | "end" = "start") => {
-      coverPickerAnchorRef.current = anchor;
-      setCoverPickerAlign(align);
-      setShowCoverPicker(true);
-    },
-    []
+    [canSave, uid, workspacePath]
   );
 
   const handleIconChange = useCallback(
@@ -281,692 +477,160 @@ export function YooptaMarkdownRenderer({
     [persistIcon]
   );
 
-  const openIconPicker = useCallback(() => setShowIconPicker(true), []);
-
-  const plugins = useMemo(() => {
-    if (!workspacePath || !uid) return createYooptaPlugins();
-    const baseUrl = getGatewayUrl();
-    const uploadFn = async (file: File) => {
-      const result = await uploadPageAsset(baseUrl, workspacePath, uid, file);
-      if (!result.success || !result.url) {
-        throw new Error(result.error || "Upload failed");
-      }
-      return `${baseUrl}${result.url}`;
-    };
-    const searchPagesFn = async (query: string) => {
-      const result = await listPages(baseUrl, workspacePath);
-      const q = query.toLowerCase();
-      return result.pages
-        .filter((p) => p.name.toLowerCase().includes(q) || p.uid.toLowerCase().includes(q))
-        .map((p) => ({ id: p.uid, name: p.name, avatar: '' }));
-    };
-    return createYooptaPlugins({
-      uploadAsset: uploadFn,
-      searchPages: searchPagesFn,
-      buildPageHref: workspaceId ? (pageUid) => getPageHref(workspaceId, pageUid) : undefined,
-      buildPageMeta: () => ({ includeInPageIndex: true }),
-    });
-  }, [workspaceId, workspacePath, uid]);
-
-  const editor = useMemo(() => {
-    return withEmoji(
-      withMentions(
-        createYooptaEditor({
-          plugins: applyTheme(plugins) as unknown as YooptaPlugin<
-            Record<string, SlateElement>,
-            unknown
-          >[],
-          marks: YOOPTA_MARKS,
-          readOnly: !isEditable,
-        })
-      )
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plugins]);
-
-  const handleTitleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        try {
-          editor.focus();
-        } catch {
-          // ignore
-        }
-      }
+  const handleCoverChange = useCallback(
+    (nextCover: string | null) => {
+      setCoverUrl(nextCover);
+      persistCover(nextCover);
     },
-    [editor]
+    [persistCover]
   );
 
-  // Sync readOnly state when isEditable changes
-  useEffect(() => {
-    if (editor.readOnly !== !isEditable) {
-      editor.readOnly = !isEditable;
-    }
-  }, [editor, isEditable]);
-
-  // Load initial markdown content
-  useEffect(() => {
-    if (content && content !== lastContentRef.current) {
-      lastContentRef.current = content;
-      try {
-        const { value, frontmatter } = deserializeMarkdown(editor, content);
-        frontmatterRef.current = frontmatter;
-        editor.withoutSavingHistory(() => {
-          editor.setEditorValue(value);
-        });
-      } catch (err) {
-        console.error("[YooptaMarkdownRenderer] deserialize failed:", err);
-      }
-    }
-  }, [editor, content]);
-
-  useEffect(() => {
-    if (!uid || !onNavigationExtract) return;
-    onNavigationExtract(extractPageNavigation(uid, content));
-  }, [content, onNavigationExtract, uid]);
-
-  // Auto-focus the editor on mount (Notion behavior)
-  useEffect(() => {
-    if (!isEditable) return;
-    const timer = setTimeout(() => {
-      try {
-        editor.focus();
-      } catch {
-        // ignore focus errors during initialization
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const openCoverPicker = useCallback((anchor: HTMLElement, align: "start" | "center" | "end" = "start") => {
+    coverPickerAnchorRef.current = anchor;
+    setCoverPickerAlign(align);
+    setShowCoverPicker(true);
   }, []);
 
-  // Auto-save handler — uses dirty flag to avoid losing edits during a save
-  const pendingContentRef = useRef<string | null>(null);
-  // Stash the latest YooptaContentValue so serialization happens inside the debounce callback,
-  // not synchronously on every keystroke.
-  const pendingValueRef = useRef<YooptaContentValue | null>(null);
-
-  const handleSave = useCallback(
-    async (md: string) => {
-      if (!canSave) return;
-      if (isSavingRef.current) {
-        // A save is in flight — stash the latest content so it's saved when the current save finishes
-        pendingContentRef.current = md;
-        setSaveStatus('pending');
-        return;
-      }
-      isSavingRef.current = true;
-      setSaveStatus('saving');
-      try {
-        const baseUrl = getGatewayUrl();
-        await updatePageContent(baseUrl, workspacePath!, uid!, md);
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus((s) => s === 'saved' ? 'idle' : s), 2000);
-      } catch (err) {
-        console.error("[YooptaMarkdownRenderer] save failed:", err);
-        setSaveStatus('error');
-      } finally {
-        isSavingRef.current = false;
-        // Flush any content that arrived while we were saving
-        const pending = pendingContentRef.current;
-        if (pending !== null) {
-          pendingContentRef.current = null;
-          handleSave(pending);
-        }
-      }
+  const handlePageWidthChange = useCallback(
+    (width: PageWidth) => {
+      setCurrentPageWidth(width);
+      persistLayoutConfig({ page_width: width });
     },
-    [canSave, workspacePath, uid]
+    [persistLayoutConfig]
   );
 
-  // Debounced save: serialization happens here (once per debounce window) instead of on every keystroke.
-  const debouncedSave = useCallback(
-    () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-      saveTimerRef.current = setTimeout(() => {
-        const val = pendingValueRef.current;
-        if (!val) return;
-        pendingValueRef.current = null;
-        try {
-          const md = serializeMarkdown(editor, val, frontmatterRef.current);
-          lastContentRef.current = md;
-          handleSave(md);
-        } catch (err) {
-          console.error("[YooptaMarkdownRenderer] serialize failed:", err);
-        }
-      }, SAVE_DEBOUNCE_MS);
+  const handleShowTocChange = useCallback(
+    (enabled: boolean) => {
+      setCurrentShowToc(enabled);
+      persistLayoutConfig({ show_toc: enabled });
     },
-    [editor, handleSave]
+    [persistLayoutConfig]
   );
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      if (iconSaveTimerRef.current) clearTimeout(iconSaveTimerRef.current);
-      if (coverSaveTimerRef.current) clearTimeout(coverSaveTimerRef.current);
-      if (configSaveTimerRef.current) clearTimeout(configSaveTimerRef.current);
-      if (wordCountTimerRef.current) clearTimeout(wordCountTimerRef.current);
-    };
-  }, []);
-
-  // Cmd+S / Ctrl+S manual save shortcut
-  useEffect(() => {
-    if (!canSave) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        // Flush any pending debounced save immediately
-        if (saveTimerRef.current) {
-          clearTimeout(saveTimerRef.current);
-          saveTimerRef.current = null;
-        }
-        // Defer serialization off the keydown event to avoid blocking input
-        setTimeout(() => {
-          const md = serializeMarkdown(editor, editor.children, frontmatterRef.current);
-          lastContentRef.current = md;
-          handleSave(md);
-        }, 0);
+  const handleApplyTemplate = useCallback(
+    async (templateId: string) => {
+      if (!workspacePath || !uid) return;
+      const result = await applyTemplate.mutateAsync({
+        workspace_path: workspacePath,
+        uid,
+        template_id: templateId,
+      });
+      if (result.page?.skill_content !== undefined) {
+        setLocalContent(result.page.skill_content);
       }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [canSave, editor, handleSave]);
-
-  // Handle Chinese IME slash variants to trigger slash command menu.
-  // ／ (U+FF0F) — full-width solidus, 、(U+3001) — ideographic comma (common on Chinese IME / key)
-  // IME input bypasses keydown (isComposing=true), so we intercept at input/compositionend level.
-  // Attach to document level so we don't depend on editor.refElement mounting timing.
-  // Filter events by checking if the target is inside the editor.
-  useEffect(() => {
-    if (!isEditable) return;
-
-    const CJK_SLASH_CHARS = new Set(["／", "\uFF0F", "、", "\u3001"]);
-    const isCjkSlash = (ch: string | null | undefined) => ch != null && CJK_SLASH_CHARS.has(ch);
-
-    const isInsideEditor = (target: EventTarget | null) => {
-      if (!target || !(target instanceof Node)) return false;
-      const refEl = editor.refElement;
-      return refEl ? refEl.contains(target) : false;
-    };
-
-    const tryConvertFullWidthSlash = () => {
-      if (editor.path.current === null) return;
-      const currentBlockId = Object.keys(editor.children).find(
-        (id) => editor.children[id]?.meta.order === editor.path.current
-      );
-      if (!currentBlockId) return;
-      const slate = Blocks.getBlockSlate(editor, { id: currentBlockId });
-      if (!slate?.selection) return;
-
-      const blockText = slate.children
-        .map((node: any) => node.children?.map((c: any) => c.text || "").join("") || "")
-        .join("");
-
-      const trimmed = blockText.trim();
-      if (trimmed.length === 1 && isCjkSlash(trimmed)) {
-        Transforms.delete(slate, {
-          at: { anchor: { path: [0, 0], offset: 0 }, focus: { path: [0, 0], offset: blockText.length } },
-        });
-        setTimeout(() => {
-          const target =
-            document.activeElement?.closest("[contenteditable]") ??
-            editor.refElement?.querySelector("[contenteditable]");
-          if (target) {
-            target.dispatchEvent(new KeyboardEvent("keydown", {
-              key: "/", code: "Slash", keyCode: 191, which: 191,
-              bubbles: true, cancelable: true, composed: true,
-            }));
-          }
-        }, 0);
-      }
-    };
-
-    const handleInput = (e: Event) => {
-      if (!isInsideEditor(e.target)) return;
-      const data = (e as InputEvent).data;
-      if (isCjkSlash(data)) {
-        tryConvertFullWidthSlash();
-      }
-    };
-
-    const handleCompositionEnd = (e: Event) => {
-      if (!isInsideEditor(e.target)) return;
-      const data = (e as CompositionEvent).data;
-      if (isCjkSlash(data)) {
-        setTimeout(tryConvertFullWidthSlash, 10);
-      }
-    };
-
-    document.addEventListener("input", handleInput, true);
-    document.addEventListener("compositionend", handleCompositionEnd, true);
-    return () => {
-      document.removeEventListener("input", handleInput, true);
-      document.removeEventListener("compositionend", handleCompositionEnd, true);
-    };
-  }, [isEditable, editor]);
-
-  // Notion-style keyboard shortcuts for block type switching, block movement, and highlight
-  useEffect(() => {
-    if (!isEditable) return;
-
-    const BLOCK_TYPE_MAP: Record<string, string> = {
-      "0": "Paragraph",
-      "1": "HeadingOne",
-      "2": "HeadingTwo",
-      "3": "HeadingThree",
-      "4": "TodoList",
-      "5": "BulletedList",
-      "6": "NumberedList",
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape - blur editor (Notion behavior)
-      if (e.key === "Escape") {
-        try {
-          (document.activeElement as HTMLElement)?.blur();
-        } catch {
-          // ignore
-        }
-        return;
-      }
-
-      const isMod = e.metaKey || e.ctrlKey;
-
-      // Cmd+/ or Ctrl+/ - Open slash command menu
-      if (isMod && !e.shiftKey && (e.key === "/" || e.key === "/")) {
-        e.preventDefault();
-        if (editor.path.current === null) return;
-        // Dispatch a synthetic "/" keydown on the editor's contenteditable
-        // SlashCommandMenu listens for native DOM keydown, not Slate transforms
-        const target =
-          document.activeElement?.closest("[contenteditable]") ??
-          editor.refElement?.querySelector("[contenteditable]");
-        if (target) {
-          const syntheticEvent = new KeyboardEvent("keydown", {
-            key: e.key,
-            code: "Slash",
-            keyCode: 191,
-            which: 191,
-            bubbles: true,
-            cancelable: true,
-            composed: true,
-          });
-          target.dispatchEvent(syntheticEvent);
-        }
-        return;
-      }
-
-      // Cmd+Enter or Ctrl+Enter - Toggle TodoList checkbox
-      if (isMod && !e.shiftKey && e.key === "Enter") {
-        e.preventDefault();
-        if (editor.path.current === null) return;
-        const currentOrder = editor.path.current;
-        const currentBlockId = Object.keys(editor.children).find(
-          (id) => editor.children[id]?.meta.order === currentOrder
-        );
-        if (!currentBlockId) return;
-        const block = Blocks.getBlock(editor, { id: currentBlockId });
-        if (!block || block.type !== "TodoList") return;
-        const slate = Blocks.getBlockSlate(editor, { id: currentBlockId });
-        if (!slate || !slate.children[0]) return;
-        const element = slate.children[0] as any;
-        if (element.props?.checked !== undefined) {
-          Transforms.setNodes(slate, { props: { ...element.props, checked: !element.props.checked } } as any, { at: [0] });
-        }
-        return;
-      }
-
-      // Cmd+D or Ctrl+D - Duplicate current block
-      if (isMod && !e.shiftKey && e.code === "KeyD") {
-        e.preventDefault();
-        if (editor.path.current === null) return;
-        editor.duplicateBlock({ focus: true });
-        return;
-      }
-
-      // Cmd+Backspace or Ctrl+Backspace - Delete current block
-      if (isMod && !e.shiftKey && e.key === "Backspace") {
-        // Don't delete the only remaining block
-        if (Object.keys(editor.children).length <= 1) return;
-        if (editor.path.current === null) return;
-        e.preventDefault();
-        editor.deleteBlock({ focusTarget: "previous" });
-        return;
-      }
-
-      if (!isMod || !e.shiftKey) return;
-
-      // Block type switching: Cmd+Shift+0..6
-      const blockType = BLOCK_TYPE_MAP[e.key];
-      if (blockType) {
-        e.preventDefault();
-        if (editor.path.current === null) return;
-        Blocks.toggleBlock(editor, blockType, {
-          at: editor.path.current,
-          focus: true,
-        });
-        return;
-      }
-
-      // Highlight toggle: Cmd+Shift+H (use e.code for keyboard layout independence)
-      if (e.code === "KeyH") {
-        e.preventDefault();
-        if (editor.path.current === null) return;
-        Marks.toggle(editor, { type: "highlight" });
-        return;
-      }
-
-      // Block movement: Cmd+Shift+ArrowUp / ArrowDown
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        e.preventDefault();
-        if (editor.path.current === null) return;
-
-        const currentOrder = editor.path.current;
-        const currentBlockId = Object.keys(editor.children).find(
-          (id) => editor.children[id]?.meta.order === currentOrder
-        );
-        if (!currentBlockId) return;
-
-        if (e.key === "ArrowUp") {
-          if (currentOrder <= 0) return;
-          Blocks.moveBlock(editor, currentBlockId, currentOrder - 1);
-        } else {
-          const totalBlocks = Object.keys(editor.children).length;
-          if (currentOrder >= totalBlocks - 1) return;
-          Blocks.moveBlock(editor, currentBlockId, currentOrder + 2);
-        }
-        return;
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isEditable, editor]);
-
-  useEffect(() => {
-    if (!isEditable) return;
-
-    const handleKeyDownCapture = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (!target || !(target instanceof Node)) return;
-      if (!editor.refElement?.contains(target)) return;
-
-      handleYooptaVerticalNavigation(editor, event);
-    };
-
-    document.addEventListener("keydown", handleKeyDownCapture, true);
-    return () => document.removeEventListener("keydown", handleKeyDownCapture, true);
-  }, [isEditable, editor]);
-
-  // Ref to stabilize wordCount — only triggers state update when values actually change
-  const wordCountRef = useRef({ words: 0, characters: 0 });
-  // Debounce word count computation to avoid running on every keystroke
-  const wordCountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // onChange handler for auto-save and word count
-  const handleChange = useCallback(
-    (value: YooptaContentValue, _options: { operations: unknown[] }) => {
-      // Update word count — debounced separately so the expensive text extraction
-      // doesn't run on every single keystroke
-      if (wordCountTimerRef.current) clearTimeout(wordCountTimerRef.current);
-      wordCountTimerRef.current = setTimeout(() => {
-        try {
-          const text = Object.values(value)
-            .map((block) => {
-              if (!block?.value) return "";
-              return block.value
-                .map((el: any) => {
-                  if (!el?.children) return "";
-                  return el.children.map((child: any) => child.text || "").join("");
-                })
-                .join(" ");
-            })
-            .join(" ")
-            .trim();
-          const words = text ? text.split(/\s+/).length : 0;
-          const characters = text.length;
-          if (words !== wordCountRef.current.words || characters !== wordCountRef.current.characters) {
-            const next = { words, characters };
-            wordCountRef.current = next;
-            startTransition(() => setWordCount(next));
-          }
-        } catch {
-          // ignore count errors
-        }
-      }, 300);
-
-      // Auto-save: stash value reference; serialization happens inside debouncedSave
-      if (canSave) {
-        pendingValueRef.current = value;
-        // Only transition to 'pending' if not already in a saving/pending state — avoids
-        // scheduling a React state update on every single keystroke.
-        const status = saveStatusRef.current;
-        if (status === 'idle' || status === 'saved') {
-          startTransition(() => setSaveStatus('pending'));
-        }
-        debouncedSave();
-      }
+      setTemplateDialogOpen(false);
     },
-    [canSave, debouncedSave]
+    [applyTemplate, uid, workspacePath]
   );
 
-  const renderBlock = useCallback(
-    ({ children, blockId }: RenderBlockProps) => {
-      return (
-        <SortableBlock id={blockId} useDragHandle>
-          {children}
-        </SortableBlock>
-      );
+  const replaceContent = useCallback(
+    (nextContent: string) => {
+      const nextBodyEmpty = isMarkdownBodyEmpty(nextContent);
+      if (emptyPageReappearTimerRef.current) {
+        clearTimeout(emptyPageReappearTimerRef.current);
+        emptyPageReappearTimerRef.current = null;
+      }
+      if (!nextBodyEmpty) {
+        hasHadBodyInputRef.current = true;
+        setIsEmptyPageCardDismissed(true);
+      } else if (hasHadBodyInputRef.current) {
+        setIsEmptyPageCardDismissed(false);
+      }
+      previousBodyEmptyRef.current = nextBodyEmpty;
+      previousBodyHadInputRef.current = hasAnyMarkdownBodyInput(nextContent);
+      setLocalContent(nextContent);
+      void handleSave(nextContent);
+    },
+    [handleSave]
+  );
+
+  const handleImportUrl = useCallback(
+    (_url: string) => {
+      console.warn("[YooptaMarkdownRenderer] URL import is not implemented yet.");
+      setImportDialogOpen(false);
     },
     []
   );
 
-  // Notion behavior: click on empty area below content → focus or create last block.
-  // Uses ensureBlockFocus for reliable DOM-level focus that doesn't depend on
-  // Yoopta's internal setTimeout(0) timing.
-  const contentWidthClass = useMemo(
-    () => currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl",
-    [currentPageWidth]
+  const handleImportFile = useCallback(
+    async (kind: "markdown_file" | "html_file", file: File) => {
+      const fileContent = await file.text();
+      if (kind === "markdown_file") {
+        replaceContent(stripYamlFrontmatter(fileContent).trimStart());
+      } else {
+        console.warn("[YooptaMarkdownRenderer] HTML import is not implemented yet.", file.name);
+      }
+      setImportDialogOpen(false);
+    },
+    [replaceContent]
   );
 
-  // Memoize editor children to avoid recreating JSX on every parent render
-  const editorChildren = useMemo(() => {
-    if (!isEditable && !currentShowToc) return null;
-    return (
-      <>
-        {isEditable && <YooptaToolbar />}
-        {isEditable && <YooptaFloatingBlockActions />}
-        {isEditable && <YooptaSlashCommandMenu />}
-        {isEditable && <SelectionBox selectionBoxElement={containerBoxRef} />}
-        {isEditable && <MentionDropdown />}
-        {isEditable && <EmojiDropdown />}
-        {currentShowToc && <YooptaTocSidebar className="yoopta-toc-panel" />}
-      </>
-    );
-  }, [isEditable, currentShowToc]);
-
-  const handleEmptyAreaClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isEditable) return;
-
-    const blockIds = Object.keys(editor.children);
-    const totalBlocks = blockIds.length;
-    if (totalBlocks === 0) {
-      const newId = editor.insertBlock("Paragraph");
-      if (newId) ensureBlockFocus(editor, newId);
-      return;
-    }
-
-    // Find the last block by highest order
-    let lastBlockId: string | null = null;
-    let maxOrder = -1;
-    for (const id of blockIds) {
-      const order = editor.children[id]?.meta.order ?? -1;
-      if (order > maxOrder) {
-        maxOrder = order;
-        lastBlockId = id;
-      }
-    }
-    if (!lastBlockId) return;
-
-    const lastBlock = Blocks.getBlock(editor, { id: lastBlockId });
-    if (!lastBlock) return;
-
-    // Check if last block is an empty paragraph
-    const isEmptyParagraph = lastBlock.type === "Paragraph" && (() => {
-      const slate = Blocks.getBlockSlate(editor, { id: lastBlockId! });
-      if (!slate?.children?.[0]) return true;
-      const text = (slate.children as any[])
-        .map((node: any) => node.children?.map((c: any) => c.text || "").join("") || "")
-        .join("");
-      return text.trim() === "";
-    })();
-
-    if (isEmptyParagraph) {
-      ensureBlockFocus(editor, lastBlockId);
-    } else {
-      const newId = editor.insertBlock("Paragraph", { at: maxOrder + 1 });
-      if (newId) ensureBlockFocus(editor, newId);
-    }
-  }, [isEditable, editor]);
-
-  useEffect(() => {
-    if (!uid || !onNavigationExtract || !containerBoxRef.current) return;
-    onNavigationExtract(collectPageNavigationFromDom(containerBoxRef.current, uid));
-  }, [editor.children, onNavigationExtract, uid]);
-
-  const handleContentClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-
-      const mention = target.closest<HTMLElement>("[data-mention-type='page'][data-mention-id']");
-      if (mention?.dataset.mentionId && onOpenPage) {
-        event.preventDefault();
-        event.stopPropagation();
-        onOpenPage(mention.dataset.mentionId);
-        return;
-      }
-
-      const anchor = target.closest<HTMLAnchorElement>("a[href]");
-      const href = anchor?.getAttribute("href");
-      if (!href) return;
-
-      if (/^https?:\/\//i.test(href)) {
-        if (!workspaceId) return;
-        event.preventDefault();
-        event.stopPropagation();
-        onOpenWeb?.(href, anchor?.textContent?.trim() || undefined);
-        return;
-      }
-
-      if (onOpenPage) {
-        event.preventDefault();
-        event.stopPropagation();
-        onOpenPage(href.replace(/^pages\//, "").replace(/\/SKILL\.md$/i, ""));
-      }
+  const handleAiCreate = useCallback(
+    (prompt: string, mode: PageCreationMode) => {
+      void aiCreation.start(prompt, mode);
     },
-    [onOpenPage, onOpenWeb, workspaceId]
+    [aiCreation]
+  );
+
+  const header = (
+    <MarkdownEditorHeader
+      title={pageTitle || title}
+      saveStatus={canSave ? saveStatus : undefined}
+      wordCount={deferredWordCount}
+      updatedAt={updatedAt}
+      markdown={localContent}
+      pageWidth={currentPageWidth}
+      showToc={currentShowToc}
+      onCopy={() => {
+        void navigator.clipboard.writeText(localContent);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }}
+      onExport={() => downloadText(`${pageTitle || title || "document"}.md`, localContent, "text/markdown")}
+      copied={copied}
+      onPageWidthChange={canSave ? handlePageWidthChange : undefined}
+      onShowTocChange={canSave ? handleShowTocChange : undefined}
+    />
   );
 
   return (
     <div
-      onClickCapture={handleContentClick}
       className={cn(
-        "yoopta-notion-editor w-full mx-auto relative",
+        "yoopta-notion-editor mx-auto flex h-full min-h-0 w-full flex-col bg-background",
         contentWidthClass,
         className
       )}
     >
-      <YooptaErrorBoundary
-        message={t("editor.errorBoundary.message", "Something went wrong loading the editor.")}
-        tryAgainText={t("editor.errorBoundary.tryAgain", "Try again")}
-        errorDetailsText={t("editor.errorBoundary.errorDetails", "Error details")}
-      >
-        {/* Editor header: portal to breadcrumb bar if available, otherwise render in-place */}
-        {headerPortal ? createPortal(
-          <YooptaEditorHeader
-            editor={editor}
-            title={pageTitle || title}
-            pageWidth={currentPageWidth}
-            showToc={currentShowToc}
-            saveStatus={canSave ? saveStatus : undefined}
-            wordCount={deferredWordCount}
-            updatedAt={updatedAt}
-            onPageWidthChange={canSave ? handlePageWidthChange : undefined}
-            onShowTocChange={canSave ? handleShowTocChange : undefined}
-          />,
-          headerPortal
-        ) : (
-          <YooptaEditorHeader
-            editor={editor}
-            title={pageTitle || title}
-            pageWidth={currentPageWidth}
-            showToc={currentShowToc}
-            saveStatus={canSave ? saveStatus : undefined}
-            wordCount={deferredWordCount}
-            updatedAt={updatedAt}
-            onPageWidthChange={canSave ? handlePageWidthChange : undefined}
-            onShowTocChange={canSave ? handleShowTocChange : undefined}
-          />
-        )}
-        {/* Cover banner */}
-        {coverUrl && (
-          <CoverBanner
-            coverUrl={coverUrl}
-            isEditable={isEditable}
-            contentWidthClass={contentWidthClass}
-            onCoverChange={handleCoverChange}
-            onOpenCoverPicker={openCoverPicker}
-          />
-        )}
-        {isEditable && (
-          <PageTitleArea
-            pageIcon={pageIcon}
-            pageTitle={pageTitle}
-            coverUrl={coverUrl}
-            workspacePath={workspacePath}
-            iconAnchorRef={iconAnchorRef}
-            onOpenIconPicker={openIconPicker}
-            onOpenCoverPicker={openCoverPicker}
-            onTitleChange={handleTitleChange}
-            onTitleKeyDown={handleTitleKeyDown}
-            autoFocusTitle={autoFocusTitle}
-          />
-        )}
-        {/* Single IconPicker instance — positioned relative to iconAnchorRef */}
-        {isEditable && (
-          <IconPicker
-            open={showIconPicker}
-            onOpenChange={setShowIconPicker}
-            anchorRef={iconAnchorRef}
-            value={pageIcon}
-            onChange={handleIconChange}
-            workspacePath={workspacePath}
-          />
-        )}
-        {/* Single CoverPicker instance — positioned relative to coverPickerAnchorRef */}
-        {isEditable && (
-          <CoverPicker
-            open={showCoverPicker}
-            onOpenChange={setShowCoverPicker}
-            anchorRef={coverPickerAnchorRef}
-            value={coverUrl}
-            onChange={handleCoverChange}
-            workspacePath={workspacePath}
-            uid={uid}
-            align={coverPickerAlign}
-          />
-        )}
-        {!isEditable && (pageTitle || pageIcon) && (
-          <div className={cn(
-            "pb-2",
-            coverUrl && pageIcon ? "-mt-6" : "pt-8"
-          )}>
+      {headerPortal ? createPortal(header, headerPortal) : header}
+
+      {coverUrl && (
+        <CoverBanner
+          coverUrl={coverUrl}
+          isEditable={isEditable}
+          contentWidthClass={contentWidthClass}
+          onCoverChange={handleCoverChange}
+          onOpenCoverPicker={openCoverPicker}
+        />
+      )}
+
+      {isEditable ? (
+        <PageTitleArea
+          pageIcon={pageIcon}
+          pageTitle={pageTitle}
+          coverUrl={coverUrl}
+          workspacePath={workspacePath}
+          iconAnchorRef={iconAnchorRef}
+          onOpenIconPicker={() => setShowIconPicker(true)}
+          onOpenCoverPicker={openCoverPicker}
+          onTitleChange={handleTitleChange}
+          onTitleKeyDown={handleTitleKeyDown}
+          autoFocusTitle={autoFocusTitle}
+        />
+      ) : (
+        (pageTitle || pageIcon) && (
+          <div className={cn("px-14 pb-2", coverUrl && pageIcon ? "-mt-6" : "pt-8")}>
             {pageIcon && (
-              <div className="yoopta-page-icon mb-1">
+              <div className="mb-1">
                 <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
               </div>
             )}
@@ -974,37 +638,243 @@ export function YooptaMarkdownRenderer({
               <h1 className="text-4xl font-bold leading-tight text-foreground">{pageTitle}</h1>
             )}
           </div>
-        )}
-        {/* containerBoxRef wraps ONLY the editor + footer so SelectionBox's
-            mousedown handler does not intercept clicks in PageTitleArea / CoverBanner.
-            SelectionBox calls preventDefault() on mousedown for anything inside
-            containerBoxRef but outside editor.refElement, which kills the
-            subsequent click event that Radix PopoverTrigger relies on. */}
-        <div ref={containerBoxRef}>
-          <BlockDndContext editor={editor}>
-            <YooptaEditor
-              editor={editor}
-              style={EDITOR_STYLES}
-              renderBlock={renderBlock}
-              placeholder={t("editor.renderer.placeholder", "Type '/' for commands")}
-              onChange={handleChange}
-            >
-              {editorChildren}
-            </YooptaEditor>
-          </BlockDndContext>
-        </div>
-        {/* Notion behavior: click empty area below blocks → create / focus last block.
-            MUST be outside containerBoxRef — SelectionBox calls preventDefault() on
-            mousedown for anything inside containerBoxRef but outside editor.refElement. */}
-        {isEditable && (
-          <div
-            className="min-h-[30vh] cursor-text"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={handleEmptyAreaClick}
+        )
+      )}
+
+      {isEditable && (
+        <IconPicker
+          open={showIconPicker}
+          onOpenChange={setShowIconPicker}
+          anchorRef={iconAnchorRef}
+          value={pageIcon}
+          onChange={handleIconChange}
+          workspacePath={workspacePath}
+        />
+      )}
+      {isEditable && (
+        <CoverPicker
+          open={showCoverPicker}
+          onOpenChange={setShowCoverPicker}
+          anchorRef={coverPickerAnchorRef}
+          value={coverUrl}
+          onChange={handleCoverChange}
+          workspacePath={workspacePath}
+          uid={uid}
+          align={coverPickerAlign}
+        />
+      )}
+
+      {shouldShowEmptyPageCard && !aiCreation.isCreating && (
+        <div
+          role="presentation"
+          tabIndex={0}
+          className="min-h-[420px] outline-none"
+          onClick={handleEmptyPageClick}
+          onKeyDown={handleEmptyPageKeyDown}
+        >
+          <EmptyMarkdownPageCard
+            isCreating={applyTemplate.isPending}
+            onStartEditing={enterEditor}
+            onCreateFromTemplate={() => setTemplateDialogOpen(true)}
+            onImportPage={() => setImportDialogOpen(true)}
+            onAiCreate={handleAiCreate}
           />
-        )}
-        {!isEditable && <div className="h-24" />}
-      </YooptaErrorBoundary>
+        </div>
+      )}
+
+      {aiCreation.isCreating && (
+        <PageAiCreateCompact
+          mode={aiCreation.state.mode}
+          input={aiCreation.state.prompt}
+          onStop={aiCreation.stop}
+          onDismiss={aiCreation.dismiss}
+        />
+      )}
+
+      <div
+        className={cn("flex min-h-0 flex-1 px-14 pb-10", shouldShowEmptyPageCard && "sr-only")}
+        onKeyDown={handleEditorKeyDown}
+      >
+        <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-background">
+          <Editor
+            height="100%"
+            language="markdown"
+            value={localContent}
+            theme={resolvedTheme === "dark" ? "vs-dark" : "light"}
+            onMount={handleMonacoMount}
+            onChange={isEditable ? handleContentChange : undefined}
+            loading={
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            }
+            options={{
+              readOnly: !isEditable,
+              minimap: { enabled: false },
+              wordWrap: "on",
+              wrappingIndent: "same",
+              lineNumbers: "on",
+              lineNumbersMinChars: 3,
+              lineDecorationsWidth: 0,
+              glyphMargin: false,
+              folding: true,
+              foldingHighlight: false,
+              showFoldingControls: "mouseover",
+              automaticLayout: true,
+              scrollBeyondLastLine: false,
+              smoothScrolling: true,
+              cursorSmoothCaretAnimation: "on",
+              renderLineHighlight: isEditable ? "gutter" : "none",
+              renderWhitespace: "selection",
+              renderControlCharacters: false,
+              fontSize: 15,
+              lineHeight: 24,
+              tabSize: 2,
+              insertSpaces: true,
+              detectIndentation: false,
+              padding: { top: 18, bottom: 18 },
+              overviewRulerBorder: false,
+              renderValidationDecorations: "off",
+              quickSuggestions: false,
+              suggestOnTriggerCharacters: false,
+              acceptSuggestionOnCommitCharacter: false,
+              wordBasedSuggestions: "off",
+              contextmenu: true,
+              links: true,
+              mouseWheelZoom: false,
+              scrollbar: {
+                vertical: "auto",
+                horizontal: "hidden",
+                verticalScrollbarSize: 10,
+                horizontalScrollbarSize: 0,
+                alwaysConsumeMouseWheel: false,
+              },
+            }}
+          />
+        </div>
+      </div>
+
+      {workspacePath && uid && (
+        <PageTemplateDialog
+          open={templateDialogOpen}
+          templates={pageTemplates.data ?? []}
+          isLoading={pageTemplates.isLoading}
+          isApplying={applyTemplate.isPending}
+          onOpenChange={setTemplateDialogOpen}
+          onApplyTemplate={handleApplyTemplate}
+        />
+      )}
+      <PageImportDialog
+        open={importDialogOpen}
+        isImporting={saveStatus === "saving"}
+        onOpenChange={setImportDialogOpen}
+        onImportUrl={handleImportUrl}
+        onImportFile={handleImportFile}
+      />
+    </div>
+  );
+}
+
+type MarkdownEditorHeaderProps = {
+  title?: string;
+  saveStatus?: SaveStatus;
+  wordCount: WordCount;
+  updatedAt?: string;
+  markdown: string;
+  pageWidth: PageWidth;
+  showToc: boolean;
+  copied: boolean;
+  onCopy: () => void;
+  onExport: () => void;
+  onPageWidthChange?: (width: PageWidth) => void;
+  onShowTocChange?: (show: boolean) => void;
+};
+
+function MarkdownEditorHeader({
+  saveStatus = "idle",
+  wordCount,
+  updatedAt,
+  pageWidth,
+  showToc,
+  copied,
+  onCopy,
+  onExport,
+  onPageWidthChange,
+  onShowTocChange,
+}: MarkdownEditorHeaderProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div role="toolbar" aria-label={t("editor.header.editorActions", "Editor actions")} className="flex items-center justify-end gap-1">
+      {saveStatus !== "idle" && (
+        <span
+          aria-live="polite"
+          className={cn("mr-auto text-xs", saveStatus === "error" ? "text-destructive" : "text-muted-foreground/60")}
+        >
+          {saveStatus === "pending" && t("editor.header.editing", "Editing")}
+          {saveStatus === "saving" && t("editor.header.saving", "Saving...")}
+          {saveStatus === "saved" && t("editor.header.saved", "Saved")}
+          {saveStatus === "error" && t("editor.header.saveFailed", "Save failed")}
+        </span>
+      )}
+      <span className="mr-2 hidden text-xs text-muted-foreground/60 md:inline">
+        {wordCount.words} words · {wordCount.characters} chars
+        {updatedAt ? ` · ${new Date(updatedAt).toLocaleString()}` : ""}
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+            title={t("editor.header.moreOptions", "More options")}
+            aria-label={t("editor.header.moreOptions", "More options")}
+          >
+            <MoreHorizontalIcon className="size-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onSelect={onExport}>
+            <DownloadIcon className="mr-2 size-4" />
+            {t("editor.header.exportMarkdown", "Export Markdown")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onCopy}>
+            {copied ? <CheckIcon className="mr-2 size-4 text-green-500" /> : <CopyIcon className="mr-2 size-4" />}
+            {copied ? t("editor.header.copied", "Copied") : t("editor.header.copyAsMarkdown", "Copy as Markdown")}
+          </DropdownMenuItem>
+          {(onPageWidthChange || onShowTocChange) && <DropdownMenuSeparator />}
+          {onPageWidthChange && (
+            <>
+              <DropdownMenuItem onSelect={() => onPageWidthChange("default")}>
+                <FileTextIcon className="mr-2 size-4" />
+                <span className="flex flex-1 items-center justify-between">
+                  {t("editor.header.defaultWidth", "Default width")}
+                  {pageWidth === "default" && <CheckIcon className="ml-2 size-3.5" />}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onPageWidthChange("wide")}>
+                <FileTextIcon className="mr-2 size-4" />
+                <span className="flex flex-1 items-center justify-between">
+                  {t("editor.header.wideLayout", "Wide layout")}
+                  {pageWidth === "wide" && <CheckIcon className="ml-2 size-3.5" />}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onPageWidthChange("full")}>
+                <FileTextIcon className="mr-2 size-4" />
+                <span className="flex flex-1 items-center justify-between">
+                  {t("editor.header.fullWidth", "Full width")}
+                  {pageWidth === "full" && <CheckIcon className="ml-2 size-3.5" />}
+                </span>
+              </DropdownMenuItem>
+            </>
+          )}
+          {onShowTocChange && (
+            <DropdownMenuItem onSelect={() => onShowTocChange(!showToc)}>
+              <FileTextIcon className="mr-2 size-4" />
+              {showToc ? t("editor.header.hideToc", "Hide table of contents") : t("editor.header.showToc", "Show table of contents")}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

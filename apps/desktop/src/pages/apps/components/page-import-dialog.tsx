@@ -84,7 +84,7 @@ export function PageImportDialog({
               type="button"
               className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => markdownInputRef.current?.click()}
-              disabled={isImporting}
+              disabled={isImporting || !onImportFile}
             >
               <FileText className="size-4 text-muted-foreground" />
               <span>导入 Markdown 文件</span>
@@ -93,7 +93,7 @@ export function PageImportDialog({
               type="button"
               className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => htmlInputRef.current?.click()}
-              disabled={isImporting}
+              disabled={isImporting || !onImportFile}
             >
               <FileCode2 className="size-4 text-muted-foreground" />
               <span>导入 HTML 文件</span>

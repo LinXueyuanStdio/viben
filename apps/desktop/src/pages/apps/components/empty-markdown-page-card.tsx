@@ -27,6 +27,13 @@ export function EmptyMarkdownPageCard({
         "mx-14 my-4 max-w-3xl overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm",
         className
       )}
+      onClick={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("button, input, textarea, select, [role='button'], [data-empty-page-action='true']")) {
+          return;
+        }
+        onStartEditing?.();
+      }}
       aria-label="空页面操作"
     >
       <button
@@ -44,7 +51,11 @@ export function EmptyMarkdownPageCard({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={onCreateFromTemplate}
+            data-empty-page-action="true"
+            onClick={(event) => {
+              event.stopPropagation();
+              onCreateFromTemplate?.();
+            }}
             disabled={isCreating}
           >
             <LayoutTemplate className="size-4" />
@@ -54,7 +65,11 @@ export function EmptyMarkdownPageCard({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={onImportPage}
+            data-empty-page-action="true"
+            onClick={(event) => {
+              event.stopPropagation();
+              onImportPage?.();
+            }}
             disabled={isCreating}
           >
             <Import className="size-4" />
@@ -64,7 +79,7 @@ export function EmptyMarkdownPageCard({
         </div>
       </div>
 
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-3 px-4 py-4" data-empty-page-action="true">
         <PageAiCreateInput
           disabled={isCreating}
           onSubmit={(prompt, mode) => onAiCreate?.(prompt, mode)}
