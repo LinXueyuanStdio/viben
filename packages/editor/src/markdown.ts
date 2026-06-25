@@ -13,6 +13,9 @@
  * 3. Older Yoopta markdown builds dropped TOC and math nodes.
  *    Current @yoopta/exports handles `[TOC]`, `$$..$$`, and `$..$` directly;
  *    this wrapper only serializes unsupported legacy shapes manually.
+ * 4. File/Video plugins serialize to normal markdown link/image fallback.
+ *    Fix: pre-process those fallbacks into the HTML shapes their deserializers
+ *    already understand before delegating to @yoopta/exports.
  */
 
 import { markdown } from "@yoopta/exports";
@@ -21,6 +24,12 @@ import type { YooEditor, YooptaContentValue } from "@yoopta/editor";
 // ---- Frontmatter helpers ----
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
+const FILE_LINK_RE =
+  /^([ \t]*)\[([^\]\n]+)\]\((https?:\/\/[^\s)]+\.(?:pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|json|zip|rar|7z)(?:[?#][^\s)]*)?)\)[ \t]*$/gim;
+const VIDEO_IMAGE_RE =
+  /^([ \t]*)!\[([^\]\n]*)\]\((https?:\/\/[^\s)]+\.(?:mp4|webm|ogg|mov)(?:[?#][^\s)]*)?)\)[ \t]*$/gim;
+const CODE_FENCE_TITLE_RE =
+  /^([ \t]*)```([A-Za-z0-9_-]+)[ \t]+title="([^"\n]+)"[ \t]*\n([\s\S]*?)\n\1```[ \t]*$/gm;
 
 export function extractFrontmatter(md: string): {
   frontmatter: string;
@@ -42,6 +51,66 @@ export function prependFrontmatter(
 ): string {
   if (!frontmatter) return body;
   return frontmatter + (frontmatter.endsWith("\n") ? "" : "\n") + body;
+}
+
+// ---- Rich plugin fallback pre-processing ----
+
+function escapeHtmlAttr(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getFileNameFromUrl(url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const filename = pathname.split("/").filter(Boolean).pop();
+    return filename ? decodeURIComponent(filename) : "file";
+  } catch {
+    const filename = url.split("?")[0]?.split("#")[0]?.split("/").pop();
+    return filename || "file";
+  }
+}
+
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+export function preprocessRichPluginFallbacksForDeserialize(md: string): string {
+  return md
+    .replace(
+      CODE_FENCE_TITLE_RE,
+      (
+        _match,
+        indent: string,
+        language: string,
+        title: string,
+        code: string,
+      ) =>
+        [
+          `${indent}<div data-type="code-group-container" data-theme="github-dark">`,
+          `${indent}<div style="display: flex; background: #1e293b;"><button data-tab-id="code-group-${escapeHtmlAttr(title)}">${escapeHtmlText(title)}</button></div>`,
+          `${indent}<pre data-tab-content-id="code-group-${escapeHtmlAttr(title)}" data-language="${escapeHtmlAttr(language)}"><code>${escapeHtmlText(code)}</code></pre>`,
+          `${indent}</div>`,
+        ].join("\n"),
+    )
+    .replace(
+      FILE_LINK_RE,
+      (_match, indent: string, label: string, href: string) => {
+        const download = getFileNameFromUrl(href);
+        return `${indent}<div><a data-yoopta-file href="${escapeHtmlAttr(href)}" download="${escapeHtmlAttr(download)}">${escapeHtmlAttr(label)}</a></div>`;
+      },
+    )
+    .replace(
+      VIDEO_IMAGE_RE,
+      (_match, indent: string, _alt: string, src: string) =>
+        `${indent}<div><video src="${escapeHtmlAttr(src)}" width="650" height="366" controls objectFit="cover"></video></div>`,
+    );
 }
 
 // ---- Math pre-processing ----
@@ -168,7 +237,10 @@ export function deserializeMarkdown(
   md: string,
 ): { value: YooptaContentValue; frontmatter: string } {
   const { frontmatter, body } = extractFrontmatter(md);
-  const value = markdown.deserialize(editor, body);
+  const value = markdown.deserialize(
+    editor,
+    preprocessRichPluginFallbacksForDeserialize(body),
+  );
   return { value, frontmatter };
 }
 
@@ -190,6 +262,20 @@ function serializeBlock(
   // TableOfContents → [TOC] marker
   if (block.type === "TableOfContents") {
     return "[TOC]";
+  }
+
+  if (block.type === "Carousel") {
+    const items =
+      block.value?.[0]?.children?.filter(
+        (node: any) => node?.type === "carousel-list-item",
+      ) ?? [];
+
+    return items
+      .map((item: any) => {
+        const content = serializeInlineContent(item.children ?? []);
+        return `1. ${content}`;
+      })
+      .join("\n");
   }
 
   // For other blocks, use the plugin's markdown serializer if available

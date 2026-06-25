@@ -24,6 +24,16 @@ export type VerticalNavigationTarget = {
   x: number;
 };
 
+export type TextLineMetrics = {
+  text: string;
+  rect: RectLike;
+};
+
+export type TargetLineCoordinates = {
+  x: number;
+  y: number;
+};
+
 const LINE_OVERLAP_TOLERANCE = 2;
 const EDGE_TOLERANCE = 2;
 
@@ -142,11 +152,52 @@ function getTargetPoint(editor: YooEditor, target: VerticalNavigationTarget): Po
   if (!edgePoint) return null;
 
   const edgeRect = getPointRect(slate, edgePoint);
-  const y = target.placement === "start"
-    ? (edgeRect?.top ?? editable.getBoundingClientRect().top) + 1
-    : (edgeRect?.bottom ?? editable.getBoundingClientRect().bottom) - 1;
+  const visualLines = getElementVisualLines(editable);
+  const targetLine = target.placement === "start" ? visualLines[0] : visualLines[visualLines.length - 1];
+  const fallbackRect = edgeRect ?? editable.getBoundingClientRect();
+  const { x, y } = getTargetLineCoordinates({
+    placement: target.placement,
+    targetX: target.x,
+    targetLine,
+    fallbackRect,
+  });
 
-  return getSlatePointAtCoordinates(slate, target.x, y) ?? edgePoint;
+  return getSlatePointAtCoordinates(slate, x, y, editable) ?? edgePoint;
+}
+
+export function getTargetLineCoordinates(options: {
+  placement: "start" | "end";
+  targetX: number;
+  targetLine?: RectLike;
+  fallbackRect: RectLike;
+}): TargetLineCoordinates {
+  const { placement, targetX, targetLine, fallbackRect } = options;
+  if (targetLine) {
+    return {
+      x: clamp(targetX, targetLine.left, targetLine.right),
+      y: targetLine.top + targetLine.height / 2,
+    };
+  }
+
+  return {
+    x: clamp(targetX, fallbackRect.left, fallbackRect.right),
+    y: placement === "start" ? fallbackRect.top + 1 : fallbackRect.bottom - 1,
+  };
+}
+
+export function findClosestTextOffsetForX(
+  line: TextLineMetrics,
+  x: number,
+): number {
+  const textLength = line.text.length;
+  if (textLength === 0) return 0;
+
+  const width = Math.max(line.rect.width, 0);
+  if (width === 0 || x <= line.rect.left) return 0;
+  if (x >= line.rect.right) return textLength;
+
+  const ratio = (x - line.rect.left) / width;
+  return Math.max(0, Math.min(textLength, Math.round(textLength * ratio)));
 }
 
 function getEdgePoint(slate: SlateReactEditor, placement: "start" | "end"): Point | null {
@@ -157,9 +208,15 @@ function getEdgePoint(slate: SlateReactEditor, placement: "start" | "end"): Poin
   }
 }
 
-function getSlatePointAtCoordinates(slate: SlateReactEditor, x: number, y: number): Point | null {
+function getSlatePointAtCoordinates(
+  slate: SlateReactEditor,
+  x: number,
+  y: number,
+  expectedRoot?: HTMLElement,
+): Point | null {
   const domRange = getCaretRangeFromPoint(x, y);
   if (!domRange) return null;
+  if (expectedRoot && !expectedRoot.contains(domRange.startContainer)) return null;
 
   try {
     return ReactEditor.toSlatePoint(
@@ -273,5 +330,10 @@ function rectsOverlapVertically(a: RectLike, b: RectLike): boolean {
 }
 
 function getCaretX(rect: RectLike): number {
-  return rect.width > 0 ? rect.left + rect.width / 2 : rect.left;
+  return rect.left;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) return min;
+  return Math.max(min, Math.min(max, value));
 }

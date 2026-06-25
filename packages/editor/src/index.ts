@@ -1,9 +1,11 @@
 // Markdown roundtrip utilities
+export { EXHAUSTIVE_MARKDOWN_SAMPLE } from "./sample-markdown";
 export {
   extractFrontmatter,
   prependFrontmatter,
   preprocessTocForDeserialize,
   preprocessMathForDeserialize,
+  preprocessRichPluginFallbacksForDeserialize,
   normalizeBlockSeparators,
   deserializeMarkdown,
   serializeMarkdown,
@@ -32,7 +34,18 @@ export {
 export { YooptaErrorBoundary } from "./yoopta/error-boundary";
 export { ensureBlockFocus } from "./yoopta/focus-utils";
 export {
+  createCjkSlashInputHandler,
+  createYooptaKeyDownHandler,
+  findBlockIdAtOrder,
+  findLastBlockId,
+  focusOrCreateParagraph,
+  getPlainBlockText,
+  tryConvertFullWidthSlash,
+} from "./yoopta/interaction";
+export {
+  findClosestTextOffsetForX,
   findVerticalNavigationTarget,
+  getTargetLineCoordinates,
   groupRectsByVisualLine,
   handleYooptaVerticalNavigation,
 } from "./yoopta/keyboard-navigation";

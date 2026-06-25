@@ -26,6 +26,7 @@ import {
   createYooptaEditor,
   createYooptaPlugins,
   deserializeMarkdown,
+  EXHAUSTIVE_MARKDOWN_SAMPLE,
   serializeMarkdown,
   type YooEditor,
 } from "../index";
@@ -54,6 +55,47 @@ function doubleRoundtrip(
   const first = roundtrip(editor, md);
   const second = roundtrip(editor, first);
   return { first, second };
+}
+
+function getBlockTypes(value: Record<string, { type?: string } | undefined>): Set<string> {
+  return new Set(
+    Object.values(value)
+      .map((block) => block?.type)
+      .filter((type): type is string => Boolean(type)),
+  );
+}
+
+function getElementTypes(node: unknown): Set<string> {
+  const types = new Set<string>();
+
+  const visit = (current: unknown) => {
+    if (!current || typeof current !== "object") return;
+
+    const typedNode = current as {
+      type?: unknown;
+      value?: unknown;
+      children?: unknown;
+    };
+
+    if (typeof typedNode.type === "string") {
+      types.add(typedNode.type);
+    }
+
+    if (Array.isArray(typedNode.value)) {
+      typedNode.value.forEach(visit);
+    }
+
+    if (Array.isArray(typedNode.children)) {
+      typedNode.children.forEach(visit);
+    }
+
+    if (!Array.isArray(current)) {
+      Object.values(current).forEach(visit);
+    }
+  };
+
+  visit(node);
+  return types;
 }
 
 // ---------------------------------------------------------------------------
@@ -521,6 +563,49 @@ describe("accordion roundtrip (HTML passthrough)", () => {
 // =============================================================================
 
 describe("real-world SKILL.md roundtrip", () => {
+  it("exhaustive editor example markdown stays idempotent", () => {
+    const { first, second } = doubleRoundtrip(editor, EXHAUSTIVE_MARKDOWN_SAMPLE);
+    expect(second).toBe(first);
+  });
+
+  it("exhaustive editor example markdown creates real blocks for the plugin set", () => {
+    const { value } = deserializeMarkdown(editor, EXHAUSTIVE_MARKDOWN_SAMPLE);
+    const blockTypes = getBlockTypes(value);
+    const elementTypes = getElementTypes(value);
+
+    expect([...blockTypes]).toEqual(
+      expect.arrayContaining([
+        "TableOfContents",
+        "HeadingOne",
+        "HeadingTwo",
+        "HeadingThree",
+        "Paragraph",
+        "Blockquote",
+        "Callout",
+        "BulletedList",
+        "NumberedList",
+        "TodoList",
+        "Code",
+        "CodeGroup",
+        "Table",
+        "Image",
+        "Embed",
+        "Video",
+        "File",
+        "Accordion",
+        "Tabs",
+        "Steps",
+        "Carousel",
+        "MathBlock",
+        "Divider",
+      ]),
+    );
+
+    expect([...elementTypes]).toEqual(
+      expect.arrayContaining(["link", "mention", "math-inline"]),
+    );
+  });
+
   it("minimal page (heading + paragraph)", () => {
     const md = [
       "---",

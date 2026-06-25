@@ -3,6 +3,7 @@ export type {
   RenderBlockProps,
   SlateElement,
   YooEditor,
+  YooptaBlockData,
   YooptaContentValue,
   YooptaPlugin,
 } from "@yoopta/editor";

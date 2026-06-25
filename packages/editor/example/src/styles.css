@@ -1,0 +1,209 @@
+:root {
+  --background: oklch(0.985 0.004 255);
+  --foreground: oklch(0.18 0.018 255);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.94 0.008 255);
+  --muted-foreground: oklch(0.48 0.02 255);
+  --border: oklch(0.86 0.012 255);
+  --primary: oklch(0.54 0.18 248);
+  --destructive: oklch(0.58 0.2 28);
+  --ring: oklch(0.64 0.16 248);
+  --surface: oklch(0.965 0.006 255);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1024px;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  border-radius: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--muted);
+}
+
+.app-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top-bar {
+  height: 48px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 16px;
+}
+
+.brand,
+.status-row,
+.status-pill {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 8px;
+  font-weight: 650;
+}
+
+.status-row {
+  gap: 8px;
+}
+
+.status-pill {
+  height: 32px;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 9px;
+  color: var(--muted-foreground);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.workspace {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(420px, 0.92fr) minmax(520px, 1.08fr);
+  background: var(--surface);
+}
+
+.pane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-pane {
+  border-right: 1px solid var(--border);
+  background: oklch(0.16 0.018 255);
+}
+
+.editor-pane {
+  background: var(--background);
+}
+
+.pane-title {
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.markdown-pane .pane-title {
+  background: oklch(0.2 0.02 255);
+  color: oklch(0.82 0.02 255);
+  border-bottom-color: oklch(0.28 0.02 255);
+}
+
+.editor-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.demo-editor-shell {
+  width: min(100%, 980px);
+  min-height: calc(100vh - 84px);
+  margin: 0 auto;
+  padding: 30px 58px 80px;
+  position: relative;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.demo-editor-shell.is-syncing-from-markdown {
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+}
+
+.demo-selection-scope {
+  min-height: 96px;
+  position: relative;
+}
+
+.editor-click-catcher {
+  min-height: 36vh;
+  cursor: text;
+}
+
+.empty-page-button {
+  width: 100%;
+  min-height: 180px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  border: 1px dashed var(--border);
+  background: color-mix(in oklch, var(--muted) 45%, transparent);
+  color: var(--muted-foreground);
+  padding: 24px;
+  margin-top: 16px;
+  font-size: 18px;
+  font-weight: 650;
+  cursor: text;
+}
+
+.demo-block-focus {
+  border-radius: 6px;
+}
+
+.demo-editor-shell [data-yoopta-block].demo-block-focus-pulse {
+  animation: demo-block-highlight 520ms ease-out;
+}
+
+@keyframes demo-block-highlight {
+  0% {
+    background: color-mix(in oklch, var(--primary) 20%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 28%, transparent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+
+.yoopta-notion-editor [data-yoopta-block] {
+  border-radius: 6px;
+}
+
+.yoopta-notion-editor [contenteditable="true"] {
+  outline: none;
+}
+
+.yoopta-notion-editor iframe,
+.yoopta-notion-editor img,
+.yoopta-notion-editor video {
+  max-width: 100%;
+}

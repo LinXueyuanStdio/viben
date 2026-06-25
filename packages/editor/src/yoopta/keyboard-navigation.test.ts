@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findClosestTextOffsetForX,
   findVerticalNavigationTarget,
+  getTargetLineCoordinates,
   groupRectsByVisualLine,
   type BlockOrderEntry,
   type RectLike,
@@ -67,5 +69,25 @@ describe("yoopta-keyboard-navigation", () => {
     });
 
     expect(target).toEqual({ blockId: "previous", placement: "end", x: 42 });
+  });
+
+  it("maps a carried caret x coordinate to the same relative text offset in the target block line", () => {
+    expect(
+      findClosestTextOffsetForX(
+        { text: "next target line", rect: rect(60, 78, 10, 210) },
+        110,
+      ),
+    ).toBe(8);
+  });
+
+  it("uses the target visual line midpoint and clamps x when resolving a cross-block caret target", () => {
+    expect(
+      getTargetLineCoordinates({
+        placement: "start",
+        targetX: 260,
+        targetLine: rect(60, 80, 40, 220),
+        fallbackRect: rect(50, 90, 0, 300),
+      }),
+    ).toEqual({ x: 220, y: 70 });
   });
 });
