@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif; color: #f8feff; background: #061d26; overflow: hidden; }
+    .stage { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 38vw); background: linear-gradient(90deg, rgba(6,29,38,.08), rgba(6,29,38,.82)), url("https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1800&q=80"); background-size: cover; background-position: center; }
+    .choices { align-self: end; display: grid; gap: 10px; padding: 24px; }
+    .dialog { padding: 18px; border: 1px solid rgba(255,255,255,.24); border-radius: 16px; background: rgba(6,29,38,.78); backdrop-filter: blur(12px); }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 56px); letter-spacing: 0; }
+    p { margin: 0; line-height: 1.7; color: rgba(248,254,255,.82); }
+    button { min-height: 48px; border: 1px solid rgba(255,255,255,.22); border-radius: 12px; background: rgba(255,255,255,.12); color: #fff; font-weight: 800; text-align: left; padding: 0 14px; }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div></div>
+    <section class="choices">
+      <div class="dialog">
+        <h1>幽蓝塔纪事</h1>
+        <p>失重花园在午夜打开。你听见机械鸟从塔顶落下，带来一封没有署名的回信。</p>
+      </div>
+      <button>沿着玻璃阶梯向上</button>
+      <button>进入温室，检查发光植物</button>
+      <button>呼叫同伴并保存进度</button>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif; color: #164e63; background: #f8fdfe; }
+    main { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 42vw); }
+    .copy { display: grid; align-content: center; gap: 16px; padding: 7vw; }
+    h1 { margin: 0; font-size: clamp(34px, 5vw, 76px); line-height: 1; letter-spacing: 0; }
+    p { margin: 0; max-width: 620px; color: #5f7f8c; font-size: 18px; line-height: 1.7; }
+    .playground { display: grid; align-content: center; gap: 12px; padding: 42px; background: linear-gradient(135deg, rgba(8,145,178,.15), rgba(5,150,105,.16)), #ecfeff; }
+    .tile { min-height: 96px; border: 1px solid #cdeff5; border-radius: 16px; background: white; padding: 16px; box-shadow: 0 1px 2px rgba(8,91,117,.08); }
+    button { width: max-content; min-height: 48px; border: 0; border-radius: 12px; background: #059669; color: white; padding: 0 18px; font-weight: 900; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="copy">
+      <h1>星港物流挑战</h1>
+      <p>一个带任务目标、即时反馈和积分结算的游戏化落地页。访客可以直接拖拽路线、解锁奖励，并提交自己的解法。</p>
+      <button>开始挑战</button>
+    </section>
+    <section class="playground">
+      <div class="tile"><strong>任务 01</strong><br>用 3 条航线连接 5 个补给点。</div>
+      <div class="tile"><strong>能量</strong><br>72 / 100 · 剩余 2 次跃迁。</div>
+      <div class="tile"><strong>奖励</strong><br>完成后解锁下一章。</div>
+    </section>
+  </main>
+</body>
+</html>

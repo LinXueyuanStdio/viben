@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; color: #164e63; background: white; }
+    section { min-height: 76vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 34vw); gap: 32px; align-items: center; padding: 44px 7vw; border-bottom: 1px solid #cdeff5; }
+    h1, h2 { margin: 0; letter-spacing: 0; line-height: 1.05; }
+    h1 { font-size: clamp(34px, 5vw, 72px); }
+    h2 { font-size: clamp(28px, 4vw, 52px); }
+    p { color: #5f7f8c; font-size: 18px; line-height: 1.7; }
+    .viz { min-height: 260px; border-radius: 22px; background: linear-gradient(135deg, rgba(8,145,178,.16), rgba(5,150,105,.18)); }
+  </style>
+</head>
+<body>
+  <section><div><h1>AI 生成研究报告</h1><p>从资料收集、趋势识别到结论摘要，整篇报告按章节向下无限滚动。</p></div><div class="viz"></div></section>
+  <section><div><h2>核心发现</h2><p>模型代理在多步骤环境中的表现受工具反馈、记忆窗口和奖励信号共同影响。</p></div><div class="viz"></div></section>
+  <section><div><h2>对比矩阵</h2><p>不同工作流在成本、成功率和可解释性之间存在明显权衡。</p></div><div class="viz"></div></section>
+  <section><div><h2>建议</h2><p>先建立可复现的评估任务，再逐步引入自动调度和人工审查节点。</p></div><div class="viz"></div></section>
+</body>
+</html>

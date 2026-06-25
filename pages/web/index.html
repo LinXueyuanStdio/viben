@@ -1,0 +1,3768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Viben 社区界面重设计</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap");
+
+    :root {
+      --bg: #f4feff;
+      --surface: #ffffff;
+      --surface-2: #ecfeff;
+      --text: #164e63;
+      --muted: #5f7f8c;
+      --line: #cdeff5;
+      --primary: #0891b2;
+      --primary-2: #22d3ee;
+      --cta: #059669;
+      --warning: #b7791f;
+      --danger: #dc2626;
+      --shadow-sm: 0 1px 2px rgba(8, 91, 117, 0.08);
+      --shadow-md: 0 8px 22px rgba(8, 91, 117, 0.10);
+      --radius: 8px;
+      --radius-lg: 12px;
+      --nav-h: 56px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.18), transparent 28rem),
+        linear-gradient(180deg, #f7feff 0%, #eefcff 38%, #f8fbfb 100%);
+      color: var(--text);
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    .clickable {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid rgba(8, 145, 178, 0.28);
+      outline-offset: 2px;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: var(--nav-h);
+      border-bottom: 1px solid rgba(205, 239, 245, 0.9);
+      background: rgba(244, 254, 255, 0.88);
+      backdrop-filter: blur(14px);
+    }
+
+    body.is-read .topbar {
+      position: fixed;
+    }
+
+    .topbar-inner {
+      position: relative;
+      width: min(1280px, calc(100% - 28px));
+      height: 100%;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(260px, 520px) minmax(180px, 1fr);
+      align-items: center;
+      gap: 12px;
+    }
+
+    body.is-read .topbar-inner {
+      grid-template-columns: minmax(430px, 1.45fr) minmax(160px, 260px) auto;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: Lexend, sans-serif;
+      font-weight: 700;
+      letter-spacing: 0;
+      color: var(--text);
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--cta));
+      color: white;
+      display: grid;
+      place-items: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .breadcrumb-nav {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      overflow: visible;
+      white-space: nowrap;
+    }
+
+    .read-breadcrumb {
+      display: none;
+    }
+
+    .author-breadcrumb {
+      display: none;
+    }
+
+    body.is-read .global-breadcrumb,
+    body.is-author .global-breadcrumb {
+      display: none;
+    }
+
+    body.is-read .read-breadcrumb {
+      display: flex;
+    }
+
+    body.is-author .author-breadcrumb {
+      display: flex;
+    }
+
+    .breadcrumb-segment {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .breadcrumb-btn {
+      height: 32px;
+      max-width: 220px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      padding: 0 8px;
+      font: inherit;
+      font-weight: 800;
+      line-height: 1;
+      transition: background 150ms ease, color 150ms ease;
+    }
+
+    .breadcrumb-btn:hover,
+    .breadcrumb-segment:focus-within .breadcrumb-btn,
+    .breadcrumb-segment:hover .breadcrumb-btn {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .breadcrumb-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .breadcrumb-root .breadcrumb-btn:hover {
+      background: transparent;
+    }
+
+    .breadcrumb-chevron {
+      color: #93b4bf;
+      display: inline-flex;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+
+    .breadcrumb-menu {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      z-index: 90;
+      width: min(292px, calc(100vw - 28px));
+      display: none;
+      gap: 3px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+    }
+
+    .breadcrumb-segment:hover .breadcrumb-menu,
+    .breadcrumb-segment:focus-within .breadcrumb-menu {
+      display: grid;
+    }
+
+    .breadcrumb-menu-item {
+      min-height: 38px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 9px;
+      text-align: left;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .breadcrumb-menu-item span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-menu-item small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .breadcrumb-menu-item:hover,
+    .breadcrumb-menu-item.active {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .read-breadcrumb .breadcrumb-btn {
+      max-width: 170px;
+    }
+
+    .read-breadcrumb .breadcrumb-segment:last-child .breadcrumb-btn {
+      max-width: 210px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid rgba(205, 239, 245, 0.9);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .topbar-center {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-link {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 8px;
+      padding: 0 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      transition: 180ms ease;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .search {
+      position: relative;
+      flex: 1;
+      min-width: 180px;
+      max-width: 520px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--muted);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-popover {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 80;
+      display: none;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+    }
+
+    .search:focus-within .search-popover {
+      display: grid;
+    }
+
+    .search-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .search-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .search-chip {
+      min-height: 28px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 0 9px;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+
+    .hot-search-list {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hot-search-item {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .hot-search-item:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .read-tabs {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .read-tab {
+      min-width: 92px;
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .read-tab.active,
+    .read-tab:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .social-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-popover-wrap {
+      position: relative;
+    }
+
+    .nav-popover {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      z-index: 80;
+      width: min(340px, calc(100vw - 28px));
+      display: none;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-popover-wrap.open .nav-popover,
+    .nav-popover-wrap:focus-within .nav-popover {
+      display: grid;
+    }
+
+    .nav-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 28px;
+    }
+
+    .popover-title {
+      font-weight: 900;
+    }
+
+    .popover-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .popover-item {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 56px;
+      border-radius: 10px;
+      padding: 6px;
+      color: var(--text);
+    }
+
+    .popover-item:hover {
+      background: var(--surface-2);
+    }
+
+    .popover-thumb {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      background: var(--cover, linear-gradient(135deg, var(--primary), var(--cta)));
+      background-size: cover;
+      background-position: center;
+    }
+
+    .popover-copy {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .popover-copy strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13.5px;
+    }
+
+    .popover-loader,
+    .popover-empty {
+      min-height: 58px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .popover-load-more {
+      min-height: 34px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .read-actions-top {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+    }
+
+    .read-more-menu {
+      position: relative;
+    }
+
+    .read-more-popup {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      z-index: 70;
+      width: min(180px, calc(100vw - 28px));
+      display: none;
+      gap: 4px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+    }
+
+    .read-more-menu:hover .read-more-popup,
+    .read-more-menu:focus-within .read-more-popup,
+    .read-more-menu.open .read-more-popup {
+      display: grid;
+    }
+
+    .read-more-item {
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 9px;
+      text-align: left;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .read-more-item:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    body.is-read .global-search,
+    body.is-read .social-actions {
+      display: none;
+    }
+
+    body.is-read .read-tabs,
+    body.is-read .read-actions-top {
+      display: flex;
+    }
+
+    body.is-read .topbar {
+      left: 0;
+      right: 0;
+      background: rgba(244, 254, 255, 0.68);
+      border-bottom-color: rgba(205, 239, 245, 0.52);
+      backdrop-filter: blur(18px) saturate(1.18);
+    }
+
+    body.is-read .topbar-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 2;
+      transform: translate(-50%, -50%);
+      width: max-content;
+      pointer-events: none;
+    }
+
+    body.is-read .read-tabs {
+      pointer-events: auto;
+    }
+
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 4px 8px 4px 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      pointer-events: none;
+      background: rgba(6, 29, 38, 0);
+      transition: 180ms ease;
+    }
+
+    .read-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 90;
+      width: min(420px, calc(100vw - 22px));
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      transform: translateX(104%);
+      transition: transform 220ms ease;
+      border-left: 1px solid var(--line);
+      background: rgba(247, 254, 255, 0.96);
+      box-shadow: -18px 0 36px rgba(8, 91, 117, 0.14);
+      backdrop-filter: blur(16px);
+    }
+
+    body.drawer-open .drawer-backdrop {
+      pointer-events: auto;
+      background: rgba(6, 29, 38, 0.16);
+    }
+
+    body.drawer-open .read-drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-head {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .drawer-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+    }
+
+    .drawer-tab {
+      min-height: 34px;
+      min-width: 78px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .drawer-tab.active {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .drawer-body {
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .drawer-panel {
+      display: none;
+    }
+
+    .drawer-panel.active {
+      display: grid;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: white;
+      font-family: Lexend, sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #0891b2, #059669);
+    }
+
+    .avatar.sm {
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+    }
+
+    .avatar.lg {
+      width: 58px;
+      height: 58px;
+      font-size: 22px;
+    }
+
+    .page {
+      display: none;
+      width: min(1280px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 16px 0 28px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .grid-home {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .grid-read {
+      display: block;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-family: Lexend, sans-serif;
+      font-size: 17px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .section-link {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .panel.pad {
+      padding: 12px;
+    }
+
+    /* The carousel theme variables represent values extracted from the lower cover colors. */
+    .hero-carousel {
+      --hero-bg-1: #0f766e;
+      --hero-bg-2: #062b35;
+      --hero-fg: #f6feff;
+      --hero-soft: rgba(255, 255, 255, 0.78);
+      --hero-accent: #67e8f9;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(12, 120, 138, 0.16);
+      background: var(--surface);
+      box-shadow: var(--shadow-md);
+    }
+
+    .hero-cover {
+      position: relative;
+      min-height: 330px;
+      background:
+        linear-gradient(135deg, rgba(8, 145, 178, 0.12), rgba(5, 150, 105, 0.18)),
+        var(--hero-image);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .hero-cover::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 96px;
+      background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--hero-bg-1) 74%, transparent));
+    }
+
+    .hero-caption {
+      margin-top: -1px;
+      padding: 14px 16px 14px;
+      color: var(--hero-fg);
+      background:
+        linear-gradient(180deg, var(--hero-bg-1), var(--hero-bg-2)),
+        radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--hero-accent) 28%, transparent), transparent 18rem);
+    }
+
+    .hero-title-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .hero-title {
+      margin: 0;
+      max-width: 760px;
+      font-family: Lexend, sans-serif;
+      font-size: clamp(24px, 3vw, 42px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .hero-sub {
+      margin: 7px 0 0;
+      max-width: 720px;
+      color: var(--hero-soft);
+      font-size: 15px;
+    }
+
+    .carousel-controls {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .progress-track {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      height: 4px;
+    }
+
+    .progress-seg {
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--hero-fg) 22%, transparent);
+      overflow: hidden;
+    }
+
+    .progress-seg.active::before {
+      content: "";
+      display: block;
+      width: 72%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--hero-accent);
+    }
+
+    .icon-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+      border-radius: 10px;
+      background: color-mix(in srgb, currentColor 8%, transparent);
+      color: inherit;
+      display: inline-grid;
+      place-items: center;
+      transition: 180ms ease;
+    }
+
+    .icon-btn:hover {
+      background: color-mix(in srgb, currentColor 14%, transparent);
+      transform: translateY(-1px);
+    }
+
+    .icon-btn.compact {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon.s16 {
+      width: 16px;
+      height: 16px;
+    }
+
+    .icon.s20 {
+      width: 20px;
+      height: 20px;
+    }
+
+    .page-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .page-card-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .page-card {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .page-card:hover {
+      border-color: color-mix(in srgb, var(--primary) 58%, var(--line));
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .cover {
+      aspect-ratio: 16 / 9;
+      background: var(--cover);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .cover::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 50%;
+      background: linear-gradient(180deg, transparent, rgba(7, 50, 65, 0.22));
+    }
+
+    .cover-stats {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #f6feff;
+      font-size: 12px;
+      font-weight: 800;
+      text-shadow: 0 1px 2px rgba(5, 35, 45, 0.45);
+    }
+
+    .cover-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      border-radius: 999px;
+      background: rgba(6, 42, 54, 0.42);
+      backdrop-filter: blur(8px);
+    }
+
+    .page-card-body {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .home-page-card .page-card-body {
+      gap: 7px;
+    }
+
+    .home-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .home-card-author {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .card-title {
+      margin: 0;
+      color: var(--text);
+      font-family: Lexend, sans-serif;
+      font-size: 15px;
+      line-height: 1.25;
+      letter-spacing: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-desc {
+      margin: 0;
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta-row,
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .meta-author {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .meta-author span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #9bb8c2;
+      flex: 0 0 auto;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 26px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(236, 254, 255, 0.84);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .feed-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .feed-card.rich {
+      display: grid;
+      gap: 9px;
+    }
+
+    .feed-card.preloaded {
+      contain: content;
+    }
+
+    .feed-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .feed-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      font-weight: 800;
+    }
+
+    .feed-handle {
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .feed-body {
+      margin: 9px 0 0 42px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .feed-card.rich .feed-body {
+      margin-left: 42px;
+    }
+
+    .feed-text {
+      margin: 0;
+      color: #173f4c;
+      line-height: 1.5;
+    }
+
+    .feed-context {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+
+    .feed-sentinel {
+      min-height: 46px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      font-family: inherit;
+    }
+
+    .feed-quote {
+      margin: 0;
+      padding: 8px 10px;
+      border-left: 3px solid color-mix(in srgb, var(--primary) 62%, var(--line));
+      border-radius: 0 8px 8px 0;
+      background: #f4feff;
+      color: #355e68;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .moment-composer {
+      display: grid;
+      gap: 10px;
+    }
+
+    .composer-main {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .composer-box {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .composer-box textarea {
+      width: 100%;
+      min-height: 78px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfeff;
+      color: var(--text);
+      padding: 10px 11px;
+      font: inherit;
+      line-height: 1.45;
+    }
+
+    .composer-attach {
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 7px;
+    }
+
+    .composer-attach-thumb {
+      aspect-ratio: 16 / 10;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(8, 145, 178, 0.34), rgba(5, 150, 105, 0.28)),
+        url("https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=360&q=80");
+      background-size: cover;
+      background-position: center;
+    }
+
+    .composer-attach-body {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .composer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-left: 44px;
+    }
+
+    .composer-tools {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--muted);
+    }
+
+    .attachment {
+      display: grid;
+      grid-template-columns: 1fr;
+      width: min(100%, 520px);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+      overflow: hidden;
+      transition: 180ms ease;
+    }
+
+    .attachment:hover {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .attachment .thumb {
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+      background: var(--cover);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      border-bottom: 1px solid rgba(205, 239, 245, 0.88);
+    }
+
+    .attachment .thumb::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 52%;
+      background: linear-gradient(180deg, transparent, rgba(8, 46, 58, 0.34));
+    }
+
+    .attachment-info {
+      min-width: 0;
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+    }
+
+    .attachment-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 14.5px;
+      font-weight: 800;
+      line-height: 1.28;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .attachment-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .attachment-author {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .actions {
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      color: var(--muted);
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .action-btn {
+      min-width: 34px;
+      height: 30px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-weight: 700;
+      transition: 180ms ease;
+    }
+
+    .action-btn:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .side-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .author-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 10px;
+    }
+
+    .author-name {
+      margin: 0;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .author-bio {
+      margin: 3px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .follow-btn {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid color-mix(in srgb, var(--cta) 48%, var(--line));
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--cta) 10%, white);
+      color: #047857;
+      padding: 0 10px;
+      font-weight: 800;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr);
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+      transition: 180ms ease;
+    }
+
+    .history-item:hover {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .history-thumb {
+      min-height: 92px;
+      background: var(--cover);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .history-thumb::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 42%;
+      background: linear-gradient(180deg, transparent, rgba(10, 50, 62, 0.28));
+    }
+
+    .history-info {
+      min-width: 0;
+      padding: 9px 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .history-info .card-title {
+      font-size: 14px;
+    }
+
+    .search-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .search-result-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .search-empty {
+      display: none;
+      min-height: 360px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 28px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-empty.visible {
+      display: grid;
+    }
+
+    .search-empty-inner {
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      max-width: 420px;
+    }
+
+    .search-empty-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: var(--surface-2);
+      color: var(--primary);
+    }
+
+    .search-empty-title {
+      margin: 0;
+      font-family: Lexend, sans-serif;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .search-empty-desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .search-result-card {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 8px;
+      transition: 180ms ease;
+    }
+
+    .search-result-card:hover {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-result-thumb {
+      border-radius: 9px;
+      background: var(--cover);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .search-result-body {
+      min-width: 0;
+      display: grid;
+      align-content: center;
+      gap: 7px;
+    }
+
+    .result-kind {
+      width: max-content;
+      min-height: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--primary);
+      padding: 0 7px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .search-filter-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .search-filter {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 9px;
+      color: var(--muted);
+      padding: 0 9px;
+      font-weight: 800;
+    }
+
+    .search-filter.active,
+    .search-filter:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .history-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: #e8faf6;
+      color: #047857;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .progress-mini {
+      height: 4px;
+      border-radius: 999px;
+      background: #dff5f8;
+      overflow: hidden;
+      margin-top: 7px;
+    }
+
+    .progress-mini span {
+      display: block;
+      height: 100%;
+      width: var(--value);
+      background: linear-gradient(90deg, var(--primary), var(--cta));
+    }
+
+    .read-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .crumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .read-title {
+      margin: 0;
+      max-width: 820px;
+      font-family: Lexend, sans-serif;
+      font-size: clamp(24px, 3vw, 38px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .read-sub {
+      margin: 8px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0 8px;
+      background: #e8faf6;
+      color: #047857;
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+
+    .read-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .reader-frame {
+      border: 0;
+      border-radius: 0;
+      overflow: hidden;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .reader-frame.player {
+      background: #061d26;
+    }
+
+    body.is-read .page {
+      width: 100%;
+      padding: 0;
+    }
+
+    .read-shell {
+      width: 100%;
+      max-width: 100vw;
+      min-height: 100vh;
+      display: block;
+      background: #fff;
+      overflow-x: hidden;
+    }
+
+    .read-viewport {
+      width: 100%;
+      height: 100vh;
+      padding-top: var(--reader-header-safe, var(--nav-h));
+      background: #fff;
+      transition: padding-top 180ms ease;
+    }
+
+    body.immersive-read .read-viewport {
+      padding-top: 0;
+    }
+
+    .read-iframe {
+      width: 100%;
+      height: 100vh;
+      min-height: 100vh;
+      display: block;
+      border: 0;
+      background: #fff;
+    }
+
+    body:not(.immersive-read) .read-iframe {
+      height: calc(100vh - var(--reader-header-safe, var(--nav-h)));
+      min-height: calc(100vh - var(--reader-header-safe, var(--nav-h)));
+    }
+
+    body.immersive-read .topbar {
+      display: none;
+    }
+
+    body.immersive-read .read-iframe {
+      height: 100vh;
+    }
+
+    body.immersive-read .read-shell {
+      min-height: 100vh;
+    }
+
+    body.immersive-read .drawer-backdrop,
+    body.immersive-read .read-drawer {
+      display: none;
+    }
+
+    .compact-author {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .chapter-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .chapter-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 38px;
+      padding: 6px 8px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: var(--muted);
+      transition: 180ms ease;
+    }
+
+    .chapter-item:hover,
+    .chapter-item.active {
+      border-color: var(--line);
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .mini-page-card {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 9px;
+      align-items: stretch;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 7px;
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .mini-page-card:hover {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .mini-page-card .thumb {
+      min-height: 76px;
+      border-radius: 8px;
+      background: var(--cover);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .mini-page-body {
+      min-width: 0;
+      display: grid;
+      align-content: space-between;
+      gap: 6px;
+      padding: 1px 0;
+    }
+
+    .page-info-card {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 0;
+      box-shadow: none;
+    }
+
+    .page-meta {
+      display: grid;
+      gap: 11px;
+    }
+
+    .page-meta-author {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .page-meta-author-main {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .page-meta-followers {
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+
+    .page-meta-title-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .page-meta-title-row .read-title {
+      font-size: 20px;
+      line-height: 1.18;
+    }
+
+    .page-meta-stats {
+      justify-content: flex-start;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .page-meta-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .page-meta-action {
+      min-height: 62px;
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      border: 0;
+      border-radius: 13px;
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      font-weight: 900;
+      transition: background 180ms ease, color 180ms ease;
+    }
+
+    .page-meta-action:hover {
+      background: color-mix(in srgb, var(--primary) 13%, white);
+      color: var(--primary);
+    }
+
+    .page-meta-action span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .page-meta-action .icon {
+      width: 21px;
+      height: 21px;
+    }
+
+    .page-meta-details {
+      display: none;
+      gap: 7px;
+      color: var(--muted);
+      line-height: 1.5;
+      padding-top: 1px;
+    }
+
+    .page-meta.expanded .page-meta-details {
+      display: grid;
+    }
+
+    .page-meta.expanded [data-page-meta-toggle] .icon {
+      transform: rotate(90deg);
+    }
+
+    .page-meta-collection {
+      display: grid;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .drawer-count {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .flat-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .flat-section .section-head {
+      margin-bottom: 0;
+    }
+
+    .drawer-panel > .panel {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      overflow: visible;
+    }
+
+    .comment-toolbar {
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 2px;
+    }
+
+    .comment-sort {
+      min-height: 30px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 0 10px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .demo-doc {
+      max-width: 700px;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .demo-doc h2 {
+      margin: 0;
+      font-family: Lexend, sans-serif;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    .demo-doc p {
+      margin: 0;
+      color: #355e68;
+      font-size: 16px;
+      line-height: 1.62;
+    }
+
+    .demo-blocks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .demo-block {
+      min-height: 104px;
+      border: 1px solid #d7eef2;
+      border-radius: 10px;
+      background: #f4feff;
+      padding: 12px;
+    }
+
+    .comment-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      padding: 7px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .comment-card:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .comment-body {
+      min-width: 0;
+    }
+
+    .comment-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .comment-name {
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .comment-text {
+      margin: 4px 0 0;
+      color: #173f4c;
+      line-height: 1.5;
+    }
+
+    .reply {
+      margin-top: 8px;
+      border-left: 2px solid #bdeaf1;
+      padding-left: 9px;
+    }
+
+    .composer {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 9px;
+      padding-bottom: 8px;
+    }
+
+    .composer textarea {
+      min-height: 58px;
+      resize: vertical;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #fbfeff;
+    }
+
+    .primary-btn {
+      min-height: 38px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--cta);
+      color: white;
+      padding: 0 12px;
+      font-weight: 800;
+    }
+
+    .ranking-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rank-item {
+      display: grid;
+      grid-template-columns: 46px 150px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 9px;
+      transition: 180ms ease;
+    }
+
+    .rank-item:hover {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .rank-no {
+      font-family: Lexend, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--primary);
+      text-align: center;
+    }
+
+    .rank-cover {
+      aspect-ratio: 16 / 10;
+      border-radius: 9px;
+      background: var(--cover);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .rank-body {
+      min-width: 0;
+      display: grid;
+      gap: 7px;
+    }
+
+    .rank-title-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .rank-delta {
+      color: #047857;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .rank-score {
+      display: grid;
+      justify-items: end;
+      gap: 5px;
+      min-width: 78px;
+    }
+
+    .score-number {
+      font-family: Lexend, sans-serif;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .score-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      width: max-content;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .tab {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 8px;
+      padding: 0 11px;
+      color: var(--muted);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .notification-item,
+    .update-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 10px;
+    }
+
+    .mini-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: var(--primary);
+      background: var(--surface-2);
+    }
+
+    .profile-hero {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .profile-name {
+      margin: 0;
+      font-family: Lexend, sans-serif;
+      font-size: 26px;
+      line-height: 1.1;
+    }
+
+    .compact-title {
+      margin: 0 0 6px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .empty-space {
+      height: 4px;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-home,
+      .grid-two {
+        grid-template-columns: 1fr;
+      }
+
+      .page-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      :root {
+        --nav-h: auto;
+      }
+
+      .topbar {
+        position: static;
+      }
+
+      body.is-read .topbar {
+        position: fixed;
+      }
+
+      body.is-read .topbar-inner {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .topbar-inner {
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 8px 0;
+      }
+
+      .brand {
+        min-width: auto;
+      }
+
+      .breadcrumb-nav {
+        overflow: visible;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .search {
+        display: none;
+      }
+
+      .topbar-center {
+        grid-column: 1 / -1;
+        order: 3;
+      }
+
+      body.is-read .topbar-center {
+        display: flex;
+        position: static;
+        transform: none;
+        width: auto;
+        pointer-events: auto;
+      }
+
+      body:not(.is-read) .topbar-center {
+        display: none;
+      }
+
+      .user-chip span {
+        display: none;
+      }
+
+      .page {
+        width: min(100% - 16px, 1280px);
+        padding-top: 10px;
+      }
+
+      .hero-cover {
+        min-height: 220px;
+      }
+
+      .hero-title-row,
+      .read-header,
+      .profile-hero {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title-row {
+        display: grid;
+      }
+
+      .carousel-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .icon-row {
+        justify-content: flex-end;
+      }
+
+      .page-card-grid,
+      .page-card-grid.two {
+        grid-template-columns: 1fr;
+      }
+
+      .rank-item {
+        grid-template-columns: 36px 84px minmax(0, 1fr);
+      }
+
+      .rank-item > .pill {
+        grid-column: 3;
+        width: max-content;
+      }
+
+      .feed-body {
+        margin-left: 0;
+      }
+
+      .attachment {
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+
+      .read-iframe {
+        width: 100vw;
+        max-width: 100vw;
+      }
+
+      .demo-blocks {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M5 4H3v3a4 4 0 0 0 4 4"/><path d="M19 4h2v3a4 4 0 0 1-4 4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3 6 6 .9-4.5 4.4 1 6.3L12 16.6 6.5 19.6l1-6.3L3 8.9 9 8z"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1 1"/><path d="M14 11a5 5 0 0 0-7.1 0l-2 2A5 5 0 0 0 12 20.1l1-1"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <nav class="breadcrumb-nav global-breadcrumb" aria-label="页面导航">
+          <div class="breadcrumb-segment breadcrumb-root">
+            <a href="#home" class="breadcrumb-btn" aria-label="Viben"><span class="brand-mark"><svg class="icon s16"><use href="#i-home"></use></svg></span><span class="breadcrumb-label">Viben</span></a>
+          </div>
+          <span class="breadcrumb-chevron"><svg class="icon s16"><use href="#i-arrow-right"></use></svg></span>
+          <div class="breadcrumb-segment">
+            <a class="breadcrumb-btn" href="#home" id="currentCrumb" aria-haspopup="menu"><svg class="icon s16"><use href="#i-home"></use></svg><span class="breadcrumb-label">首页</span></a>
+            <div class="breadcrumb-menu" role="menu" aria-label="页面跳转">
+              <a class="breadcrumb-menu-item" data-route="home" href="#home"><svg class="icon s16"><use href="#i-home"></use></svg><span>首页</span></a>
+              <a class="breadcrumb-menu-item" data-route="search" href="#search"><svg class="icon s16"><use href="#i-search"></use></svg><span>搜索</span></a>
+              <a class="breadcrumb-menu-item" data-route="category" href="#category"><svg class="icon s16"><use href="#i-link"></use></svg><span>分类</span></a>
+              <a class="breadcrumb-menu-item" data-route="moment" href="#moment"><svg class="icon s16"><use href="#i-message"></use></svg><span>动态</span></a>
+              <a class="breadcrumb-menu-item" data-route="leaderboard" href="#leaderboard"><svg class="icon s16"><use href="#i-trophy"></use></svg><span>榜单</span></a>
+              <a class="breadcrumb-menu-item" data-route="notifications" href="#notifications"><svg class="icon s16"><use href="#i-bell"></use></svg><span>通知</span></a>
+              <a class="breadcrumb-menu-item" data-route="history" href="#history"><svg class="icon s16"><use href="#i-clock"></use></svg><span>浏览</span></a>
+            </div>
+          </div>
+        </nav>
+        <nav class="breadcrumb-nav author-breadcrumb" aria-label="作者页导航">
+          <div class="breadcrumb-segment breadcrumb-root">
+            <a href="#home" class="breadcrumb-btn" aria-label="Viben"><span class="brand-mark"><svg class="icon s16"><use href="#i-home"></use></svg></span><span class="breadcrumb-label">Viben</span></a>
+          </div>
+          <span class="breadcrumb-chevron"><svg class="icon s16"><use href="#i-arrow-right"></use></svg></span>
+          <div class="breadcrumb-segment">
+            <a class="breadcrumb-btn" href="#home" aria-haspopup="menu"><svg class="icon s16"><use href="#i-link"></use></svg><span class="breadcrumb-label">页面</span></a>
+            <div class="breadcrumb-menu" role="menu" aria-label="页面跳转">
+              <a class="breadcrumb-menu-item" data-route="home" href="#home"><svg class="icon s16"><use href="#i-home"></use></svg><span>首页</span></a>
+              <a class="breadcrumb-menu-item" data-route="category" href="#category"><svg class="icon s16"><use href="#i-link"></use></svg><span>分类</span></a>
+              <a class="breadcrumb-menu-item" data-route="moment" href="#moment"><svg class="icon s16"><use href="#i-message"></use></svg><span>动态</span></a>
+              <a class="breadcrumb-menu-item" data-route="leaderboard" href="#leaderboard"><svg class="icon s16"><use href="#i-trophy"></use></svg><span>榜单</span></a>
+              <a class="breadcrumb-menu-item" data-route="history" href="#history"><svg class="icon s16"><use href="#i-clock"></use></svg><span>浏览</span></a>
+            </div>
+          </div>
+          <span class="breadcrumb-chevron"><svg class="icon s16"><use href="#i-arrow-right"></use></svg></span>
+          <div class="breadcrumb-segment">
+            <a class="breadcrumb-btn" href="#author"><svg class="icon s16"><use href="#i-user"></use></svg><span class="breadcrumb-label">林学远</span></a>
+          </div>
+        </nav>
+        <nav class="breadcrumb-nav read-breadcrumb" aria-label="阅读页导航">
+          <div class="breadcrumb-segment breadcrumb-root">
+            <a href="#home" class="breadcrumb-btn" aria-label="Viben"><span class="brand-mark"><svg class="icon s16"><use href="#i-home"></use></svg></span><span class="breadcrumb-label">Viben</span></a>
+          </div>
+          <span class="breadcrumb-chevron"><svg class="icon s16"><use href="#i-arrow-right"></use></svg></span>
+          <div class="breadcrumb-segment">
+            <a class="breadcrumb-btn" href="#read" aria-haspopup="menu"><svg class="icon s16"><use href="#i-link"></use></svg><span class="breadcrumb-label">页面</span></a>
+            <div class="breadcrumb-menu" role="menu" aria-label="页面跳转">
+              <a class="breadcrumb-menu-item" data-route="home" href="#home"><svg class="icon s16"><use href="#i-home"></use></svg><span>首页</span></a>
+              <a class="breadcrumb-menu-item" data-route="category" href="#category"><svg class="icon s16"><use href="#i-link"></use></svg><span>分类</span></a>
+              <a class="breadcrumb-menu-item" data-route="moment" href="#moment"><svg class="icon s16"><use href="#i-message"></use></svg><span>动态</span></a>
+              <a class="breadcrumb-menu-item" data-route="leaderboard" href="#leaderboard"><svg class="icon s16"><use href="#i-trophy"></use></svg><span>榜单</span></a>
+              <a class="breadcrumb-menu-item" data-route="notifications" href="#notifications"><svg class="icon s16"><use href="#i-bell"></use></svg><span>通知</span></a>
+              <a class="breadcrumb-menu-item" data-route="history" href="#history"><svg class="icon s16"><use href="#i-clock"></use></svg><span>浏览</span></a>
+            </div>
+          </div>
+          <span class="breadcrumb-chevron"><svg class="icon s16"><use href="#i-arrow-right"></use></svg></span>
+          <div class="breadcrumb-segment">
+            <a class="breadcrumb-btn" href="#author"><svg class="icon s16"><use href="#i-user"></use></svg><span class="breadcrumb-label">林学远</span></a>
+          </div>
+          <span class="breadcrumb-chevron"><svg class="icon s16"><use href="#i-arrow-right"></use></svg></span>
+          <div class="breadcrumb-segment">
+            <button class="breadcrumb-btn" type="button" id="readCrumbTrigger" aria-haspopup="menu"><svg class="icon s16"><use href="#i-bookmark"></use></svg><span class="breadcrumb-label" id="readCrumbTitle">幽蓝塔纪事</span></button>
+            <div class="breadcrumb-menu" role="menu" aria-label="切换页面示例">
+              <button class="breadcrumb-menu-item active" type="button" data-demo-src="/files/read-novel.html" data-demo-title="幽蓝塔纪事"><svg class="icon s16"><use href="#i-message"></use></svg><span>幽蓝塔纪事</span></button>
+              <button class="breadcrumb-menu-item" type="button" data-demo-src="/files/read-video.html" data-demo-title="星港发布会"><svg class="icon s16"><use href="#i-eye"></use></svg><span>星港发布会</span></button>
+              <button class="breadcrumb-menu-item" type="button" data-demo-src="/files/read-landing-game.html" data-demo-title="星港物流挑战"><svg class="icon s16"><use href="#i-trophy"></use></svg><span>星港物流挑战</span></button>
+              <button class="breadcrumb-menu-item" type="button" data-demo-src="/files/read-comic.html" data-demo-title="雾港列车"><svg class="icon s16"><use href="#i-bookmark"></use></svg><span>雾港列车</span></button>
+              <button class="breadcrumb-menu-item" type="button" data-demo-src="/files/read-paper.html" data-demo-title="Qwen-AgentWorld"><svg class="icon s16"><use href="#i-link"></use></svg><span>Qwen-AgentWorld</span></button>
+              <button class="breadcrumb-menu-item" type="button" data-demo-src="/files/read-report.html" data-demo-title="AI 研究报告"><svg class="icon s16"><use href="#i-search"></use></svg><span>AI 研究报告</span></button>
+            </div>
+          </div>
+        </nav>
+
+        <div class="topbar-center">
+          <label class="search global-search">
+            <svg class="icon s16"><use href="#i-search"></use></svg>
+            <input id="globalSearchInput" placeholder="搜索页面、作者或动态" aria-label="搜索页面、作者或动态">
+            <div class="search-popover" aria-label="搜索建议">
+              <div class="search-group">
+                <div class="search-title">最近搜索</div>
+                <div class="chip-list">
+                  <button class="search-chip" type="button" data-search-query="插件发布清单">插件发布清单</button>
+                  <button class="search-chip" type="button" data-search-query="视觉小说页面">视觉小说页面</button>
+                  <button class="search-chip" type="button" data-search-query="观测面板">观测面板</button>
+                </div>
+              </div>
+              <div class="search-group">
+                <div class="search-title">热门搜索</div>
+                <div class="hot-search-list">
+                  <a class="hot-search-item" href="#search?q=AI%20团队协作白板"><span>01</span><span>AI 团队协作白板</span><span class="muted">6,812</span></a>
+                  <a class="hot-search-item" href="#search?q=可回放智能体工作流"><span>02</span><span>可回放智能体工作流</span><span class="muted">8,243</span></a>
+                  <a class="hot-search-item" href="#search?q=Qwen-AgentWorld"><span>03</span><span>Qwen-AgentWorld 论文</span><span class="muted">2,904</span></a>
+                </div>
+              </div>
+            </div>
+          </label>
+          <nav class="read-tabs" aria-label="阅读页视图">
+            <a class="read-tab active" href="#read" data-read-view="page">页面</a>
+            <a class="read-tab" href="#read" data-read-view="side">副页</a>
+          </nav>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="social-actions">
+            <div class="nav-popover-wrap" data-lazy-popover="moments">
+              <a class="icon-btn compact" href="#moment" aria-label="动态"><svg class="icon"><use href="#i-message"></use></svg></a>
+              <div class="nav-popover" aria-label="动态预览">
+                <div class="nav-popover-head"><span class="popover-title">动态</span><a class="section-link" href="#moment">全部</a></div>
+                <div class="popover-loader" data-popover-loader>加载中...</div>
+                <div class="popover-list" data-popover-content hidden>
+                  <a class="popover-item" href="#read" style="--cover:linear-gradient(135deg,#0e7490,#a7f3d0)"><span class="popover-thumb"></span><span class="popover-copy"><strong>宁舟发布了插件发布清单</strong><span class="muted">6 分钟前 · 28 评论</span></span><svg class="icon s16"><use href="#i-arrow-right"></use></svg></a>
+                  <a class="popover-item" href="#read" style="--cover:linear-gradient(135deg,#164e63,#22d3ee)"><span class="popover-thumb"></span><span class="popover-copy"><strong>梁栩转发了观测面板</strong><span class="muted">34 分钟前 · 54 点赞</span></span><svg class="icon s16"><use href="#i-arrow-right"></use></svg></a>
+                </div>
+                <button class="popover-load-more" type="button" data-popover-more hidden>加载更多</button>
+              </div>
+            </div>
+            <div class="nav-popover-wrap" data-lazy-popover="history">
+              <a class="icon-btn compact" href="#history" aria-label="浏览历史"><svg class="icon"><use href="#i-clock"></use></svg></a>
+              <div class="nav-popover" aria-label="浏览历史预览">
+                <div class="nav-popover-head"><span class="popover-title">浏览历史</span><a class="section-link" href="#history">全部</a></div>
+                <div class="popover-loader" data-popover-loader>加载中...</div>
+                <div class="popover-list" data-popover-content hidden>
+                  <a class="popover-item" href="#read" style="--cover:linear-gradient(135deg,#0891b2,#d9f99d)"><span class="popover-thumb"></span><span class="popover-copy"><strong>可回放智能体工作流</strong><span class="muted">读到 68% · 10:42</span></span><svg class="icon s16"><use href="#i-arrow-right"></use></svg></a>
+                  <a class="popover-item" href="#read" style="--cover:linear-gradient(135deg,#bae6fd,#dcfce7)"><span class="popover-thumb"></span><span class="popover-copy"><strong>AI 团队协作白板</strong><span class="muted">第 2 章 · 昨天 23:40</span></span><svg class="icon s16"><use href="#i-arrow-right"></use></svg></a>
+                </div>
+                <button class="popover-load-more" type="button" data-popover-more hidden>加载更多</button>
+              </div>
+            </div>
+            <a href="#author" class="user-chip" aria-label="用户主页"><span class="avatar sm">林</span><span>林学远</span></a>
+          </div>
+          <div class="read-actions-top">
+            <button class="icon-btn compact" type="button" id="drawerToggle" aria-label="展开详情侧栏" aria-expanded="false"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
+            <button class="icon-btn compact" type="button" id="immersiveToggle" aria-pressed="false" aria-label="沉浸式阅读"><svg class="icon"><use href="#i-eye"></use></svg></button>
+            <div class="read-more-menu">
+              <button class="icon-btn compact" type="button" id="readMoreToggle" aria-label="更多" aria-expanded="false"><svg class="icon"><use href="#i-more"></use></svg></button>
+              <div class="read-more-popup" aria-label="更多操作">
+                <button class="read-more-item" type="button"><svg class="icon s16"><use href="#i-bell"></use></svg><span>举报</span></button>
+                <button class="read-more-item" type="button"><svg class="icon s16"><use href="#i-message"></use></svg><span>反馈</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="page-home" class="page active">
+        <div class="grid-home">
+          <div class="stack">
+            <article class="hero-carousel" id="heroCarousel" style="--hero-image:url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1600&q=80');">
+              <div class="hero-cover" role="img" aria-label="自动化工作台封面"></div>
+              <div class="hero-caption">
+                <div class="hero-title-row">
+                  <div>
+                    <h1 class="hero-title">把长任务拆成可回放的智能体工作流</h1>
+                    <p class="hero-sub">来自林学远的最新页面，收录 6 个真实项目案例和调度面板截图。</p>
+                  </div>
+                  <div class="stats-row" aria-label="轮转页面统计">
+                    <span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>8,243</span>
+                    <span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>412</span>
+                    <span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>128</span>
+                  </div>
+                </div>
+                <div class="carousel-controls">
+                  <div class="progress-track" aria-label="轮转进度">
+                  </div>
+                  <div class="icon-row">
+                    <button class="icon-btn" aria-label="上一张" data-slide="prev"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
+                    <button class="icon-btn" aria-label="下一张" data-slide="next"><svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <section>
+              <div class="section-head">
+                <h2 class="section-title">精选页面</h2>
+                <a class="section-link" href="#leaderboard">更多<svg class="icon s16"><use href="#i-arrow-right"></use></svg></a>
+              </div>
+              <div class="page-card-grid">
+                <a class="page-card home-page-card" href="#read" style="--cover:linear-gradient(135deg,#b3ecf6,#d9f99d),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="协作白板封面"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>6,812</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>64</span></span></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">AI 团队协作白板：从需求到发布的完整链路</h3>
+                    <div class="home-card-meta"><span class="home-card-author">周一诺</span><span class="dot"></span><span>18 分钟前</span></div>
+                  </div>
+                </a>
+                <a class="page-card home-page-card" href="#read" style="--cover:linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="数据面板封面"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>5,104</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>39</span></span></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">面向个人项目的轻量观测面板</h3>
+                    <div class="home-card-meta"><span class="home-card-author">沈清和</span><span class="dot"></span><span>42 分钟前</span></div>
+                  </div>
+                </a>
+                <a class="page-card home-page-card" href="#read" style="--cover:linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="工作空间封面"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>4,726</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>44</span></span></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">为远程团队搭建可复用工作空间</h3>
+                    <div class="home-card-meta"><span class="home-card-author">许庭安</span><span class="dot"></span><span>今天 09:18</span></div>
+                  </div>
+                </a>
+              </div>
+            </section>
+
+            <section>
+              <div class="section-head">
+                <h2 class="section-title">推荐</h2>
+                <a class="section-link" href="#category">换一批<svg class="icon s16"><use href="#i-repeat"></use></svg></a>
+              </div>
+              <div class="page-card-grid">
+                <a class="page-card home-page-card" href="#read" style="--cover:linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=900&q=80')"><div class="cover" role="img" aria-label="插件发布页面封面"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,761</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>28</span></span></div><div class="page-card-body"><h3 class="card-title">插件发布前的 12 项检查</h3><div class="home-card-meta"><span class="home-card-author">宁舟</span><span class="dot"></span><span>今天 08:32</span></div></div></a>
+                <a class="page-card home-page-card" href="#read" style="--cover:linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=900&q=80')"><div class="cover" role="img" aria-label="论文页面封面"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>2,904</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>17</span></span></div><div class="page-card-body"><h3 class="card-title">Qwen-AgentWorld: Training Agents</h3><div class="home-card-meta"><span class="home-card-author">陶然</span><span class="dot"></span><span>昨天 20:18</span></div></div></a>
+                <a class="page-card home-page-card" href="#read" style="--cover:linear-gradient(135deg,#0891b2,#bbf7d0),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80')"><div class="cover" role="img" aria-label="视觉小说页面封面"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>8,243</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>128</span></span></div><div class="page-card-body"><h3 class="card-title">幽蓝塔纪事：失重花园</h3><div class="home-card-meta"><span class="home-card-author">林学远</span><span class="dot"></span><span>12 分钟前</span></div></div></a>
+              </div>
+            </section>
+
+            <section>
+              <div class="section-head">
+                <h2 class="section-title">动态</h2>
+                <a class="section-link" href="#moment">进入<svg class="icon s16"><use href="#i-arrow-right"></use></svg></a>
+              </div>
+              <div class="stack" id="homeFeedList" aria-live="polite"></div>
+              <button class="feed-sentinel" id="homeFeedSentinel" type="button">加载更多动态</button>
+            </section>
+          </div>
+
+          <aside class="stack">
+            <section class="panel pad">
+              <div class="section-head">
+                <h2 class="section-title">推荐关注</h2>
+                <a class="section-link" href="#author">查看</a>
+              </div>
+              <div class="side-list">
+                <article class="author-card">
+                  <span class="avatar">宁</span>
+                  <div>
+                    <p class="author-name">宁舟</p>
+                    <p class="author-bio">@ningzhou · 自动化产品设计 · 12 篇页面</p>
+                    <div class="stats-row">
+                      <span class="stat"><svg class="icon s16"><use href="#i-user"></use></svg>3,482</span>
+                      <span class="stat">代表作：插件发布清单</span>
+                    </div>
+                  </div>
+                  <button class="follow-btn" aria-label="关注宁舟"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button>
+                </article>
+                <article class="author-card">
+                  <span class="avatar">梁</span>
+                  <div>
+                    <p class="author-name">梁栩</p>
+                    <p class="author-bio">@liangxu · 数据看板 · 8 篇页面</p>
+                    <div class="stats-row">
+                      <span class="stat"><svg class="icon s16"><use href="#i-user"></use></svg>2,109</span>
+                      <span class="stat">共同关注 6 人</span>
+                    </div>
+                  </div>
+                  <button class="follow-btn" aria-label="关注梁栩"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button>
+                </article>
+              </div>
+            </section>
+
+            <section class="panel pad">
+              <div class="section-head">
+                <h2 class="section-title">本周上升</h2>
+                <a class="section-link" href="#leaderboard">榜单</a>
+              </div>
+              <div class="side-list">
+                <a class="meta-row" href="#read">
+                  <span class="pill">01</span>
+                  <span class="card-title">任务审查流模板</span>
+                  <span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,921</span>
+                </a>
+                <a class="meta-row" href="#read">
+                  <span class="pill">02</span>
+                  <span class="card-title">桌面端主题调色</span>
+                  <span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,044</span>
+                </a>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-category" class="page">
+        <div class="grid-two">
+          <div class="stack">
+            <div class="tabs" aria-label="分类筛选">
+              <a class="tab active" href="#category">论文</a>
+              <a class="tab" href="#category">游戏</a>
+              <a class="tab" href="#category">文章</a>
+              <a class="tab" href="#category">PPT</a>
+              <a class="tab" href="#category">视频</a>
+              <a class="tab" href="#category">漫画</a>
+              <a class="tab" href="#category">视觉小说</a>
+            </div>
+            <section>
+              <div class="section-head">
+                <h2 class="section-title">论文</h2>
+                <button class="section-link" style="border:0;background:transparent">换一换<svg class="icon s16"><use href="#i-repeat"></use></svg></button>
+              </div>
+              <div class="page-card-grid two">
+                <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="论文页面封面"></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">Qwen-AgentWorld: Training Agents</h3>
+                    <p class="card-desc">论文 PDF 与副页笔记，整理环境构建和评测设置。</p>
+                    <div class="meta-row"><span class="meta-author"><span class="avatar sm">陶</span><span>陶然</span></span><span class="dot"></span><span class="muted">昨天 20:18</span></div>
+                    <div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>2,904</span><span class="stat"><svg class="icon s16"><use href="#i-bookmark"></use></svg>119</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>17</span></div>
+                  </div>
+                </a>
+                <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="研究报告页面封面"></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">长上下文智能体的任务迁移研究</h3>
+                    <p class="card-desc">从实验设置到误差分析的结构化论文阅读页。</p>
+                    <div class="meta-row"><span class="meta-author"><span class="avatar sm">白</span><span>白芷</span></span><span class="dot"></span><span class="muted">今天 10:24</span></div>
+                    <div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>1,842</span><span class="stat"><svg class="icon s16"><use href="#i-bookmark"></use></svg>86</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>22</span></div>
+                  </div>
+                </a>
+                <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="论文综述页面封面"></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">多模态推理评测综述</h3>
+                    <p class="card-desc">按数据集、任务难度和失败模式整理的论文合集。</p>
+                    <div class="meta-row"><span class="meta-author"><span class="avatar sm">赵</span><span>赵醒</span></span><span class="dot"></span><span class="muted">今天 08:32</span></div>
+                    <div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,761</span><span class="stat"><svg class="icon s16"><use href="#i-bookmark"></use></svg>194</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>28</span></div>
+                  </div>
+                </a>
+                <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80')">
+                  <div class="cover" role="img" aria-label="论文笔记页面封面"></div>
+                  <div class="page-card-body">
+                    <h3 class="card-title">强化学习环境构建笔记</h3>
+                    <p class="card-desc">把训练配置、奖励设计和复现实验拆成可阅读页面。</p>
+                    <div class="meta-row"><span class="meta-author"><span class="avatar sm">许</span><span>许庭安</span></span><span class="dot"></span><span class="muted">今天 09:18</span></div>
+                    <div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>4,726</span><span class="stat"><svg class="icon s16"><use href="#i-bookmark"></use></svg>208</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>44</span></div>
+                  </div>
+                </a>
+              </div>
+            </section>
+          </div>
+          <aside class="stack">
+            <section class="panel pad">
+              <h2 class="section-title" style="margin-bottom:8px">相关作者</h2>
+              <div class="side-list">
+                <article class="author-card"><span class="avatar">林</span><div><p class="author-name">林学远</p><p class="author-bio">@linxy · 智能体工作流 · 21 篇页面</p><div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-user"></use></svg>4,816</span><span class="stat">最近更新 12 分钟前</span></div></div><button class="follow-btn" aria-label="关注林学远"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button></article>
+                <article class="author-card"><span class="avatar">宁</span><div><p class="author-name">宁舟</p><p class="author-bio">@ningzhou · 发布流程 · 12 篇页面</p><div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-user"></use></svg>3,482</span><span class="stat">代表作：插件发布清单</span></div></div><button class="follow-btn" aria-label="关注宁舟"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button></article>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-search" class="page">
+        <div class="grid-two">
+          <div class="stack">
+            <div class="search-summary">
+              <div>
+                <h1 class="section-title">搜索结果</h1>
+                <div class="meta-row" style="margin-top:6px"><span class="muted">关键词</span><span class="pill" id="searchQueryPill">插件发布清单</span><span class="muted" id="searchResultCount">共 42 条</span></div>
+              </div>
+              <div class="tabs" aria-label="搜索类型筛选">
+                <a class="tab active" href="#search">全部</a>
+                <a class="tab" href="#search">页面</a>
+                <a class="tab" href="#search">作者</a>
+                <a class="tab" href="#search">动态</a>
+              </div>
+            </div>
+            <div class="search-result-list">
+              <a class="search-result-card" href="#read" style="--cover:linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=700&q=80')">
+                <span class="search-result-thumb" role="img" aria-label="页面封面"></span>
+                <span class="search-result-body"><span class="result-kind"><svg class="icon s16"><use href="#i-link"></use></svg>页面</span><strong class="card-title">插件发布前的 12 项检查</strong><span class="card-desc">覆盖配置、权限、缓存和回滚路径。</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">宁</span><span>宁舟</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,761</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>28</span></span></span>
+                <svg class="icon"><use href="#i-arrow-right"></use></svg>
+              </a>
+              <a class="search-result-card" href="#author" style="--cover:linear-gradient(135deg,#0891b2,#059669)">
+                <span class="search-result-thumb" role="img" aria-label="作者头像"></span>
+                <span class="search-result-body"><span class="result-kind"><svg class="icon s16"><use href="#i-user"></use></svg>作者</span><strong class="card-title">宁舟</strong><span class="card-desc">发布流程、插件检查、回滚路径。</span><span class="meta-row"><span class="stat"><svg class="icon s16"><use href="#i-user"></use></svg>3,482 关注者</span><span class="stat">12 篇页面</span></span></span>
+                <button class="follow-btn" type="button"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button>
+              </a>
+              <a class="search-result-card" href="#moment" style="--cover:linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')">
+                <span class="search-result-thumb" role="img" aria-label="动态相关页面"></span>
+                <span class="search-result-body"><span class="result-kind"><svg class="icon s16"><use href="#i-message"></use></svg>动态</span><strong class="card-title">宁舟发布了插件发布清单</strong><span class="card-desc">最值得复用的是最后的回滚检查，不依赖具体框架。</span><span class="meta-row"><span class="muted">6 分钟前</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>86</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>19</span></span></span>
+                <svg class="icon"><use href="#i-arrow-right"></use></svg>
+              </a>
+              <a class="search-result-card" href="#read" style="--cover:linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=80')">
+                <span class="search-result-thumb" role="img" aria-label="论文封面"></span>
+                <span class="search-result-body"><span class="result-kind"><svg class="icon s16"><use href="#i-bookmark"></use></svg>论文</span><strong class="card-title">Qwen-AgentWorld: Training Agents</strong><span class="card-desc">包含工具调用、环境构建和评测数据。</span><span class="meta-row"><span class="muted">arXiv</span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>2,904</span></span></span>
+                <svg class="icon"><use href="#i-arrow-right"></use></svg>
+              </a>
+            </div>
+            <div class="search-empty" id="searchEmptyState" aria-live="polite">
+              <div class="search-empty-inner">
+                <span class="search-empty-icon"><svg class="icon s20"><use href="#i-search"></use></svg></span>
+                <h2 class="search-empty-title">没有找到结果</h2>
+                <p class="search-empty-desc">换一个关键词，或减少限定词再试一次。</p>
+                <div class="chip-list">
+                  <button class="search-chip" type="button" data-search-query="插件发布清单">插件发布清单</button>
+                  <button class="search-chip" type="button" data-search-query="AI 团队协作白板">AI 团队协作白板</button>
+                  <button class="search-chip" type="button" data-search-query="Qwen-AgentWorld">Qwen-AgentWorld</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside class="stack">
+            <section class="panel pad">
+              <h2 class="section-title" style="margin-bottom:8px">筛选</h2>
+              <div class="search-filter-list">
+                <a class="search-filter active" href="#search"><span>全部类型</span><span>42</span></a>
+                <a class="search-filter" href="#search"><span>页面</span><span>24</span></a>
+                <a class="search-filter" href="#search"><span>作者</span><span>8</span></a>
+                <a class="search-filter" href="#search"><span>动态</span><span>10</span></a>
+              </div>
+            </section>
+            <section class="panel pad">
+              <h2 class="section-title" style="margin-bottom:8px">相关搜索</h2>
+              <div class="chip-list">
+                <button class="search-chip" type="button" data-search-query="插件回滚路径">插件回滚路径</button>
+                <button class="search-chip" type="button" data-search-query="发布前检查">发布前检查</button>
+                <button class="search-chip" type="button" data-search-query="权限边界">权限边界</button>
+                <button class="search-chip" type="button" data-search-query="灰度发布">灰度发布</button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-read" class="page">
+        <div class="read-shell">
+          <div id="readViewport" class="read-viewport">
+            <iframe id="readIframe" class="read-iframe" title="阅读页面内容" src="/files/read-novel.html"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-moment" class="page">
+        <div class="grid-two">
+          <div class="stack">
+            <div class="panel pad moment-composer">
+              <div class="composer-main">
+                <span class="avatar">你</span>
+                <div class="composer-box">
+                  <textarea aria-label="发布动态" placeholder="分享一个想法，或把正在看的页面推荐给关注者"></textarea>
+                  <div class="composer-attach">
+                    <span class="composer-attach-thumb" role="img" aria-label="已绑定页面封面"></span>
+                    <span class="composer-attach-body"><strong class="card-title">插件发布前的 12 项检查</strong><span class="meta-row"><span class="muted">宁舟</span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,761</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>28</span></span></span>
+                    <button class="icon-btn compact" type="button" aria-label="移除绑定页面"><svg class="icon"><use href="#i-check"></use></svg></button>
+                  </div>
+                </div>
+              </div>
+              <div class="composer-actions">
+                <div class="composer-tools">
+                  <button class="action-btn" type="button" aria-label="绑定页面"><svg class="icon s16"><use href="#i-link"></use></svg></button>
+                  <button class="action-btn" type="button" aria-label="添加图片"><svg class="icon s16"><use href="#i-plus"></use></svg></button>
+                  <button class="action-btn" type="button" aria-label="选择可见范围"><svg class="icon s16"><use href="#i-user"></use></svg><span>关注者</span></button>
+                </div>
+                <button class="primary-btn">发布</button>
+              </div>
+            </div>
+            <div class="tabs" aria-label="动态筛选">
+              <a class="tab active" href="#moment">关注</a>
+              <a class="tab" href="#moment">最新</a>
+              <a class="tab" href="#moment">推荐</a>
+            </div>
+            <article class="feed-card rich">
+              <div class="feed-head">
+                <span class="avatar">宁</span>
+                <div><div class="feed-name">宁舟 <span class="feed-context"><svg class="icon s16"><use href="#i-link"></use></svg>发布页面</span></div><div class="feed-handle">@ningzhou · 6 分钟前 · 来自发布流程圈</div></div>
+                <button class="icon-btn compact" aria-label="更多"><svg class="icon"><use href="#i-more"></use></svg></button>
+              </div>
+              <div class="feed-body">
+                <p class="feed-text">今天把插件发布清单整理成页面了。最值得复用的是最后的回滚检查，不依赖具体框架。</p>
+                <p class="feed-quote">新增：配置核对、权限边界、缓存清理、灰度发布和回滚路径。</p>
+                <a class="attachment" href="#read" style="--cover:linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=700&q=80')">
+                  <span class="thumb" role="img" aria-label="插件发布清单"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>3,761</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>28</span></span></span>
+                  <span class="attachment-info"><strong class="attachment-title">插件发布前的 12 项检查</strong><span class="attachment-meta"><span class="attachment-author">宁舟</span><span class="dot"></span><span>6 分钟前</span></span></span>
+                </a>
+                <div class="actions">
+                  <div class="action-group">
+                    <button class="action-btn" aria-label="点赞"><svg class="icon s16"><use href="#i-heart"></use></svg><span>86</span></button>
+                    <button class="action-btn" aria-label="评论"><svg class="icon s16"><use href="#i-message"></use></svg><span>19</span></button>
+                    <button class="action-btn" aria-label="转发"><svg class="icon s16"><use href="#i-repeat"></use></svg><span>7</span></button>
+                    <button class="action-btn" aria-label="收藏"><svg class="icon s16"><use href="#i-bookmark"></use></svg></button>
+                  </div>
+                  <button class="action-btn" aria-label="分享"><svg class="icon s16"><use href="#i-share"></use></svg></button>
+                </div>
+              </div>
+            </article>
+            <article class="feed-card rich">
+              <div class="feed-head">
+                <span class="avatar">梁</span>
+                <div><div class="feed-name">梁栩 <span class="feed-context"><svg class="icon s16"><use href="#i-repeat"></use></svg>转发</span></div><div class="feed-handle">@liangxu · 34 分钟前 · 关注的人收藏过</div></div>
+                <button class="icon-btn compact" aria-label="更多"><svg class="icon"><use href="#i-more"></use></svg></button>
+              </div>
+              <div class="feed-body">
+                <p class="feed-text">这个观测面板的密度刚好，适合放在桌面端侧栏里。</p>
+                <p class="feed-quote">沈清和：把日志、会话、成本和异常都压到一屏，避免来回切工具。</p>
+                <a class="attachment" href="#read" style="--cover:linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80')">
+                  <span class="thumb" role="img" aria-label="观测面板"><span class="cover-stats"><span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>5,104</span><span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>39</span></span></span>
+                  <span class="attachment-info"><strong class="attachment-title">面向个人项目的轻量观测面板</strong><span class="attachment-meta"><span class="attachment-author">沈清和</span><span class="dot"></span><span>42 分钟前</span></span></span>
+                </a>
+                <div class="actions">
+                  <div class="action-group">
+                    <button class="action-btn" aria-label="点赞"><svg class="icon s16"><use href="#i-heart"></use></svg><span>54</span></button>
+                    <button class="action-btn" aria-label="评论"><svg class="icon s16"><use href="#i-message"></use></svg><span>8</span></button>
+                    <button class="action-btn" aria-label="转发"><svg class="icon s16"><use href="#i-repeat"></use></svg><span>3</span></button>
+                    <button class="action-btn" aria-label="收藏"><svg class="icon s16"><use href="#i-bookmark"></use></svg></button>
+                  </div>
+                  <button class="action-btn" aria-label="分享"><svg class="icon s16"><use href="#i-share"></use></svg></button>
+                </div>
+              </div>
+            </article>
+          </div>
+          <aside class="stack">
+            <section class="panel pad">
+              <h2 class="section-title" style="margin-bottom:8px">值得关注</h2>
+              <div class="side-list">
+                <article class="author-card"><span class="avatar">陶</span><div><p class="author-name">陶然</p><p class="author-bio">@taoran · 研究笔记 · 最近发布 4 篇</p><div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-user"></use></svg>1,908</span><span class="stat">共同关注 3 人</span></div></div><button class="follow-btn" aria-label="关注陶然"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button></article>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-leaderboard" class="page">
+        <div class="stack">
+          <div class="section-head">
+            <h1 class="section-title">热门页面</h1>
+            <div class="tabs" aria-label="榜单筛选">
+              <a class="tab active" href="#leaderboard">热门页面</a>
+              <a class="tab" href="#leaderboard">新近上升</a>
+              <a class="tab" href="#leaderboard">30 天</a>
+            </div>
+          </div>
+          <div class="ranking-list">
+            <a class="rank-item" href="#read" style="--cover:linear-gradient(135deg,#0891b2,#d9f99d),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=700&q=80')">
+              <span class="rank-no">01</span><span class="rank-cover"></span><span class="rank-body"><span class="rank-title-row"><strong class="card-title">把长任务拆成可回放的智能体工作流</strong><span class="rank-delta">+12%</span></span><span class="card-desc">需求、计划、并行执行和审查发布。</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">林</span><span>林学远</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>8,243</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>412</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>128</span></span></span><span class="rank-score"><span class="score-number">96</span><span class="score-label">热度</span></span>
+            </a>
+            <a class="rank-item" href="#read" style="--cover:linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')">
+              <span class="rank-no">02</span><span class="rank-cover"></span><span class="rank-body"><span class="rank-title-row"><strong class="card-title">AI 团队协作白板：从需求到发布</strong><span class="rank-delta">+8%</span></span><span class="card-desc">任务拆解、审查节点和发布前检查。</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">周</span><span>周一诺</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>6,812</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>348</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>64</span></span></span><span class="rank-score"><span class="score-number">91</span><span class="score-label">热度</span></span>
+            </a>
+            <a class="rank-item" href="#read" style="--cover:linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80')">
+              <span class="rank-no">03</span><span class="rank-cover"></span><span class="rank-body"><span class="rank-title-row"><strong class="card-title">面向个人项目的轻量观测面板</strong><span class="rank-delta">+5%</span></span><span class="card-desc">把日志、会话和成本压缩到一屏内。</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">沈</span><span>沈清和</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>5,104</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>271</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>39</span></span></span><span class="rank-score"><span class="score-number">88</span><span class="score-label">热度</span></span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-notifications" class="page">
+        <div class="grid-two">
+          <div class="stack">
+            <div class="section-head">
+              <div class="tabs" aria-label="通知筛选">
+                <a class="tab active" href="#notifications">全部</a>
+                <a class="tab" href="#notifications">评论</a>
+                <a class="tab" href="#notifications">关注</a>
+                <a class="tab" href="#notifications">订阅</a>
+              </div>
+              <button class="section-link" style="border:0;background:transparent">全部已读</button>
+            </div>
+            <article class="update-item">
+              <span class="mini-icon"><svg class="icon"><use href="#i-check"></use></svg></span>
+              <div><strong class="card-title">插件发布前的 12 项检查更新到 v3</strong><div class="meta-row"><span class="muted">宁舟</span><span class="dot"></span><span class="muted">新增回滚路径</span><span class="dot"></span><span class="muted">5 分钟前</span></div></div>
+              <a class="icon-btn compact" href="#read" aria-label="打开页面"><svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+            </article>
+            <article class="update-item">
+              <span class="mini-icon"><svg class="icon"><use href="#i-user"></use></svg></span>
+              <div><strong class="card-title">周一诺发布了 AI 团队协作白板</strong><div class="meta-row"><span class="muted">来自已关注作者</span><span class="dot"></span><span class="muted">18 分钟前</span></div></div>
+              <a class="icon-btn compact" href="#read" aria-label="打开页面"><svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+            </article>
+            <article class="update-item">
+              <span class="mini-icon"><svg class="icon"><use href="#i-bookmark"></use></svg></span>
+              <div><strong class="card-title">幽蓝塔纪事第四话开放预览</strong><div class="meta-row"><span class="muted">林学远</span><span class="dot"></span><span class="muted">连载合集 · 预计 9 分钟</span><span class="dot"></span><span class="muted">今天 11:20</span></div></div>
+              <button class="follow-btn" type="button"><svg class="icon s16"><use href="#i-check"></use></svg>已订阅</button>
+            </article>
+            <article class="notification-item">
+              <span class="avatar sm">陈</span>
+              <div>
+                <strong class="card-title">陈以南回复了你的评论</strong>
+                <div class="meta-row"><span class="muted">把长任务拆成可回放的智能体工作流</span><span class="dot"></span><span class="muted">8 分钟前</span></div>
+              </div>
+              <a class="icon-btn compact" href="#read" aria-label="打开相关页面"><svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+            </article>
+            <article class="notification-item">
+              <span class="avatar sm">宁</span>
+              <div>
+                <strong class="card-title">宁舟收藏了你的页面</strong>
+                <div class="meta-row"><span class="muted">桌面工具的发布记录模板</span><span class="dot"></span><span class="muted">2 小时前</span></div>
+              </div>
+              <button class="icon-btn compact" aria-label="标记已读"><svg class="icon"><use href="#i-check"></use></svg></button>
+            </article>
+            <article class="notification-item">
+              <span class="mini-icon"><svg class="icon"><use href="#i-bell"></use></svg></span>
+              <div>
+                <strong class="card-title">你订阅的页面发布了 v4</strong>
+                <div class="meta-row"><span class="muted">插件发布前的 12 项检查</span><span class="dot"></span><span class="muted">昨天 18:20</span></div>
+              </div>
+              <a class="icon-btn compact" href="#read" aria-label="打开相关页面"><svg class="icon"><use href="#i-arrow-right"></use></svg></a>
+            </article>
+            <article class="notification-item">
+              <span class="mini-icon"><svg class="icon"><use href="#i-user"></use></svg></span>
+              <div>
+                <strong class="card-title">陶然开始关注你</strong>
+                <div class="meta-row"><span class="muted">共同关注 3 人</span><span class="dot"></span><span class="muted">今天 09:12</span></div>
+              </div>
+              <button class="follow-btn" type="button"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button>
+            </article>
+          </div>
+          <aside class="panel pad">
+            <h2 class="section-title" style="margin-bottom:8px">通知设置</h2>
+            <div class="side-list">
+              <label class="notification-item"><span class="mini-icon"><svg class="icon"><use href="#i-bell"></use></svg></span><span><strong>页面更新</strong><span class="muted" style="display:block">已订阅页面发布新版本时提醒</span></span><input type="checkbox" checked aria-label="页面更新通知"></label>
+              <label class="notification-item"><span class="mini-icon"><svg class="icon"><use href="#i-message"></use></svg></span><span><strong>评论回复</strong><span class="muted" style="display:block">有人回复你的评论时提醒</span></span><input type="checkbox" checked aria-label="评论回复通知"></label>
+            </div>
+            <div class="section-head" style="margin-top:12px"><h2 class="section-title">订阅作者</h2><a class="section-link" href="#notifications">管理</a></div>
+            <div class="side-list">
+              <article class="author-card"><span class="avatar">林</span><div><p class="author-name">林学远</p><p class="author-bio">21 篇页面 · 3 个合集</p></div><button class="icon-btn compact" aria-label="通知"><svg class="icon"><use href="#i-bell"></use></svg></button></article>
+              <article class="author-card"><span class="avatar">周</span><div><p class="author-name">周一诺</p><p class="author-bio">协作模板 · 最近更新 18 分钟前</p></div><button class="icon-btn compact" aria-label="通知"><svg class="icon"><use href="#i-bell"></use></svg></button></article>
+            </div>
+            <div class="section-head" style="margin-top:12px"><h2 class="section-title">批量</h2></div>
+            <div class="side-list">
+              <button class="popover-load-more" type="button">全部标记已读</button>
+              <button class="popover-load-more" type="button">只看未读</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-author" class="page">
+        <div class="stack">
+          <header class="profile-hero">
+            <span class="avatar lg">林</span>
+            <div>
+              <h1 class="profile-name">林学远</h1>
+              <div class="meta-row" style="margin-top:5px"><span class="muted">@linxy</span><span class="dot"></span><span class="muted">智能体工作流、桌面工具、发布系统</span></div>
+              <div class="stats-row" style="margin-top:8px"><span class="pill"><svg class="icon s16"><use href="#i-user"></use></svg>4,816 关注者</span><span class="pill">21 篇页面</span><span class="pill">共同关注 8 人</span></div>
+            </div>
+            <button class="follow-btn"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button>
+          </header>
+          <div class="tabs" aria-label="作者内容筛选"><a class="tab active" href="#author">页面</a><a class="tab" href="#author">动态</a><a class="tab" href="#author">合集</a><a class="tab" href="#author">关于</a></div>
+          <section>
+            <div class="section-head"><h2 class="section-title">公开页面</h2></div>
+            <div class="page-card-grid">
+              <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#0891b2,#d9f99d),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80')"><div class="cover"></div><div class="page-card-body"><h3 class="card-title">把长任务拆成可回放的智能体工作流</h3><p class="card-desc">需求、计划、并行执行和审查发布。</p><div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>8,243</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>412</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>128</span></div></div></a>
+              <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80')"><div class="cover"></div><div class="page-card-body"><h3 class="card-title">桌面工具的发布记录模板</h3><p class="card-desc">将变更、风险和验证结果放在一页。</p><div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>2,882</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>144</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>31</span></div></div></a>
+              <a class="page-card" href="#read" style="--cover:linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=900&q=80')"><div class="cover"></div><div class="page-card-body"><h3 class="card-title">调试日志如何变成团队知识库</h3><p class="card-desc">从一次失败中沉淀可搜索的处理方案。</p><div class="stats-row"><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>2,116</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>98</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>22</span></div></div></a>
+            </div>
+          </section>
+          <section class="grid-two">
+            <div class="panel pad">
+              <div class="section-head"><h2 class="section-title">最近动态</h2><a class="section-link" href="#moment">更多</a></div>
+              <div class="side-list">
+                <article class="notification-item"><span class="mini-icon"><svg class="icon"><use href="#i-message"></use></svg></span><div><strong>正在整理阅读页副页设计</strong><div class="muted">12 分钟前 · 6 条回复</div></div><a class="icon-btn compact" href="#moment" aria-label="打开"><svg class="icon"><use href="#i-arrow-right"></use></svg></a></article>
+                <article class="notification-item"><span class="mini-icon"><svg class="icon"><use href="#i-bookmark"></use></svg></span><div><strong>幽蓝塔纪事合集更新到 3 / 12</strong><div class="muted">今天 10:40</div></div><a class="icon-btn compact" href="#read" aria-label="打开"><svg class="icon"><use href="#i-arrow-right"></use></svg></a></article>
+              </div>
+            </div>
+            <aside class="panel pad">
+              <div class="section-head"><h2 class="section-title">合集</h2></div>
+              <div class="side-list">
+                <a class="history-item" href="#read" style="--cover:linear-gradient(135deg,#0891b2,#d9f99d)"><span class="history-thumb"></span><span class="history-info"><strong class="card-title">幽蓝塔纪事</strong><span class="history-line"><span>12 章</span><span class="source-pill">连载</span></span><span class="progress-mini" style="--value:25%"><span></span></span></span></a>
+              </div>
+            </aside>
+          </section>
+        </div>
+      </section>
+
+      <section id="page-history" class="page">
+        <div class="grid-two">
+          <div class="stack">
+            <div class="tabs" aria-label="浏览历史筛选"><a class="tab active" href="#history">全部</a><a class="tab" href="#history">未读完</a><a class="tab" href="#history">今天</a></div>
+            <a class="history-item" href="#read" style="--cover:linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')"><span class="history-thumb"></span><span class="history-info"><strong class="card-title">AI 团队协作白板：从需求到发布</strong><span class="history-line"><span>周一诺 · 第 2 章</span><span class="source-pill">首页</span></span><span class="meta-row"><span class="stat"><svg class="icon s16"><use href="#i-clock"></use></svg>今天 10:42</span><span class="stat">读到「发布前检查」</span></span><span class="progress-mini" style="--value:68%"><span></span></span></span></a>
+            <a class="history-item" href="#read" style="--cover:linear-gradient(135deg,#99f6e4,#e0f2fe),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80')"><span class="history-thumb"></span><span class="history-info"><strong class="card-title">面向个人项目的轻量观测面板</strong><span class="history-line"><span>沈清和 · 单页</span><span class="source-pill">动态</span></span><span class="meta-row"><span class="stat"><svg class="icon s16"><use href="#i-clock"></use></svg>昨天 23:40</span><span class="stat">停在成本趋势</span></span><span class="progress-mini" style="--value:34%"><span></span></span></span></a>
+            <a class="history-item" href="#read" style="--cover:linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=700&q=80')"><span class="history-thumb"></span><span class="history-info"><strong class="card-title">为远程团队搭建可复用工作空间</strong><span class="history-line"><span>许庭安 · 模板合集</span><span class="source-pill">榜单</span></span><span class="meta-row"><span class="stat"><svg class="icon s16"><use href="#i-clock"></use></svg>周二 16:05</span><span class="stat">已读完 · 2 次打开</span></span><span class="progress-mini" style="--value:100%"><span></span></span></span></a>
+            <a class="history-item" href="#read" style="--cover:linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=80')"><span class="history-thumb"></span><span class="history-info"><strong class="card-title">Qwen-AgentWorld: Training Agents</strong><span class="history-line"><span>论文 PDF · 第 4 页</span><span class="source-pill">PDF</span></span><span class="meta-row"><span class="stat"><svg class="icon s16"><use href="#i-clock"></use></svg>周一 20:18</span><span class="stat">已下载</span></span><span class="progress-mini" style="--value:42%"><span></span></span></span></a>
+          </div>
+          <aside class="panel pad">
+            <h2 class="section-title" style="margin-bottom:8px">收藏过的页面</h2>
+            <div class="side-list">
+              <a class="meta-row" href="#read"><span class="mini-icon"><svg class="icon"><use href="#i-bookmark"></use></svg></span><span class="card-title">插件发布前的 12 项检查</span></a>
+              <a class="meta-row" href="#read"><span class="mini-icon"><svg class="icon"><use href="#i-bookmark"></use></svg></span><span class="card-title">桌面端主题调色</span></a>
+            </div>
+            <div class="section-head" style="margin-top:12px"><h2 class="section-title">阅读队列</h2><a class="section-link" href="#history">整理</a></div>
+            <div class="side-list">
+              <article class="notification-item"><span class="mini-icon"><svg class="icon"><use href="#i-clock"></use></svg></span><div><strong>今晚继续读</strong><div class="muted">3 篇未读完 · 约 28 分钟</div></div><span class="pill">提醒</span></article>
+              <article class="notification-item"><span class="mini-icon"><svg class="icon"><use href="#i-check"></use></svg></span><div><strong>本周已完成</strong><div class="muted">7 篇页面 · 2 篇论文</div></div><span class="pill">记录</span></article>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+    <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+    <aside class="read-drawer" id="readDrawer" aria-label="阅读页侧栏">
+      <div class="drawer-head">
+        <div class="drawer-tabs" role="tablist" aria-label="阅读侧栏">
+          <button class="drawer-tab active" type="button" role="tab" aria-selected="true" aria-controls="drawerPanelDetails" data-drawer-tab="details">详情</button>
+          <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawerPanelComments" data-drawer-tab="comments">评论 <span class="drawer-count">6万</span></button>
+          <button class="drawer-tab" type="button" role="tab" aria-selected="false" aria-controls="drawerPanelNotes" data-drawer-tab="notes">笔记 <span class="drawer-count">2</span></button>
+        </div>
+        <button class="icon-btn compact" type="button" id="drawerClose" aria-label="关闭侧栏"><svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-panel active" role="tabpanel" id="drawerPanelDetails" data-drawer-panel="details">
+          <section class="page-info-card page-meta" data-page-meta>
+            <div class="page-meta-author">
+              <span class="avatar">林</span>
+              <div class="page-meta-author-main">
+                <p class="author-name">林学远</p>
+                <span class="page-meta-followers">4,816 关注者</span>
+              </div>
+              <button class="follow-btn" aria-label="关注林学远"><svg class="icon s16"><use href="#i-plus"></use></svg>关注</button>
+            </div>
+            <div class="page-meta-title-row">
+              <h1 class="read-title">幽蓝塔纪事：第三话，失重花园</h1>
+              <button class="icon-btn compact" type="button" data-page-meta-toggle aria-label="展开详情" aria-expanded="false"><svg class="icon"><use href="#i-arrow-right"></use></svg></button>
+            </div>
+            <div class="meta-row page-meta-stats">
+              <span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>8,243</span>
+              <span class="stat"><svg class="icon s16"><use href="#i-bookmark"></use></svg>73</span>
+              <span class="stat"><svg class="icon s16"><use href="#i-clock"></use></svg>2026/06/23</span>
+            </div>
+            <div class="page-meta-actions">
+              <button class="page-meta-action" aria-label="点赞"><svg class="icon"><use href="#i-heart"></use></svg><span>412</span></button>
+              <button class="page-meta-action" aria-label="收藏"><svg class="icon"><use href="#i-bookmark"></use></svg><span>73</span></button>
+              <button class="page-meta-action" aria-label="转发"><svg class="icon"><use href="#i-repeat"></use></svg><span>18</span></button>
+            </div>
+            <div class="page-meta-details">
+              <div class="muted" data-page-uid-line>UID pg_novel_20260623 · side_page_uid pg_novel_side_notes</div>
+              <p class="read-sub">第三话进入失重花园，主角在自动温室里发现一段被删改过的航行记录。</p>
+              <p class="read-sub">本页包含分支对话、场景探索和隐藏档案。建议先完成「机械鸟的回信」后再阅读。</p>
+              <div class="tag-row" aria-label="页面标签">
+                <span class="tag">视觉小说</span>
+                <span class="tag">长篇连载</span>
+                <span class="tag">交互页面</span>
+                <span class="tag">研究报告</span>
+                <span class="tag">PDF</span>
+                <span class="tag">社区示例</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="page-meta-collection">
+            <div class="section-head"><h2 class="section-title">合集</h2><span class="muted">3 / 12</span></div>
+            <div class="chapter-list">
+              <a class="chapter-item" href="#read"><span class="pill">01</span><strong>雨幕中的登陆点</strong><span class="muted">已读</span></a>
+              <a class="chapter-item" href="#read"><span class="pill">02</span><strong>机械鸟的回信</strong><span class="muted">已读</span></a>
+              <a class="chapter-item active" href="#read"><span class="pill">03</span><strong>失重花园</strong><span class="muted">当前</span></a>
+              <a class="chapter-item" href="#read"><span class="pill">04</span><strong>午夜档案室</strong><span class="muted">12 分钟</span></a>
+            </div>
+          </section>
+
+          <section class="flat-section">
+            <div class="section-head"><h2 class="section-title">推荐</h2></div>
+            <div class="side-list">
+              <a class="mini-page-card" href="#read" style="--cover:linear-gradient(135deg,#0891b2,#d9f99d),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=600&q=80')">
+                <span class="thumb" role="img" aria-label="推荐页面封面"></span>
+                <span class="mini-page-body"><strong class="card-title">AI 团队协作白板：从需求到发布</strong><span class="card-desc">多人协作页面模板</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">周</span><span>周一诺</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>6,812</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>348</span></span></span>
+              </a>
+              <a class="mini-page-card" href="#read" style="--cover:linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=600&q=80')">
+                <span class="thumb" role="img" aria-label="推荐页面封面"></span>
+                <span class="mini-page-body"><strong class="card-title">为远程团队搭建可复用工作空间</strong><span class="card-desc">模板合集 · 8 章</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">许</span><span>许庭安</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>4,726</span><span class="stat"><svg class="icon s16"><use href="#i-message"></use></svg>44</span></span></span>
+              </a>
+              <a class="mini-page-card" href="#read" style="--cover:linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80')">
+                <span class="thumb" role="img" aria-label="推荐页面封面"></span>
+                <span class="mini-page-body"><strong class="card-title">面向个人项目的轻量观测面板</strong><span class="card-desc">单页数据看板</span><span class="meta-row"><span class="meta-author"><span class="avatar sm">沈</span><span>沈清和</span></span><span class="stat"><svg class="icon s16"><use href="#i-eye"></use></svg>5,104</span><span class="stat"><svg class="icon s16"><use href="#i-heart"></use></svg>271</span></span></span>
+              </a>
+            </div>
+          </section>
+        </div>
+
+        <div class="drawer-panel" role="tabpanel" id="drawerPanelComments" data-drawer-panel="comments">
+          <section class="panel pad">
+            <div class="comment-toolbar"><button class="comment-sort" type="button">最新</button></div>
+            <div class="composer">
+              <span class="avatar sm">你</span>
+              <div>
+                <textarea aria-label="发表评论" placeholder="写下你的想法"></textarea>
+                <div class="meta-row" style="justify-content:space-between;margin-top:6px">
+                  <span></span>
+                  <button class="primary-btn"><svg class="icon s16" style="display:inline;vertical-align:-3px"><use href="#i-send"></use></svg> 发布</button>
+                </div>
+              </div>
+            </div>
+            <div class="comment-card">
+              <span class="avatar sm">陈</span>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-name">陈以南</span><span class="dot"></span><span class="muted">8 分钟前</span></div>
+                <p class="comment-text">这种长页面读起来更像作品播放器，右侧滑栏比固定栏干净。</p>
+                <div class="actions"><div class="action-group"><button class="action-btn" aria-label="点赞评论"><svg class="icon s16"><use href="#i-heart"></use></svg><span>24</span></button><button class="action-btn" aria-label="回复评论"><svg class="icon s16"><use href="#i-message"></use></svg></button></div></div>
+              </div>
+            </div>
+            <div class="comment-card">
+              <span class="avatar sm">吴</span>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-name">吴若溪</span><span class="dot"></span><span class="muted">21 分钟前</span></div>
+                <p class="comment-text">副页后续可以放章节进度、互动热区和作者更新说明。</p>
+                <div class="actions"><div class="action-group"><button class="action-btn" aria-label="点赞评论"><svg class="icon s16"><use href="#i-heart"></use></svg><span>11</span></button><button class="action-btn" aria-label="回复评论"><svg class="icon s16"><use href="#i-message"></use></svg></button></div></div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="drawer-panel" role="tabpanel" id="drawerPanelNotes" data-drawer-panel="notes">
+          <section class="panel pad">
+            <div class="section-head"><h2 class="section-title">笔记</h2><button class="section-link" style="border:0;background:transparent">新建</button></div>
+            <div class="comment-card">
+              <span class="avatar sm">你</span>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-name">阅读标注</span><span class="dot"></span><span class="muted">第 2 屏</span></div>
+                <p class="comment-text">这里适合记录互动页面里的关键分支状态。</p>
+              </div>
+            </div>
+            <div class="comment-card">
+              <span class="avatar sm">你</span>
+              <div class="comment-body">
+                <div class="comment-meta"><span class="comment-name">结构笔记</span><span class="dot"></span><span class="muted">合集区域</span></div>
+                <p class="comment-text">合集只在连载内容出现，单页页面不展示。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const pages = ["home", "category", "search", "read", "moment", "leaderboard", "notifications", "author", "history"];
+    const pageLabels = {
+      home: "首页",
+      category: "分类",
+      search: "搜索",
+      read: "页面",
+      moment: "动态",
+      leaderboard: "榜单",
+      notifications: "通知",
+      author: "作者",
+      history: "浏览"
+    };
+    const slides = [
+      {
+        title: "把长任务拆成可回放的智能体工作流",
+        sub: "来自林学远的最新页面，收录 6 个真实项目案例和调度面板截图。",
+        image: "url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1600&q=80')",
+        bg1: "#0f766e",
+        bg2: "#062b35",
+        fg: "#f6feff",
+        soft: "rgba(255,255,255,.78)",
+        accent: "#67e8f9"
+      },
+      {
+        title: "AI 团队协作白板：从需求到发布",
+        sub: "一张页面放下需求、决策、审查和发布前检查。",
+        image: "url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1600&q=80')",
+        bg1: "#dff7ec",
+        bg2: "#effef6",
+        fg: "#164e63",
+        soft: "rgba(22,78,99,.72)",
+        accent: "#059669"
+      },
+      {
+        title: "面向个人项目的轻量观测面板",
+        sub: "把日志、会话和成本压缩到一屏内。",
+        image: "url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1600&q=80')",
+        bg1: "#164e63",
+        bg2: "#082f49",
+        fg: "#f7feff",
+        soft: "rgba(255,255,255,.74)",
+        accent: "#22d3ee"
+      },
+      {
+        title: "为远程团队搭建可复用工作空间",
+        sub: "沉淀会议、素材、决策和自动化模板。",
+        image: "url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1600&q=80')",
+        bg1: "#0e7490",
+        bg2: "#064e3b",
+        fg: "#f4feff",
+        soft: "rgba(255,255,255,.76)",
+        accent: "#a7f3d0"
+      }
+    ];
+    const carouselSlides = slides.slice(0, 9);
+    let slideIndex = 0;
+    let carouselTimer;
+    let homeFeedRendered = 0;
+    const readPageMeta = {
+      "/files/read-novel.html": { uid: "pg_novel_20260623", title: "幽蓝塔纪事", side_page_uid: "pg_novel_side_notes" },
+      "/files/read-video.html": { uid: "pg_video_20260624", title: "星港发布会", side_page_uid: "" },
+      "/files/read-landing-game.html": { uid: "pg_game_20260624", title: "星港物流挑战", side_page_uid: "pg_game_strategy" },
+      "/files/read-comic.html": { uid: "pg_comic_20260625", title: "雾港列车", side_page_uid: "" },
+      "/files/read-paper.html": { uid: "pg_paper_260624597", title: "Qwen-AgentWorld", side_page_uid: "pg_paper_notes" },
+      "/files/read-report.html": { uid: "pg_report_20260626", title: "AI 研究报告", side_page_uid: "pg_report_dataset" }
+    };
+    const homeFeedItems = [
+      ["林", "林学远", "@linxy · 12 分钟前", "更新", "把多智能体调度示例补成了完整案例，新增失败恢复和审查分支。", "把长任务拆成可回放的智能体工作流", "v4 · 新增 3 张流程图和调度日志样例", "linear-gradient(135deg,#0891b2,#bbf7d0),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=700&q=80')", "412", "128", "73"],
+      ["宁", "宁舟", "@ningzhou · 18 分钟前", "发布", "发布清单新增了权限边界和回滚路径，适合团队发布前做交叉检查。", "插件发布前的 12 项检查", "配置、权限、缓存、灰度和回滚", "linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=700&q=80')", "194", "28", "91"],
+      ["周", "周一诺", "@zhouyn · 24 分钟前", "模板", "把协作白板拆成了三个版本：项目启动、审查流、发布复盘。", "AI 团队协作白板：从需求到发布", "任务拆解、审查节点和发布前检查", "linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')", "348", "64", "102"],
+      ["沈", "沈清和", "@shenqh · 31 分钟前", "数据", "轻量观测面板补了成本阈值和异常折线，侧栏里也能直接扫完。", "面向个人项目的轻量观测面板", "日志、会话、成本和异常趋势", "linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80')", "271", "39", "77"],
+      ["许", "许庭安", "@xuta · 44 分钟前", "合集", "远程团队模板今天加了会议纪要和决策记录两个页面。", "为远程团队搭建可复用工作空间", "会议、素材、决策和自动化模板", "linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=700&q=80')", "208", "44", "63"],
+      ["陶", "陶然", "@taoran · 1 小时前", "论文", "Qwen-AgentWorld 的副页笔记整理好了，重点看环境构建和评测部分。", "Qwen-AgentWorld: Training Agents", "论文 PDF 与阅读笔记", "linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=80')", "119", "17", "48"],
+      ["梁", "梁栩", "@liangxu · 1 小时前", "转发", "这个页面的密度很适合放到桌面端工作区侧栏。", "面向个人项目的轻量观测面板", "一屏查看项目状态", "linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80')", "54", "8", "21"],
+      ["吴", "吴若溪", "@wuruoxi · 2 小时前", "评论", "视觉小说页面切到沉浸式后干净很多，副页可以放分支记录。", "幽蓝塔纪事：失重花园", "视觉小说冒险游戏", "linear-gradient(135deg,#0891b2,#bbf7d0),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=700&q=80')", "86", "19", "36"],
+      ["陈", "陈以南", "@chenyn · 2 小时前", "收藏", "把发布检查清单收进团队流程了，回滚部分最实用。", "插件发布前的 12 项检查", "发布前核对清单", "linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=700&q=80')", "61", "12", "44"],
+      ["何", "何予", "@heyu · 3 小时前", "更新", "新增了一版搜索空状态，适合内容平台原型参考。", "社区搜索结果页", "搜索、筛选、空状态", "linear-gradient(135deg,#b3ecf6,#d9f99d),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')", "73", "15", "29"],
+      ["赵", "赵醒", "@zhaox · 3 小时前", "发布", "用一页记录了设计系统颜色选择和可访问性检查。", "桌面端主题调色", "对比度、语义色和暗色模式", "linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=700&q=80')", "132", "22", "40"],
+      ["白", "白芷", "@baizhi · 4 小时前", "笔记", "读论文的时候把术语和实验设置拆成了副页，回看会快很多。", "Qwen-AgentWorld: Training Agents", "论文 PDF 与阅读笔记", "linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=80')", "49", "6", "18"],
+      ["顾", "顾明", "@guming · 4 小时前", "转发", "这个协作白板适合做每周复盘模板。", "AI 团队协作白板：从需求到发布", "多人协作页面模板", "linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')", "88", "11", "25"],
+      ["苏", "苏棠", "@sutang · 5 小时前", "发布", "做了一个长报告页面，图表和结论按章节自动串起来。", "AI 研究报告", "从上往下无限滑动阅读", "linear-gradient(135deg,#0891b2,#d9f99d),url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=700&q=80')", "104", "13", "31"],
+      ["高", "高临", "@gaolin · 5 小时前", "合集", "游戏落地页补了排行榜和重玩入口，更像真实活动页。", "星港物流挑战", "可交互游戏性落地页", "linear-gradient(135deg,#0e7490,#a7f3d0),url('https://images.unsplash.com/photo-1483058712412-4245e9b90334?auto=format&fit=crop&w=700&q=80')", "76", "9", "20"],
+      ["叶", "叶知", "@yezhi · 6 小时前", "评论", "条漫阅读器的顶部安全区处理很自然，滚动时不挡画面。", "雾港列车", "条漫阅读页面", "linear-gradient(135deg,#164e63,#22d3ee),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=700&q=80')", "57", "7", "16"],
+      ["唐", "唐棠", "@tangtang · 6 小时前", "更新", "阅读页右侧抽屉把详情、评论和笔记合并得更紧凑了。", "幽蓝塔纪事：失重花园", "视觉小说冒险游戏", "linear-gradient(135deg,#0891b2,#bbf7d0),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=700&q=80')", "64", "14", "22"],
+      ["陆", "陆遥", "@luyao · 7 小时前", "发布", "整理了一个通知中心页面，把订阅更新合并进去了。", "通知中心重设计", "订阅、评论、关注和批量处理", "linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')", "93", "16", "27"],
+      ["夏", "夏南", "@xianan · 8 小时前", "收藏", "搜索结果页的空状态很适合做内容平台默认态。", "社区搜索结果页", "搜索、筛选、空状态", "linear-gradient(135deg,#b3ecf6,#d9f99d),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')", "58", "5", "19"],
+      ["孟", "孟桥", "@mengqiao · 9 小时前", "发布", "把最近浏览页加了阅读队列和 PDF 记录。", "阅读历史与队列", "继续读、收藏和完成记录", "linear-gradient(135deg,#475569,#e2e8f0),url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=80')", "71", "8", "23"],
+      ["秦", "秦一", "@qinyi · 10 小时前", "更新", "作者页加了动态、合集和关于标签，内容层次清楚很多。", "林学远作者页", "页面、动态、合集和关于", "linear-gradient(135deg,#0891b2,#059669)", "66", "9", "24"],
+      ["简", "简宁", "@jianning · 11 小时前", "转发", "推荐区用页面卡片比章节列表更符合发现页语境。", "首页推荐页面", "个性化推荐给用户阅读", "linear-gradient(135deg,#0f766e,#cffafe),url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=700&q=80')", "81", "10", "26"],
+      ["丁", "丁若", "@dingruo · 12 小时前", "笔记", "副页字段 side_page_uid 的语义很清晰，适合跨页面关联。", "阅读页元数据", "side_page_uid 与副页入口", "linear-gradient(135deg,#0891b2,#d9f99d),url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=700&q=80')", "47", "4", "15"],
+      ["姜", "姜莱", "@jianglai · 13 小时前", "发布", "榜单卡片加入热度分数后，排序依据更容易扫读。", "热门页面榜单", "热度、涨幅和核心统计", "linear-gradient(135deg,#bae6fd,#dcfce7),url('https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=700&q=80')", "69", "7", "18"]
+    ];
+
+    function iconUse() {
+      document.querySelectorAll("svg.icon use").forEach((use) => {
+        const href = use.getAttribute("href");
+        if (href && !href.startsWith("#")) return;
+      });
+    }
+
+    function renderRoute() {
+      const hashValue = location.hash.replace("#", "") || "home";
+      const [hash, queryString = ""] = hashValue.split("?");
+      const normalizedHash = hash === "subscription" ? "notifications" : hash;
+      const route = pages.includes(normalizedHash) ? normalizedHash : "home";
+      document.body.classList.toggle("is-read", route === "read");
+      document.body.classList.toggle("is-author", route === "author");
+      if (route !== "read") {
+        document.body.classList.remove("drawer-open");
+        document.body.classList.remove("immersive-read");
+      }
+      pages.forEach((page) => {
+        const el = document.getElementById(`page-${page}`);
+        if (el) el.classList.toggle("active", page === route);
+      });
+      document.querySelectorAll(".nav-link, .breadcrumb-menu-item[data-route]").forEach((link) => {
+        link.classList.toggle("active", link.dataset.route === route);
+      });
+      const currentCrumb = document.getElementById("currentCrumb");
+      if (currentCrumb) {
+        const label = currentCrumb.querySelector(".breadcrumb-label");
+        if (label) label.textContent = pageLabels[route] ?? "首页";
+        currentCrumb.setAttribute("href", `#${route}`);
+      }
+      const drawerToggle = document.getElementById("drawerToggle");
+      if (drawerToggle) drawerToggle.setAttribute("aria-expanded", document.body.classList.contains("drawer-open") ? "true" : "false");
+      updateImmersiveButton();
+      updateReaderHeaderSafe();
+      updateSearchPage(queryString);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+
+    function getSearchQuery(queryString = "") {
+      const params = new URLSearchParams(queryString);
+      return params.get("q") || "插件发布清单";
+    }
+
+    function goSearch(query) {
+      const trimmed = (query || "").trim();
+      if (!trimmed) return;
+      location.hash = `search?q=${encodeURIComponent(trimmed)}`;
+    }
+
+    function updateSearchPage(queryString = "") {
+      const query = getSearchQuery(queryString);
+      const pill = document.getElementById("searchQueryPill");
+      const input = document.getElementById("globalSearchInput");
+      const resultList = document.querySelector(".search-result-list");
+      const emptyState = document.getElementById("searchEmptyState");
+      const resultCount = document.getElementById("searchResultCount");
+      const normalized = query.toLowerCase();
+      const empty = ["不存在", "空", "无结果", "zzzz"].some((token) => normalized.includes(token));
+      if (pill) pill.textContent = query;
+      if (input && document.activeElement !== input) input.value = query;
+      if (resultList) resultList.hidden = empty;
+      if (emptyState) emptyState.classList.toggle("visible", empty);
+      if (resultCount) resultCount.textContent = empty ? "共 0 条" : "共 42 条";
+    }
+
+    function applySlide() {
+      const carousel = document.getElementById("heroCarousel");
+      if (!carousel || carouselSlides.length === 0) return;
+      if (slideIndex >= carouselSlides.length) slideIndex = 0;
+      const progressTrack = carousel.querySelector(".progress-track");
+      if (progressTrack && progressTrack.children.length !== carouselSlides.length) {
+        progressTrack.replaceChildren(...carouselSlides.map(() => {
+          const seg = document.createElement("span");
+          seg.className = "progress-seg";
+          return seg;
+        }));
+      }
+      const slide = carouselSlides[slideIndex];
+      carousel.style.setProperty("--hero-image", slide.image);
+      carousel.style.setProperty("--hero-bg-1", slide.bg1);
+      carousel.style.setProperty("--hero-bg-2", slide.bg2);
+      carousel.style.setProperty("--hero-fg", slide.fg);
+      carousel.style.setProperty("--hero-soft", slide.soft);
+      carousel.style.setProperty("--hero-accent", slide.accent);
+      carousel.querySelector(".hero-title").textContent = slide.title;
+      carousel.querySelector(".hero-sub").textContent = slide.sub;
+      carousel.querySelectorAll(".progress-seg").forEach((seg, index) => {
+        seg.classList.toggle("active", index === slideIndex);
+      });
+    }
+
+    function advanceSlide(direction = "next") {
+      slideIndex = direction === "next"
+        ? (slideIndex + 1) % carouselSlides.length
+        : (slideIndex - 1 + carouselSlides.length) % carouselSlides.length;
+      applySlide();
+    }
+
+    function restartCarouselTimer() {
+      window.clearInterval(carouselTimer);
+      carouselTimer = window.setInterval(() => advanceSlide("next"), 5200);
+    }
+
+    function applyReadPageMeta(src) {
+      const meta = readPageMeta[src] || readPageMeta["/files/read-novel.html"];
+      const sideTab = document.querySelector('[data-read-view="side"]');
+      if (sideTab) {
+        const hasSidePage = Boolean(meta.side_page_uid);
+        sideTab.toggleAttribute("hidden", !hasSidePage);
+        sideTab.setAttribute("aria-disabled", hasSidePage ? "false" : "true");
+        sideTab.dataset.sidePageUid = meta.side_page_uid || "";
+      }
+      const uidLine = document.querySelector("[data-page-uid-line]");
+      if (uidLine) uidLine.textContent = `UID ${meta.uid}${meta.side_page_uid ? ` · side_page_uid ${meta.side_page_uid}` : ""}`;
+    }
+
+    function setReadDemo(source, activeButton) {
+      const src = source || "/files/read-novel.html";
+      const iframe = document.getElementById("readIframe");
+      if (iframe) iframe.setAttribute("src", src);
+      document.querySelectorAll("[data-demo-src]").forEach((button) => button.classList.toggle("active", button === activeButton || button.dataset.demoSrc === src));
+      const title = activeButton?.dataset.demoTitle || document.querySelector(`[data-demo-src="${src}"]`)?.dataset.demoTitle;
+      const crumbTitle = document.getElementById("readCrumbTitle");
+      if (title && crumbTitle) crumbTitle.textContent = title;
+      applyReadPageMeta(src);
+    }
+
+    function togglePageMeta(button) {
+      const meta = button.closest("[data-page-meta]");
+      if (!meta) return;
+      const expanded = meta.classList.toggle("expanded");
+      button.setAttribute("aria-expanded", expanded ? "true" : "false");
+      button.setAttribute("aria-label", expanded ? "收起详情" : "展开详情");
+    }
+
+    function updateReaderHeaderSafe() {
+      const topbar = document.querySelector(".topbar");
+      const headerHeight = Math.ceil(topbar?.getBoundingClientRect().height || 0);
+      document.documentElement.style.setProperty("--reader-header-safe", `${headerHeight}px`);
+    }
+
+    function updateImmersiveButton() {
+      const active = document.body.classList.contains("immersive-read");
+      const button = document.getElementById("immersiveToggle");
+      const label = document.getElementById("immersiveLabel");
+      if (button) button.setAttribute("aria-pressed", active ? "true" : "false");
+      if (label) label.textContent = active ? "退出沉浸" : "沉浸式阅读";
+    }
+
+    function toggleImmersiveRead() {
+      const active = document.body.classList.toggle("immersive-read");
+      if (active) {
+        document.body.classList.remove("drawer-open");
+        const drawerToggle = document.getElementById("drawerToggle");
+        if (drawerToggle) drawerToggle.setAttribute("aria-expanded", "false");
+        const menu = document.querySelector(".read-more-menu");
+        const moreButton = document.getElementById("readMoreToggle");
+        if (menu) menu.classList.remove("open");
+        if (moreButton) moreButton.setAttribute("aria-expanded", "false");
+      }
+      updateImmersiveButton();
+      updateReaderHeaderSafe();
+    }
+
+    function attachIframeScrollSignal() {
+      const iframe = document.getElementById("readIframe");
+      if (!iframe) return;
+      iframe.addEventListener("load", () => {
+        updateReaderHeaderSafe();
+      });
+    }
+
+    function loadHeaderPopover(wrapper) {
+      if (!wrapper || wrapper.dataset.loaded === "true") return;
+      wrapper.dataset.loaded = "true";
+      const loader = wrapper.querySelector("[data-popover-loader]");
+      const content = wrapper.querySelector("[data-popover-content]");
+      const more = wrapper.querySelector("[data-popover-more]");
+      window.setTimeout(() => {
+        if (loader) loader.hidden = true;
+        if (content) content.hidden = false;
+        if (more) more.hidden = false;
+      }, 520);
+    }
+
+    function setupHeaderPopovers() {
+      document.querySelectorAll("[data-lazy-popover]").forEach((wrapper) => {
+        let openTimer;
+        let closeTimer;
+        const open = () => {
+          window.clearTimeout(closeTimer);
+          openTimer = window.setTimeout(() => {
+            wrapper.classList.add("open");
+            loadHeaderPopover(wrapper);
+          }, 260);
+        };
+        const close = () => {
+          window.clearTimeout(openTimer);
+          closeTimer = window.setTimeout(() => wrapper.classList.remove("open"), 180);
+        };
+        wrapper.addEventListener("mouseenter", open);
+        wrapper.addEventListener("mouseleave", close);
+        wrapper.addEventListener("focusin", () => {
+          wrapper.classList.add("open");
+          loadHeaderPopover(wrapper);
+        });
+        wrapper.addEventListener("focusout", (event) => {
+          if (!wrapper.contains(event.relatedTarget)) close();
+        });
+      });
+    }
+
+    function createHomeFeedCard(item) {
+      const [avatar, name, handle, kind, text, title, desc, cover, views, comments, bookmarks] = item;
+      const time = handle.split("·").pop()?.trim() || "刚刚";
+      const article = document.createElement("article");
+      article.className = "feed-card preloaded";
+      article.innerHTML = `
+        <div class="feed-head">
+          <span class="avatar">${avatar}</span>
+          <div>
+            <div class="feed-name">${name} <span class="pill">${kind}</span></div>
+            <div class="feed-handle">${handle}</div>
+          </div>
+          <button class="icon-btn compact" aria-label="更多"><svg class="icon"><use href="#i-more"></use></svg></button>
+        </div>
+        <div class="feed-body">
+          <p class="feed-text">${text}</p>
+          <a class="attachment" href="#read" style="--cover:${cover}">
+            <span class="thumb" role="img" aria-label="页面预览">
+              <span class="cover-stats">
+                <span class="cover-stat"><svg class="icon s16"><use href="#i-eye"></use></svg>${views}</span>
+                <span class="cover-stat"><svg class="icon s16"><use href="#i-message"></use></svg>${comments}</span>
+              </span>
+            </span>
+            <span class="attachment-info">
+              <strong class="attachment-title">${title}</strong>
+              <span class="attachment-meta"><span class="attachment-author">${name}</span><span class="dot"></span><span>${time}</span></span>
+            </span>
+          </a>
+          <div class="actions">
+            <div class="action-group">
+              <button class="action-btn" aria-label="浏览"><svg class="icon s16"><use href="#i-eye"></use></svg><span>${views}</span></button>
+              <button class="action-btn" aria-label="评论"><svg class="icon s16"><use href="#i-message"></use></svg><span>${comments}</span></button>
+              <button class="action-btn" aria-label="收藏"><svg class="icon s16"><use href="#i-bookmark"></use></svg><span>${bookmarks}</span></button>
+            </div>
+            <button class="action-btn" aria-label="分享"><svg class="icon s16"><use href="#i-share"></use></svg></button>
+          </div>
+        </div>
+      `;
+      return article;
+    }
+
+    function appendHomeFeed(count = 5) {
+      const list = document.getElementById("homeFeedList");
+      const sentinel = document.getElementById("homeFeedSentinel");
+      if (!list || !sentinel) return;
+      const nextItems = homeFeedItems.slice(homeFeedRendered, homeFeedRendered + count);
+      nextItems.forEach((item) => list.appendChild(createHomeFeedCard(item)));
+      homeFeedRendered += nextItems.length;
+      sentinel.textContent = homeFeedRendered >= homeFeedItems.length ? "没有更多动态了" : "加载更多动态";
+      sentinel.disabled = homeFeedRendered >= homeFeedItems.length;
+    }
+
+    function setupHomeFeed() {
+      if (document.body.dataset.homeFeedReady === "true") return;
+      document.body.dataset.homeFeedReady = "true";
+      appendHomeFeed(10);
+      const sentinel = document.getElementById("homeFeedSentinel");
+      if (!sentinel) return;
+      let loadingMore = false;
+      const loadMore = () => {
+        if (loadingMore || homeFeedRendered >= homeFeedItems.length) return;
+        loadingMore = true;
+        sentinel.textContent = "加载中...";
+        window.setTimeout(() => {
+          appendHomeFeed(5);
+          loadingMore = false;
+          window.requestAnimationFrame(maybeLoadMore);
+        }, 180);
+      };
+      const maybeLoadMore = () => {
+        if (homeFeedRendered >= homeFeedItems.length) return;
+        const rect = sentinel.getBoundingClientRect();
+        if (rect.top <= window.innerHeight + 260) loadMore();
+      };
+      sentinel.addEventListener("click", loadMore);
+      window.addEventListener("scroll", maybeLoadMore, { passive: true });
+      window.addEventListener("resize", maybeLoadMore, { passive: true });
+      if (!("IntersectionObserver" in window)) {
+        maybeLoadMore();
+        return;
+      }
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        if (homeFeedRendered >= homeFeedItems.length) {
+          observer.disconnect();
+          return;
+        }
+        loadMore();
+      }, { rootMargin: "240px 0px" });
+      observer.observe(sentinel);
+      maybeLoadMore();
+    }
+
+    document.addEventListener("click", (event) => {
+      const drawerTab = event.target.closest("[data-drawer-tab]");
+      if (drawerTab) {
+        const value = drawerTab.dataset.drawerTab;
+        document.querySelectorAll("[data-drawer-tab]").forEach((tab) => {
+          const selected = tab === drawerTab;
+          tab.classList.toggle("active", selected);
+          tab.setAttribute("aria-selected", selected ? "true" : "false");
+        });
+        document.querySelectorAll("[data-drawer-panel]").forEach((panel) => panel.classList.toggle("active", panel.dataset.drawerPanel === value));
+        return;
+      }
+
+      const pageMetaToggle = event.target.closest("[data-page-meta-toggle]");
+      if (pageMetaToggle) {
+        togglePageMeta(pageMetaToggle);
+        return;
+      }
+
+      if (event.target.closest("#drawerToggle")) {
+        document.body.classList.toggle("drawer-open");
+        const drawerToggle = document.getElementById("drawerToggle");
+        if (drawerToggle) drawerToggle.setAttribute("aria-expanded", document.body.classList.contains("drawer-open") ? "true" : "false");
+        return;
+      }
+
+      if (event.target.closest("#drawerClose") || event.target.closest("#drawerBackdrop")) {
+        document.body.classList.remove("drawer-open");
+        const drawerToggle = document.getElementById("drawerToggle");
+        if (drawerToggle) drawerToggle.setAttribute("aria-expanded", "false");
+        return;
+      }
+
+      if (event.target.closest("#readMoreToggle")) {
+        const menu = document.querySelector(".read-more-menu");
+        const button = document.getElementById("readMoreToggle");
+        const open = !menu?.classList.contains("open");
+        if (menu) menu.classList.toggle("open", open);
+        if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
+        return;
+      }
+
+      const demoButton = event.target.closest("[data-demo-src]");
+      if (demoButton) {
+        setReadDemo(demoButton.dataset.demoSrc, demoButton);
+        demoButton.blur();
+        return;
+      }
+
+      if (event.target.closest("#immersiveToggle")) {
+        toggleImmersiveRead();
+        return;
+      }
+
+      const loadMore = event.target.closest("[data-popover-more]");
+      if (loadMore) {
+        loadMore.textContent = "没有更多了";
+        loadMore.disabled = true;
+        return;
+      }
+
+      const searchQueryButton = event.target.closest("[data-search-query]");
+      if (searchQueryButton) {
+        goSearch(searchQueryButton.dataset.searchQuery);
+        return;
+      }
+
+      const button = event.target.closest("[data-slide]");
+      if (!button) return;
+      advanceSlide(button.dataset.slide);
+      restartCarouselTimer();
+    });
+
+    document.addEventListener("pointerdown", (event) => {
+      const menu = document.querySelector(".read-more-menu");
+      if (!menu || menu.contains(event.target)) return;
+      menu.classList.remove("open");
+      const button = document.getElementById("readMoreToggle");
+      if (button) button.setAttribute("aria-expanded", "false");
+    });
+
+    document.getElementById("globalSearchInput")?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      goSearch(event.currentTarget.value);
+    });
+
+    window.addEventListener("hashchange", renderRoute);
+    window.addEventListener("resize", updateReaderHeaderSafe, { passive: true });
+    document.getElementById("immersiveToggle")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleImmersiveRead();
+    });
+    renderRoute();
+    setReadDemo("/files/read-novel.html");
+    attachIframeScrollSignal();
+    setupHeaderPopovers();
+    setupHomeFeed();
+    applySlide();
+    restartCarouselTimer();
+    iconUse();
+  </script>
+</body>
+</html>
