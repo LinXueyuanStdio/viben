@@ -2,7 +2,7 @@
  * ClaWHub Registry Types
  *
  * Based on the ClaWHub API v1
- * See: https://clawhub.ai/api/v1/
+ * Represents the external ClaWHub API v1 response shape.
  *
  * NOTE: ClaWHub API uses camelCase for all field names (e.g., displayName, createdAt).
  * This is an external API convention. Our internal convention per CLAUDE.md is to use

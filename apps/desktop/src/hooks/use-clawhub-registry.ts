@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { getGatewayClient } from "@/lib/gateway";
 import type {
   ClawhubPackageItem,
   ClawhubPackageListResponse,
@@ -6,12 +7,6 @@ import type {
   ClawhubSkillDisplay,
   ClawhubSkillSortOption,
 } from "@/types/clawhub-registry";
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const CLAWHUB_BASE_URL = "https://clawhub.ai/api/v1";
 
 // ============================================================================
 // Types
@@ -110,6 +105,19 @@ function transformPackageToDisplay(item: ClawhubPackageItem): ClawhubSkillDispla
   };
 }
 
+function buildQuery(params: Record<string, string | number | boolean | null | undefined>): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 // ============================================================================
 // Hooks
 // ============================================================================
@@ -145,27 +153,14 @@ export function useClawhubRegistrySkills(
       setError(null);
 
       try {
-        const url = new URL(`${CLAWHUB_BASE_URL}/packages`);
-        url.searchParams.set("family", "skill");
-        url.searchParams.set("limit", String(Math.min(limit, 100)));
-        url.searchParams.set("sort", currentSort);
-        if (currentCursor) {
-          url.searchParams.set("cursor", currentCursor);
-        }
-
-        const res = await fetch(url.toString(), {
-          headers: { Accept: "application/json" },
+        const query = buildQuery({
+          limit: Math.min(limit, 100),
+          sort: currentSort,
+          cursor: currentCursor,
         });
-
-        if (!isLatestRequest()) {
-          return;
-        }
-
-        if (!res.ok) {
-          throw new Error(`ClaWHub API error: ${res.status} ${res.statusText}`);
-        }
-
-        const response = (await res.json()) as ClawhubPackageListResponse;
+        const response = await getGatewayClient().get<ClawhubPackageListResponse>(
+          `/api/skill/clawhub/packages${query}`
+        );
 
         if (!isLatestRequest()) {
           return;
@@ -286,24 +281,14 @@ export function useClawhubRegistrySearch(
       setError(null);
 
       try {
-        const url = new URL(`${CLAWHUB_BASE_URL}/search`);
-        url.searchParams.set("q", query);
-        url.searchParams.set("limit", String(Math.min(limit, 100)));
-        url.searchParams.set("nonSuspiciousOnly", "true");
-
-        const res = await fetch(url.toString(), {
-          headers: { Accept: "application/json" },
+        const gatewayQuery = buildQuery({
+          query,
+          limit: Math.min(limit, 100),
+          non_suspicious_only: true,
         });
-
-        if (!isLatestRequest()) {
-          return;
-        }
-
-        if (!res.ok) {
-          throw new Error(`ClaWHub API error: ${res.status} ${res.statusText}`);
-        }
-
-        const response = (await res.json()) as ClawhubSearchResponse;
+        const response = await getGatewayClient().get<ClawhubSearchResponse>(
+          `/api/skill/clawhub/search${gatewayQuery}`
+        );
 
         if (!isLatestRequest()) {
           return;

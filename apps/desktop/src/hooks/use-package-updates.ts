@@ -178,7 +178,9 @@ export function usePackageUpdates(
       // Check skill packages
       for (const pkg of installed.skills) {
         try {
-          const response = await client.skill.get(pkg.id);
+          const response = await gateway.get<{
+            package: { version: string; description?: string | null };
+          }>(`/api/skill/info/${encodeURIComponent(pkg.id)}?format=platform`);
           const cloudPkg = response.package;
 
           if (compareVersions(pkg.version, cloudPkg.version) < 0) {

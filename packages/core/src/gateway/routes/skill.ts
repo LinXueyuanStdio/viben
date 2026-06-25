@@ -28,9 +28,15 @@ import {
   disableSkill,
   getEnabledSkills,
   // Registry operations
+  listPlatformSkillRegistry,
+  searchPlatformSkillRegistry,
+  getPlatformSkillFromRegistry,
+  togglePlatformSkillFavorite,
   searchSkillRegistry,
   getSkillFromRegistry,
   downloadSkillFromRegistry,
+  listClawhubSkillPackages,
+  searchClawhubSkills,
 } from "../../skill/ops";
 import type {
   SkillTarget,
@@ -41,7 +47,12 @@ import type {
   InstalledSkillInfo,
   SkillInfo,
 } from "../../skill/ops/types";
-import type { MarketplaceSkill } from "../../skill/ops/registry";
+import type {
+  ClawhubPackageListResponse,
+  ClawhubSearchResponse,
+  MarketplaceSkill,
+} from "../../skill/ops/registry";
+import type { PaginatedResponse, SkillPackage } from "@viben/api-client";
 
 // ============================================================================
 // Types
@@ -68,6 +79,11 @@ interface GetSkillResponse {
 interface AvailableSkillsResponse {
   skills: AvailableSkill[];
   count: number;
+}
+
+interface PlatformSkillListResponse {
+  data: SkillPackage[];
+  pagination: PaginatedResponse<SkillPackage>["pagination"];
 }
 
 /**
@@ -204,15 +220,54 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
    * GET /api/skill/available - List available skills from marketplace
    */
   fastify.get<{
-    Reply: AvailableSkillsResponse | ErrorResponse;
+    Querystring: {
+      page?: string;
+      limit?: string;
+      sort?: "latest" | "popular" | "downloads";
+      category?: string;
+      type?: "command" | "prompt" | "agent";
+      format?: "legacy" | "platform";
+    };
+    Reply: AvailableSkillsResponse | PlatformSkillListResponse | ErrorResponse;
   }>("/api/skill/available", {
     schema: {
       description: "List available skills from marketplace",
       tags: ["skill"],
+      querystring: {
+        type: "object",
+        properties: {
+          page: { type: "string", description: "Page number" },
+          limit: { type: "string", description: "Maximum results" },
+          sort: {
+            type: "string",
+            enum: ["latest", "popular", "downloads"],
+            description: "Sort order",
+          },
+          category: { type: "string", description: "Category filter" },
+          type: {
+            type: "string",
+            enum: ["command", "prompt", "agent"],
+            description: "Filter by skill type",
+          },
+          format: {
+            type: "string",
+            enum: ["legacy", "platform"],
+            description: "Response shape",
+          },
+        },
+      },
       response: {
         200: {
           type: "object",
           properties: {
+            data: {
+              type: "array",
+              items: { type: "object", additionalProperties: true },
+            },
+            pagination: {
+              type: "object",
+              additionalProperties: true,
+            },
             skills: {
               type: "array",
               items: {
@@ -238,8 +293,30 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
         },
       },
     },
-  }, async (_request, reply) => {
+  }, async (request, reply) => {
+    const { page, limit, sort, category, type, format } = request.query;
+
     try {
+      if (format === "platform") {
+        const result = await listPlatformSkillRegistry({
+          page: page ? parseInt(page, 10) : undefined,
+          limit: limit ? parseInt(limit, 10) : undefined,
+          sort,
+          category,
+          type,
+        });
+
+        if (!result.success) {
+          reply.code(500);
+          return { error: result.error || "Failed to list available skills" };
+        }
+
+        return {
+          data: result.data,
+          pagination: result.pagination,
+        };
+      }
+
       const result = await listAvailableSkills();
       if (!result.success) {
         reply.code(500);
@@ -911,6 +988,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       limit?: string;
       page?: string;
       type?: "command" | "prompt" | "agent";
+      format?: "legacy" | "platform";
     };
   }>("/api/skill/search", {
     schema: {
@@ -927,6 +1005,11 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
             enum: ["command", "prompt", "agent"],
             description: "Filter by skill type",
           },
+          format: {
+            type: "string",
+            enum: ["legacy", "platform"],
+            description: "Response shape",
+          },
         },
         required: ["query"],
       },
@@ -935,6 +1018,14 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
           type: "object",
           properties: {
             success: { type: "boolean" },
+            data: {
+              type: "array",
+              items: { type: "object", additionalProperties: true },
+            },
+            pagination: {
+              type: "object",
+              additionalProperties: true,
+            },
             skills: {
               type: "array",
               items: {
@@ -966,7 +1057,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { query, limit, page, type } = request.query;
+    const { query, limit, page, type, format } = request.query;
 
     if (!query) {
       reply.code(400);
@@ -974,6 +1065,26 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     }
 
     try {
+      if (format === "platform") {
+        const result = await searchPlatformSkillRegistry({
+          query,
+          limit: limit ? parseInt(limit, 10) : undefined,
+          page: page ? parseInt(page, 10) : undefined,
+          type,
+        });
+
+        if (!result.success) {
+          reply.code(400);
+          return { success: false, error: result.error };
+        }
+
+        return {
+          success: true,
+          data: result.data,
+          pagination: result.pagination,
+        };
+      }
+
       const result = await searchSkillRegistry({
         query,
         limit: limit ? parseInt(limit, 10) : undefined,
@@ -1007,6 +1118,9 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
    */
   fastify.get<{
     Params: { idOrSlug: string };
+    Querystring: {
+      format?: "legacy" | "platform";
+    };
   }>("/api/skill/info/:idOrSlug", {
     schema: {
       description: "Get skill package details from marketplace",
@@ -1018,11 +1132,25 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
         },
         required: ["idOrSlug"],
       },
+      querystring: {
+        type: "object",
+        properties: {
+          format: {
+            type: "string",
+            enum: ["legacy", "platform"],
+            description: "Response shape",
+          },
+        },
+      },
       response: {
         200: {
           type: "object",
           properties: {
             success: { type: "boolean" },
+            package: {
+              type: "object",
+              additionalProperties: true,
+            },
             skill: {
               type: "object",
               properties: {
@@ -1049,8 +1177,23 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     },
   }, async (request, reply) => {
     const { idOrSlug } = request.params;
+    const { format } = request.query;
 
     try {
+      if (format === "platform") {
+        const result = await getPlatformSkillFromRegistry(idOrSlug);
+
+        if (!result.success || !result.package) {
+          reply.code(404);
+          return { success: false, error: result.error || `Skill not found: ${idOrSlug}` };
+        }
+
+        return {
+          success: true,
+          package: result.package,
+        };
+      }
+
       const result = await getSkillFromRegistry(idOrSlug);
 
       if (!result.success || !result.skill) {
@@ -1067,6 +1210,99 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       fastify.log.error(`Failed to get skill from marketplace: ${message}`);
       reply.code(500);
       return { success: false, error: message };
+    }
+  });
+
+  /**
+   * GET /api/skill/clawhub/packages - List ClaWHub skill packages
+   */
+  fastify.get<{
+    Querystring: {
+      limit?: string;
+      cursor?: string;
+      sort?: "updated" | "downloads" | "stars" | "trending";
+    };
+    Reply: ClawhubPackageListResponse | ErrorResponse;
+  }>("/api/skill/clawhub/packages", {
+    schema: {
+      description: "List ClaWHub skill packages",
+      tags: ["skill"],
+      querystring: {
+        type: "object",
+        properties: {
+          limit: { type: "string", description: "Maximum results" },
+          cursor: { type: "string", description: "Pagination cursor" },
+          sort: {
+            type: "string",
+            enum: ["updated", "downloads", "stars", "trending"],
+            description: "Sort order",
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { limit, cursor, sort } = request.query;
+
+    try {
+      return await listClawhubSkillPackages({
+        limit: limit ? parseInt(limit, 10) : undefined,
+        cursor,
+        sort,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to list ClaWHub skills: ${message}`);
+      reply.code(500);
+      return { error: message };
+    }
+  });
+
+  /**
+   * GET /api/skill/clawhub/search - Search ClaWHub skill packages
+   */
+  fastify.get<{
+    Querystring: {
+      query: string;
+      limit?: string;
+      non_suspicious_only?: string;
+    };
+    Reply: ClawhubSearchResponse | ErrorResponse;
+  }>("/api/skill/clawhub/search", {
+    schema: {
+      description: "Search ClaWHub skill packages",
+      tags: ["skill"],
+      querystring: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query" },
+          limit: { type: "string", description: "Maximum results" },
+          non_suspicious_only: {
+            type: "string",
+            description: "Whether to include only non-suspicious packages",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  }, async (request, reply) => {
+    const { query, limit, non_suspicious_only } = request.query;
+
+    if (!query) {
+      reply.code(400);
+      return { error: "query is required" };
+    }
+
+    try {
+      return await searchClawhubSkills({
+        query,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        nonSuspiciousOnly: non_suspicious_only !== "false",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to search ClaWHub skills: ${message}`);
+      reply.code(500);
+      return { error: message };
     }
   });
 
@@ -1140,6 +1376,57 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       fastify.log.error(`Failed to download skill: ${message}`);
       reply.code(500);
       return { success: false, error: message };
+    }
+  });
+
+  /**
+   * POST /api/skill/:idOrSlug/favorite - Toggle favorite for a marketplace skill
+   */
+  fastify.post<{
+    Params: { idOrSlug: string };
+  }>("/api/skill/:idOrSlug/favorite", {
+    schema: {
+      description: "Toggle favorite for a marketplace skill",
+      tags: ["skill"],
+      params: {
+        type: "object",
+        properties: {
+          idOrSlug: { type: "string", description: "Skill ID or slug" },
+        },
+        required: ["idOrSlug"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            favorited: { type: "boolean" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { idOrSlug } = request.params;
+
+    try {
+      const result = await togglePlatformSkillFavorite(idOrSlug);
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error || "Failed to update favorite" };
+      }
+
+      return { favorited: result.favorited };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to toggle skill favorite: ${message}`);
+      reply.code(500);
+      return { error: message };
     }
   });
 }

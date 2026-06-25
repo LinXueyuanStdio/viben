@@ -8,10 +8,15 @@ import {
   useClawhubRegistrySearch,
   useClawhubRegistrySkills,
 } from "./use-clawhub-registry";
+import { getGatewayClient } from "@/lib/gateway";
 import type {
   ClawhubPackageItem,
   ClawhubSkillSortOption,
 } from "@/types/clawhub-registry";
+
+vi.mock("@/lib/gateway", () => ({
+  getGatewayClient: vi.fn(),
+}));
 
 interface SortHookProps {
   sort: ClawhubSkillSortOption;
@@ -35,20 +40,6 @@ function createPackageItem(displayName: string): ClawhubPackageItem {
       stars: 3,
     },
   };
-}
-
-function mockFetchPackageList() {
-  const fetchMock = vi.fn(async () => ({
-    ok: true,
-    json: async () => ({
-      items: [createPackageItem("Sorted Skill")],
-      nextCursor: null,
-    }),
-  }));
-
-  vi.stubGlobal("fetch", fetchMock);
-
-  return fetchMock;
 }
 
 function createPackageResponse(displayName: string) {
@@ -78,6 +69,16 @@ function createSearchResponse(displayName: string) {
   };
 }
 
+function mockGatewayPackageList() {
+  const get = vi.fn(async () => createPackageResponse("Sorted Skill"));
+
+  vi.mocked(getGatewayClient).mockReturnValue({
+    get,
+  } as unknown as ReturnType<typeof getGatewayClient>);
+
+  return get;
+}
+
 function createDeferred<T>() {
   let resolve: (value: T) => void;
   let reject: (reason?: unknown) => void;
@@ -93,11 +94,11 @@ function createDeferred<T>() {
   };
 }
 
-function getLastFetchUrl(fetchMock: ReturnType<typeof vi.fn>): URL {
-  const lastCall = fetchMock.mock.calls.at(-1);
+function getLastGatewayPath(getMock: ReturnType<typeof vi.fn>): URL {
+  const lastCall = getMock.mock.calls.at(-1);
   expect(lastCall).toBeDefined();
 
-  return new URL(String(lastCall?.[0]));
+  return new URL(String(lastCall?.[0]), "http://127.0.0.1");
 }
 
 describe("useClawhubRegistrySkills", () => {
@@ -106,11 +107,11 @@ describe("useClawhubRegistrySkills", () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
-  it("sends requested sort to ClaWHub package listing and maps skills", async () => {
-    const fetchMock = mockFetchPackageList();
+  it("sends requested sort to Gateway ClaWHub package listing and maps skills", async () => {
+    const getMock = mockGatewayPackageList();
 
     const { result } = renderHook(() =>
       useClawhubRegistrySkills({ limit: 24, enabled: true, sort: "downloads" })
@@ -120,15 +121,14 @@ describe("useClawhubRegistrySkills", () => {
       expect(result.current.skills[0]?.name).toBe("Sorted Skill");
     });
 
-    const url = getLastFetchUrl(fetchMock);
-    expect(url.pathname).toBe("/api/v1/packages");
-    expect(url.searchParams.get("family")).toBe("skill");
+    const url = getLastGatewayPath(getMock);
+    expect(url.pathname).toBe("/api/skill/clawhub/packages");
     expect(url.searchParams.get("limit")).toBe("24");
     expect(url.searchParams.get("sort")).toBe("downloads");
   });
 
   it("does not refetch from the sort effect when only enabled changes", async () => {
-    const fetchMock = mockFetchPackageList();
+    const getMock = mockGatewayPackageList();
 
     const { rerender } = renderHook(
       ({ enabled }) =>
@@ -138,20 +138,20 @@ describe("useClawhubRegistrySkills", () => {
       }
     );
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getMock).not.toHaveBeenCalled();
 
     rerender({ enabled: true });
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(1);
     });
 
-    const url = getLastFetchUrl(fetchMock);
+    const url = getLastGatewayPath(getMock);
     expect(url.searchParams.get("sort")).toBe("updated");
   });
 
   it("updates current sort and refetches when the external sort option changes", async () => {
-    const fetchMock = mockFetchPackageList();
+    const getMock = mockGatewayPackageList();
 
     const { result, rerender } = renderHook(
       ({ sort }: SortHookProps) =>
@@ -163,10 +163,10 @@ describe("useClawhubRegistrySkills", () => {
 
     await waitFor(() => {
       expect(result.current.currentSort).toBe("downloads");
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe(
+    expect(getLastGatewayPath(getMock).searchParams.get("sort")).toBe(
       "downloads"
     );
 
@@ -174,21 +174,23 @@ describe("useClawhubRegistrySkills", () => {
 
     await waitFor(() => {
       expect(result.current.currentSort).toBe("stars");
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(getMock).toHaveBeenCalledTimes(2);
     });
 
-    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe("stars");
+    expect(getLastGatewayPath(getMock).searchParams.get("sort")).toBe("stars");
   });
 
   it("keeps latest sort results when an older request resolves after a newer one", async () => {
-    const updatedFetch = createDeferred<Response>();
-    const starsFetch = createDeferred<Response>();
-    const fetchMock = vi
+    const updatedRequest = createDeferred<ReturnType<typeof createPackageResponse>>();
+    const starsRequest = createDeferred<ReturnType<typeof createPackageResponse>>();
+    const getMock = vi
       .fn()
-      .mockReturnValueOnce(updatedFetch.promise)
-      .mockReturnValueOnce(starsFetch.promise);
+      .mockReturnValueOnce(updatedRequest.promise)
+      .mockReturnValueOnce(starsRequest.promise);
 
-    vi.stubGlobal("fetch", fetchMock);
+    vi.mocked(getGatewayClient).mockReturnValue({
+      get: getMock,
+    } as unknown as ReturnType<typeof getGatewayClient>);
 
     const { result, rerender } = renderHook(
       ({ sort }: SortHookProps) =>
@@ -199,25 +201,22 @@ describe("useClawhubRegistrySkills", () => {
     );
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(1);
     });
-    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe(
+    expect(getLastGatewayPath(getMock).searchParams.get("sort")).toBe(
       "updated"
     );
 
     rerender({ sort: "stars" });
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(getMock).toHaveBeenCalledTimes(2);
     });
-    expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe("stars");
+    expect(getLastGatewayPath(getMock).searchParams.get("sort")).toBe("stars");
 
     await act(async () => {
-      starsFetch.resolve({
-        ok: true,
-        json: async () => createPackageResponse("New Skill"),
-      } as Response);
-      await starsFetch.promise;
+      starsRequest.resolve(createPackageResponse("New Skill"));
+      await starsRequest.promise;
     });
 
     await waitFor(() => {
@@ -228,11 +227,8 @@ describe("useClawhubRegistrySkills", () => {
     });
 
     await act(async () => {
-      updatedFetch.resolve({
-        ok: true,
-        json: async () => createPackageResponse("Old Skill"),
-      } as Response);
-      await updatedFetch.promise;
+      updatedRequest.resolve(createPackageResponse("Old Skill"));
+      await updatedRequest.promise;
     });
 
     await waitFor(() => {
@@ -251,11 +247,11 @@ describe("useClawhubRegistry", () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   it("exposes sort controls and keeps existing agent dialog fields", async () => {
-    const fetchMock = mockFetchPackageList();
+    const getMock = mockGatewayPackageList();
 
     const { result } = renderHook(() =>
       useClawhubRegistry({ limit: 24, fetchOnMount: true })
@@ -277,7 +273,7 @@ describe("useClawhubRegistry", () => {
     expect(result.current.refreshSkills).toEqual(expect.any(Function));
     expect(result.current.skillsError).toBeNull();
 
-    const initialUrl = getLastFetchUrl(fetchMock);
+    const initialUrl = getLastGatewayPath(getMock);
     expect(initialUrl.searchParams.get("sort")).toBe("updated");
 
     act(() => {
@@ -285,7 +281,7 @@ describe("useClawhubRegistry", () => {
     });
 
     await waitFor(() => {
-      expect(getLastFetchUrl(fetchMock).searchParams.get("sort")).toBe("stars");
+      expect(getLastGatewayPath(getMock).searchParams.get("sort")).toBe("stars");
     });
   });
 });
@@ -296,18 +292,20 @@ describe("useClawhubRegistrySearch", () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   it("keeps latest search results when an older request resolves after a newer one", async () => {
-    const oldSearch = createDeferred<Response>();
-    const newSearch = createDeferred<Response>();
-    const fetchMock = vi
+    const oldSearch = createDeferred<ReturnType<typeof createSearchResponse>>();
+    const newSearch = createDeferred<ReturnType<typeof createSearchResponse>>();
+    const getMock = vi
       .fn()
       .mockReturnValueOnce(oldSearch.promise)
       .mockReturnValueOnce(newSearch.promise);
 
-    vi.stubGlobal("fetch", fetchMock);
+    vi.mocked(getGatewayClient).mockReturnValue({
+      get: getMock,
+    } as unknown as ReturnType<typeof getGatewayClient>);
 
     const { result } = renderHook(() =>
       useClawhubRegistrySearch({ debounceMs: 0, limit: 24 })
@@ -318,7 +316,7 @@ describe("useClawhubRegistrySearch", () => {
     });
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getMock).toHaveBeenCalledTimes(1);
     });
 
     act(() => {
@@ -326,14 +324,14 @@ describe("useClawhubRegistrySearch", () => {
     });
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(getMock).toHaveBeenCalledTimes(2);
     });
+    const latestSearchUrl = getLastGatewayPath(getMock);
+    expect(latestSearchUrl.pathname).toBe("/api/skill/clawhub/search");
+    expect(latestSearchUrl.searchParams.get("query")).toBe("new");
 
     await act(async () => {
-      newSearch.resolve({
-        ok: true,
-        json: async () => createSearchResponse("New Search Skill"),
-      } as Response);
+      newSearch.resolve(createSearchResponse("New Search Skill"));
       await newSearch.promise;
     });
 
@@ -345,10 +343,7 @@ describe("useClawhubRegistrySearch", () => {
     });
 
     await act(async () => {
-      oldSearch.resolve({
-        ok: true,
-        json: async () => createSearchResponse("Old Search Skill"),
-      } as Response);
+      oldSearch.resolve(createSearchResponse("Old Search Skill"));
       await oldSearch.promise;
     });
 

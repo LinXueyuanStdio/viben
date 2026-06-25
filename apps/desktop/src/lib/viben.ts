@@ -14,6 +14,7 @@ import {
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, writeFile, exists, remove } from '@tauri-apps/plugin-fs';
 import { unzipSync } from 'fflate';
+import { getGatewayClient } from './gateway';
 
 // ============================================
 // Configuration
@@ -79,6 +80,19 @@ export function setClientApiKey(apiKey: string | undefined): void {
   c.setApiKey(apiKey);
 }
 
+function buildQuery(params?: Record<string, string | number | null | undefined>): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
 // ============================================
 // Package Search
 // ============================================
@@ -107,7 +121,9 @@ export async function searchPackages(
   if (type === 'mcp') {
     return api.mcp.search(query);
   }
-  return api.skill.search(query);
+  return getGatewayClient().get<PaginatedResponse<SkillPackage>>(
+    `/api/skill/search${buildQuery({ query, format: 'platform' })}`
+  );
 }
 
 /**
@@ -130,7 +146,9 @@ export async function listPackages(
   if (type === 'mcp') {
     return api.mcp.list(params);
   }
-  return api.skill.list(params);
+  return getGatewayClient().get<PaginatedResponse<SkillPackage>>(
+    `/api/skill/available${buildQuery({ ...params, format: 'platform' })}`
+  );
 }
 
 // ============================================
@@ -255,34 +273,21 @@ export async function installMcpPackage(pkg: McpPackage): Promise<string> {
  * @returns Path to the installed package directory
  */
 export async function installSkillPackage(pkg: SkillPackage): Promise<string> {
-  const api = getClient();
+  const result = await getGatewayClient().post<{
+    success: boolean;
+    path: string;
+    error?: string;
+  }>('/api/skill/install', {
+    name: pkg.slug,
+    version: pkg.version,
+    registry: 'viben',
+  });
 
-  const blob = await api.skill.download(pkg.id);
-
-  const dataDir = await appDataDir();
-  const packagesDir = await join(dataDir, 'packages', 'skills');
-  const packageDir = await join(packagesDir, pkg.slug);
-
-  if (!(await exists(packagesDir))) {
-    await mkdir(packagesDir, { recursive: true });
+  if (!result.success) {
+    throw new Error(result.error || 'Skill installation failed');
   }
 
-  if (!(await exists(packageDir))) {
-    await mkdir(packageDir, { recursive: true });
-  }
-
-  const zipPath = await join(packageDir, `${pkg.slug}-${pkg.version}.zip`);
-  const arrayBuffer = await blob.arrayBuffer();
-  const zipData = new Uint8Array(arrayBuffer);
-  await writeFile(zipPath, zipData);
-
-  // Extract zip contents to packageDir
-  await extractZipToDir(zipData, packageDir);
-
-  // Clean up the temporary zip file
-  await remove(zipPath);
-
-  return packageDir;
+  return result.path;
 }
 
 // ============================================

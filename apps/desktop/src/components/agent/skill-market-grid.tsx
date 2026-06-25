@@ -2,7 +2,7 @@
  * Skill Market Grid
  *
  * Browsable marketplace of skill packages from the ClaWHub registry.
- * Uses direct ClaWHub API (https://clawhub.ai/api/v1).
+ * Uses Gateway skill routes for ClaWHub market data.
  */
 import { useState, useCallback } from "react";
 import {

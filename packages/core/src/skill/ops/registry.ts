@@ -6,6 +6,7 @@
 import { writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { VibenClient } from "@viben/api-client";
+import type { PaginatedResponse, SkillListParams, SkillPackage } from "@viben/api-client";
 import { readToken, VIBEN_WEB_URL } from "../../auth";
 import { ensureDir } from "../../config/yaml";
 import { extractZipToDirectory } from "./extract";
@@ -44,6 +45,17 @@ export interface SkillRegistrySearchOptions {
 }
 
 /**
+ * Options for listing marketplace skill packages
+ */
+export interface SkillRegistryListOptions {
+  limit?: number;
+  page?: number;
+  sort?: "latest" | "popular" | "downloads";
+  category?: string;
+  type?: "command" | "prompt" | "agent";
+}
+
+/**
  * Result of marketplace search
  */
 export interface SkillRegistrySearchResult {
@@ -62,6 +74,94 @@ export interface SkillRegistryGetResult {
   success: boolean;
   error?: string;
   skill?: MarketplaceSkill;
+}
+
+/**
+ * Result of platform marketplace skill package list/search
+ */
+export interface PlatformSkillRegistryResult {
+  success: boolean;
+  error?: string;
+  data: SkillPackage[];
+  pagination: PaginatedResponse<SkillPackage>["pagination"];
+}
+
+/**
+ * Result of platform marketplace skill package get
+ */
+export interface PlatformSkillRegistryGetResult {
+  success: boolean;
+  error?: string;
+  package?: SkillPackage;
+}
+
+export interface PlatformSkillFavoriteResult {
+  success: boolean;
+  error?: string;
+  favorited: boolean;
+}
+
+export type ClawhubSkillSortOption = "updated" | "downloads" | "stars" | "trending";
+
+export interface ClawhubPackageItem {
+  name: string;
+  displayName: string;
+  summary?: string;
+  family: "skill" | "code-plugin" | "bundle-plugin";
+  channel: "official" | "community" | "private";
+  isOfficial: boolean;
+  executesCode: boolean;
+  ownerHandle?: string;
+  latestVersion?: string;
+  createdAt: number;
+  updatedAt: number;
+  capabilityTags?: string[];
+  runtimeId?: string | null;
+  verificationTier?: string | null;
+  stats?: {
+    downloads?: number;
+    installs?: number;
+    stars?: number;
+    versions?: number;
+  };
+}
+
+export interface ClawhubPackageListResponse {
+  items: ClawhubPackageItem[];
+  nextCursor?: string | null;
+}
+
+export interface ClawhubOwner {
+  handle: string;
+  displayName?: string;
+  image?: string | null;
+}
+
+export interface ClawhubSearchResult {
+  score: number;
+  slug: string;
+  displayName: string;
+  summary?: string;
+  version?: string;
+  updatedAt?: number;
+  ownerHandle?: string;
+  owner?: ClawhubOwner;
+}
+
+export interface ClawhubSearchResponse {
+  results: ClawhubSearchResult[];
+}
+
+export interface ClawhubPackageListOptions {
+  limit?: number;
+  cursor?: string;
+  sort?: ClawhubSkillSortOption;
+}
+
+export interface ClawhubSkillSearchOptions {
+  query: string;
+  limit?: number;
+  nonSuspiciousOnly?: boolean;
 }
 
 // =============================================================================
@@ -88,6 +188,122 @@ async function createClient(): Promise<VibenClient> {
 // =============================================================================
 // Search Operations
 // =============================================================================
+
+/**
+ * List skill packages in the Viben marketplace.
+ */
+export async function listPlatformSkillRegistry(
+  options: SkillRegistryListOptions = {}
+): Promise<PlatformSkillRegistryResult> {
+  try {
+    const client = await createClient();
+    const params: SkillListParams = {
+      page: options.page,
+      limit: options.limit,
+      sort: options.sort,
+      category: options.category,
+      type: options.type,
+    };
+    const response = await client.skill.list(params);
+
+    return {
+      success: true,
+      data: response.data,
+      pagination: response.pagination,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "List failed",
+      data: [],
+      pagination: {
+        page: options.page ?? 1,
+        limit: options.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      },
+    };
+  }
+}
+
+/**
+ * Search skill packages in the Viben marketplace using the platform response shape.
+ */
+export async function searchPlatformSkillRegistry(
+  options: SkillRegistrySearchOptions
+): Promise<PlatformSkillRegistryResult> {
+  try {
+    const client = await createClient();
+    const response = await client.skill.search(options.query, {
+      page: options.page,
+      limit: options.limit,
+      type: options.type,
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      pagination: response.pagination,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Search failed",
+      data: [],
+      pagination: {
+        page: options.page ?? 1,
+        limit: options.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      },
+    };
+  }
+}
+
+/**
+ * Get a skill package from the Viben marketplace using the platform response shape.
+ */
+export async function getPlatformSkillFromRegistry(
+  idOrSlug: string
+): Promise<PlatformSkillRegistryGetResult> {
+  try {
+    const client = await createClient();
+    const response = await client.skill.get(idOrSlug);
+
+    return {
+      success: true,
+      package: response.package,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Skill not found",
+    };
+  }
+}
+
+/**
+ * Toggle a Viben marketplace skill favorite through Core/Gateway.
+ */
+export async function togglePlatformSkillFavorite(
+  idOrSlug: string
+): Promise<PlatformSkillFavoriteResult> {
+  try {
+    const client = await createClient();
+    const response = await client.skill.toggleFavorite(idOrSlug);
+
+    return {
+      success: true,
+      favorited: response.favorited,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Favorite update failed",
+      favorited: false,
+    };
+  }
+}
 
 /**
  * Search skill packages in marketplace
@@ -185,6 +401,55 @@ export async function downloadSkillFromRegistry(
 // =============================================================================
 
 const CLAWHUB_API_URL = "https://clawhub.ai/api/v1";
+
+/**
+ * List skill packages from ClaWHub through Core/Gateway.
+ */
+export async function listClawhubSkillPackages(
+  options: ClawhubPackageListOptions = {}
+): Promise<ClawhubPackageListResponse> {
+  const url = new URL(`${CLAWHUB_API_URL}/packages`);
+  url.searchParams.set("family", "skill");
+  url.searchParams.set("limit", String(Math.min(options.limit ?? 50, 100)));
+  url.searchParams.set("sort", options.sort ?? "updated");
+  if (options.cursor) {
+    url.searchParams.set("cursor", options.cursor);
+  }
+
+  const response = await proxyFetch(url.toString(), {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`ClaWHub API error: ${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as ClawhubPackageListResponse;
+}
+
+/**
+ * Search skill packages from ClaWHub through Core/Gateway.
+ */
+export async function searchClawhubSkills(
+  options: ClawhubSkillSearchOptions
+): Promise<ClawhubSearchResponse> {
+  const url = new URL(`${CLAWHUB_API_URL}/search`);
+  url.searchParams.set("q", options.query);
+  url.searchParams.set("limit", String(Math.min(options.limit ?? 20, 100)));
+  if (options.nonSuspiciousOnly ?? true) {
+    url.searchParams.set("nonSuspiciousOnly", "true");
+  }
+
+  const response = await proxyFetch(url.toString(), {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`ClaWHub API error: ${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as ClawhubSearchResponse;
+}
 
 /**
  * Download skill from ClaWHub registry

@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import i18n from '@/i18n';
+import { getGatewayClient } from '@/lib/gateway';
 import {
   getClient,
   searchPackages,
@@ -490,7 +491,9 @@ export function useFavorite(entityType: 'mcp' | 'skill', entityId: string) {
       const response =
         entityType === 'mcp'
           ? await api.mcp.toggleFavorite(entityId)
-          : await api.skill.toggleFavorite(entityId);
+          : await getGatewayClient().post<{ favorited: boolean }>(
+              `/api/skill/${encodeURIComponent(entityId)}/favorite`
+            );
       setIsFavorited(response.favorited);
       return response.favorited;
     } catch (err) {

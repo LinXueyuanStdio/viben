@@ -5,11 +5,9 @@
  * Uses Viben Gateway API for skill installation (not direct @viben/core import).
  */
 
-import { getClient } from './viben';
 import type { SkillPackage } from '@viben/api-client';
 import { getGatewayClient } from './gateway';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { mkdir, writeFile, exists, remove } from '@tauri-apps/plugin-fs';
 import i18n from '@/i18n';
 
 // ============================================
@@ -113,28 +111,14 @@ interface GatewayInstallResponse {
   error?: string;
 }
 
-// ============================================
-// Installation
-// ============================================
-
-function sanitizeTempFilePart(value: string): string {
-  return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "skill";
-}
-
 function isUnknownClawhubVersion(version: string): boolean {
   const normalized = version.trim();
   return normalized === "" || normalized === "0.0.0";
 }
 
-function getClawhubDownloadEndpoint(slug: string, version: string): string {
-  const baseEndpoint = `https://clawhub.ai/api/v1/packages/${encodeURIComponent(slug)}/download`;
-
-  if (isUnknownClawhubVersion(version)) {
-    return baseEndpoint;
-  }
-
-  return `${baseEndpoint}?version=${encodeURIComponent(version)}`;
-}
+// ============================================
+// Installation
+// ============================================
 
 function getInstallErrorCode(errorMessage: string): InstallErrorCode {
   const normalized = errorMessage.toLowerCase();
@@ -177,11 +161,9 @@ function getInstallErrorCode(errorMessage: string): InstallErrorCode {
  * Download and install a skill package
  *
  * This function:
- * 1. Downloads the skill package from the platform
- * 2. Saves it to a temporary file
- * 3. Calls Gateway API to install the skill
- * 4. Tracks progress through callbacks
- * 5. Cleans up temporary files
+ * 1. Requests Gateway to download the skill package from the platform
+ * 2. Gateway installs the skill through the shared core implementation
+ * 3. Tracks progress through callbacks
  *
  * @param options - Installation options
  * @returns Installation result
@@ -208,9 +190,6 @@ export async function downloadAndInstallSkill(
 ): Promise<InstallSkillResult> {
   const { package: pkg, onProgress, force = false } = options;
 
-  // Declare tempZipPath outside try block to ensure cleanup in finally
-  let tempZipPath: string | undefined;
-
   try {
     // Report download start
     onProgress?.({
@@ -218,31 +197,6 @@ export async function downloadAndInstallSkill(
       progress: 0,
       message: i18n.t('installation.downloading', { name: pkg.name }),
     });
-
-    // Download package
-    const api = getClient();
-    const blob = await api.skill.download(pkg.id);
-
-    // Report download complete
-    onProgress?.({
-      stage: 'downloading',
-      progress: 100,
-      message: i18n.t('installation.downloadComplete'),
-    });
-
-    // Get app data directory
-    const dataDir = await appDataDir();
-    const tempDir = await join(dataDir, 'temp');
-
-    // Ensure directories exist
-    if (!(await exists(tempDir))) {
-      await mkdir(tempDir, { recursive: true });
-    }
-
-    // Save to temporary file
-    tempZipPath = await join(tempDir, `${pkg.slug}-${pkg.version}.zip`);
-    const arrayBuffer = await blob.arrayBuffer();
-    await writeFile(tempZipPath, new Uint8Array(arrayBuffer));
 
     // Report extraction start
     onProgress?.({
@@ -256,9 +210,9 @@ export async function downloadAndInstallSkill(
       '/api/skill/install',
       {
         name: pkg.slug,
-        zip_path: tempZipPath,
         force,
         version: pkg.version,
+        registry: "viben",
       }
     );
 
@@ -303,15 +257,6 @@ export async function downloadAndInstallSkill(
       error: errorMessage,
       errorCode,
     };
-  } finally {
-    // Clean up temporary file regardless of success or failure
-    if (tempZipPath) {
-      try {
-        await remove(tempZipPath);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
   }
 }
 
@@ -322,7 +267,6 @@ export async function downloadAndInstallClawhubSkill(
   options: InstallClawhubSkillOptions
 ): Promise<InstallSkillResult> {
   const { slug, name, version, onProgress, force = false } = options;
-  let tempZipPath: string | undefined;
 
   try {
     onProgress?.({
@@ -330,35 +274,6 @@ export async function downloadAndInstallClawhubSkill(
       progress: 0,
       message: i18n.t('installation.downloading', { name }),
     });
-
-    const endpoint = getClawhubDownloadEndpoint(slug, version);
-    const response = await fetch(endpoint, {
-      headers: { Accept: 'application/zip' },
-    });
-
-    if (!response.ok) {
-      throw new Error(`ClaWHub download failed: ${response.status}`);
-    }
-
-    onProgress?.({
-      stage: 'downloading',
-      progress: 100,
-      message: i18n.t('installation.downloadComplete'),
-    });
-
-    const dataDir = await appDataDir();
-    const tempDir = await join(dataDir, 'temp');
-
-    if (!(await exists(tempDir))) {
-      await mkdir(tempDir, { recursive: true });
-    }
-
-    tempZipPath = await join(
-      tempDir,
-      `${sanitizeTempFilePart(slug)}-${sanitizeTempFilePart(version)}.zip`
-    );
-    const arrayBuffer = await response.arrayBuffer();
-    await writeFile(tempZipPath, new Uint8Array(arrayBuffer));
 
     onProgress?.({
       stage: 'extracting',
@@ -370,9 +285,9 @@ export async function downloadAndInstallClawhubSkill(
       '/api/skill/install',
       {
         name: slug,
-        zip_path: tempZipPath,
         force,
-        version,
+        version: isUnknownClawhubVersion(version) ? undefined : version,
+        registry: "clawhub",
       }
     );
 
@@ -414,14 +329,6 @@ export async function downloadAndInstallClawhubSkill(
       error: errorMessage,
       errorCode,
     };
-  } finally {
-    if (tempZipPath) {
-      try {
-        await remove(tempZipPath);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
   }
 }
 

@@ -8,7 +8,7 @@ import {
   mapCloudSkillPackage,
   useCloudSkillPackagesInfinite,
 } from "./use-cloud-skills";
-import { getClient } from "@/lib/viben";
+import { getGatewayClient } from "@/lib/gateway";
 import type {
   CloudSkillListResponse,
   CloudSkillPackage,
@@ -16,8 +16,8 @@ import type {
   PaginationInfo,
 } from "./use-cloud-skills";
 
-vi.mock("@/lib/viben", () => ({
-  getClient: vi.fn(),
+vi.mock("@/lib/gateway", () => ({
+  getGatewayClient: vi.fn(),
 }));
 
 const pagination: PaginationInfo = {
@@ -72,7 +72,14 @@ function createDeferred<T>() {
   };
 }
 
-const getClientMock = vi.mocked(getClient);
+const getGatewayClientMock = vi.mocked(getGatewayClient);
+
+function getLastGatewayPath(getMock: ReturnType<typeof vi.fn>): URL {
+  const lastCall = getMock.mock.calls.at(-1);
+  expect(lastCall).toBeDefined();
+
+  return new URL(String(lastCall?.[0]), "http://127.0.0.1");
+}
 
 describe("use-cloud-skills helpers", () => {
   it("maps API package fields with stable fallbacks", () => {
@@ -154,14 +161,14 @@ describe("useCloudSkillPackagesInfinite", () => {
   it("keeps latest sort results when an older request resolves after a newer one", async () => {
     const popularFetch = createDeferred<CloudSkillListResponse>();
     const latestFetch = createDeferred<CloudSkillListResponse>();
-    const list = vi
+    const get = vi
       .fn()
       .mockReturnValueOnce(popularFetch.promise)
       .mockReturnValueOnce(latestFetch.promise);
 
-    getClientMock.mockReturnValue({
-      skill: { list },
-    } as unknown as ReturnType<typeof getClient>);
+    getGatewayClientMock.mockReturnValue({
+      get,
+    } as unknown as ReturnType<typeof getGatewayClient>);
 
     const { result, rerender } = renderHook(
       ({ sort }: InfiniteHookProps) =>
@@ -172,24 +179,25 @@ describe("useCloudSkillPackagesInfinite", () => {
     );
 
     await waitFor(() => {
-      expect(list).toHaveBeenCalledTimes(1);
+      expect(get).toHaveBeenCalledTimes(1);
     });
-    expect(list).toHaveBeenLastCalledWith({
-      page: 1,
-      limit: 24,
-      sort: "popular",
-    });
+    let url = getLastGatewayPath(get);
+    expect(url.pathname).toBe("/api/skill/available");
+    expect(url.searchParams.get("page")).toBe("1");
+    expect(url.searchParams.get("limit")).toBe("24");
+    expect(url.searchParams.get("sort")).toBe("popular");
+    expect(url.searchParams.get("format")).toBe("platform");
 
     rerender({ sort: "latest" });
 
     await waitFor(() => {
-      expect(list).toHaveBeenCalledTimes(2);
+      expect(get).toHaveBeenCalledTimes(2);
     });
-    expect(list).toHaveBeenLastCalledWith({
-      page: 1,
-      limit: 24,
-      sort: "latest",
-    });
+    url = getLastGatewayPath(get);
+    expect(url.searchParams.get("page")).toBe("1");
+    expect(url.searchParams.get("limit")).toBe("24");
+    expect(url.searchParams.get("sort")).toBe("latest");
+    expect(url.searchParams.get("format")).toBe("platform");
 
     await act(async () => {
       latestFetch.resolve(createListResponse("Latest Skill"));

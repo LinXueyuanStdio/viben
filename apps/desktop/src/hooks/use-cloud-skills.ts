@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getClient } from "@/lib/viben";
+import { getGatewayClient } from "@/lib/gateway";
 
 // ============================================================================
 // Types
@@ -143,6 +143,54 @@ export function appendCloudSkillPage(
   };
 }
 
+function buildQuery(params: Record<string, string | number | boolean | null | undefined>): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+async function listCloudSkills(params: {
+  page?: number;
+  limit?: number;
+  category?: string;
+  sort?: CloudSkillSortOption;
+}): Promise<CloudSkillListResponse> {
+  const query = buildQuery({
+    ...params,
+    format: "platform",
+  });
+
+  return getGatewayClient().get<CloudSkillListResponse>(`/api/skill/available${query}`);
+}
+
+async function searchCloudSkills(params: {
+  query: string;
+  page?: number;
+  limit?: number;
+}): Promise<CloudSkillListResponse> {
+  const query = buildQuery({
+    query: params.query,
+    page: params.page,
+    limit: params.limit,
+    format: "platform",
+  });
+
+  return getGatewayClient().get<CloudSkillListResponse>(`/api/skill/search${query}`);
+}
+
+async function getCloudSkill(packageId: string): Promise<{ package: CloudSkillApiPackage }> {
+  return getGatewayClient().get<{ package: CloudSkillApiPackage }>(
+    `/api/skill/info/${encodeURIComponent(packageId)}?format=platform`
+  );
+}
+
 // ============================================================================
 // useCloudSkillPackages - List packages with pagination
 // ============================================================================
@@ -171,12 +219,11 @@ export function useCloudSkillPackages(options: UseCloudSkillPackagesOptions = {}
     setError(null);
 
     try {
-      const client = getClient();
-      const response = await client.skill.list({
+      const response = await listCloudSkills({
         page,
         limit,
         sort: sort ?? undefined,
-        // Note: category filter may not be supported yet in the API
+        category,
       });
 
       const mappedPackages = response.data.map(mapCloudSkillPackage);
@@ -233,8 +280,7 @@ export function useCloudSkillPackagesInfinite(
     setError(null);
 
     try {
-      const client = getClient();
-      const response = await client.skill.list({
+      const response = await listCloudSkills({
         page,
         limit,
         sort,
@@ -360,8 +406,8 @@ export function useCloudSkillSearch(query: string, debounceMs = 300) {
       setError(null);
 
       try {
-        const client = getClient();
-        const response = await client.skill.search(searchQuery, {
+        const response = await searchCloudSkills({
+          query: searchQuery,
           page,
           limit,
         });
@@ -471,8 +517,7 @@ export function useCloudSkillPackage(id: string | null) {
     setError(null);
 
     try {
-      const client = getClient();
-      const response = await client.skill.get(packageId);
+      const response = await getCloudSkill(packageId);
       const pkg = response.package;
       const result = mapCloudSkillPackage(pkg);
 

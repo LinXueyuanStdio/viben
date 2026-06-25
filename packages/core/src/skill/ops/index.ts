@@ -98,15 +98,33 @@ export {
 // =============================================================================
 
 export {
+  listPlatformSkillRegistry,
+  searchPlatformSkillRegistry,
+  getPlatformSkillFromRegistry,
+  togglePlatformSkillFavorite,
   searchSkillRegistry,
   getSkillFromRegistry,
   downloadSkillFromRegistry,
+  listClawhubSkillPackages,
+  searchClawhubSkills,
 } from "./registry";
 export type {
   MarketplaceSkill,
   SkillRegistrySearchOptions,
+  SkillRegistryListOptions,
   SkillRegistrySearchResult,
   SkillRegistryGetResult,
+  PlatformSkillRegistryResult,
+  PlatformSkillRegistryGetResult,
+  PlatformSkillFavoriteResult,
+  ClawhubSkillSortOption,
+  ClawhubPackageItem,
+  ClawhubPackageListResponse,
+  ClawhubOwner,
+  ClawhubSearchResult,
+  ClawhubSearchResponse,
+  ClawhubPackageListOptions,
+  ClawhubSkillSearchOptions,
 } from "./registry";
 
 // =============================================================================
