@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { DirStat } from './types';
 
 interface DesktopChartProps {
@@ -41,7 +42,7 @@ export function DesktopChart({ desktopDirs }: DesktopChartProps) {
         </span>
       </div>
 
-      <div className="h-64">
+      <ChartFrame className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={desktopDirs} margin={{ bottom: 30 }}>
             <XAxis
@@ -83,7 +84,7 @@ export function DesktopChart({ desktopDirs }: DesktopChartProps) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
     </div>
   );
 }

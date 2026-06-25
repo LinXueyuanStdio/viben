@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { CategoryStat } from './types';
 
 interface CategoryChartProps {
@@ -27,7 +28,7 @@ export function CategoryChart({ categories }: CategoryChartProps) {
         <p className="text-sm text-zinc-500">代码 / 文档 / 配置分布</p>
       </div>
 
-      <div className="h-56">
+      <ChartFrame className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -66,7 +67,7 @@ export function CategoryChart({ categories }: CategoryChartProps) {
             />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
     </div>
   );
 }

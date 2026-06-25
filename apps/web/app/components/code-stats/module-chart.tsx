@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { ModuleStat } from './types';
 
 interface ModuleChartProps {
@@ -48,7 +49,7 @@ export function ModuleChart({ modules }: ModuleChartProps) {
         </span>
       </div>
 
-      <div className="h-72">
+      <ChartFrame className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20 }}>
             <XAxis
@@ -88,7 +89,7 @@ export function ModuleChart({ modules }: ModuleChartProps) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
     </div>
   );
 }

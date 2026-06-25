@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { FileChurn } from './types';
 
 interface FileChurnChartProps {
@@ -60,7 +61,7 @@ export function FileChurnChart({ data }: FileChurnChartProps) {
         </span>
       </div>
 
-      <div className="h-80">
+      <ChartFrame className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
             <XAxis
@@ -102,7 +103,7 @@ export function FileChurnChart({ data }: FileChurnChartProps) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
 
       {/* Legend */}
       <div className="mt-4 flex items-center justify-center gap-4 text-xs text-zinc-500">

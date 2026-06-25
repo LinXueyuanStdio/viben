@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { DensityStat } from './types';
 
 interface DensityChartProps {
@@ -32,7 +33,7 @@ export function DensityChart({ density }: DensityChartProps) {
         <p className="text-sm text-zinc-500">平均每文件行数（行/文件）</p>
       </div>
 
-      <div className="h-56">
+      <ChartFrame className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={sortedDensity} layout="vertical" margin={{ left: 10, right: 20 }}>
             <XAxis
@@ -71,7 +72,7 @@ export function DensityChart({ density }: DensityChartProps) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
     </div>
   );
 }

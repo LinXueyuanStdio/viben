@@ -7,12 +7,18 @@ const mocks = vi.hoisted(() => ({
   getPublishedPageContext: vi.fn(),
   canReadPage: vi.fn(),
   ensureCommunityEntityForPage: vi.fn(),
+  getCommunitySummary: vi.fn(),
   recordPageView: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
   consoleError: vi.spyOn(console, 'error').mockImplementation(() => undefined),
+  after: vi.fn((callback: () => void | Promise<void>) => {
+    void callback();
+  }),
 }));
+
+const communityInteractionsProps: unknown[] = [];
 
 vi.mock('next/headers', () => ({
   cookies: mocks.cookies,
@@ -22,6 +28,10 @@ vi.mock('next/navigation', () => ({
   notFound: mocks.notFound,
 }));
 
+vi.mock('next/server', () => ({
+  after: mocks.after,
+}));
+
 vi.mock('@/lib/auth/jwe', () => ({
   decryptSession: mocks.decryptSession,
 }));
@@ -29,8 +39,16 @@ vi.mock('@/lib/auth/jwe', () => ({
 vi.mock('@/lib/services/community', () => ({
   canReadPage: mocks.canReadPage,
   ensureCommunityEntityForPage: mocks.ensureCommunityEntityForPage,
+  getCommunitySummary: mocks.getCommunitySummary,
   getPublishedPageContext: mocks.getPublishedPageContext,
   recordPageView: mocks.recordPageView,
+}));
+
+vi.mock('@/components/community/community-interactions', () => ({
+  CommunityInteractions: (props: unknown) => {
+    communityInteractionsProps.push(props);
+    return <div data-testid="community-interactions" />;
+  },
 }));
 
 import ReadPage from './page';
@@ -65,11 +83,37 @@ describe('/read/[user_slug]/[page_id]', () => {
     mocks.canReadPage.mockReturnValue(true);
     mocks.ensureCommunityEntityForPage.mockResolvedValue({
       id: 'entity-1',
+      entityType: 'published_page',
+      entityId: 'page-row-1',
+      visibility: 'public',
+      status: 'active',
       reactionsCount: 2,
       favoritesCount: 1,
       commentsCount: 3,
+      canonicalPath: '/read/alice/demo',
+    });
+    mocks.getCommunitySummary.mockResolvedValue({
+      entity: {
+        id: 'entity-1',
+        entity_type: 'published_page',
+        entity_id: 'page-row-1',
+        visibility: 'public',
+        status: 'active',
+        reactions_count: 2,
+        favorites_count: 1,
+        comments_count: 3,
+        canonical_path: '/read/alice/demo',
+      },
+      viewer: {
+        is_authenticated: false,
+        has_reacted: false,
+        has_favorited: false,
+        can_comment: false,
+        can_moderate: false,
+      },
     });
     mocks.recordPageView.mockResolvedValue(undefined);
+    communityInteractionsProps.length = 0;
   });
 
   it('still renders when recording the page view fails', async () => {
@@ -96,5 +140,34 @@ describe('/read/[user_slug]/[page_id]', () => {
       'Failed to record read_shell page view:',
       expect.any(Error)
     );
+  });
+
+  it('renders the community interaction host with published page identifiers', async () => {
+    const element = await ReadPage({
+      params: Promise.resolve({ user_slug: 'alice', page_id: 'demo' }),
+    });
+    render(element);
+
+    expect(screen.getByTestId('community-interactions')).toBeInTheDocument();
+    expect(communityInteractionsProps).toHaveLength(1);
+    expect(communityInteractionsProps[0]).toMatchObject({
+      entityType: 'published_page',
+      entityId: 'page-row-1',
+      userSlug: 'alice',
+      pageId: 'demo',
+      viewer: {
+        is_authenticated: false,
+      },
+      initialSummary: {
+        entity: {
+          id: 'entity-1',
+          entity_type: 'published_page',
+          entity_id: 'page-row-1',
+          reactions_count: 2,
+          favorites_count: 1,
+          comments_count: 3,
+        },
+      },
+    });
   });
 });

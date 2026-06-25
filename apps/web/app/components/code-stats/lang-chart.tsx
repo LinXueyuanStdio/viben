@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { LanguageStat } from './types';
 
 interface LangChartProps {
@@ -37,7 +38,7 @@ export function LangChart({ languages }: LangChartProps) {
         </span>
       </div>
 
-      <div className="h-64">
+      <ChartFrame className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -70,7 +71,7 @@ export function LangChart({ languages }: LangChartProps) {
             />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {languages.slice(0, 10).map((lang) => (

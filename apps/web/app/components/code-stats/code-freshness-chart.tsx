@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { FreshnessStat } from './types';
 
 interface CodeFreshnessChartProps {
@@ -36,7 +37,7 @@ export function CodeFreshnessChart({ data }: CodeFreshnessChartProps) {
         </span>
       </div>
 
-      <div className="h-56">
+      <ChartFrame className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -77,7 +78,7 @@ export function CodeFreshnessChart({ data }: CodeFreshnessChartProps) {
             />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
     </div>
   );
 }

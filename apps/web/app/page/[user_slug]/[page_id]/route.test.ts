@@ -114,6 +114,31 @@ describe('GET /page/[user_slug]/[page_id]', () => {
     });
   });
 
+  it('does not inject community interaction markup into the raw HTML document', async () => {
+    mocks.findPublishedPage.mockResolvedValue({
+      uid: 'demo',
+      userId: 'user-1',
+      title: 'Demo',
+      description: 'Demo description',
+      html: '<!doctype html><html><body><h1>Demo HTML</h1></body></html>',
+      visibility: 'public',
+      moderationStatus: 'approved',
+    });
+
+    const response = await GET(
+      new Request('https://viben-web.vercel.app/page/alice/demo'),
+      {
+        params: Promise.resolve({ user_slug: 'alice', page_id: 'demo' }),
+      }
+    );
+
+    const html = await response.text();
+
+    expect(html).not.toContain('CommunityInteractions');
+    expect(html).not.toContain('Add a comment');
+    expect(html).not.toContain('/api/community');
+  });
+
   it('does not return private HTML to anonymous visitors', async () => {
     mocks.findPublishedPage.mockResolvedValue({
       uid: 'secret',

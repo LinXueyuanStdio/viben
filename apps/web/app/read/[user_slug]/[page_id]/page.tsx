@@ -1,14 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { MessageSquare, Star, ThumbsUp, Share2, Bell } from 'lucide-react';
+import { after } from 'next/server';
 import {
   canReadPage,
   ensureCommunityEntityForPage,
+  getCommunitySummary,
   getPublishedPageContext,
   recordPageView,
 } from '@/lib/services/community';
 import { decryptSession } from '@/lib/auth/jwe';
+import { CommunityInteractions } from '@/components/community/community-interactions';
 
 interface ReadPageProps {
   params: Promise<{ user_slug: string; page_id: string }>;
@@ -28,13 +30,51 @@ export default async function ReadPage({ params }: ReadPageProps) {
   }
 
   const communityEntity = await ensureCommunityEntityForPage(context);
-  void recordPageView({
-    context,
-    session,
-    source: 'read_shell',
-    route: '/read',
-  }).catch((error) => {
-    console.error('Failed to record read_shell page view:', error);
+  const communitySummary =
+    (await getCommunitySummary('published_page', context.page.id, session)) ?? {
+      entity: {
+        id: communityEntity.id,
+        entity_type: 'published_page' as const,
+        entity_id: context.page.id,
+        visibility: communityEntity.visibility,
+        status: communityEntity.status,
+        reactions_count: communityEntity.reactionsCount,
+        favorites_count: communityEntity.favoritesCount,
+        comments_count: communityEntity.commentsCount,
+        canonical_path: communityEntity.canonicalPath,
+      },
+      viewer: {
+        is_authenticated: Boolean(session),
+        has_reacted: false,
+        has_favorited: false,
+        can_comment: Boolean(session),
+        can_moderate:
+          session?.role === 'admin' ||
+          session?.role === 'super_admin' ||
+          session?.role === 'moderator',
+      },
+    };
+  const viewer = {
+    ...communitySummary.viewer,
+    user_id: session?.userId ?? null,
+    can_manage_comments:
+      Boolean(session) &&
+      (session?.userId === context.page.userId ||
+        session?.role === 'admin' ||
+        session?.role === 'super_admin' ||
+        session?.role === 'moderator'),
+  };
+  after(async () => {
+    try {
+      await recordPageView({
+        context,
+        session,
+        source: 'read_shell',
+        route: '/read',
+      });
+    } catch (error) {
+      console.error('Failed to record read_shell page view:', error);
+    }
   });
 
   return (
@@ -61,10 +101,6 @@ export default async function ReadPage({ params }: ReadPageProps) {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href={`/api/read/${encodeURIComponent(context.author.userSlug)}/${encodeURIComponent(context.page.uid)}/subscription`} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
-                <Bell className="h-4 w-4" />
-                Subscribe
-              </Link>
               <Link href={`/page/${encodeURIComponent(context.author.userSlug)}/${encodeURIComponent(context.page.uid)}`} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
                 HTML
               </Link>
@@ -73,9 +109,9 @@ export default async function ReadPage({ params }: ReadPageProps) {
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <span>{context.page.viewCount + 1} views</span>
             <span>{context.page.readCount + 1} reads</span>
-            <span>{context.page.likeCount} likes</span>
-            <span>{context.page.favoriteCount} favorites</span>
-            <span>{context.page.commentCount} comments</span>
+            <span>{communitySummary.entity.reactions_count} likes</span>
+            <span>{communitySummary.entity.favorites_count} favorites</span>
+            <span>{communitySummary.entity.comments_count} comments</span>
           </div>
         </div>
       </header>
@@ -90,27 +126,16 @@ export default async function ReadPage({ params }: ReadPageProps) {
           />
         </div>
         <aside className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Interactions</h2>
-            <div className="mt-4 grid gap-2">
-              <button className="inline-flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
-                <span className="inline-flex items-center gap-2"><ThumbsUp className="h-4 w-4" /> Like</span>
-                <span>{communityEntity.reactionsCount}</span>
-              </button>
-              <button className="inline-flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
-                <span className="inline-flex items-center gap-2"><Star className="h-4 w-4" /> Favorite</span>
-                <span>{communityEntity.favoritesCount}</span>
-              </button>
-              <button className="inline-flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
-                <span className="inline-flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Comments</span>
-                <span>{communityEntity.commentsCount}</span>
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
-                <Share2 className="h-4 w-4" />
-                Share
-              </button>
-            </div>
-          </div>
+          <CommunityInteractions
+            key={context.page.id}
+            entityType="published_page"
+            entityId={context.page.id}
+            userSlug={context.author.userSlug}
+            pageId={context.page.uid}
+            pageTitle={context.page.title}
+            initialSummary={communitySummary}
+            viewer={viewer}
+          />
         </aside>
       </section>
     </main>

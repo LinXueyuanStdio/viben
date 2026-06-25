@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { useInView } from '../animated-cards/use-in-view';
+import { ChartFrame } from './chart-frame';
 import type { AppStat } from './types';
 
 interface AppsChartProps {
@@ -32,7 +33,7 @@ export function AppsChart({ apps }: AppsChartProps) {
         <p className="text-sm text-zinc-500">apps/ 目录下各应用规模</p>
       </div>
 
-      <div className="h-56">
+      <ChartFrame className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={apps} margin={{ bottom: 20 }}>
             <XAxis
@@ -71,7 +72,7 @@ export function AppsChart({ apps }: AppsChartProps) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
     </div>
   );
 }
