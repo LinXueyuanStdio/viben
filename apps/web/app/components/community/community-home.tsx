@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { ArrowUpRight, Bell, Compass, History, MessageSquare, Sparkles } from 'lucide-react';
+import { HeaderAuthButtons } from '@/components/layout/header-auth-buttons';
+import { UserMenu } from '@/components/layout/user-menu';
+import type { Session } from '@/lib/auth/types';
 import { getHomeConfig } from '@/lib/services/community';
 
 type HomeItem = {
@@ -23,7 +26,11 @@ function asHomeItem(value: unknown): HomeItem | null {
   return value as HomeItem;
 }
 
-export async function CommunityHome() {
+type CommunityHomeProps = {
+  session: Session | null;
+};
+
+export async function CommunityHome({ session }: CommunityHomeProps) {
   const config = await getHomeConfig('web_home', 'default');
   const firstSlot = config.slots[0] as { items?: unknown[] } | undefined;
   const items = (firstSlot?.items ?? []).map(asHomeItem).filter((item): item is HomeItem => Boolean(item));
@@ -42,20 +49,34 @@ export async function CommunityHome() {
               Browse public pages, follow creators, subscribe to updates, and join the new Viben community surface.
             </p>
           </div>
-          <nav className="flex flex-wrap gap-2">
-            <Link href="/moment" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">
-              <MessageSquare className="h-4 w-4" />
-              Moment
-            </Link>
-            <Link href="/leaderboard" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">
-              <Sparkles className="h-4 w-4" />
-              Leaderboard
-            </Link>
-            <Link href="/subscription" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">
-              <Bell className="h-4 w-4" />
-              Subscriptions
-            </Link>
-          </nav>
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
+            <nav className="flex flex-wrap gap-2">
+              <Link href="/moment" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">
+                <MessageSquare className="h-4 w-4" />
+                Moment
+              </Link>
+              <Link href="/leaderboard" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">
+                <Sparkles className="h-4 w-4" />
+                Leaderboard
+              </Link>
+              <Link href="/subscription" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent">
+                <Bell className="h-4 w-4" />
+                Subscriptions
+              </Link>
+            </nav>
+            <div className="flex items-center gap-2 border-l border-border pl-2">
+              {session ? (
+                <>
+                  <span className="hidden max-w-44 truncate text-sm text-muted-foreground sm:inline">
+                    Signed in as {session.username}
+                  </span>
+                  <UserMenu session={session} />
+                </>
+              ) : (
+                <HeaderAuthButtons />
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
