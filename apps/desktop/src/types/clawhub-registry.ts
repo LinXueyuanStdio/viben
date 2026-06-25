@@ -93,6 +93,8 @@ export interface ClawhubPackageListResponse {
 /**
  * Simplified skill info for display in UI
  */
+export type ClawhubSkillSortOption = "updated" | "downloads" | "stars" | "trending";
+
 export interface ClawhubSkillDisplay {
   /** Skill slug (used as ID) */
   id: string;

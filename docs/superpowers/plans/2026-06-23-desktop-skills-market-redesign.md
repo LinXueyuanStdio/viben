@@ -29,9 +29,9 @@
 - Create `/root/viben/apps/desktop/src/hooks/use-cloud-skills.test.ts`
   - Unit tests for package mapping and append/reset pagination behavior via exported reducer helpers.
 - Modify `/root/viben/apps/desktop/src/lib/skill-installer.ts`
-  - Adds `downloadAndInstallClawhubSkill` using ClaWHub file download plus the existing gateway install path.
+  - Adds `downloadAndInstallClawhubSkill` using ClaWHub package ZIP download plus the existing gateway install path.
 - Create `/root/viben/apps/desktop/src/lib/skill-installer.test.ts`
-  - Unit tests for ClaWHub file URL construction and install request body using mocked Tauri fs/path and Gateway client.
+  - Unit tests for ClaWHub package ZIP URL construction and install request body using mocked Tauri fs/path and Gateway client.
 - Create `/root/viben/apps/desktop/src/hooks/use-skill-install.ts`
   - Centralizes installing IDs, installed IDs, progress map, toast handling, and source-specific install dispatch.
 - Create `/root/viben/apps/desktop/src/hooks/use-skill-install.test.ts`
@@ -276,7 +276,9 @@ Create `/root/viben/apps/desktop/src/hooks/use-clawhub-registry.test.tsx`:
 
 ```typescript
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { waitFor } from "@testing-library/react";
+import { createRoot } from "react-dom/client";
+import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useClawhubRegistry, useClawhubRegistrySkills } from "./use-clawhub-registry";
 
@@ -346,8 +348,11 @@ describe("use-clawhub-registry", () => {
       root.render(<SkillsHookProbe onValue={(value) => { latest = value; }} />);
     });
 
-    expect(latest?.skills[0]?.name).toBe("Sorted Skill");
-    const requestedUrl = new URL(fetchMock.mock.calls[0][0]);
+    await waitFor(() => {
+      expect(latest?.skills[0]?.name).toBe("Sorted Skill");
+    });
+
+    const requestedUrl = new URL(fetchMock.mock.calls[0][0] as string);
     expect(requestedUrl.searchParams.get("family")).toBe("skill");
     expect(requestedUrl.searchParams.get("limit")).toBe("24");
     expect(requestedUrl.searchParams.get("sort")).toBe("downloads");
@@ -360,6 +365,10 @@ describe("use-clawhub-registry", () => {
       root.render(<HookProbe onValue={(value) => { latest = value; }} />);
     });
 
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
     expect(latest?.currentSort).toBe("updated");
     expect(typeof latest?.setSort).toBe("function");
     expect(Array.isArray(latest?.displaySkills)).toBe(true);
@@ -370,8 +379,12 @@ describe("use-clawhub-registry", () => {
       latest?.setSort("stars");
     });
 
-    const lastUrl = new URL(fetchMock.mock.calls.at(-1)[0]);
-    expect(lastUrl.searchParams.get("sort")).toBe("stars");
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls.at(-1);
+      expect(lastCall).toBeTruthy();
+      const lastUrl = new URL(lastCall![0] as string);
+      expect(lastUrl.searchParams.get("sort")).toBe("stars");
+    });
   });
 });
 ```
@@ -439,6 +452,7 @@ Inside `useClawhubRegistrySkills`, replace the options destructuring and add sor
 ```typescript
 const { limit = 50, enabled = true, sort: initialSort = "updated" } = options;
 const [currentSort, setCurrentSort] = useState<ClawhubSkillSortOption>(initialSort);
+const didSortEffectMountRef = useRef(false);
 ```
 
 Inside `fetchSkills`, after setting `limit`, add:
@@ -453,15 +467,23 @@ Update the `fetchSkills` dependency list:
 [enabled, limit, currentSort]
 ```
 
-Add a sort setter before the return:
+After the existing `refresh` callback is declared, add a refetch effect and a sort setter before the return. The effect must be below `refresh` so the dependency array does not reference a const before initialization. The setter must not call `fetchSkills` directly because it would use the previous `currentSort` closure value:
 
 ```typescript
+useEffect(() => {
+  if (!didSortEffectMountRef.current) {
+    didSortEffectMountRef.current = true;
+    return;
+  }
+
+  if (enabled) {
+    void refresh();
+  }
+}, [currentSort, enabled, refresh]);
+
 const setSort = useCallback((sort: ClawhubSkillSortOption) => {
   setCurrentSort(sort);
-  setCursor(null);
-  setHasMore(true);
-  void fetchSkills(null, true);
-}, [fetchSkills]);
+}, []);
 ```
 
 Return the new fields:
@@ -534,7 +556,7 @@ Run:
 pnpm --filter @viben/desktop typecheck
 ```
 
-Expected: PASS or unrelated existing type errors only. No errors may mention `/root/viben/apps/desktop/src/components/agent/skill-market-grid.tsx` or `/root/viben/apps/desktop/src/hooks/use-clawhub-registry.ts`.
+Expected: PASS. If this fails because of pre-existing unrelated errors, stop and record the baseline before continuing; do not mark this task complete with a failing typecheck.
 
 - [ ] **Step 9: Commit**
 
@@ -558,9 +580,8 @@ import { describe, expect, it } from "vitest";
 import {
   appendCloudSkillPage,
   mapCloudSkillPackage,
-  type CloudSkillPackage,
-  type PaginationInfo,
 } from "./use-cloud-skills";
+import type { CloudSkillPackage, PaginationInfo } from "./use-cloud-skills";
 
 const pagination: PaginationInfo = {
   page: 1,
@@ -888,8 +909,8 @@ import type { ClawhubSkillDisplay } from "@/types/clawhub-registry";
 import {
   getInstallErrorTranslationKey,
   getSkillInstallId,
-  type InstallFailureInput,
 } from "./use-skill-install";
+import type { InstallFailureInput } from "./use-skill-install";
 
 const communitySkill = {
   id: "cloud-1",
@@ -983,7 +1004,7 @@ describe("downloadAndInstallClawhubSkill", () => {
     removeMock.mockResolvedValue(undefined);
   });
 
-  it("downloads the ClaWHub file and installs through gateway with snake_case body", async () => {
+  it("downloads the ClaWHub package ZIP and installs through gateway with snake_case body", async () => {
     const result = await downloadAndInstallClawhubSkill({
       slug: "owner/official-skill",
       name: "Official Skill",
@@ -993,8 +1014,8 @@ describe("downloadAndInstallClawhubSkill", () => {
 
     expect(result.success).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://clawhub.ai/api/v1/skills/owner%2Fofficial-skill/file",
-      { headers: { Accept: "application/zip, application/octet-stream, */*" } },
+      "https://clawhub.ai/api/v1/packages/owner%2Fofficial-skill/download?version=2.0.0",
+      { headers: { Accept: "application/zip" } },
     );
     expect(writeFileMock).toHaveBeenCalledWith(
       "/tmp/viben-data/temp/owner-official-skill-2.0.0.zip",
@@ -1023,7 +1044,19 @@ Expected: FAIL because `use-skill-install.ts` and `downloadAndInstallClawhubSkil
 
 - [ ] **Step 3: Add ClaWHub install options and path sanitizer**
 
-Modify `/root/viben/apps/desktop/src/lib/skill-installer.ts` after `InstallSkillOptions`:
+Modify `/root/viben/apps/desktop/src/lib/skill-installer.ts` so `InstallSkillOptions` no longer requires the full `SkillPackage` shape:
+
+```typescript
+export type InstallableSkillPackage = Pick<SkillPackage, "id" | "name" | "slug" | "version">;
+
+export interface InstallSkillOptions {
+  package: InstallableSkillPackage;
+  onProgress?: ProgressCallback;
+  force?: boolean;
+}
+```
+
+Then add the ClaWHub options after `InstallSkillOptions`:
 
 ```typescript
 export interface InstallClawhubSkillOptions {
@@ -1041,7 +1074,7 @@ function sanitizeTempFilePart(value: string): string {
 
 - [ ] **Step 4: Add `downloadAndInstallClawhubSkill`**
 
-Add this function before `isSkillInstalled` in `/root/viben/apps/desktop/src/lib/skill-installer.ts`:
+Add this function before `isSkillInstalled`. ClaWHub OpenAPI exposes `/api/v1/packages/{name}/download` as the ZIP archive endpoint; do not use `/api/v1/skills/{slug}/file`, which fetches individual text files by path. Add this in `/root/viben/apps/desktop/src/lib/skill-installer.ts`:
 
 ```typescript
 export async function downloadAndInstallClawhubSkill(
@@ -1058,8 +1091,8 @@ export async function downloadAndInstallClawhubSkill(
     });
 
     const response = await fetch(
-      `https://clawhub.ai/api/v1/skills/${encodeURIComponent(slug)}/file`,
-      { headers: { Accept: "application/zip, application/octet-stream, */*" } },
+      `https://clawhub.ai/api/v1/packages/${encodeURIComponent(slug)}/download?version=${encodeURIComponent(version)}`,
+      { headers: { Accept: "application/zip" } },
     );
 
     if (!response.ok) {
@@ -1172,10 +1205,8 @@ import { toast } from "@/hooks/use-toast";
 import {
   downloadAndInstallClawhubSkill,
   downloadAndInstallSkill,
-  type InstallErrorCode,
-  type InstallProgress,
-  type InstallSkillResult,
 } from "@/lib/skill-installer";
+import type { InstallErrorCode, InstallProgress, InstallSkillResult } from "@/lib/skill-installer";
 import type { InstallableSkill } from "@/components/skills/types";
 
 export interface InstallFailureInput {
@@ -1513,7 +1544,8 @@ git commit -m "feat(desktop): add skill source tabs"
 **Files:**
 - Create: `/root/viben/apps/desktop/src/components/skills/official-skill-card.tsx`
 - Test: `/root/viben/apps/desktop/src/components/skills/official-skill-card.test.tsx`
-- Move/Modify: `/root/viben/apps/desktop/src/components/skills/skill-card.tsx` to `/root/viben/apps/desktop/src/components/skills/community-skill-card.tsx`
+- Create: `/root/viben/apps/desktop/src/components/skills/community-skill-card.tsx`
+- Keep: `/root/viben/apps/desktop/src/components/skills/skill-card.tsx` unchanged until Task 9 removes old imports
 - Test: `/root/viben/apps/desktop/src/components/skills/community-skill-card.test.tsx`
 
 - [ ] **Step 1: Write failing tests for Official card**
@@ -1743,6 +1775,13 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
     [skill.slug],
   );
 
+  const handleCardKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleViewDetails();
+    }
+  }, [handleViewDetails]);
+
   return (
     <div
       className={cn(
@@ -1750,6 +1789,7 @@ export const OfficialSkillCard = memo(function OfficialSkillCard({
         "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg",
       )}
       onClick={handleViewDetails}
+      onKeyDown={handleCardKeyDown}
       role="button"
       tabIndex={0}
     >
@@ -1871,15 +1911,10 @@ export function OfficialSkillCardSkeleton() {
 }
 ```
 
-- [ ] **Step 5: Move and rewrite Community card**
+- [ ] **Step 5: Create Community card without breaking existing imports**
 
-Run:
+Create `/root/viben/apps/desktop/src/components/skills/community-skill-card.tsx`. Do not move or delete `/root/viben/apps/desktop/src/components/skills/skill-card.tsx` in this task because the existing page and barrel still import it until Task 9.
 
-```bash
-git mv /root/viben/apps/desktop/src/components/skills/skill-card.tsx /root/viben/apps/desktop/src/components/skills/community-skill-card.tsx
-```
-
-Then replace `/root/viben/apps/desktop/src/components/skills/community-skill-card.tsx` with:
 
 ```tsx
 import React, { memo, useCallback } from "react";
@@ -1958,6 +1993,13 @@ export const CommunitySkillCard = memo(function CommunitySkillCard({
 
   const authorName = skill.author?.displayName || skill.author?.username || null;
 
+  const handleCardKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleViewDetails();
+    }
+  }, [handleViewDetails]);
+
   return (
     <div
       className={cn(
@@ -1965,6 +2007,7 @@ export const CommunitySkillCard = memo(function CommunitySkillCard({
         "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg",
       )}
       onClick={handleViewDetails}
+      onKeyDown={handleCardKeyDown}
       role="button"
       tabIndex={0}
     >
@@ -2227,6 +2270,8 @@ describe("SkillDetail", () => {
     expect(screen.getByText("Official Skill")).toBeTruthy();
     expect(screen.getByText("Official")).toBeTruthy();
     expect(screen.getByText("Owner Team")).toBeTruthy();
+    expect(screen.getByText("Downloads: 1.2K")).toBeTruthy();
+    expect(screen.getByText("Stars: 42")).toBeTruthy();
     expect(screen.getByText("This skill executes code")).toBeTruthy();
   });
 
@@ -2244,6 +2289,9 @@ describe("SkillDetail", () => {
     expect(screen.getByText("automation")).toBeTruthy();
     expect(screen.getByText("run community")).toBeTruthy();
     expect(screen.getByText("Sam Dev")).toBeTruthy();
+    expect(screen.getByText("Rating: 4.7")).toBeTruthy();
+    expect(screen.getByText("Downloads: 900")).toBeTruthy();
+    expect(screen.getByText("Favorites: 8")).toBeTruthy();
   });
 
   it("copies slug and installs the selected item", () => {
@@ -2295,7 +2343,21 @@ interface SkillDetailProps {
 Use imports:
 
 ```typescript
+import { useState } from "react";
+import { Calendar, Check, Copy, ExternalLink, Tag, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { InstallableSkill, SkillDetailItem } from "./types";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 import { formatSkillCount, getSkillInitials, getSkillSlug } from "./skill-display-utils";
 import { SkillSourceBadge } from "./skill-source-tabs";
 ```
@@ -2305,12 +2367,35 @@ import { SkillSourceBadge } from "./skill-source-tabs";
 Inside `SkillDetail`, derive source-specific fields:
 
 ```typescript
+const [copied, setCopied] = useState(false);
+const { t } = useTranslation();
+
+if (!skill) return null;
+
 const source = skill.source;
-const data = skill.data;
 const slug = getSkillSlug(skill);
+const data = skill.data;
 const description = data.description || t("skillsMarket.noDescription");
-const downloads = source === "official" ? data.downloads : data.downloadsCount;
+const downloads = skill.source === "official" ? skill.data.downloads : skill.data.downloadsCount;
 const version = data.version;
+
+const formatDate = (value: string | number) => {
+  return new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const handleCopySlug = async () => {
+  try {
+    await navigator.clipboard.writeText(slug);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  } catch {
+    // Ignore clipboard failures; install and detail viewing still work.
+  }
+};
 ```
 
 Render these shared sections:
@@ -2319,13 +2404,44 @@ Render these shared sections:
 <DialogTitle className="text-xl">{data.name}</DialogTitle>
 <SkillSourceBadge source={source} />
 <DialogDescription className="mt-1">{description}</DialogDescription>
-<code className="text-xs bg-muted px-2 py-1 rounded font-mono">{slug}</code>
+<div className="mt-2 flex items-center gap-2">
+  <code className="rounded bg-muted px-2 py-1 font-mono text-xs">{slug}</code>
+  <Button
+    variant="ghost"
+    size="icon"
+    className="h-7 w-7"
+    aria-label={t("common.copy", "Copy")}
+    onClick={handleCopySlug}
+  >
+    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+  </Button>
+</div>
+```
+
+Render the shared stats row under the header:
+
+```tsx
+<div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+  <div>{t("skillsMarket.downloads", "Downloads")}: {formatSkillCount(downloads)}</div>
+  {skill.source === "official" && (
+    <div>{t("skillsMarket.stars", "Stars")}: {formatSkillCount(skill.data.stars)}</div>
+  )}
+  {skill.source === "community" && skill.data.ratingAvg > 0 && (
+    <div>{t("skillsMarket.rating", "Rating")}: {skill.data.ratingAvg.toFixed(1)}</div>
+  )}
+  {skill.source === "community" && (
+    <div>{t("skillsMarket.favorites", "Favorites")}: {formatSkillCount(skill.data.favoritesCount)}</div>
+  )}
+  <div>v{version}</div>
+</div>
 ```
 
 Render official-only sections:
 
 ```tsx
-{source === "official" && (
+{skill.source === "official" && (() => {
+  const data = skill.data;
+  return (
   <>
     {data.executesCode && (
       <section className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
@@ -2353,13 +2469,16 @@ Render official-only sections:
       </div>
     </section>
   </>
-)}
+  );
+})()}
 ```
 
 Render community-only sections with this branch:
 
 ```tsx
-{source === "community" && (
+{skill.source === "community" && (() => {
+  const data = skill.data;
+  return (
   <>
     {data.author && (
       <section>
@@ -2434,7 +2553,8 @@ Render community-only sections with this branch:
       </div>
     </section>
   </>
-)}
+  );
+})()}
 ```
 
 - [ ] **Step 5: Wire install progress into the footer**
@@ -2459,23 +2579,19 @@ onClick={() => {
 }}
 ```
 
-- [ ] **Step 6: Run detail tests and typecheck**
+- [ ] **Step 6: Run detail tests**
 
 Run:
 
 ```bash
 pnpm --filter @viben/desktop test -- src/components/skills/skill-detail.test.tsx
-pnpm --filter @viben/desktop typecheck
 ```
 
-Expected: PASS.
+Expected: PASS. Do not run full desktop typecheck in this task: the existing `skills-market.tsx` page still consumes the old `SkillDetail` API until Task 9 rewrites the page. Full typecheck is restored in Task 9.
 
 - [ ] **Step 7: Commit**
 
-```bash
-git add /root/viben/apps/desktop/src/components/skills/skill-detail.tsx /root/viben/apps/desktop/src/components/skills/skill-detail.test.tsx
-git commit -m "feat(desktop): support unified skill details"
-```
+Do not commit this task yet. The old `/root/viben/apps/desktop/src/pages/skills-market.tsx` still consumes the old `SkillDetail` API until Task 9. Leave these edits in the worktree and commit them with Task 9 after the page is rewritten and full desktop typecheck passes.
 
 ## Task 8: Add Infinite Grid Components
 
@@ -2483,12 +2599,15 @@ git commit -m "feat(desktop): support unified skill details"
 - Create: `/root/viben/apps/desktop/src/components/skills/skill-grid-states.tsx`
 - Create: `/root/viben/apps/desktop/src/components/skills/official-skill-grid.tsx`
 - Create: `/root/viben/apps/desktop/src/components/skills/community-skill-grid.tsx`
+- Test: `/root/viben/apps/desktop/src/components/skills/official-skill-grid.test.tsx`
+- Test: `/root/viben/apps/desktop/src/components/skills/community-skill-grid.test.tsx`
 
 - [ ] **Step 1: Create shared grid states**
 
 Create `/root/viben/apps/desktop/src/components/skills/skill-grid-states.tsx`:
 
 ```tsx
+import type { ReactNode } from "react";
 import { AlertCircle, Package, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -2533,7 +2652,7 @@ export function SkillGridEmpty({ title, description, className }: SkillGridEmpty
   );
 }
 
-export function SkillGridShell({ children, className }: { children: React.ReactNode; className?: string }) {
+export function SkillGridShell({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn("grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4", className)}>
       {children}
@@ -2612,6 +2731,7 @@ export function OfficialSkillGrid({
     (node: HTMLDivElement | null) => {
       if (isLoading) return;
       observerRef.current?.disconnect();
+      if (typeof IntersectionObserver === "undefined") return;
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && hasMore && !isLoading) {
           void loadMore();
@@ -2629,9 +2749,10 @@ export function OfficialSkillGrid({
   }, [currentSearchQuery, search, searchQuery]);
 
   const error = skillsError || searchError;
+  const retry = isSearching ? () => search(searchQuery) : refreshSkills;
 
   if (error && displaySkills.length === 0) {
-    return <SkillGridError error={error} onRetry={refreshSkills} className={className} />;
+    return <SkillGridError error={error} onRetry={retry} className={className} />;
   }
 
   if (isLoading && displaySkills.length === 0) {
@@ -2707,7 +2828,7 @@ export function OfficialSkillGrid({
         </div>
       )}
 
-      {error && displaySkills.length > 0 && <SkillGridError error={error} onRetry={loadMore} />}
+      {error && displaySkills.length > 0 && <SkillGridError error={error} onRetry={retry} />}
     </div>
   );
 }
@@ -2732,8 +2853,8 @@ import {
 import {
   useCloudSkillPackagesInfinite,
   useCloudSkillSearch,
-  type CloudSkillSortOption,
 } from "@/hooks/use-cloud-skills";
+import type { CloudSkillSortOption } from "@/hooks/use-cloud-skills";
 import { cn } from "@/lib/utils";
 import { CommunitySkillCard, CommunitySkillCardSkeleton } from "./community-skill-card";
 import { SkillGridEmpty, SkillGridError, SkillGridShell } from "./skill-grid-states";
@@ -2778,18 +2899,21 @@ export function CommunitySkillGrid({
     results: searchResults,
     loading: searchLoading,
     error: searchError,
+    search,
   } = useCloudSkillSearch(searchQuery, 300);
 
   const isSearching = searchQuery.trim().length > 0;
   const displaySkills = isSearching ? searchResults : packages;
   const isLoading = isSearching ? searchLoading : packagesLoading;
   const error = packagesError || searchError;
+  const retry = isSearching ? () => search(searchQuery) : refresh;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useCallback(
     (node: HTMLDivElement | null) => {
       if (isLoading || isSearching) return;
       observerRef.current?.disconnect();
+      if (typeof IntersectionObserver === "undefined") return;
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0]?.isIntersecting && hasMore && !isLoading && !isSearching) {
           void loadMore();
@@ -2801,7 +2925,7 @@ export function CommunitySkillGrid({
   );
 
   if (error && displaySkills.length === 0) {
-    return <SkillGridError error={error} onRetry={refresh} className={className} />;
+    return <SkillGridError error={error} onRetry={retry} className={className} />;
   }
 
   if (isLoading && displaySkills.length === 0) {
@@ -2877,26 +3001,449 @@ export function CommunitySkillGrid({
         </div>
       )}
 
-      {error && displaySkills.length > 0 && <SkillGridError error={error} onRetry={isSearching ? refresh : loadMore} />}
+      {error && displaySkills.length > 0 && <SkillGridError error={error} onRetry={retry} />}
     </div>
   );
 }
 ```
 
-- [ ] **Step 4: Run component typecheck**
+- [ ] **Step 4: Add grid behavior tests**
+
+Create `/root/viben/apps/desktop/src/components/skills/official-skill-grid.test.tsx`:
+
+```typescript
+/**
+ * @vitest-environment jsdom
+ */
+
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { OfficialSkillGrid } from "./official-skill-grid";
+import type { ReactNode } from "react";
+import type { ClawhubSkillDisplay } from "@/types/clawhub-registry";
+
+const loadMore = vi.fn();
+const refreshSkills = vi.fn();
+const search = vi.fn();
+const setSort = vi.fn();
+
+class MockIntersectionObserver {
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
+  takeRecords = vi.fn(() => []);
+}
+
+vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
+const skill: ClawhubSkillDisplay = {
+  id: "owner/official-skill",
+  name: "Official Skill",
+  slug: "owner/official-skill",
+  version: "2.0.0",
+  description: "Official description",
+  ownerHandle: "owner",
+  ownerName: "Owner Team",
+  ownerAvatar: null,
+  isOfficial: true,
+  executesCode: false,
+  channel: "official",
+  downloads: 1200,
+  stars: 42,
+  createdAt: 1717200000000,
+  updatedAt: 1717286400000,
+};
+
+const hookState = {
+  displaySkills: [skill],
+  isLoading: false,
+  skillsError: null as string | null,
+  searchError: null as string | null,
+  hasMore: true,
+  loadMore,
+  refreshSkills,
+  isSearching: false,
+  search,
+  searchQuery: "",
+  setSort,
+  currentSort: "updated",
+};
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      if (key === "skillsMarket.showingSkills") return `showing ${values?.count}`;
+      if (key === "skillsMarket.searchResults") return `results ${values?.count}`;
+      return key;
+    },
+  }),
+}));
+
+vi.mock("@/hooks/use-clawhub-registry", () => ({
+  useClawhubRegistry: () => hookState,
+}));
+
+vi.mock("@/components/ui/select", () => ({
+  Select: ({
+    children,
+    onValueChange,
+    value,
+  }: {
+    children: ReactNode;
+    onValueChange: (value: string) => void;
+    value: string;
+  }) => (
+    <div>
+      <button type="button" aria-label="skillsMarket.sortBy" onClick={() => onValueChange("downloads")}>
+        sort:{value}
+      </button>
+      {children}
+    </div>
+  ),
+  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
+    <div data-value={value}>{children}</div>
+  ),
+  SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectValue: () => null,
+}));
+
+vi.mock("./official-skill-card", () => ({
+  OfficialSkillCard: ({ skill }: { skill: ClawhubSkillDisplay }) => <div>{skill.name}</div>,
+  OfficialSkillCardSkeleton: () => <div>official skeleton</div>,
+}));
+
+describe("OfficialSkillGrid", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(hookState, {
+      displaySkills: [skill],
+      isLoading: false,
+      skillsError: null,
+      searchError: null,
+      hasMore: true,
+      isSearching: false,
+      searchQuery: "",
+      currentSort: "updated",
+    });
+  });
+
+  it("syncs search prop and renders results", () => {
+    render(
+      <OfficialSkillGrid
+        searchQuery="runner"
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    expect(search).toHaveBeenCalledWith("runner");
+    expect(screen.getByText("Official Skill")).toBeTruthy();
+  });
+
+  it("loads more from the explicit load more button", () => {
+    render(
+      <OfficialSkillGrid
+        searchQuery=""
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /common.loadMore/i }));
+    expect(loadMore).toHaveBeenCalledOnce();
+  });
+
+  it("changes the official sort option", () => {
+    render(
+      <OfficialSkillGrid
+        searchQuery=""
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /skillsMarket.sortBy/i }));
+
+    expect(setSort).toHaveBeenCalledWith("downloads");
+  });
+
+  it("renders error state and retries refresh", () => {
+    Object.assign(hookState, { displaySkills: [], skillsError: "failed" });
+
+    render(
+      <OfficialSkillGrid
+        searchQuery=""
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    expect(screen.getByText("failed")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /common.retry/i }));
+    expect(refreshSkills).toHaveBeenCalledOnce();
+  });
+
+  it("retries search when the empty error belongs to search results", () => {
+    Object.assign(hookState, {
+      displaySkills: [],
+      searchError: "search failed",
+      isSearching: true,
+      searchQuery: "runner",
+    });
+
+    render(
+      <OfficialSkillGrid
+        searchQuery="runner"
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /common.retry/i }));
+
+    expect(search).toHaveBeenCalledWith("runner");
+    expect(refreshSkills).not.toHaveBeenCalled();
+  });
+});
+```
+
+Create `/root/viben/apps/desktop/src/components/skills/community-skill-grid.test.tsx`:
+
+```typescript
+/**
+ * @vitest-environment jsdom
+ */
+
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CommunitySkillGrid } from "./community-skill-grid";
+import type { ReactNode } from "react";
+import type { CloudSkillPackage } from "@/hooks/use-cloud-skills";
+
+const loadMore = vi.fn();
+const refresh = vi.fn();
+const search = vi.fn();
+
+class MockIntersectionObserver {
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
+  takeRecords = vi.fn(() => []);
+}
+
+vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
+const skill: CloudSkillPackage = {
+  id: "cloud-1",
+  name: "Community Skill",
+  slug: "community-skill",
+  version: "1.0.0",
+  description: "Community description",
+  category: "workflow",
+  skillType: "automation",
+  triggerPatterns: ["run community"],
+  tags: ["workflow"],
+  repositoryUrl: null,
+  favoritesCount: 1,
+  downloadsCount: 2,
+  ratingAvg: 4.5,
+  author: null,
+  createdAt: "2026-06-01T00:00:00.000Z",
+  updatedAt: "2026-06-02T00:00:00.000Z",
+};
+
+const infiniteState = {
+  packages: [skill],
+  loading: false,
+  error: null as string | null,
+  hasMore: true,
+  loadMore,
+  refresh,
+};
+
+const searchState = {
+  results: [] as CloudSkillPackage[],
+  loading: false,
+  error: null as string | null,
+  search,
+};
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      if (key === "skillsMarket.showingSkills") return `showing ${values?.count}`;
+      if (key === "skillsMarket.searchResults") return `results ${values?.count}`;
+      return key;
+    },
+  }),
+}));
+
+vi.mock("@/hooks/use-cloud-skills", () => ({
+  useCloudSkillPackagesInfinite: () => infiniteState,
+  useCloudSkillSearch: () => searchState,
+}));
+
+vi.mock("@/components/ui/select", () => ({
+  Select: ({
+    children,
+    onValueChange,
+    value,
+  }: {
+    children: ReactNode;
+    onValueChange: (value: string) => void;
+    value: string;
+  }) => (
+    <div>
+      <button type="button" aria-label="skillsMarket.sortBy" onClick={() => onValueChange("downloads")}>
+        sort:{value}
+      </button>
+      {children}
+    </div>
+  ),
+  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
+    <div data-value={value}>{children}</div>
+  ),
+  SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectValue: () => null,
+}));
+
+vi.mock("./community-skill-card", () => ({
+  CommunitySkillCard: ({ skill }: { skill: CloudSkillPackage }) => <div>{skill.name}</div>,
+  CommunitySkillCardSkeleton: () => <div>community skeleton</div>,
+}));
+
+describe("CommunitySkillGrid", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(infiniteState, { packages: [skill], loading: false, error: null, hasMore: true });
+    Object.assign(searchState, { results: [], loading: false, error: null, search });
+  });
+
+  it("renders package results and explicit load more", () => {
+    render(
+      <CommunitySkillGrid
+        searchQuery=""
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    expect(screen.getByText("Community Skill")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /common.loadMore/i }));
+    expect(loadMore).toHaveBeenCalledOnce();
+  });
+
+  it("uses search results and hides load more while searching", () => {
+    Object.assign(searchState, { results: [{ ...skill, id: "cloud-2", name: "Search Skill" }] });
+
+    render(
+      <CommunitySkillGrid
+        searchQuery="search"
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    expect(screen.getByText("Search Skill")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /common.loadMore/i })).toBeNull();
+  });
+
+  it("changes the community sort option", () => {
+    render(
+      <CommunitySkillGrid
+        searchQuery=""
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /skillsMarket.sortBy/i }));
+
+    expect(screen.getByText("Community Skill")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /skillsMarket.sortBy/i }).textContent).toBe("sort:downloads");
+  });
+
+  it("renders error state and retries refresh", () => {
+    Object.assign(infiniteState, { packages: [], error: "failed" });
+
+    render(
+      <CommunitySkillGrid
+        searchQuery=""
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    expect(screen.getByText("failed")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /common.retry/i }));
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("retries search when the empty error belongs to search results", () => {
+    Object.assign(searchState, { results: [], error: "search failed" });
+
+    render(
+      <CommunitySkillGrid
+        searchQuery="search"
+        onViewDetails={vi.fn()}
+        onInstall={vi.fn()}
+        isInstalled={() => false}
+        isInstalling={() => false}
+        getProgress={() => 0}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /common.retry/i }));
+
+    expect(search).toHaveBeenCalledWith("search");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 5: Run grid tests**
 
 Run:
 
 ```bash
-pnpm --filter @viben/desktop typecheck
+pnpm --filter @viben/desktop test -- src/components/skills/official-skill-grid.test.tsx src/components/skills/community-skill-grid.test.tsx
 ```
 
-Expected: PASS.
+Expected: PASS. Do not run full desktop typecheck in this task: Task 7's `SkillDetail` API change is intentionally not integrated into the page until Task 9.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add /root/viben/apps/desktop/src/components/skills/skill-grid-states.tsx /root/viben/apps/desktop/src/components/skills/official-skill-grid.tsx /root/viben/apps/desktop/src/components/skills/community-skill-grid.tsx
+git add /root/viben/apps/desktop/src/components/skills/skill-grid-states.tsx /root/viben/apps/desktop/src/components/skills/official-skill-grid.tsx /root/viben/apps/desktop/src/components/skills/community-skill-grid.tsx /root/viben/apps/desktop/src/components/skills/official-skill-grid.test.tsx /root/viben/apps/desktop/src/components/skills/community-skill-grid.test.tsx
 git commit -m "feat(desktop): add infinite skill grids"
 ```
 
@@ -2920,6 +3467,7 @@ Create `/root/viben/apps/desktop/src/components/skills/skills-market-page.test.t
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SkillsMarketPage } from "@/pages/skills-market";
+import type { SkillSource } from "@/components/skills";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -2939,19 +3487,54 @@ vi.mock("@/hooks/use-skill-install", () => ({
   }),
 }));
 
-vi.mock("./official-skill-grid", () => ({
+vi.mock("@/components/skills", () => ({
+  SearchBar: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+  }) => (
+    <input
+      placeholder={placeholder}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
+  SkillSourceTabs: ({
+    source,
+    onSourceChange,
+  }: {
+    source: SkillSource;
+    onSourceChange: (source: SkillSource) => void;
+  }) => (
+    <div role="tablist">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={source === "official"}
+        onClick={() => onSourceChange("official")}
+      >
+        skillsMarket.officialTab
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={source === "community"}
+        onClick={() => onSourceChange("community")}
+      >
+        skillsMarket.communityTab
+      </button>
+    </div>
+  ),
   OfficialSkillGrid: ({ searchQuery }: { searchQuery: string }) => (
     <div data-testid="official-grid">official:{searchQuery}</div>
   ),
-}));
-
-vi.mock("./community-skill-grid", () => ({
   CommunitySkillGrid: ({ searchQuery }: { searchQuery: string }) => (
     <div data-testid="community-grid">community:{searchQuery}</div>
   ),
-}));
-
-vi.mock("./skill-detail", () => ({
   SkillDetail: () => <div data-testid="skill-detail" />,
 }));
 
@@ -2969,12 +3552,20 @@ describe("SkillsMarketPage", () => {
   it("switches to community source and resets search", () => {
     render(<SkillsMarketPage />);
 
+    const scrollContainer = screen.getByTestId("skills-market-scroll");
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      value: 120,
+      writable: true,
+    });
+
     fireEvent.change(screen.getByPlaceholderText("skillsMarket.searchPlaceholder"), {
       target: { value: "runner" },
     });
     fireEvent.click(screen.getByRole("tab", { name: /skillsMarket.communityTab/i }));
 
     expect(screen.getByTestId("community-grid").textContent).toBe("community:");
+    expect(scrollContainer.scrollTop).toBe(0);
   });
 });
 ```
@@ -2994,20 +3585,17 @@ Expected: FAIL because the page still imports removed components and does not us
 Replace `/root/viben/apps/desktop/src/pages/skills-market.tsx` with:
 
 ```tsx
-import { useCallback, useState } from "react";
-import { RefreshCw, Sparkles } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import {
   CommunitySkillGrid,
   OfficialSkillGrid,
   SearchBar,
   SkillDetail,
   SkillSourceTabs,
-  type InstallableSkill,
-  type SkillDetailItem,
-  type SkillSource,
 } from "@/components/skills";
+import type { InstallableSkill, SkillDetailItem, SkillSource } from "@/components/skills";
 import { useSkillInstall } from "@/hooks/use-skill-install";
 
 export function SkillsMarketPage() {
@@ -3017,10 +3605,14 @@ export function SkillsMarketPage() {
   const [selectedSkill, setSelectedSkill] = useState<SkillDetailItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const { install, isInstalled, isInstalling, getProgress } = useSkillInstall();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleSourceChange = useCallback((nextSource: SkillSource) => {
     setSource(nextSource);
     setSearchQuery("");
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
   }, []);
 
   const handleViewDetails = useCallback((skill: SkillDetailItem) => {
@@ -3042,14 +3634,6 @@ export function SkillsMarketPage() {
             <p className="mt-0.5 text-sm text-muted-foreground">{t("skillsMarket.subtitle")}</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.dispatchEvent(new CustomEvent("viben:skills-market-refresh"))}
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          {t("common.refresh")}
-        </Button>
       </div>
 
       <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -3062,7 +3646,11 @@ export function SkillsMarketPage() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div
+        ref={scrollContainerRef}
+        data-testid="skills-market-scroll"
+        className="min-h-0 flex-1 overflow-y-auto pr-1"
+      >
         {source === "official" ? (
           <OfficialSkillGrid
             searchQuery={searchQuery}
@@ -3125,6 +3713,7 @@ Run:
 
 ```bash
 git rm /root/viben/apps/desktop/src/components/skills/category-filter.tsx
+git rm /root/viben/apps/desktop/src/components/skills/skill-card.tsx
 ```
 
 - [ ] **Step 6: Run page tests and typecheck**
@@ -3141,7 +3730,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add /root/viben/apps/desktop/src/pages/skills-market.tsx /root/viben/apps/desktop/src/components/skills/index.ts /root/viben/apps/desktop/src/components/skills/skills-market-page.test.tsx
+git add /root/viben/apps/desktop/src/pages/skills-market.tsx /root/viben/apps/desktop/src/components/skills/index.ts /root/viben/apps/desktop/src/components/skills/skills-market-page.test.tsx /root/viben/apps/desktop/src/components/skills/skill-detail.tsx /root/viben/apps/desktop/src/components/skills/skill-detail.test.tsx
 git commit -m "feat(desktop): assemble dual-source skills market"
 ```
 
@@ -3226,7 +3815,7 @@ locale json ok
 Run:
 
 ```bash
-pnpm --filter @viben/desktop test -- src/components/skills/skill-display-utils.test.ts src/hooks/use-clawhub-registry.test.tsx src/hooks/use-cloud-skills.test.ts src/hooks/use-skill-install.test.ts src/lib/skill-installer.test.ts src/components/skills/skill-source-tabs.test.tsx src/components/skills/official-skill-card.test.tsx src/components/skills/community-skill-card.test.tsx src/components/skills/skill-detail.test.tsx src/components/skills/skills-market-page.test.tsx
+pnpm --filter @viben/desktop test -- src/components/skills/skill-display-utils.test.ts src/hooks/use-clawhub-registry.test.tsx src/hooks/use-cloud-skills.test.ts src/hooks/use-skill-install.test.ts src/lib/skill-installer.test.ts src/components/skills/skill-source-tabs.test.tsx src/components/skills/official-skill-card.test.tsx src/components/skills/community-skill-card.test.tsx src/components/skills/skill-detail.test.tsx src/components/skills/official-skill-grid.test.tsx src/components/skills/community-skill-grid.test.tsx src/components/skills/skills-market-page.test.tsx
 ```
 
 Expected: PASS.
@@ -3242,15 +3831,16 @@ pnpm --filter @viben/desktop build
 
 Expected: both PASS.
 
-- [ ] **Step 6: Run workspace typecheck**
+- [ ] **Step 6: Run workspace typecheck and build**
 
 Run:
 
 ```bash
 pnpm typecheck
+pnpm build
 ```
 
-Expected: PASS.
+Expected: both PASS.
 
 - [ ] **Step 7: Commit**
 

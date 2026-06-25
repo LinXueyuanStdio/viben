@@ -38,6 +38,8 @@ export interface CloudSkillPackage {
   updatedAt: string;
 }
 
+export type CloudSkillSortOption = "latest" | "popular" | "downloads";
+
 /**
  * Pagination information for list responses
  */
@@ -66,6 +68,30 @@ export interface SkillCategory {
   count: number;
 }
 
+interface CloudSkillApiPackage {
+  id: string;
+  name: string;
+  slug: string;
+  version: string;
+  description: string | null;
+  category?: string | null;
+  skillType?: string;
+  triggerPatterns?: string[] | null;
+  tags?: string[] | null;
+  repositoryUrl?: string | null;
+  favoritesCount?: number;
+  downloadsCount?: number;
+  ratingAvg?: number;
+  author?: {
+    id: string;
+    username: string;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
 /**
  * Options for fetching cloud skill packages
  */
@@ -73,7 +99,48 @@ export interface UseCloudSkillPackagesOptions {
   page?: number;
   limit?: number;
   category?: string;
-  sort?: "latest" | "popular" | "downloads";
+  sort?: CloudSkillSortOption;
+}
+
+export function mapCloudSkillPackage(pkg: CloudSkillApiPackage): CloudSkillPackage {
+  return {
+    id: pkg.id,
+    name: pkg.name,
+    slug: pkg.slug,
+    version: pkg.version,
+    description: pkg.description,
+    category: pkg.category ?? null,
+    skillType: pkg.skillType ?? "command",
+    triggerPatterns: pkg.triggerPatterns ?? null,
+    tags: pkg.tags ?? null,
+    repositoryUrl: pkg.repositoryUrl ?? null,
+    favoritesCount: pkg.favoritesCount ?? 0,
+    downloadsCount: pkg.downloadsCount ?? 0,
+    ratingAvg: pkg.ratingAvg ?? 0,
+    author: pkg.author ? {
+      id: pkg.author.id,
+      username: pkg.author.username,
+      displayName: pkg.author.displayName ?? pkg.author.username,
+      avatarUrl: pkg.author.avatarUrl ?? null,
+    } : null,
+    createdAt: pkg.createdAt,
+    updatedAt: pkg.updatedAt ?? pkg.createdAt,
+  };
+}
+
+export function appendCloudSkillPage(
+  previous: CloudSkillPackage[],
+  next: CloudSkillPackage[],
+  pagination: PaginationInfo,
+  replace: boolean
+) {
+  const packages = replace ? next : [...previous, ...next];
+
+  return {
+    packages,
+    pagination,
+    hasMore: packages.length < pagination.total,
+  };
 }
 
 // ============================================================================
@@ -112,30 +179,7 @@ export function useCloudSkillPackages(options: UseCloudSkillPackagesOptions = {}
         // Note: category filter may not be supported yet in the API
       });
 
-      // Map response to CloudSkillPackage format
-      const mappedPackages: CloudSkillPackage[] = response.data.map((pkg) => ({
-        id: pkg.id,
-        name: pkg.name,
-        slug: pkg.slug,
-        version: pkg.version,
-        description: pkg.description,
-        category: pkg.category ?? null,
-        skillType: pkg.skillType ?? "command",
-        triggerPatterns: pkg.triggerPatterns ?? null,
-        tags: pkg.tags ?? null,
-        repositoryUrl: pkg.repositoryUrl ?? null,
-        favoritesCount: pkg.favoritesCount ?? 0,
-        downloadsCount: pkg.downloadsCount ?? 0,
-        ratingAvg: pkg.ratingAvg ?? 0,
-        author: pkg.author ? {
-          id: pkg.author.id,
-          username: pkg.author.username,
-          displayName: pkg.author.displayName ?? pkg.author.username,
-          avatarUrl: pkg.author.avatarUrl ?? null,
-        } : null,
-        createdAt: pkg.createdAt,
-        updatedAt: pkg.updatedAt ?? pkg.createdAt,
-      }));
+      const mappedPackages = response.data.map(mapCloudSkillPackage);
 
       setPackages(mappedPackages);
       setPagination(response.pagination);
@@ -160,6 +204,117 @@ export function useCloudSkillPackages(options: UseCloudSkillPackagesOptions = {}
     loading,
     error,
     refetch: fetchPackages,
+  };
+}
+
+export function useCloudSkillPackagesInfinite(
+  options: { limit?: number; sort?: CloudSkillSortOption } = {}
+) {
+  const { limit = 24, sort = "popular" } = options;
+  const [packages, setPackages] = useState<CloudSkillPackage[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1,
+    limit,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(1);
+  const loadingRef = useRef(false);
+  const packagesRef = useRef<CloudSkillPackage[]>([]);
+  const requestSeqRef = useRef(0);
+
+  const fetchPage = useCallback(async (page: number, replace: boolean) => {
+    const requestId = ++requestSeqRef.current;
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const client = getClient();
+      const response = await client.skill.list({
+        page,
+        limit,
+        sort,
+      });
+      const mappedPackages = response.data.map(mapCloudSkillPackage);
+
+      if (requestId !== requestSeqRef.current) {
+        return null;
+      }
+
+      const pageResult = appendCloudSkillPage(
+        packagesRef.current,
+        mappedPackages,
+        response.pagination,
+        replace
+      );
+
+      packagesRef.current = pageResult.packages;
+      setPackages(pageResult.packages);
+      setPagination(response.pagination);
+      pageRef.current = page;
+      setHasMore(pageResult.hasMore);
+
+      return {
+        data: mappedPackages,
+        pagination: response.pagination,
+      };
+    } catch (err) {
+      if (requestId !== requestSeqRef.current) {
+        return null;
+      }
+
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      return null;
+    } finally {
+      if (requestId === requestSeqRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    }
+  }, [limit, sort]);
+
+  useEffect(() => {
+    pageRef.current = 1;
+    packagesRef.current = [];
+    setPackages([]);
+    setPagination({
+      page: 1,
+      limit,
+      total: 0,
+      totalPages: 0,
+    });
+    setHasMore(true);
+    fetchPage(1, true);
+  }, [fetchPage, limit]);
+
+  const loadMore = useCallback(() => {
+    if (loadingRef.current || !hasMore) {
+      return Promise.resolve(null);
+    }
+
+    return fetchPage(pageRef.current + 1, false);
+  }, [fetchPage, hasMore]);
+
+  const refresh = useCallback(() => {
+    pageRef.current = 1;
+    packagesRef.current = [];
+    setHasMore(true);
+    return fetchPage(1, true);
+  }, [fetchPage]);
+
+  return {
+    packages,
+    pagination,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
   };
 }
 
@@ -211,30 +366,7 @@ export function useCloudSkillSearch(query: string, debounceMs = 300) {
           limit,
         });
 
-        // Map response to CloudSkillPackage format
-        const mappedResults: CloudSkillPackage[] = response.data.map((pkg) => ({
-          id: pkg.id,
-          name: pkg.name,
-          slug: pkg.slug,
-          version: pkg.version,
-          description: pkg.description,
-          category: pkg.category ?? null,
-          skillType: pkg.skillType ?? "command",
-          triggerPatterns: pkg.triggerPatterns ?? null,
-          tags: pkg.tags ?? null,
-          repositoryUrl: pkg.repositoryUrl ?? null,
-          favoritesCount: pkg.favoritesCount ?? 0,
-          downloadsCount: pkg.downloadsCount ?? 0,
-          ratingAvg: pkg.ratingAvg ?? 0,
-          author: pkg.author ? {
-            id: pkg.author.id,
-            username: pkg.author.username,
-            displayName: pkg.author.displayName ?? pkg.author.username,
-            avatarUrl: pkg.author.avatarUrl ?? null,
-          } : null,
-          createdAt: pkg.createdAt,
-          updatedAt: pkg.updatedAt ?? pkg.createdAt,
-        }));
+        const mappedResults = response.data.map(mapCloudSkillPackage);
 
         // Only update state if this is still the latest query
         if (latestQuery.current === searchQuery) {
@@ -342,31 +474,7 @@ export function useCloudSkillPackage(id: string | null) {
       const client = getClient();
       const response = await client.skill.get(packageId);
       const pkg = response.package;
-
-      // Map to CloudSkillPackage format
-      const result: CloudSkillPackage = {
-        id: pkg.id,
-        name: pkg.name,
-        slug: pkg.slug,
-        version: pkg.version,
-        description: pkg.description,
-        category: pkg.category ?? null,
-        skillType: pkg.skillType ?? "command",
-        triggerPatterns: pkg.triggerPatterns ?? null,
-        tags: pkg.tags ?? null,
-        repositoryUrl: pkg.repositoryUrl ?? null,
-        favoritesCount: pkg.favoritesCount ?? 0,
-        downloadsCount: pkg.downloadsCount ?? 0,
-        ratingAvg: pkg.ratingAvg ?? 0,
-        author: pkg.author ? {
-          id: pkg.author.id,
-          username: pkg.author.username,
-          displayName: pkg.author.displayName ?? pkg.author.username,
-          avatarUrl: pkg.author.avatarUrl ?? null,
-        } : null,
-        createdAt: pkg.createdAt,
-        updatedAt: pkg.updatedAt ?? pkg.createdAt,
-      };
+      const result = mapCloudSkillPackage(pkg);
 
       // Update cache
       packageCache.set(packageId, {
