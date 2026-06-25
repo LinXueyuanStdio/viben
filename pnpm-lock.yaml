@@ -340,9 +340,6 @@ importers:
       '@viben/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@viben/editor':
-        specifier: workspace:*
-        version: link:../../packages/editor
       '@viben/kanban':
         specifier: workspace:*
         version: link:../../packages/kanban

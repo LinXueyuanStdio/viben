@@ -62,7 +62,6 @@
     "@viben/api-client": "workspace:*",
     "@viben/chat": "workspace:*",
     "@viben/core": "workspace:*",
-    "@viben/editor": "workspace:*",
     "@viben/kanban": "workspace:*",
     "@viben/os": "workspace:*",
     "@viben/pet": "workspace:*",

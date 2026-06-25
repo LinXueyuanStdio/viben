@@ -6,7 +6,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { YooptaMarkdownRenderer } from "../yoopta-markdown-renderer";
+import { MarkdownPageEditor } from "../markdown-page-editor";
 
 const mocks = vi.hoisted(() => ({
   applyTemplateMutateAsync: vi.fn(),
@@ -132,7 +132,7 @@ function renderRenderer(content: string) {
   const queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <YooptaMarkdownRenderer
+      <MarkdownPageEditor
         content={content}
         editable
         workspacePath="/tmp/workspace"
@@ -143,7 +143,7 @@ function renderRenderer(content: string) {
   );
 }
 
-describe("YooptaMarkdownRenderer Monaco empty state", () => {
+describe("MarkdownPageEditor Monaco empty state", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.applyTemplateMutateAsync.mockResolvedValue({

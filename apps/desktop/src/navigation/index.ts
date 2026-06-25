@@ -64,7 +64,7 @@ export type {
   ExtractedNavItemKind,
   ExtractedNavigationItem,
   PageNavigationExtract,
-  YooptaNavigationMeta,
+  PageNavigationMeta,
 } from "./page-navigation-extractor";
 export {
   extractPageNavigation,

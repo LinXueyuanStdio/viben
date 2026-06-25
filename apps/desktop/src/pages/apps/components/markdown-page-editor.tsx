@@ -111,7 +111,7 @@ function downloadText(filename: string, content: string, type: string): void {
   }, 100);
 }
 
-export interface YooptaMarkdownRendererProps {
+export interface MarkdownPageEditorProps {
   content: string;
   className?: string;
   workspaceId?: string;
@@ -132,7 +132,7 @@ export interface YooptaMarkdownRendererProps {
   autoFocusTitle?: boolean;
 }
 
-export function YooptaMarkdownRenderer({
+export function MarkdownPageEditor({
   content,
   className,
   workspacePath,
@@ -148,7 +148,7 @@ export function YooptaMarkdownRenderer({
   onNavigationExtract,
   headerPortal,
   autoFocusTitle = false,
-}: YooptaMarkdownRendererProps) {
+}: MarkdownPageEditorProps) {
   const { resolvedTheme } = useTheme();
   const queryClient = useQueryClient();
   const canSave = !!(workspacePath && uid);
@@ -234,7 +234,7 @@ export function YooptaMarkdownRenderer({
         queryClient.invalidateQueries({ queryKey: pageKeys.detail(workspacePath!, uid!) });
         setTimeout(() => setSaveStatus((status) => status === "saved" ? "idle" : status), 1800);
       } catch (error) {
-        console.error("[YooptaMarkdownRenderer] save failed:", error);
+        console.error("[MarkdownPageEditor] save failed:", error);
         setSaveStatus("error");
       } finally {
         isSavingRef.current = false;
@@ -422,7 +422,7 @@ export function YooptaMarkdownRenderer({
           queryClient.invalidateQueries({ queryKey: pageKeys.list(workspacePath!) });
           queryClient.invalidateQueries({ queryKey: pageKeys.detail(workspacePath!, uid!) });
         } catch (error) {
-          console.error("[YooptaMarkdownRenderer] icon save failed:", error);
+          console.error("[MarkdownPageEditor] icon save failed:", error);
         }
       }, 500);
     },
@@ -443,7 +443,7 @@ export function YooptaMarkdownRenderer({
           queryClient.invalidateQueries({ queryKey: pageKeys.list(workspacePath!) });
           queryClient.invalidateQueries({ queryKey: pageKeys.detail(workspacePath!, uid!) });
         } catch (error) {
-          console.error("[YooptaMarkdownRenderer] cover save failed:", error);
+          console.error("[MarkdownPageEditor] cover save failed:", error);
         }
       }, 500);
     },
@@ -462,7 +462,7 @@ export function YooptaMarkdownRenderer({
             ...updates,
           });
         } catch (error) {
-          console.error("[YooptaMarkdownRenderer] layout config save failed:", error);
+          console.error("[MarkdownPageEditor] layout config save failed:", error);
         }
       }, 300);
     },
@@ -546,7 +546,7 @@ export function YooptaMarkdownRenderer({
 
   const handleImportUrl = useCallback(
     (_url: string) => {
-      console.warn("[YooptaMarkdownRenderer] URL import is not implemented yet.");
+      console.warn("[MarkdownPageEditor] URL import is not implemented yet.");
       setImportDialogOpen(false);
     },
     []
@@ -558,7 +558,7 @@ export function YooptaMarkdownRenderer({
       if (kind === "markdown_file") {
         replaceContent(stripYamlFrontmatter(fileContent).trimStart());
       } else {
-        console.warn("[YooptaMarkdownRenderer] HTML import is not implemented yet.", file.name);
+        console.warn("[MarkdownPageEditor] HTML import is not implemented yet.", file.name);
       }
       setImportDialogOpen(false);
     },
@@ -596,7 +596,7 @@ export function YooptaMarkdownRenderer({
   return (
     <div
       className={cn(
-        "yoopta-notion-editor mx-auto flex h-full min-h-0 w-full flex-col bg-background",
+        "markdown-page-editor mx-auto flex h-full min-h-0 w-full flex-col bg-background",
         contentWidthClass,
         className
       )}
@@ -933,7 +933,7 @@ const PageTitleArea = memo(function PageTitleArea({
   return (
     <div
       className={cn(
-        "yoopta-page-title-area px-14 pb-2 relative",
+        "markdown-page-title-area px-14 pb-2 relative",
         // Notion: icon overlaps cover bottom by ~24px when cover exists
         coverUrl && pageIcon ? "-mt-6" : "pt-8"
       )}
@@ -950,7 +950,7 @@ const PageTitleArea = memo(function PageTitleArea({
       {pageIcon && (
         <div
           ref={iconAnchorRef}
-          className="yoopta-page-icon mb-1 cursor-pointer group/icon relative inline-block"
+          className="markdown-page-icon mb-1 cursor-pointer group/icon relative inline-block"
           role="button"
           tabIndex={0}
           onClick={() => onOpenIconPicker()}
@@ -1049,7 +1049,7 @@ const CoverBanner = memo(function CoverBanner({
 
   return (
     <div
-      className="yoopta-cover-area relative"
+      className="markdown-page-cover-area relative"
       style={{ height: 280, width: "100vw", marginLeft: "calc(50% - 50vw)" }}
       onMouseEnter={() => {
         if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }

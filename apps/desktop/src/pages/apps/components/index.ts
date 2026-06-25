@@ -3,7 +3,7 @@ export { PageSection, type PageSectionProps } from "@/components/layout/page-sec
 export { PagePermissionsDialog, type PagePermissionsDialogProps } from "./page-permissions-dialog";
 export { PageIconGrid, type PageIconGridProps } from "./page-app-grid";
 export { PageIcon, type PageIconProps } from "./page-app-icon";
-export { YooptaMarkdownRenderer, type YooptaMarkdownRendererProps } from "./yoopta-markdown-renderer";
+export { MarkdownPageEditor, type MarkdownPageEditorProps } from "./markdown-page-editor";
 export { EmptyMarkdownPageCard, type EmptyMarkdownPageCardProps } from "./empty-markdown-page-card";
 export { PageTemplateDialog, type PageTemplateDialogProps } from "./page-template-dialog";
 export { PageImportDialog, type PageImportDialogProps, type PageImportKind } from "./page-import-dialog";

@@ -10,7 +10,7 @@ export interface ExtractedNavigationItem {
   order: number;
   pageUid?: string;
   url?: string;
-  nav?: YooptaNavigationMeta;
+  nav?: PageNavigationMeta;
 }
 
 export interface PageNavigationExtract {
@@ -18,7 +18,7 @@ export interface PageNavigationExtract {
   items: ExtractedNavigationItem[];
 }
 
-export interface YooptaNavigationMeta {
+export interface PageNavigationMeta {
   includeInPageIndex?: boolean;
   titleOverride?: string;
   iconOverride?: IconData;
@@ -36,12 +36,12 @@ function isRecord(value: unknown): value is MaybeRecord {
   return typeof value === "object" && value !== null;
 }
 
-function parseMeta(raw: string | undefined): YooptaNavigationMeta | undefined {
+function parseMeta(raw: string | undefined): PageNavigationMeta | undefined {
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw);
     if (!isRecord(parsed)) return undefined;
-    const meta: YooptaNavigationMeta = {};
+    const meta: PageNavigationMeta = {};
     if (typeof parsed.includeInPageIndex === "boolean") {
       meta.includeInPageIndex = parsed.includeInPageIndex;
     }
@@ -95,7 +95,7 @@ function buildMentionItem(
   pageUid: string,
   order: number,
   label?: string,
-  nav?: YooptaNavigationMeta,
+  nav?: PageNavigationMeta,
 ): ExtractedNavigationItem | null {
   const normalized = decodePageUid(pageUid);
   if (!normalized) return null;
@@ -115,7 +115,7 @@ function buildExternalItem(
   kind: "external-link" | "embed",
   label?: string,
   blockId?: string,
-  nav?: YooptaNavigationMeta,
+  nav?: PageNavigationMeta,
 ): ExtractedNavigationItem | null {
   if (!RAW_URL_RE.test(url)) return null;
   return {

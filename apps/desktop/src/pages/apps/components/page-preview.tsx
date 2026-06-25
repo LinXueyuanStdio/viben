@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { updatePageConfig } from "@/lib/gateway/modules/pages";
 import { VitePreview } from "@/components/conversation/vite-preview";
-import { YooptaMarkdownRenderer } from "./yoopta-markdown-renderer";
+import { MarkdownPageEditor } from "./markdown-page-editor";
 import { StaticPagePreview } from "./static-page-preview";
 import type { PageConfig } from "@/hooks/use-pages";
 import type { StaticPageConfig, ProxyPageConfig } from "@/lib/gateway/types/page";
@@ -128,7 +128,7 @@ export function PagePreview({
       <div className="flex-1 overflow-auto">
         {/* Markdown type pages - always show rendered markdown (no toggle, single view) */}
         {!showViewToggle && (
-          <YooptaMarkdownRenderer
+          <MarkdownPageEditor
             content={page.skill_content || ""}
             workspacePath={workspacePath}
             workspaceId={workspaceId}
@@ -153,7 +153,7 @@ export function PagePreview({
           <>
             {/* SKILL.md view - Render markdown content */}
             {viewMode === "skill" && (
-              <YooptaMarkdownRenderer
+              <MarkdownPageEditor
                 content={page.skill_content || ""}
                 workspacePath={workspacePath}
                 workspaceId={workspaceId}
