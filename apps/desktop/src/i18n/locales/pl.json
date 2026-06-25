@@ -4427,7 +4427,18 @@
       "allFiles": "Wszystkie pliki"
     },
     "hideSteps": "Hide Steps",
-    "showSteps": "Show Steps"
+    "showSteps": "Show Steps",
+    "acp": {
+      "sessionList": "Sessions",
+      "sessionListCount": "{{count}} sessions",
+      "noSessions": "No sessions",
+      "copySessionId": "Copy session ID",
+      "copySessionIdForResume": "Copy session ID for manual resume",
+      "unknownAgent": "Unknown agent",
+      "current": "Current",
+      "enterAttach": "Enter to attach",
+      "enterResume": "Enter to resume"
+    }
   },
   "creator": {
     "title": "Creator",

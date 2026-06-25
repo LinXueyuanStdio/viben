@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy } from "lucide-react";
+import { Copy, List, X } from "lucide-react";
 import { cn, ScrollArea } from "@viben/ui";
 import type { AcpSessionListItem } from "./use-acp-session";
 
@@ -81,28 +81,39 @@ export function AcpSessionListDrawer({
           if (open) node?.focus();
         }}
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-foreground">
-              {t("chat.acp.sessionList", "Sessions")}
+        <div
+          className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border px-3"
+          data-testid="acp-session-list-header"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <List className="size-3.5" aria-hidden="true" />
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {t("chat.acp.sessionListCount", "{{count}} sessions", { count: sessions.length })}
+            <div className="min-w-0 truncate text-sm font-medium text-foreground">
+              {t("chat.acp.sessionList")}
+            </div>
+            <div
+              className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground"
+              title={t("chat.acp.sessionListCount", { count: sessions.length })}
+            >
+              {sessions.length}
             </div>
           </div>
           <button
             type="button"
-            className="inline-flex h-8 items-center justify-center rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label={t("common.close")}
+            title={t("common.close")}
             onClick={onClose}
           >
-            {t("common.close", "Close")}
+            <X className="size-3.5" aria-hidden="true" />
           </button>
         </div>
         <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-1 p-2">
             {sessions.length === 0 ? (
               <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-                {t("chat.acp.noSessions", "No sessions")}
+                {t("chat.acp.noSessions")}
               </div>
             ) : sessions.map((session, index) => {
               const selected = index === selectedIndex;
@@ -132,8 +143,8 @@ export function AcpSessionListDrawer({
                     <button
                       type="button"
                       className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                      aria-label={t("chat.acp.copySessionId", "Copy session id")}
-                      title={t("chat.acp.copySessionIdForResume", "Copy session id for codex resume")}
+                      aria-label={t("chat.acp.copySessionId")}
+                      title={t("chat.acp.copySessionIdForResume")}
                       onClick={(event) => { void copySessionId(event, session.sessionId); }}
                     >
                       <Copy className="size-3" />
@@ -144,13 +155,13 @@ export function AcpSessionListDrawer({
                     data-testid="acp-session-card-footer"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{session.agent || session.agentExecutorType || t("chat.acp.unknownAgent", "Unknown agent")}</span>
+                      <span className="truncate">{session.agent || session.agentExecutorType || t("chat.acp.unknownAgent")}</span>
                       {activeSessionId === session.sessionKey ? (
-                        <span className="shrink-0 text-primary">{t("chat.acp.current", "Current")}</span>
+                        <span className="shrink-0 text-primary">{t("chat.acp.current")}</span>
                       ) : null}
                     </div>
                     <span className="shrink-0 text-[11px]">
-                      {running ? t("chat.acp.enterAttach", "Enter to attach") : t("chat.acp.enterResume", "Enter to resume")}
+                      {running ? t("chat.acp.enterAttach") : t("chat.acp.enterResume")}
                     </span>
                   </div>
                 </div>

@@ -7,11 +7,25 @@ import { describe, expect, it, vi } from "vitest";
 import { AcpSessionListDrawer } from "./acp-session-list-drawer";
 import type { AcpSessionListItem } from "./use-acp-session";
 
+const translations = vi.hoisted((): Record<string, string> => ({
+  "chat.acp.sessionList": "Sessions",
+  "chat.acp.sessionListCount": "{{count}} sessions",
+  "chat.acp.noSessions": "No sessions",
+  "chat.acp.copySessionId": "Copy session ID",
+  "chat.acp.copySessionIdForResume": "Copy session ID for manual resume",
+  "chat.acp.unknownAgent": "Unknown agent",
+  "chat.acp.current": "Current",
+  "chat.acp.enterAttach": "Enter to attach",
+  "chat.acp.enterResume": "Enter to resume",
+  "common.close": "Close",
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (_key: string, fallback?: string, options?: Record<string, unknown>) => {
-      if (fallback?.includes("{{count}}")) return fallback.replace("{{count}}", String(options?.count ?? ""));
-      return fallback ?? _key;
+    t: (key: string, options?: Record<string, unknown>) => {
+      const value = translations[key] ?? key;
+      if (value.includes("{{count}}")) return value.replace("{{count}}", String(options?.count ?? ""));
+      return value;
     },
   }),
 }));
@@ -27,6 +41,23 @@ const session: AcpSessionListItem = {
 };
 
 describe("AcpSessionListDrawer", () => {
+  it("matches the expanded header height with a compact icon header", () => {
+    render(
+      <AcpSessionListDrawer
+        open
+        sessions={[session]}
+        activeSessionId={null}
+        selectedIndex={0}
+        onSelectedIndexChange={vi.fn()}
+        onAttach={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId("acp-session-list-header").className).toContain("h-10");
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+  });
+
   it("uses the initial prompt as the card title and keeps the action hint with the agent row", () => {
     render(
       <AcpSessionListDrawer
@@ -70,7 +101,7 @@ describe("AcpSessionListDrawer", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy session id" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy session ID" }));
 
     expect(writeText).toHaveBeenCalledWith("backend-session-1234567890");
     expect(onAttach).not.toHaveBeenCalled();

@@ -4917,7 +4917,16 @@
       "recallQueue": "召回队列",
       "parked": "已暂停",
       "welcomeTitle": "ACP 聊天",
-      "welcomeDescription": "连接、创建或恢复会话，然后与 ACP 后端对话。"
+      "welcomeDescription": "连接、创建或恢复会话，然后与 ACP 后端对话。",
+      "sessionList": "会话",
+      "sessionListCount": "{{count}} 个会话",
+      "noSessions": "暂无会话",
+      "copySessionId": "复制会话 ID",
+      "copySessionIdForResume": "复制会话 ID，用于手动恢复",
+      "unknownAgent": "未知智能体",
+      "current": "当前",
+      "enterAttach": "Enter 连接",
+      "enterResume": "Enter 恢复"
     }
   },
   "creator": {
