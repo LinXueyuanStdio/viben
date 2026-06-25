@@ -1,5 +1,6 @@
 import type {
   AgentCapabilities,
+  McpServer,
   PromptRequest,
   PromptResponse,
 } from "@agentclientprotocol/sdk";
@@ -34,7 +35,7 @@ import {
 import { providerManager } from "../../providers";
 import type { AgentConfigPayload } from "../types";
 import type { SessionNotification } from "@agentclientprotocol/sdk";
-import type { Provider } from "../../types";
+import type { AgentMcpServerEntry, Provider } from "../../types";
 
 const DEFAULT_INIT_TIMEOUT_MS = 120_000;
 
@@ -428,6 +429,10 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
   if (sandbox) base.sandbox = sandbox;
   const settings = agentSettings(context.agentConfig);
   if (Object.keys(settings).length > 0) base.settings = settings;
+  const mcpServers = codexMcpServers(context);
+  if (Object.keys(mcpServers).length > 0) {
+    base.mcp_servers = mcpServers;
+  }
   if (isLoadSession(context)) {
     return {
       ...base,
@@ -435,6 +440,56 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
     };
   }
   return base;
+}
+
+function codexMcpServers(context: AcpBackendStartContext): Record<string, Record<string, unknown>> {
+  const servers: Record<string, Record<string, unknown>> = {};
+  for (const entry of [
+    ...(context.request.mcpServers ?? []),
+    ...(context.agentConfig?.mcp_servers ?? []),
+  ]) {
+    const server = codexMcpServer(entry);
+    if (!server) continue;
+    if (servers[server.name]) continue;
+    servers[server.name] = server.config;
+  }
+  return servers;
+}
+
+function codexMcpServer(
+  entry: McpServer | string | AgentMcpServerEntry
+): { name: string; config: Record<string, unknown> } | null {
+  if (typeof entry === "string") return null;
+  if ("type" in entry && entry.type === "builtin") return null;
+  if ("url" in entry && entry.url && (!("type" in entry) || entry.type === "http" || entry.type === "sse")) {
+    const config: Record<string, unknown> = { url: entry.url };
+    const headers = codexStringRecord(entry.headers);
+    if (Object.keys(headers).length > 0) {
+      config.headers = headers;
+    }
+    return { name: entry.name, config };
+  }
+  if ("command" in entry && entry.command) {
+    const config: Record<string, unknown> = {
+      command: entry.command,
+      args: entry.args ?? [],
+    };
+    const env = codexStringRecord(entry.env);
+    if (Object.keys(env).length > 0) {
+      config.env = env;
+    }
+    return { name: entry.name, config };
+  }
+  return null;
+}
+
+function codexStringRecord(
+  value: Record<string, string> | Array<{ name: string; value: string }> | undefined
+): Record<string, string> {
+  if (Array.isArray(value)) {
+    return Object.fromEntries(value.map((item) => [item.name, item.value]));
+  }
+  return envRecord(value);
 }
 
 function buildTurnStartParams(context: AcpBackendStartContext): Record<string, unknown> {

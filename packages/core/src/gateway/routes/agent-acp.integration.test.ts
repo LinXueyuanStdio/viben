@@ -1,4 +1,5 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -192,12 +193,162 @@ describe("Agent ACP WebSocket route", () => {
           },
           update: {
             sessionUpdate: "agent_message_chunk",
-            content: { type: "text", text: "codex says hello" },
+            content: { type: "text", text: "codex says hello codex" },
           },
         },
       });
     } finally {
       client.close();
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("parks on WebSocket disconnect, reloads history over a new WebSocket, and continues prompting", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-reconnect-smoke-"));
+    const fakeServerPath = path.join(tempDir, "fake-codex-app-server.mjs");
+    await writeFile(fakeServerPath, fakeCodexAppServerScript(), "utf-8");
+
+    const clientA = await connectAcpClient(port);
+    let sessionId = "";
+    try {
+      const newSession = await clientA.request("session/new", {
+        cwd: tempDir,
+        mcpServers: [],
+        agent_config: {
+          name: "codex-reconnect-agent",
+          executor_type: "CODEX",
+          executor_config: {
+            command: process.execPath,
+            args: [fakeServerPath],
+            init_timeout_ms: 5000,
+          },
+        },
+      });
+      sessionId = String(newSession.sessionId);
+
+      const firstUpdate = clientA.waitForNotification("session/update");
+      const firstPrompt = await clientA.request("session/prompt", {
+        sessionId,
+        prompt: [{ type: "text", text: "first reconnect smoke" }],
+      });
+      expect(firstPrompt).toEqual({ stopReason: "end_turn" });
+      await expect(firstUpdate).resolves.toMatchObject({
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "codex says first reconnect smoke" },
+          },
+        },
+      });
+    } finally {
+      clientA.close();
+    }
+
+    const clientB = await connectAcpClient(port);
+    try {
+      await expect.poll(async () => {
+        const listed = await clientB.request("session/list", {});
+        const sessions = listed.sessions as Array<Record<string, unknown>>;
+        return sessions.find((session) => session.sessionId === sessionId)?.status;
+      }).toBe("parked");
+
+      const loaded = await clientB.request("session/load", {
+        sessionId,
+        cwd: tempDir,
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      });
+      expect(loaded).toMatchObject({
+        sessionId,
+        history: [
+          expect.objectContaining({
+            type: "session_update",
+            data: expect.objectContaining({
+              update: expect.objectContaining({
+                content: { type: "text", text: "codex says first reconnect smoke" },
+              }),
+            }),
+          }),
+        ],
+      });
+
+      const secondUpdate = clientB.waitForNotification("session/update");
+      const secondPrompt = await clientB.request("session/prompt", {
+        sessionId,
+        prompt: [{ type: "text", text: "second reconnect smoke" }],
+      });
+      expect(secondPrompt).toEqual({ stopReason: "end_turn" });
+      await expect(secondUpdate).resolves.toMatchObject({
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "codex says second reconnect smoke" },
+          },
+        },
+      });
+    } finally {
+      clientB.close();
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("does not let an old WebSocket close park a session already adopted by a new WebSocket", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-adopt-smoke-"));
+    const fakeServerPath = path.join(tempDir, "fake-codex-app-server.mjs");
+    await writeFile(fakeServerPath, fakeCodexAppServerScript(), "utf-8");
+
+    const clientA = await connectAcpClient(port);
+    const clientB = await connectAcpClient(port);
+    try {
+      const newSession = await clientA.request("session/new", {
+        cwd: tempDir,
+        mcpServers: [],
+        agent_config: {
+          name: "codex-adopt-agent",
+          executor_type: "CODEX",
+          executor_config: {
+            command: process.execPath,
+            args: [fakeServerPath],
+            init_timeout_ms: 5000,
+          },
+        },
+      });
+      const sessionId = String(newSession.sessionId);
+
+      await clientB.request("session/load", {
+        sessionId,
+        cwd: tempDir,
+        mcpServers: [],
+        agent_config: { executor_type: "CODEX" },
+      });
+      clientA.close();
+
+      await expect.poll(async () => {
+        const listed = await clientB.request("session/list", {});
+        const sessions = listed.sessions as Array<Record<string, unknown>>;
+        return sessions.find((session) => session.sessionId === sessionId)?.status;
+      }).toBe("active");
+
+      const update = clientB.waitForNotification("session/update");
+      const response = await clientB.request("session/prompt", {
+        sessionId,
+        prompt: [{ type: "text", text: "adopted session still active" }],
+      });
+      expect(response).toEqual({ stopReason: "end_turn" });
+      await expect(update).resolves.toMatchObject({
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "codex says adopted session still active" },
+          },
+        },
+      });
+    } finally {
+      clientA.close();
+      clientB.close();
       await rm(tempDir, { recursive: true, force: true });
     }
   }, 15000);
@@ -282,15 +433,24 @@ async function connectAcpClient(port: number): Promise<{
 }
 
 function fakeCodexAppServerScript(): string {
+  const defaultThreadId = `thr_fake_${randomUUID()}`;
   return `
 import readline from "node:readline";
 
-let threadId = "thr_fake";
-let turnId = "turn_fake";
+let threadId = ${JSON.stringify(defaultThreadId)};
+let turnIndex = 0;
 const rl = readline.createInterface({ input: process.stdin });
 
 function send(message) {
   process.stdout.write(JSON.stringify(message) + "\\n");
+}
+
+function inputText(input) {
+  if (!Array.isArray(input)) return "";
+  return input
+    .map((item) => item && item.type === "text" ? item.text : "")
+    .filter(Boolean)
+    .join(" ");
 }
 
 rl.on("line", (line) => {
@@ -304,13 +464,22 @@ rl.on("line", (line) => {
     return;
   }
   if (message.method === "thread/start") {
+    threadId = message.params?.threadId || message.params?.sessionId || threadId;
+    send({ id: message.id, result: { thread: { id: threadId, sessionId: threadId } } });
+    return;
+  }
+  if (message.method === "thread/resume") {
+    threadId = message.params?.threadId || message.params?.sessionId || threadId;
     send({ id: message.id, result: { thread: { id: threadId, sessionId: threadId } } });
     return;
   }
   if (message.method === "turn/start") {
+    turnIndex += 1;
+    const turnId = "turn_fake_" + turnIndex;
+    const text = inputText(message.params?.input);
     send({ id: message.id, result: { turn: { id: turnId, status: "inProgress" } } });
     send({ method: "turn/started", params: { threadId, turn: { id: turnId, status: "inProgress" } } });
-    send({ method: "item/agentMessage/delta", params: { itemId: "msg_fake", delta: "codex says hello" } });
+    send({ method: "item/agentMessage/delta", params: { itemId: "msg_fake_" + turnIndex, delta: "codex says " + (text || "hello") } });
     send({ method: "turn/completed", params: { threadId, turn: { id: turnId, status: "completed" } } });
     return;
   }

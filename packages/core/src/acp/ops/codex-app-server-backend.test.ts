@@ -356,6 +356,64 @@ describe("CodexAppServerBackendAdapter", () => {
     await expect(prompt).resolves.toEqual({ stopReason: "end_turn" });
   });
 
+  it("passes request and agent config MCP servers into Codex thread params", async () => {
+    const proc = createProcess();
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: () => proc,
+    });
+
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: {
+        cwd: "/tmp/project",
+        mcpServers: [
+          {
+            name: "request-files",
+            command: "node",
+            args: ["request-server.js"],
+            env: [{ name: "REQUEST_TOKEN", value: "from-request" }],
+          },
+        ],
+      },
+      connection: createConnection(),
+      agentConfig: {
+        executor_type: "CODEX",
+        mcp_servers: [
+          {
+            name: "agent-api",
+            type: "http",
+            url: "https://mcp.example.test",
+            headers: { Authorization: "Bearer agent-token" },
+          },
+        ],
+      },
+    });
+
+    await waitForWrite(proc, "initialize");
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    expect(proc.writes.find((message) => message.method === "thread/start")).toMatchObject({
+      method: "thread/start",
+      params: {
+        mcp_servers: {
+          "request-files": {
+            command: "node",
+            args: ["request-server.js"],
+            env: { REQUEST_TOKEN: "from-request" },
+          },
+          "agent-api": {
+            url: "https://mcp.example.test",
+            headers: { Authorization: "Bearer agent-token" },
+          },
+        },
+      },
+    });
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+
+    await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
+  });
+
   it("starts a turn, forwards stream updates, and resolves when the turn completes", async () => {
     const proc = createProcess();
     const connection = createConnection();
