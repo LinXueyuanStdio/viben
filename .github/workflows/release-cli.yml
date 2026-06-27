@@ -46,7 +46,7 @@ jobs:
       dry_run: ${{ steps.get-version.outputs.dry_run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Get version and determine release targets
         id: get-version
@@ -94,7 +94,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           token: ${{ secrets.GH_PAT }}
@@ -131,7 +131,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           token: ${{ secrets.GH_PAT }}
@@ -181,7 +181,7 @@ jobs:
       sha256: ${{ steps.get-sha256.outputs.sha256 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node-pnpm
@@ -446,7 +446,7 @@ jobs:
       needs.release-cli.outputs.sha256 != ''
     steps:
       - name: Checkout homebrew-viben
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: LinXueyuanStdio/homebrew-viben
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
