@@ -49,6 +49,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          submodules: true
 
       # Setup for JavaScript/TypeScript analysis
       - name: Setup Node.js
