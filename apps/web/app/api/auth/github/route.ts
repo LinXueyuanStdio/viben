@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const redirectUri = searchParams.get('redirect_uri');
   const client = searchParams.get('client');
+  const webRedirect = searchParams.get('redirect'); // post-login redirect for web flow
 
   const state = generateId();
 
@@ -42,9 +43,28 @@ export async function GET(request: NextRequest) {
       sameSite: 'lax',
       maxAge: 600, // 10 minutes
     });
-  } else if (client === 'desktop') {
-    console.warn('[OAuth][GitHub] desktop redirect rejected', {
-      hasRedirectUri: Boolean(redirectUri),
+  } else {
+    // Clear any stale desktop redirect cookie from a previous desktop login
+    // attempt. Without this, a web login would incorrectly take the desktop
+    // code path (returning an HTML page) if the cookie from a prior desktop
+    // OAuth attempt is still present in the browser.
+    cookieStore.delete('oauth_redirect_uri');
+
+    if (client === 'desktop') {
+      console.warn('[OAuth][GitHub] desktop redirect rejected', {
+        hasRedirectUri: Boolean(redirectUri),
+      });
+    }
+  }
+
+  // Store web post-login redirect path (for web client "login → back" flow)
+  // Only store if this is NOT a desktop client and the redirect path is safe
+  if (client !== 'desktop' && webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')) {
+    cookieStore.set('oauth_web_redirect', webRedirect, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600,
     });
   }
 

@@ -28,11 +28,20 @@ interface GitHubEmail {
 /**
  * Generate an HTML page that delivers the OAuth result back to the desktop app.
  *
- * Uses two delivery mechanisms to maximize reliability across platforms:
- * 1. Deep link (viben://oauth) — primary, works in release builds where the
- *    protocol is registered by the NSIS/MSI installer.
- * 2. HTTP callback (127.0.0.1:{port}/oauth) — fallback, works in dev builds
- *    and non-installed portable builds via the local TCP server.
+ * Uses three delivery mechanisms to maximize reliability across platforms:
+ *
+ * 1. **Meta refresh → HTTP callback** (primary, most reliable)
+ *    A top-level navigation to http://127.0.0.1:{port}/oauth?… avoids both
+ *    Chrome Private Network Access restrictions (which block fetch() to
+ *    localhost from public origins) and browser protocol-handler gating
+ *    (which may suppress window.location = viben:// without a user gesture).
+ *
+ * 2. **Deep-link button** (secondary, user-gesture driven)
+ *    A visible "Open Viben" button with href="viben://oauth?session=…" so
+ *    the click is a real user gesture — works even when meta-refresh fails.
+ *
+ * 3. **JavaScript window.location fallback** (last resort)
+ *    Runs on page load; some browsers allow it for registered URL schemes.
  *
  * This replaces server-side 307 redirects because HTTPS→HTTP redirects to
  * localhost are unreliable on Windows: browser HTTPS-First mode may upgrade
@@ -52,11 +61,30 @@ function renderDesktopOAuthCallbackPage(options: {
     ? 'An error occurred during GitHub authentication. Returning to Viben...'
     : 'You have signed in with GitHub. Returning to Viben...';
 
+  // Escape URLs for safe use in HTML attribute contexts.
+  // base64url values (A-Za-z0-9-_) are inherently safe; only structural
+  // characters (& < > " ') need escaping.
+  const escapeAttr = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // The meta-refresh URL must contain raw & (not &amp;) because browsers
+  // parse the content attribute value literally before following the URL.
+  // httpCallbackUrl is a plain string with raw &, so we combine it directly.
+  const metaRefreshUrl = httpCallbackUrl.replace(/"/g, '&quot;');
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!--
+  Meta refresh performs a top-level navigation to the local TCP callback
+  server. Top-level navigations are NOT subject to Chrome's Private Network
+  Access preflight checks (unlike fetch()), making this the most reliable
+  way to deliver the session from a public HTTPS origin to localhost.
+-->
+<meta http-equiv="refresh" content="0;url=${metaRefreshUrl}">
 <title>Viben — ${title}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -72,9 +100,14 @@ function renderDesktopOAuthCallbackPage(options: {
   .icon { font-size: 48px; margin-bottom: 16px; }
   h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
   p { font-size: 14px; color: #999; margin-bottom: 24px; line-height: 1.5; }
-  .hint { font-size: 12px; color: #666; }
-  .hint a { color: #6b9fff; text-decoration: none; }
-  .hint a:hover { text-decoration: underline; }
+  .btn {
+    display: inline-block; padding: 10px 24px;
+    background: #6b9fff; color: #fff; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
+  }
+  .btn:hover { background: #5a8de0; }
+  .hint { font-size: 12px; color: #666; margin-top: 16px; }
+  .hint a { color: #6b9fff; }
 </style>
 </head>
 <body>
@@ -82,25 +115,25 @@ function renderDesktopOAuthCallbackPage(options: {
   <div class="icon">${isError ? '&#10060;' : '&#10003;'}</div>
   <h1>${title}</h1>
   <p>${message}</p>
-  <p class="hint">If the app doesn&rsquo;t open automatically,<br><a href="${deepLinkUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">click here to open Viben</a>.</p>
+  <a class="btn" href="${escapeAttr(deepLinkUrl)}">Open Viben</a>
+  <p class="hint">You can close this tab after the app opens.</p>
 </div>
 <script>
 (function(){
   var deepLink = ${JSON.stringify(deepLinkUrl)};
   var httpCallback = ${JSON.stringify(httpCallbackUrl)};
 
-  // Primary: navigate to deep link (viben:// protocol)
-  // This will prompt the user to open Viben if the protocol is registered,
-  // or silently fail if it isn't (dev builds, portable builds).
+  // If the meta refresh hasn't fired yet, try the deep link via JS.
+  // Some browsers allow programmatic navigation to registered URL schemes
+  // without a user gesture; others require the explicit button click above.
   window.location.href = deepLink;
 
-  // Fallback: after a short delay, also poke the local TCP callback server.
-  // The TCP server only needs to receive the HTTP request to extract the
-  // session/error from query params — the actual response content is irrelevant.
-  // Using fetch() instead of navigation avoids replacing the current page.
+  // Last resort: poke the TCP server via fetch.
+  // This may be blocked by Chrome Private Network Access, but the meta
+  // refresh and deep-link button already cover the primary paths.
   setTimeout(function(){
     try { fetch(httpCallback, { mode: "no-cors" }); } catch(e) {}
-  }, 600);
+  }, 1200);
 })();
 </script>
 </body>
@@ -122,8 +155,10 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   const storedState = cookieStore.get('oauth_state')?.value;
   const desktopRedirectUri = cookieStore.get('oauth_redirect_uri')?.value;
+  const webRedirect = cookieStore.get('oauth_web_redirect')?.value;
   cookieStore.delete('oauth_state');
   cookieStore.delete('oauth_redirect_uri');
+  cookieStore.delete('oauth_web_redirect');
 
   if (!code || !state || state !== storedState) {
     return NextResponse.redirect(`${appUrl}/login?error=invalid_state`);
@@ -304,6 +339,11 @@ export async function GET(request: NextRequest) {
       avatarUrl: user.avatarUrl ?? undefined,
     });
 
+    // Redirect to the original page (if login was initiated from a protected page)
+    // or to the home page as default. Only accepts same-origin paths for safety.
+    if (webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')) {
+      return NextResponse.redirect(`${appUrl}${webRedirect}`);
+    }
     return NextResponse.redirect(appUrl);
   } catch (error) {
     console.error('OAuth error:', error);

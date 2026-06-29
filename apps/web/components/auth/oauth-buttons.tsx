@@ -1,14 +1,20 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { GithubIcon as Github } from '@/components/ui/icons';
 
 export function OAuthButtons() {
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   const handleGitHubLogin = () => {
-    window.location.href = '/api/auth/github';
+    const params = new URLSearchParams();
+    if (redirect) params.set('redirect', redirect);
+    const qs = params.toString();
+    window.location.href = `/api/auth/github${qs ? `?${qs}` : ''}`;
   };
 
   return (
