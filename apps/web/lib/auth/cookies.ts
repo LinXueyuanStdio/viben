@@ -1,3 +1,4 @@
+import { cache } from "react"
 import { cookies } from 'next/headers';
 import { encryptSession, decryptSession } from './jwe';
 import type { Session } from './types';
@@ -17,7 +18,7 @@ export async function setSessionCookie(session: Omit<Session, 'expiresAt'>): Pro
   cookieStore.set(COOKIE_NAME, token, COOKIE_OPTIONS);
 }
 
-export async function getSession(): Promise<Session | null> {
+async function _getSession(): Promise<Session | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
 
@@ -34,6 +35,9 @@ export async function getSession(): Promise<Session | null> {
   }
   return session;
 }
+
+/** React.cache() 确保同一请求内多次调用共享一份结果，避免 layout 和 page 各自独立调用 */
+export const getSession = cache(_getSession)
 
 export async function clearSession(): Promise<void> {
   const cookieStore = await cookies();
