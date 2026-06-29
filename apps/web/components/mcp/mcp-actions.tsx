@@ -1,9 +1,11 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { Download, ExternalLink } from 'lucide-react';
+import { Download, ExternalLink, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FavoriteButton } from '@/components/social';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface McpActionsProps {
   packageId: string;
@@ -19,6 +21,22 @@ export function McpActions({
   isAuthenticated,
 }: McpActionsProps) {
   const { t } = useTranslation();
+  const [isInstallClicked, setIsInstallClicked] = useState(false);
+
+  const handleInstall = async () => {
+    const installCommand = `viben install ${packageId}`;
+    try {
+      await navigator.clipboard.writeText(installCommand);
+      setIsInstallClicked(true);
+      toast.success(t('marketplace.installCommandCopied', 'Install command copied to clipboard'));
+      setTimeout(() => setIsInstallClicked(false), 2000);
+    } catch {
+      toast(t('marketplace.installCommand', installCommand), {
+        description: t('marketplace.installCommandHint', 'Run this command in your terminal to install.'),
+        duration: 5000,
+      });
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -28,9 +46,13 @@ export function McpActions({
         initialCount={favoritesCount}
         isAuthenticated={isAuthenticated}
       />
-      <Button>
-        <Download className="mr-2 h-4 w-4" />
-        {t('marketplace.install')}
+      <Button onClick={handleInstall}>
+        {isInstallClicked ? (
+          <Check className="mr-2 h-4 w-4" />
+        ) : (
+          <Download className="mr-2 h-4 w-4" />
+        )}
+        {isInstallClicked ? t('marketplace.copied', 'Copied!') : t('marketplace.install')}
       </Button>
       {repositoryUrl && (
         <Button variant="outline" asChild>

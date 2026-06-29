@@ -1,4 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { db, skillPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql } from 'drizzle-orm';

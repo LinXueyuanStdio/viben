@@ -1,4 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth/cookies';
 import { getCollection } from '@/lib/services/collections';
 import { EditCollectionForm } from '@/components/collections/edit-collection-form';
