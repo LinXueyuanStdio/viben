@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Bell, Clock, PanelRight, Maximize2, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
@@ -50,19 +50,44 @@ interface TopbarProps {
 
 export function Topbar({ session, onToggleSidebar }: TopbarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const mode = getTopbarMode(pathname)
+  const isRead = mode === "read"
+
+  const [immersive, setImmersive] = React.useState(false)
+
+  const toggleDrawer = React.useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (params.get("drawer") === "open") {
+      params.delete("drawer")
+    } else {
+      params.set("drawer", "open")
+    }
+    const qs = params.toString()
+    router.replace(qs ? `?${qs}` : pathname, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  // Escape 键退出沉浸模式
+  React.useEffect(() => {
+    if (!immersive) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImmersive(false)
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [immersive])
 
   if (mode === "landing") return null
-
-  const isRead = mode === "read"
 
   return (
     <header
       className={cn(
-        "top-0 z-50 h-[var(--nav-h)] border-b border-border",
+        "top-0 z-50 h-[var(--nav-h)] border-b border-border transition-transform duration-[220ms] ease-out",
         isRead
           ? "fixed left-0 right-0 bg-background/68 backdrop-blur-[18px] saturate-[1.18] border-border/52"
-          : "sticky bg-background/88 backdrop-blur-[14px]"
+          : "sticky bg-background/88 backdrop-blur-[14px]",
+        immersive && "-translate-y-full"
       )}
     >
       <div
@@ -134,10 +159,10 @@ export function Topbar({ session, onToggleSidebar }: TopbarProps) {
           {isRead ? (
             <>
               {/* 阅读模式操作 */}
-              <IconButton size="default" label="展开详情侧栏">
+              <IconButton size="default" label="展开详情侧栏" onClick={toggleDrawer}>
                 <PanelRight className="h-[18px] w-[18px]" />
               </IconButton>
-              <IconButton size="default" label="沉浸式阅读">
+              <IconButton size="default" label="沉浸式阅读" onClick={() => setImmersive(true)}>
                 <Maximize2 className="h-[18px] w-[18px]" />
               </IconButton>
               <ReadMoreMenu />
