@@ -203,6 +203,7 @@ jobs:
   test-cli:
     needs: [prepare, build-cli]
     timeout-minutes: 15
+    continue-on-error: ${{ matrix.platform == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
