@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { UserPlus } from "lucide-react"
+import { FollowButton } from "./follow-button"
 import { Pill } from "./pill"
 import { cn } from "@/lib/utils"
 import { formatCount } from "@/lib/utils/format"
@@ -11,6 +10,7 @@ export interface ProfileHeroData {
   name: string
   handle: string
   tagline: string
+  userSlug: string
   stats: {
     followers: number
     pages: number
@@ -24,7 +24,7 @@ interface ProfileHeroProps {
 }
 
 export function ProfileHero({ data, className }: ProfileHeroProps) {
-  const { fallbackText, avatarUrl, name, handle, tagline, stats } = data
+  const { fallbackText, avatarUrl, name, handle, tagline, userSlug, stats } = data
 
   return (
     <div className={cn(
@@ -49,10 +49,10 @@ export function ProfileHero({ data, className }: ProfileHeroProps) {
           )}
         </div>
       </div>
-      <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400 shrink-0">
-        <UserPlus className="size-[14px]" />
-        关注
-      </Button>
+      <FollowButton
+        userSlug={userSlug}
+        className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
+      />
     </div>
   )
 }

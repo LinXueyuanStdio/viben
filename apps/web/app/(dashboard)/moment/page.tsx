@@ -100,6 +100,7 @@ export default async function MomentPage() {
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,
+    userSlug: u.userSlug,
     description: u.bio ?? "",
     pageCount: u.pageCount ?? 0,
     followerCount: u.followersCount,

@@ -24,27 +24,31 @@ export default async function LeaderboardPage() {
   )
 
   const tabData = RANK_TABS.reduce((acc, tab, i) => {
-    acc[tab.key] = (rankings[i]?.items ?? []).map<RankItemData>((item) => ({
-      rank: item.rank,
-      cover: gradientCover(item.title),
-      title: item.title,
-      description: item.description ?? "",
-      delta: item.delta ?? "—",
-      author: {
-        name: item.author_name ?? item.user_slug ?? "?",
-        fallbackText: (item.author_name ?? item.user_slug)?.[0] ?? "?",
-        avatarUrl: item.author_avatar_url ?? undefined,
-      },
-      stats: {
-        views: item.view_count ?? 0,
-        likes: item.like_count ?? 0,
-        comments: item.comment_count ?? 0,
-      },
-      score: Math.round(item.score),
-      scoreLabel: item.score_label ?? "热度",
+    const rawItems = rankings[i]?.items ?? []
+    acc[tab.key] = rawItems.map((item) => ({
+      card: {
+        rank: item.rank,
+        cover: gradientCover(item.title),
+        title: item.title,
+        description: item.description ?? "",
+        delta: item.delta ?? "—",
+        author: {
+          name: item.author_name ?? item.user_slug ?? "?",
+          fallbackText: (item.author_name ?? item.user_slug)?.[0] ?? "?",
+          avatarUrl: item.author_avatar_url ?? undefined,
+        },
+        stats: {
+          views: item.view_count ?? 0,
+          likes: item.like_count ?? 0,
+          comments: item.comment_count ?? 0,
+        },
+        score: Math.round(item.score),
+        scoreLabel: item.score_label ?? "热度",
+      } satisfies RankItemData,
+      href: `/read/${encodeURIComponent(item.user_slug)}/${encodeURIComponent(item.page_id)}`,
     }))
     return acc
-  }, {} as Record<string, RankItemData[]>)
+  }, {} as Record<string, { card: RankItemData; href: string }[]>)
 
   return (
     <div className="grid gap-3">
@@ -62,7 +66,7 @@ export default async function LeaderboardPage() {
             ) : (
               <div className="grid gap-2">
                 {tabData[tab.key]?.map((item, i) => (
-                  <RankItem key={i} data={item} href={`/read/${item.author.name}/${item.rank}`} />
+                  <RankItem key={i} data={item.card} href={item.href} />
                 ))}
               </div>
             )}

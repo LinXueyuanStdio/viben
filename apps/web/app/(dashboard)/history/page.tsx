@@ -151,7 +151,7 @@ export default async function HistoryPage() {
             ))}
           </div>
         )}
-        <SectionHead title="阅读队列" actionLabel="整理" actionHref="/history" />
+        <SectionHead title="阅读队列" />
         <div className="grid gap-2">
           <div className="flex items-center gap-2.5 rounded-[10px] border border-border p-2.5">
             <BookOpen className="size-4 text-muted-foreground shrink-0" />
