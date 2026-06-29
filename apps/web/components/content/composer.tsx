@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Link as LinkIcon, Image, Send } from "lucide-react"
+import { Link as LinkIcon, Image as ImageIcon, Send } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -52,7 +52,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
             aria-label="添加图片"
           >
-            <Image className="size-4" />
+            <ImageIcon className="size-4" />
           </button>
         </div>
         <Button onClick={handleSubmit} disabled={!text.trim()} size="sm" className="gap-1.5 min-h-[38px]">

@@ -5,9 +5,7 @@ import { ChevronRight, Eye, Bookmark, Share2, Heart, UserPlus } from "lucide-rea
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Pill } from "./pill"
-import { StatsRow } from "./stats-row"
 import { Stat } from "./stats-row"
-import type { StatProps } from "./stats-row"
 import { SectionHead } from "./section-head"
 import { MiniPageCard } from "./mini-page-card"
 import type { MiniPageCardData } from "./mini-page-card"
@@ -78,7 +76,7 @@ export function PageMeta({ data, defaultExpanded = false, className }: PageMetaP
             {formatCount(author.followerCount)} 位关注者
           </div>
         </div>
-        <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 shrink-0">
+        <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400 shrink-0">
           <UserPlus className="size-[14px]" />
           关注
         </Button>

@@ -23,7 +23,7 @@ interface MiniPageCardProps {
 }
 
 export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
-  const { cover, title, description, authorName, stats } = data
+  const { cover, title, description, stats } = data
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },

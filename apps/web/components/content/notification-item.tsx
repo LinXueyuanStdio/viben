@@ -49,7 +49,7 @@ function renderAction(action: NotificationItemData["action"]) {
       ) : null
     case "follow":
       return (
-        <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 shrink-0" onClick={onClick}>
+        <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400 shrink-0" onClick={onClick}>
           <UserPlus className="size-[14px]" />
           {label}
         </Button>
