@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation"
 import { Search, X, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface GlobalSearchProps {

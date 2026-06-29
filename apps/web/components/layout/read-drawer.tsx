@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { IconButton } from "@/components/ui/icon-button"
-import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
+import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 
 interface ReadDrawerTab {
   value: string
@@ -25,7 +25,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
   const open = searchParams.get("drawer") === "open"
   const [activeTab, setActiveTab] = React.useState(defaultTab || tabs[0]?.value || "")
 
-  const setOpen = (open: boolean) => {
+  const setOpen = React.useCallback((open: boolean) => {
     const params = new URLSearchParams(searchParams.toString())
     if (open) {
       params.set("drawer", "open")
@@ -34,7 +34,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
     }
     const qs = params.toString()
     router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false })
-  }
+  }, [searchParams, router])
 
   // Escape 键关闭
   React.useEffect(() => {
@@ -43,7 +43,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
     }
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
-  }, [open])
+  }, [open, setOpen])
 
   // Body 滚动锁定
   React.useEffect(() => {

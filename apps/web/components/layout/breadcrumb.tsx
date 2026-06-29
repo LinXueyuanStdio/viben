@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import {
   resolveBreadcrumbSegments,
   getSiblingRoutes,
@@ -65,6 +64,7 @@ interface BreadcrumbSegmentProps {
 }
 
 function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant }: BreadcrumbSegmentProps) {
+  const { t } = useTranslation()
   const siblings = getSiblingRoutes(href === "/" ? "/" : href)
   const hasDropdown = !isLast && siblings.length > 0
 
@@ -121,7 +121,7 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant }: Breadcr
               >
                 <sib.config.icon className="h-4 w-4" />
                 <span className="truncate">
-                  {sib.config.titleKey ? sib.config.titleKey : sib.config.label}
+                  {sib.config.titleKey ? t(sib.config.titleKey) : sib.config.label}
                 </span>
                 {sib.href === href && <Check className="h-3.5 w-3.5 ml-auto" />}
               </Link>
