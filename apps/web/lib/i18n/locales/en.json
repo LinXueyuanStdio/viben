@@ -1972,6 +1972,12 @@
     "latest": "Latest",
     "oldest": "Oldest",
     "followMoreAuthorsToSeeMoments": "Follow more authors to see moments",
+    "insert": "Insert",
+    "insertLink": "Insert Link",
+    "linkUrl": "Link URL",
+    "linkText": "Link Text",
+    "linkTextPlaceholder": "Display text (optional)",
+    "cancel": "Cancel",
     "mySkills": "My Skills",
     "myCollections": "My Collections"
   }
