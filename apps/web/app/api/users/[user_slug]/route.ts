@@ -6,13 +6,13 @@ import { eq, count } from 'drizzle-orm';
 // GET - Public user profile
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ username: string }> }
+  { params }: { params: Promise<{ user_slug: string }> }
 ) {
   try {
-    const { username } = await params;
+    const { user_slug } = await params;
 
     const user = await db.query.users.findFirst({
-      where: eq(users.username, username),
+      where: eq(users.userSlug, user_slug),
       columns: {
         id: true,
         username: true,
