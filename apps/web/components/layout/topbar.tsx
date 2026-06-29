@@ -135,11 +135,11 @@ export function Topbar({
           {isRead ? (
             <>
               {/* 阅读模式操作 */}
-              <IconButton size="default" label={t("community.expandDetails")} onClick={toggleDrawer}>
-                <PanelRight className="h-[18px] w-[18px]" />
+              <IconButton size="compact" label={t("community.expandDetails")} onClick={toggleDrawer}>
+                <PanelRight className="h-4 w-4" />
               </IconButton>
-              <IconButton size="default" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
-                <Maximize2 className="h-[18px] w-[18px]" />
+              <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
+                <Maximize2 className="h-4 w-4" />
               </IconButton>
               <ReadMoreMenu />
             </>
@@ -188,8 +188,8 @@ function ReadMoreMenu() {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <IconButton size="default" label={t("community.moreActions")}>
-        <MoreHorizontal className="h-[18px] w-[18px]" />
+      <IconButton size="compact" label={t("community.moreActions")}>
+        <MoreHorizontal className="h-4 w-4" />
       </IconButton>
       {open && (
         <div className="absolute top-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
