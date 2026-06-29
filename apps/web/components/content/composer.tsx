@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useRef, useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { Link as LinkIcon, Image as ImageIcon, Send } from "lucide-react"
+import { InsertLinkDialog } from "@/components/content/insert-link-dialog"
+import { InsertImageDialog } from "@/components/content/insert-image-dialog"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -19,6 +21,9 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
   const { t } = useTranslation()
   const [text, setText] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [imageDialogOpen, setImageDialogOpen] = useState(false)
 
   const handleSubmit = useCallback(async () => {
     if (!text.trim()) return
@@ -58,6 +63,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
         </Avatar>
         <div className="grid gap-2">
           <textarea
+            ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t('community.postPlaceholder')}
@@ -69,7 +75,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => toast.info(t("community.linkFeatureSoon"))}
+            onClick={() => setLinkDialogOpen(true)}
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
             aria-label={t("community.addLink")}
           >
@@ -77,7 +83,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
           </button>
           <button
             type="button"
-            onClick={() => toast.info(t("community.imageFeatureSoon"))}
+            onClick={() => setImageDialogOpen(true)}
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
             aria-label={t("community.addImage")}
           >
@@ -89,6 +95,16 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
           {submitting ? t("community.publishing") : t("community.published")}
         </Button>
       </div>
+      <InsertLinkDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        textareaRef={textareaRef}
+      />
+      <InsertImageDialog
+        open={imageDialogOpen}
+        onOpenChange={setImageDialogOpen}
+        textareaRef={textareaRef}
+      />
     </div>
   )
 }
