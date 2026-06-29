@@ -3,6 +3,7 @@ import { PageCard } from "@/components/content/page-card"
 import { FeedCard } from "@/components/content/feed-card"
 import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
+import { RecommendedSection } from "@/components/content/recommended-section"
 import { Pill } from "@/components/content/pill"
 import { Stat } from "@/components/content/stats-row"
 import { Eye } from "lucide-react"
@@ -60,7 +61,18 @@ export default async function HomePage() {
     topAuthors,
   ] = await Promise.all([
     listRanking({ rankingKey: "popular_pages", timeWindow: "7d", limit: 10 }),
-    db.select().from(publishedPages)
+    db.select({
+      uid: publishedPages.uid,
+      title: publishedPages.title,
+      coverUrl: publishedPages.coverUrl,
+      authorName: publishedPages.authorName,
+      authorAvatarUrl: publishedPages.authorAvatarUrl,
+      lastPublishedAt: publishedPages.lastPublishedAt,
+      viewCount: publishedPages.viewCount,
+      commentCount: publishedPages.commentCount,
+      userSlug: users.userSlug,
+    }).from(publishedPages)
+      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(publishedPages.visibility, "public"),
         eq(publishedPages.moderationStatus, "approved")
@@ -111,6 +123,12 @@ export default async function HomePage() {
     stats: { views: p.viewCount, comments: p.commentCount },
   }))
 
+  // Build recommended page entries with proper href for the client section
+  const recommendedEntries = latestPages.map((p, i) => ({
+    data: recommendedPages[i],
+    href: `/read/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}`,
+  }))
+
   // Feed from moments
   const feedItems: FeedCardData[] = momentsResult.items.map((item) => ({
     head: {
@@ -149,6 +167,7 @@ export default async function HomePage() {
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,
+    userSlug: u.userSlug,
     description: u.bio ?? "",
     pageCount: u.pageCount ?? 0,
     followerCount: u.followersCount,
@@ -163,19 +182,17 @@ export default async function HomePage() {
           <SectionHead title="精选页面" actionLabel="更多" actionHref="/leaderboard" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {featuredPages.map((page, i) => (
-              <PageCard key={i} data={page} variant="home" href={`/read/${encodeURIComponent(page.author.name)}/${i}`} />
+              <PageCard
+                key={i}
+                data={page}
+                variant="home"
+                href={`/read/${encodeURIComponent(rankingItems[i].user_slug)}/${encodeURIComponent(rankingItems[i].page_id)}`}
+              />
             ))}
           </div>
         </section>
 
-        <section>
-          <SectionHead title="推荐" actionLabel="换一批" actionHref="/category" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {recommendedPages.map((page, i) => (
-              <PageCard key={i} data={page} variant="home" href={`/read/${encodeURIComponent(page.author.name)}/${i}`} />
-            ))}
-          </div>
-        </section>
+        <RecommendedSection pages={recommendedEntries} />
 
         <section>
           <SectionHead title="动态" actionLabel="进入" actionHref="/moment" />
@@ -189,7 +206,7 @@ export default async function HomePage() {
 
       <aside className="grid gap-3 content-start">
         <section>
-          <SectionHead title="推荐关注" actionLabel="查看" actionHref={`/author/${topAuthors[0]?.userSlug ?? ""}`} />
+          <SectionHead title="推荐关注" actionLabel="查看" actionHref="/search" />
           <div className="grid gap-2">
             {authorCards.map((author, i) => (
               <AuthorCard key={i} data={author} />

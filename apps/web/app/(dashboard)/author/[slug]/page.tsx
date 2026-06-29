@@ -82,6 +82,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     avatarUrl: user.avatarUrl ?? undefined,
     name: user.displayName,
     handle: `@${user.userSlug}`,
+    userSlug: user.userSlug,
     tagline: user.bio ?? "",
     stats: {
       followers: user.followersCount,
@@ -89,22 +90,25 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     },
   }
 
-  const pageCards: PageCardData[] = authorPages.map((p) => ({
-    cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
-    title: p.title,
-    description: p.description ?? undefined,
-    author: {
-      name: p.authorName ?? user.displayName,
-      fallbackText: p.authorName?.[0] ?? user.displayName?.[0] ?? "?",
-      avatarUrl: p.authorAvatarUrl ?? user.avatarUrl ?? undefined,
-    },
-    timeAgo: timeAgo(p.lastPublishedAt),
-    stats: {
-      views: p.viewCount,
-      likes: p.likeCount,
-      comments: p.commentCount,
-      bookmarks: p.favoriteCount,
-    },
+  const pageCards = authorPages.map((p) => ({
+    card: {
+      cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
+      title: p.title,
+      description: p.description ?? undefined,
+      author: {
+        name: p.authorName ?? user.displayName,
+        fallbackText: p.authorName?.[0] ?? user.displayName?.[0] ?? "?",
+        avatarUrl: p.authorAvatarUrl ?? user.avatarUrl ?? undefined,
+      },
+      timeAgo: timeAgo(p.lastPublishedAt),
+      stats: {
+        views: p.viewCount,
+        likes: p.likeCount,
+        comments: p.commentCount,
+        bookmarks: p.favoriteCount,
+      },
+    } satisfies PageCardData,
+    href: `/read/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(p.uid)}`,
   }))
 
   const feedCards: FeedCardData[] = authorMoments.map((m) => ({
@@ -119,6 +123,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     },
     text: m.body ?? "",
     quote: m.quoteText ?? undefined,
+    shareUrl: `/author/${encodeURIComponent(user.userSlug)}`,
     actions: {
       views: m.viewCount ?? 0,
       likes: m.likeCount,
@@ -146,8 +151,8 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
             <p className="py-8 text-center text-sm text-muted-foreground">暂无公开页面</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {pageCards.map((page, i) => (
-                <PageCard key={i} data={page} variant="default" href={`/read/${encodeURIComponent(user.userSlug)}/${i}`} />
+              {pageCards.map((item, i) => (
+                <PageCard key={i} data={item.card} variant="default" href={item.href} />
               ))}
             </div>
           )}

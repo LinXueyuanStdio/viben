@@ -1,6 +1,7 @@
 import { PageCard } from "@/components/content/page-card"
 import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
+import { RefreshButton } from "@/components/content/refresh-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { db, publishedPages, pageCategories, users } from "@/lib/db"
 import { eq, desc, and, asc } from "drizzle-orm"
@@ -28,10 +29,41 @@ function timeAgo(date: Date | string | null | undefined): string {
   return `${Math.floor(days / 365)}年前`
 }
 
+interface PageResult {
+  pageId: string
+  userSlug: string
+  title: string
+  description: string | null
+  authorName: string | null
+  authorAvatarUrl: string | null
+  coverUrl: string | null
+  lastPublishedAt: Date | null
+  viewCount: number
+  likeCount: number
+  commentCount: number
+  favoriteCount: number
+  categoryId: string | null
+}
+
 export default async function CategoryPage() {
-  const [categories, allPages, topAuthors] = await Promise.all([
+  const [categories, joinedPages, topAuthors] = await Promise.all([
     db.select().from(pageCategories).where(eq(pageCategories.isActive, true)).orderBy(asc(pageCategories.sortOrder)),
-    db.select().from(publishedPages)
+    db.select({
+      pageId: publishedPages.uid,
+      userSlug: users.userSlug,
+      title: publishedPages.title,
+      description: publishedPages.description,
+      authorName: publishedPages.authorName,
+      authorAvatarUrl: publishedPages.authorAvatarUrl,
+      coverUrl: publishedPages.coverUrl,
+      lastPublishedAt: publishedPages.lastPublishedAt,
+      viewCount: publishedPages.viewCount,
+      likeCount: publishedPages.likeCount,
+      commentCount: publishedPages.commentCount,
+      favoriteCount: publishedPages.favoriteCount,
+      categoryId: publishedPages.categoryId,
+    }).from(publishedPages)
+      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(publishedPages.visibility, "public"),
         eq(publishedPages.moderationStatus, "approved")
@@ -41,27 +73,35 @@ export default async function CategoryPage() {
     db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
   ])
 
-  const pagesByCategory: Record<string, PageCardData[]> = {}
-  for (const page of allPages) {
-    const catId = page.categoryId ?? "__uncategorized__"
+  const pagesByCategory: Record<string, { card: PageCardData; href: string }[]> = {}
+  for (const row of joinedPages as PageResult[]) {
+    const catId = row.categoryId ?? "__uncategorized__"
     if (!pagesByCategory[catId]) pagesByCategory[catId] = []
     pagesByCategory[catId].push({
-      cover: page.coverUrl ? `url(${page.coverUrl})` : gradientCover(page.title),
-      title: page.title,
-      description: page.description ?? undefined,
-      author: {
-        name: page.authorName ?? "?",
-        fallbackText: page.authorName?.[0] ?? "?",
-        avatarUrl: page.authorAvatarUrl ?? undefined,
+      card: {
+        cover: row.coverUrl ? `url(${row.coverUrl})` : gradientCover(row.title),
+        title: row.title,
+        description: row.description ?? undefined,
+        author: {
+          name: row.authorName ?? "?",
+          fallbackText: row.authorName?.[0] ?? "?",
+          avatarUrl: row.authorAvatarUrl ?? undefined,
+        },
+        timeAgo: timeAgo(row.lastPublishedAt),
+        stats: {
+          views: row.viewCount,
+          likes: row.likeCount,
+          comments: row.commentCount,
+          bookmarks: row.favoriteCount,
+        },
       },
-      timeAgo: timeAgo(page.lastPublishedAt),
-      stats: {
-        views: page.viewCount,
-        likes: page.likeCount,
-        comments: page.commentCount,
-        bookmarks: page.favoriteCount,
-      },
+      href: `/read/${encodeURIComponent(row.userSlug)}/${encodeURIComponent(row.pageId)}`,
     })
+  }
+
+  // Shuffle for variety on each render
+  for (const key of Object.keys(pagesByCategory)) {
+    pagesByCategory[key].sort(() => Math.random() - 0.5)
   }
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({
@@ -69,6 +109,7 @@ export default async function CategoryPage() {
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,
+    userSlug: u.userSlug,
     description: u.bio ?? "",
     pageCount: u.pageCount ?? 0,
     followerCount: u.followersCount,
@@ -85,10 +126,12 @@ export default async function CategoryPage() {
           </VibenTabsList>
           {categories.map((cat) => (
             <VibenTabsContent key={cat.slug} value={cat.slug}>
-              <SectionHead title={cat.name} actionLabel="换一换" actionHref="/category" />
+              <SectionHead title={cat.name}>
+                <RefreshButton />
+              </SectionHead>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
-                {(pagesByCategory[cat.id] ?? pagesByCategory.__uncategorized__ ?? []).slice(0, 4).map((page, i) => (
-                  <PageCard key={i} data={page} variant="default" href={`/read/${encodeURIComponent(page.author.name)}/${i}`} />
+                {(pagesByCategory[cat.id] ?? []).slice(0, 4).map((item, i) => (
+                  <PageCard key={i} data={item.card} variant="default" href={item.href} />
                 ))}
               </div>
             </VibenTabsContent>

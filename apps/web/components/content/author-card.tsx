@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { UserPlus } from "lucide-react"
+import { FollowButton } from "./follow-button"
 import { cn } from "@/lib/utils"
 import { formatCount } from "@/lib/utils/format"
 
@@ -9,6 +8,7 @@ export interface AuthorCardData {
   avatarUrl?: string
   name: string
   handle: string
+  userSlug: string
   description: string
   pageCount: number
   followerCount: number
@@ -22,7 +22,7 @@ interface AuthorCardProps {
 }
 
 export function AuthorCard({ data, className }: AuthorCardProps) {
-  const { fallbackText, avatarUrl, name, handle, description, pageCount, followerCount, representativeWork, mutualFollows } = data
+  const { fallbackText, avatarUrl, name, handle, userSlug, description, pageCount, followerCount, representativeWork, mutualFollows } = data
 
   return (
     <div className={cn(
@@ -43,10 +43,10 @@ export function AuthorCard({ data, className }: AuthorCardProps) {
           </span>
         </div>
       </div>
-      <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400">
-        <UserPlus className="size-[14px]" />
-        关注
-      </Button>
+      <FollowButton
+        userSlug={userSlug}
+        className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
+      />
       {(representativeWork || mutualFollows != null) && (
         <div className="col-span-full text-[13px] text-muted-foreground truncate">
           {representativeWork && <span>代表作：《{representativeWork}》</span>}

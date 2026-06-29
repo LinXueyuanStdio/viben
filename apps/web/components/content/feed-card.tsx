@@ -1,4 +1,8 @@
+"use client"
+
+import { useCallback } from "react"
 import { Eye, MessageCircle, Bookmark, Heart, Repeat2, Share2 } from "lucide-react"
+import { toast } from "sonner"
 import { FeedHead } from "./feed-head"
 import type { FeedHeadData } from "./feed-head"
 import { Attachment } from "./attachment"
@@ -25,22 +29,41 @@ interface FeedCardProps {
   data: FeedCardData
   variant?: "preloaded" | "rich"
   className?: string
+  onAction?: (action: string) => void
 }
 
-export function FeedCard({ data, variant = "preloaded", className }: FeedCardProps) {
+export function FeedCard({ data, variant = "preloaded", className, onAction }: FeedCardProps) {
+  const handleShare = useCallback(() => {
+    const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title: text, url }).catch(() => {})
+    } else {
+      navigator.clipboard.writeText(`${text}\n${url}`).catch(() => {})
+    }
+  }, [data.head.name, data.text])
+
+  const handleAction = useCallback((action: string) => {
+    if (onAction) {
+      onAction(action)
+    } else {
+      toast.info(`操作: ${action}`)
+    }
+  }, [onAction])
+
   const { head, text, quote, attachment, actions } = data
 
   const actionStats: StatProps[] = variant === "rich"
     ? [
-        { icon: Heart, value: actions.likes, format: true },
-        { icon: MessageCircle, value: actions.comments, format: true },
-        { icon: Repeat2, value: actions.reposts ?? 0, format: true },
-        { icon: Bookmark, value: actions.bookmarks, format: true },
+        { icon: Heart, value: actions.likes, format: true, dataAction: "like", onClick: handleAction },
+        { icon: MessageCircle, value: actions.comments, format: true, dataAction: "comment", onClick: handleAction },
+        { icon: Repeat2, value: actions.reposts ?? 0, format: true, dataAction: "repost", onClick: handleAction },
+        { icon: Bookmark, value: actions.bookmarks, format: true, dataAction: "bookmark", onClick: handleAction },
       ]
     : [
         { icon: Eye, value: actions.views, format: true },
-        { icon: MessageCircle, value: actions.comments, format: true },
-        { icon: Bookmark, value: actions.bookmarks, format: true },
+        { icon: MessageCircle, value: actions.comments, format: true, dataAction: "comment", onClick: handleAction },
+        { icon: Bookmark, value: actions.bookmarks, format: true, dataAction: "bookmark", onClick: handleAction },
       ]
 
   return (
@@ -65,6 +88,7 @@ export function FeedCard({ data, variant = "preloaded", className }: FeedCardPro
           <button
             className="inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
             aria-label="分享"
+            onClick={handleShare}
           >
             <Share2 className="size-4" />
           </button>

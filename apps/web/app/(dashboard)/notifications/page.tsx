@@ -2,7 +2,8 @@ import { NotificationItem } from "@/components/content/notification-item"
 import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
-import { Button } from "@/components/ui/button"
+import { MarkAllReadButton } from "@/components/content/mark-all-read-button"
+import { NotificationSettings } from "@/components/content/notification-settings"
 import { listNotifications } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
@@ -10,7 +11,7 @@ import { db, users } from "@/lib/db"
 import { desc } from "drizzle-orm"
 
 export const dynamic = "force-dynamic"
-import { CheckCheck, FileText, MessageCircle, UserPlus, Bell } from "lucide-react"
+import { FileText, MessageCircle, UserPlus, Bell } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { NotificationItemData } from "@/components/content/notification-item"
 import type { AuthorCardData } from "@/components/content/author-card"
@@ -104,6 +105,7 @@ export default async function NotificationsPage() {
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,
+    userSlug: u.userSlug,
     description: u.bio ?? "",
     pageCount: u.pageCount ?? 0,
     followerCount: u.followersCount,
@@ -114,10 +116,7 @@ export default async function NotificationsPage() {
       <div className="grid gap-3">
         <div className="flex items-center justify-between">
           <SectionHead title="通知" />
-          <Button variant="ghost" size="sm" className="gap-1.5">
-            <CheckCheck className="size-3.5" />
-            全部已读
-          </Button>
+          <MarkAllReadButton />
         </div>
         <VibenTabs defaultValue="全部">
           <VibenTabsList>
@@ -143,17 +142,7 @@ export default async function NotificationsPage() {
         </VibenTabs>
       </div>
       <aside className="grid gap-3 content-start">
-        <div className="rounded-[10px] border border-border p-2.5 grid gap-2">
-          <div className="font-bold text-sm">通知设置</div>
-          <label className="flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
-            <input type="checkbox" defaultChecked className="rounded" />
-            页面更新
-          </label>
-          <label className="flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
-            <input type="checkbox" defaultChecked className="rounded" />
-            评论回复
-          </label>
-        </div>
+        <NotificationSettings />
         <SectionHead title="订阅作者" />
         {authorCards.map((author, i) => (
           <AuthorCard key={i} data={author} />
