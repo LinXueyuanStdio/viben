@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
+import { useDrawer } from "./drawer-context"
 import { BreadcrumbNav } from "./breadcrumb"
 import { GlobalSearch } from "./global-search"
 import { NavPopover } from "./nav-popover"
@@ -38,23 +39,11 @@ export function Topbar({
 }: TopbarProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const router = useRouter()
-  const searchParams = useSearchParams()
   const mode = getTopbarMode(pathname)
   const isRead = mode === "read"
+  const { toggle: toggleDrawer } = useDrawer()
 
   const [immersive, setImmersive] = React.useState(false)
-
-  const toggleDrawer = React.useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (params.get("drawer") === "open") {
-      params.delete("drawer")
-    } else {
-      params.set("drawer", "open")
-    }
-    const qs = params.toString()
-    router.replace(qs ? `?${qs}` : pathname, { scroll: false })
-  }, [searchParams, router, pathname])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
   // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度

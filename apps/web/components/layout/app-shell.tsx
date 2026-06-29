@@ -5,6 +5,7 @@ import { createContext, useContext } from "react"
 import { usePathname } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
+import { DrawerProvider } from "./drawer-context"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
@@ -69,6 +70,7 @@ export function AppShell({
 
   return (
     <AppShellContext.Provider value={contextValue}>
+      <DrawerProvider>
       <div className="flex h-screen flex-col overflow-hidden">
         <Topbar
           session={session}
@@ -93,6 +95,7 @@ export function AppShell({
           </main>
         </div>
       </div>
+      </DrawerProvider>
     </AppShellContext.Provider>
   )
 }

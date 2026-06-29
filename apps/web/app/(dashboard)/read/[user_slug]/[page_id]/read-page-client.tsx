@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
-import { useSearchParams } from "next/navigation"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { Send, Heart, MessageCircle, ChevronDown, User } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { PageMeta } from "@/components/content/page-meta"
@@ -324,8 +323,6 @@ export function ReadPageClient({
   recommendations,
 }: ReadPageClientProps) {
   const { t } = useTranslation()
-  const searchParams = useSearchParams()
-  const isDrawerOpen = searchParams.get("drawer") === "open"
 
   const chapters =
     Array.isArray(pageChaptersJson) && pageChaptersJson.length > 0
@@ -370,16 +367,16 @@ export function ReadPageClient({
     recommendations: recommendations.length > 0 ? recommendations : undefined,
   }
 
-  const detailsTab = <PageMeta data={pageMeta} />
-  const commentsTab = (
+  const detailsTab = useMemo(() => <PageMeta data={pageMeta} />, [pageMeta])
+  const commentsTab = useMemo(() => (
     <CommentsPanel
       communityEntityId={communityEntityId}
       isAuthenticated={isAuthenticated}
       sessionUsername={sessionUsername}
       sessionAvatarUrl={sessionAvatarUrl}
     />
-  )
-  const notesTab = (
+  ), [communityEntityId, isAuthenticated, sessionUsername, sessionAvatarUrl])
+  const notesTab = useMemo(() => (
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
         <h2 className="font-['Lexend'] text-[17px] font-bold">{t('community.notes')}</h2>
@@ -387,7 +384,7 @@ export function ReadPageClient({
       </div>
       <p className="py-4 text-center text-[13px] text-muted-foreground">{t('community.notesFeatureSoon')}</p>
     </div>
-  )
+  ), [t])
 
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
@@ -398,16 +395,14 @@ export function ReadPageClient({
 
   return (
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
-      {isDrawerOpen && (
-        <ReadDrawer
-          tabs={[
-            { value: "details", label: "详情", content: detailsTab },
-            { value: "comments", label: "评论", badge: pageCommentCount, content: commentsTab },
-            { value: "notes", label: "笔记", badge: 2, content: notesTab },
-          ]}
-          defaultTab="details"
-        />
-      )}
+      <ReadDrawer
+        tabs={[
+          { value: "details", label: "详情", content: detailsTab },
+          { value: "comments", label: "评论", badge: pageCommentCount, content: commentsTab },
+          { value: "notes", label: "笔记", badge: 2, content: notesTab },
+        ]}
+        defaultTab="details"
+      />
 
       {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
       <div
