@@ -36,8 +36,8 @@ interface RouteConfig {
 // Route configuration - maps paths to their display info
 const routeConfig: Record<string, RouteConfig> = {
   // Main navigation
-  '/mcp': { labelKey: 'nav.mcpMarketplace', icon: Package },
-  '/skills': { labelKey: 'nav.skillsMarket', icon: Sparkles },
+  '/mcp-market': { labelKey: 'nav.mcpMarketplace', icon: Package },
+  '/skill-market': { labelKey: 'nav.skillsMarket', icon: Sparkles },
   '/collections': { labelKey: 'nav.collections', icon: Layers },
 
   // "我的" section

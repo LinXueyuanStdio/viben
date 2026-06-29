@@ -32,7 +32,7 @@ export default async function SkillAnalyticsPage({
 
   // Only author can view analytics
   if (skill.authorId !== session.userId) {
-    redirect(`/skills/${id}`);
+    redirect(`/skill-market/${id}`);
   }
 
   // Get downloads over time
@@ -73,7 +73,7 @@ export default async function SkillAnalyticsPage({
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/skills/${id}`}>
+          <Link href={`/skill-market/${id}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

@@ -34,7 +34,7 @@ export function OfficialSkillCard({
   };
 
   return (
-    <Link href={`/skills/official/${encodeURIComponent(skill.slug)}`}>
+    <Link href={`/skill-market/official/${encodeURIComponent(skill.slug)}`}>
       <div
         className={cn(
           'group relative flex h-full flex-col rounded-xl border bg-card p-4 transition-all duration-300',

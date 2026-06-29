@@ -98,10 +98,10 @@ function Nav() {
           <span className="text-lg font-bold tracking-tight">Viben</span>
         </Link>
         <div className="flex items-center gap-1 text-sm">
-          <Link href="/mcp" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
+          <Link href="/mcp-market" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
             {t('homepage.nav.mcpMarket')}
           </Link>
-          <Link href="/skills" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
+          <Link href="/skill-market" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
             {t('homepage.nav.skills')}
           </Link>
           <LanguageSwitcher />
@@ -163,7 +163,7 @@ export function HomePage() {
             {t('homepage.hero.description')}
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/mcp" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+            <Link href="/mcp-market" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
               {t('homepage.hero.cta.getStarted')}
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -217,7 +217,7 @@ export function HomePage() {
               <p className="mb-4 inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-amber-300">{t('homepage.features.badge')}</p>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('homepage.features.title')}</h2>
             </div>
-            <Link href="/skills" className="hidden items-center gap-1 text-sm font-medium text-amber-300 transition hover:text-amber-200 md:inline-flex">
+            <Link href="/skill-market" className="hidden items-center gap-1 text-sm font-medium text-amber-300 transition hover:text-amber-200 md:inline-flex">
               {t('homepage.features.exploreSkills')}
               <ChevronRight className="h-4 w-4" />
             </Link>
@@ -281,7 +281,7 @@ export function HomePage() {
             <p className="mt-2 text-zinc-300">{t('homepage.cta.description')}</p>
           </div>
           <div className="flex gap-3">
-            <Link href="/mcp" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+            <Link href="/mcp-market" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
               {t('homepage.cta.enterMarket')}
               <ArrowRight className="h-4 w-4" />
             </Link>

@@ -53,7 +53,7 @@ export function CollectionItems({
   }
 
   function getItemRoute(itemType: 'mcp' | 'skill') {
-    return itemType === 'mcp' ? '/mcp' : '/skills';
+    return itemType === 'mcp' ? '/mcp-market' : '/skill-market';
   }
 
   async function removeItem(itemId: string) {

@@ -37,7 +37,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push('/mcp');
+      router.push('/mcp-market');
       router.refresh();
     } catch {
       setError(t('auth.somethingWentWrong'));

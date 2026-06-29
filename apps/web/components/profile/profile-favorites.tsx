@@ -115,7 +115,7 @@ export function ProfileFavorites() {
 
 function FavoriteCard({ package: pkg }: { package: FavoritePackage }) {
   const { t } = useTranslation();
-  const href = pkg.type === 'mcp' ? `/mcp/${pkg.id}` : `/skills/${pkg.id}`;
+  const href = pkg.type === 'mcp' ? `/mcp-market/${pkg.id}` : `/skill-market/${pkg.id}`;
 
   return (
     <Link href={href}>

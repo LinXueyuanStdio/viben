@@ -43,7 +43,7 @@ export function McpCard({ package: pkg }: McpCardProps) {
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
-    <Link href={`/mcp/${pkg.id}`}>
+    <Link href={`/mcp-market/${pkg.id}`}>
       <div className="group relative flex h-full flex-col rounded-xl border bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1">
         <div className="flex items-start justify-between">
           <div className="space-y-1">

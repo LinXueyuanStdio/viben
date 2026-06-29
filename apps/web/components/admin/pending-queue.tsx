@@ -18,12 +18,12 @@ const typeConfig: Record<
   mcp: {
     icon: Package,
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    href: '/admin/packages/mcp',
+    href: '/admin/packages/mcp-market',
   },
   skill: {
     icon: Sparkles,
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-    href: '/admin/packages/skills',
+    href: '/admin/packages/skill-market',
   },
   report: {
     icon: Flag,

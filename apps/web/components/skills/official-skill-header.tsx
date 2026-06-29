@@ -65,7 +65,7 @@ export function OfficialSkillHeader({ skill, content }: OfficialSkillHeaderProps
     <div className="space-y-6">
       {/* Back link */}
       <Link
-        href="/skills?source=official"
+        href="/skill-market?source=official"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />

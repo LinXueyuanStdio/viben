@@ -112,7 +112,7 @@ async function PackagesList({ userId }: { userId: string }) {
               <PackageCard
                 key={pkg.id}
                 package={pkg}
-                href={`/mcp/${pkg.id}`}
+                href={`/mcp-market/${pkg.id}`}
               />
             ))}
           </div>
@@ -132,7 +132,7 @@ async function PackagesList({ userId }: { userId: string }) {
               <PackageCard
                 key={pkg.id}
                 package={pkg}
-                href={`/skills/${pkg.id}`}
+                href={`/skill-market/${pkg.id}`}
               />
             ))}
           </div>

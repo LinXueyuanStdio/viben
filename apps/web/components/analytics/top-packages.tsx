@@ -43,7 +43,7 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
                       #{index + 1}
                     </span>
                     <Link
-                      href={`/mcp/${pkg.id}`}
+                      href={`/mcp-market/${pkg.id}`}
                       className="font-medium hover:text-primary"
                     >
                       {pkg.name}
@@ -87,7 +87,7 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
                       #{index + 1}
                     </span>
                     <Link
-                      href={`/skills/${pkg.id}`}
+                      href={`/skill-market/${pkg.id}`}
                       className="font-medium hover:text-primary"
                     >
                       {pkg.name}

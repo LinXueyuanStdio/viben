@@ -29,11 +29,11 @@ Agent Swarm × Code Evolution - 智能体集群与代码进化平台。基于 Ne
 
 | 页面 | 路径 | 说明 |
 |------|------|------|
-| MCP 服务列表 | `/mcp` | 浏览 MCP 服务 |
-| MCP 详情 | `/mcp/:id` | MCP 服务详情 |
-| 官方 MCP | `/mcp/official/:name` | 官方 MCP 服务 |
-| 技能列表 | `/skills` | 浏览技能 |
-| 技能详情 | `/skills/:id` | 技能详情 |
+| MCP 服务列表 | `/mcp-market` | 浏览 MCP 服务 |
+| MCP 详情 | `/mcp-market/:id` | MCP 服务详情 |
+| 官方 MCP | `/mcp-market/official/:name` | 官方 MCP 服务 |
+| 技能列表 | `/skill-market` | 浏览技能 |
+| 技能详情 | `/skill-market/:id` | 技能详情 |
 | 合集列表 | `/collections` | 浏览合集 |
 | 合集详情 | `/collections/:id` | 合集详情 |
 
@@ -44,8 +44,8 @@ Agent Swarm × Code Evolution - 智能体集群与代码进化平台。基于 Ne
 | 发布 | `/publish` | 发布 MCP 服务或技能 |
 | 我的包 | `/my-packages` | 管理已发布的包 |
 | 分析 | `/analytics` | 下载和使用统计 |
-| MCP 分析 | `/mcp/:id/analytics` | 单个 MCP 的详细分析 |
-| 技能分析 | `/skills/:id/analytics` | 单个技能的详细分析 |
+| MCP 分析 | `/mcp-market/:id/analytics` | 单个 MCP 的详细分析 |
+| 技能分析 | `/skill-market/:id/analytics` | 单个技能的详细分析 |
 
 ### 用户中心
 
@@ -62,8 +62,8 @@ Agent Swarm × Code Evolution - 智能体集群与代码进化平台。基于 Ne
 |------|------|------|
 | 后台首页 | `/admin` | 管理后台概览 |
 | 包管理 | `/admin/packages` | 所有包的管理 |
-| MCP 管理 | `/admin/packages/mcp` | MCP 服务审核和管理 |
-| 技能管理 | `/admin/packages/skills` | 技能审核和管理 |
+| MCP 管理 | `/admin/packages/mcp-market` | MCP 服务审核和管理 |
+| 技能管理 | `/admin/packages/skill-market` | 技能审核和管理 |
 
 ## API 路由
 

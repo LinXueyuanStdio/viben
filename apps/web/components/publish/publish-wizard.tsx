@@ -171,7 +171,8 @@ export function PublishWizard() {
       }
 
       toast.success(t('publish.toast.publishSuccess'));
-      router.push(`/${state.packageType}/${pkg.id}`);
+      const routePrefix = state.packageType === 'mcp' ? 'mcp-market' : 'skill-market';
+      router.push(`/${routePrefix}/${pkg.id}`);
     } catch (error) {
       console.error('Failed to publish:', error);
       toast.error(

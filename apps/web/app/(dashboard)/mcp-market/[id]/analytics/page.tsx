@@ -29,7 +29,7 @@ export default async function PackageAnalyticsPage({
 
   // Only author can view analytics
   if (pkg.authorId !== session.userId) {
-    redirect(`/mcp/${id}`);
+    redirect(`/mcp-market/${id}`);
   }
 
   // Get downloads over time
