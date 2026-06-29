@@ -3,7 +3,7 @@
   "summary": {
     "totalLines": 1821968,
     "totalFiles": 8411,
-    "totalModules": 30,
+    "totalModules": 28,
     "codeLines": 1102937,
     "docLines": 451697,
     "configLines": 267334
@@ -135,12 +135,6 @@
       "color": "#6B7280"
     },
     {
-      "name": "infra/Yoopta-Editor",
-      "lines": 122437,
-      "files": 1020,
-      "color": "#84CC16"
-    },
-    {
       "name": "apps/web",
       "lines": 76651,
       "files": 341,
@@ -217,12 +211,6 @@
       "lines": 2009,
       "files": 29,
       "color": "#06B6D4"
-    },
-    {
-      "name": "packages/editor",
-      "lines": 1638,
-      "files": 10,
-      "color": "#14B8A6"
     },
     {
       "name": "packages/api-client",
@@ -437,11 +425,6 @@
       "color": "#8B5CF6"
     },
     {
-      "name": "infra/Yoopta-Editor",
-      "density": 120.0,
-      "color": "#84CC16"
-    },
-    {
       "name": "backend/wakeword",
       "density": 119.9,
       "color": "#22D3EE"
@@ -495,11 +478,6 @@
     }
   ],
   "topFiles": [
-    {
-      "path": "infra/Yoopta-Editor/web/next-app-example/components/playground/examples/large-document/initial-value.ts",
-      "lines": 16802,
-      "ext": "ts"
-    },
     {
       "path": "packages/core/src/gateway/routes/task.ts",
       "lines": 4482,
@@ -2245,14 +2223,6 @@
         "layer": "backend"
       },
       {
-        "id": "infra/Yoopta-Editor",
-        "label": "Yoopta Editor",
-        "lines": 122437,
-        "files": 1020,
-        "color": "#84CC16",
-        "layer": "infra"
-      },
-      {
         "id": "packages/api-client",
         "label": "API Client",
         "lines": 1433,
@@ -2282,14 +2252,6 @@
         "lines": 269750,
         "files": 929,
         "color": "#3B82F6",
-        "layer": "packages"
-      },
-      {
-        "id": "packages/editor",
-        "label": "Editor",
-        "lines": 1638,
-        "files": 10,
-        "color": "#14B8A6",
         "layer": "packages"
       },
       {

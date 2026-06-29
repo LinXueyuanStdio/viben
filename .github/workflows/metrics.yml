@@ -44,7 +44,7 @@ jobs:
           plugin_contributors_categories: |
             {
               "Apps": ["apps/cli/**", "apps/desktop/**", "apps/web/**"],
-              "Packages": ["packages/core/**", "packages/ui/**", "packages/chat/**", "packages/editor/**", "packages/kanban/**", "packages/os/**", "packages/presentation/**", "packages/api-client/**"],
+              "Packages": ["packages/core/**", "packages/ui/**", "packages/chat/**", "packages/kanban/**", "packages/os/**", "packages/presentation/**", "packages/api-client/**"],
               "Docs": ["apps/docs/**", "docs/**"]
             }
           plugin_followup: yes

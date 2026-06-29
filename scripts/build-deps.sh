@@ -14,7 +14,6 @@ set -e
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGES_DIR="$ROOT_DIR/packages"
-YOOPTA_DIR="$ROOT_DIR/infra/Yoopta-Editor/packages"
 
 TARGET_DIR=""
 FORCE=false
@@ -75,41 +74,10 @@ build_pkg() {
             .forEach(n => console.log(n));
     " 2>/dev/null || true)
 
-    # Extract @yoopta/* workspace deps from package.json
-    local yoopta_deps
-    yoopta_deps=$(node -e "
-        const pkg = require('$pkg_dir/package.json');
-        const all = { ...pkg.dependencies, ...pkg.devDependencies };
-        Object.entries(all)
-            .filter(([k, v]) => k.startsWith('@yoopta/') && v.startsWith('workspace:'))
-            .map(([k]) => k.replace('@yoopta/', ''))
-            .forEach(n => console.log(n));
-    " 2>/dev/null || true)
-
     # Recursively build @viben/* deps
     for dep in $viben_deps; do
         local dep_dir="$PACKAGES_DIR/$dep"
         if [ -d "$dep_dir" ]; then
-            build_pkg "$dep_dir"
-        fi
-    done
-
-    # Recursively build @yoopta/* deps (resolve from infra/Yoopta-Editor)
-    for dep in $yoopta_deps; do
-        local dep_dir=""
-        # Try core/, plugins/, themes/ directories, and marks
-        if [ -d "$YOOPTA_DIR/core/$dep" ]; then
-            dep_dir="$YOOPTA_DIR/core/$dep"
-        elif [ -d "$YOOPTA_DIR/plugins/$dep" ]; then
-            dep_dir="$YOOPTA_DIR/plugins/$dep"
-        elif [ -d "$YOOPTA_DIR/themes/$dep" ]; then
-            dep_dir="$YOOPTA_DIR/themes/$dep"
-        elif [ "$dep" = "marks" ] && [ -d "$YOOPTA_DIR/marks" ]; then
-            dep_dir="$YOOPTA_DIR/marks"
-        elif [ "$dep" = "themes-shadcn" ] && [ -d "$YOOPTA_DIR/themes/shadcn" ]; then
-            dep_dir="$YOOPTA_DIR/themes/shadcn"
-        fi
-        if [ -n "$dep_dir" ]; then
             build_pkg "$dep_dir"
         fi
     done
@@ -134,7 +102,6 @@ build_pkg() {
         # Determine display name based on package location
         local display_name="$pkg_name"
         case "$pkg_dir" in
-            */infra/Yoopta-Editor/*) display_name="@yoopta/$pkg_name" ;;
             */packages/*) display_name="@viben/$pkg_name" ;;
         esac
 

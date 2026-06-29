@@ -1,3 +1,0 @@
-import { EXHAUSTIVE_MARKDOWN_SAMPLE } from "@viben/editor";
-
-export const SAMPLE_MARKDOWN = EXHAUSTIVE_MARKDOWN_SAMPLE;

@@ -295,7 +295,6 @@ docs/index/
 !/pages/SKILL.md
 
 /infra/
-!/infra/Yoopta-Editor/
 
 /wdio-results.xml
 /apps/desktop/wdio-results.xml

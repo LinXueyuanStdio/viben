@@ -32,7 +32,6 @@ Set-Location $ProjectRoot
 
 # Build dependencies recursively (equivalent to build-deps.sh)
 $packagesDir = Join-Path $ProjectRoot "packages"
-$yooptaDir = Join-Path $ProjectRoot "infra\Yoopta-Editor\packages"
 
 # Get desktop package.json deps
 $desktopPkgJson = Get-Content (Join-Path $DesktopDir "package.json") | ConvertFrom-Json
@@ -63,44 +62,6 @@ foreach ($dep in $vibenDeps) {
             & pnpm --filter $dep build
         } else {
             Write-Host "  $dep (dist/ exists)"
-        }
-    }
-}
-
-# Build @yoopta/* workspace deps
-$yooptaDeps = $allDeps.Keys | Where-Object { $_ -like "@yoopta/*" -and $allDeps[$_] -like "workspace:*" }
-foreach ($dep in $yooptaDeps) {
-    $depName = $dep -replace "@yoopta/", ""
-    # Try core/, plugins/, themes/, marks
-    $possiblePaths = @(
-        (Join-Path $yooptaDir "core\$depName"),
-        (Join-Path $yooptaDir "plugins\$depName"),
-        (Join-Path $yooptaDir "themes\$depName")
-    )
-    if ($depName -eq "marks") { $possiblePaths += Join-Path $yooptaDir "marks" }
-    if ($depName -eq "themes-shadcn") { $possiblePaths += Join-Path $yooptaDir "themes\shadcn" }
-
-    foreach ($depDir in $possiblePaths) {
-        if (Test-Path $depDir) {
-            # Check if package has a build script
-            $pkgJsonPath = Join-Path $depDir "package.json"
-            $hasBuildScript = $false
-            if (Test-Path $pkgJsonPath) {
-                $pkgJson = Get-Content $pkgJsonPath | ConvertFrom-Json
-                $hasBuildScript = $pkgJson.scripts -and $pkgJson.scripts.build
-            }
-            if (-not $hasBuildScript) {
-                Write-Host "  $dep (source-only, skipping build)"
-                break
-            }
-            $distDir = Join-Path $depDir "dist"
-            if (-not (Test-Path $distDir)) {
-                Write-Host "  Building $dep..."
-                & pnpm --filter $dep build
-            } else {
-                Write-Host "  $dep (dist/ exists)"
-            }
-            break
         }
     }
 }

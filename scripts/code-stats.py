@@ -123,12 +123,10 @@ MODULE_COLORS = {
     "packages/ui": "#06B6D4",
     "packages/chat": "#8B5CF6",
     "packages/kanban": "#F97316",
-    "packages/editor": "#14B8A6",
     "packages/os": "#6366F1",
     "packages/api-client": "#EF4444",
     "packages/presentation": "#A855F7",
     "packages/editor-components": "#0EA5E9",
-    "infra/Yoopta-Editor": "#84CC16",
     "backend/browse-mcp": "#EF4444",
     "backend/plugins": "#F97316",
     "backend/wakeword": "#22D3EE",
@@ -512,11 +510,6 @@ def get_architecture(root: Path, module_stats: dict) -> dict:
                 if d.is_dir() and ((d / "package.json").exists() or (d / "pyproject.toml").exists()):
                     module_dirs.append((f"{prefix}/{d.name}", d))
 
-    # Also include infra/Yoopta-Editor
-    yoopta_dir = root / "infra" / "Yoopta-Editor"
-    if yoopta_dir.exists() and (yoopta_dir / "packages").exists():
-        module_dirs.append(("infra/Yoopta-Editor", yoopta_dir))
-
     # Map package names to module IDs
     for module_id, module_dir in sorted(module_dirs):
         pkg_json = module_dir / "package.json"
@@ -582,12 +575,10 @@ def get_architecture(root: Path, module_stats: dict) -> dict:
             "packages/ui": "UI",
             "packages/chat": "Chat",
             "packages/kanban": "Kanban",
-            "packages/editor": "Editor",
             "packages/os": "OS",
             "packages/api-client": "API Client",
             "packages/presentation": "Presentation",
             "packages/editor-components": "Editor Comp",
-            "infra/Yoopta-Editor": "Yoopta Editor",
             "backend/browse-mcp": "Browse MCP",
             "backend/plugins": "Plugins",
             "backend/wakeword": "Wakeword",
