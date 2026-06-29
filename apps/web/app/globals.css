@@ -1,68 +1,74 @@
 @import "tailwindcss";
 
 @theme {
-  /* Warm Orange Theme - Tailwind v4 native syntax */
+  /* Cyan Theme — oklch palette */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Light mode colors (default) */
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(20 14.3% 4.1%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(20 14.3% 4.1%);
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(20 14.3% 4.1%);
-  --color-primary: hsl(24 100% 50%); /* Warm orange #FF6B00 */
-  --color-primary-foreground: hsl(60 9.1% 97.8%);
-  --color-secondary: hsl(60 4.8% 95.9%);
-  --color-secondary-foreground: hsl(24 9.8% 10%);
-  --color-muted: hsl(60 4.8% 95.9%);
-  --color-muted-foreground: hsl(25 5.3% 44.7%);
-  --color-accent: hsl(60 4.8% 95.9%);
-  --color-accent-foreground: hsl(24 9.8% 10%);
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(60 9.1% 97.8%);
-  --color-border: hsl(20 5.9% 90%);
-  --color-input: hsl(20 5.9% 90%);
-  --color-ring: hsl(24 100% 50%);
-  --color-chart-1: hsl(12 76% 61%);
-  --color-chart-2: hsl(173 58% 39%);
-  --color-chart-3: hsl(197 37% 24%);
-  --color-chart-4: hsl(43 74% 66%);
-  --color-chart-5: hsl(27 87% 67%);
+  /* Light mode — cyan oklch */
+  --color-background: oklch(0.985 0.015 210);
+  --color-foreground: oklch(0.35 0.04 210);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.35 0.04 210);
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.35 0.04 210);
+  --color-primary: oklch(0.55 0.12 210);
+  --color-primary-foreground: oklch(0.985 0.015 210);
+  --color-primary-light: oklch(0.72 0.12 205);
+  --color-secondary: oklch(0.97 0.02 200);
+  --color-secondary-foreground: oklch(0.35 0.04 210);
+  --color-muted: oklch(0.97 0.02 200);
+  --color-muted-foreground: oklch(0.55 0.03 210);
+  --color-accent: oklch(0.55 0.15 170);
+  --color-accent-foreground: oklch(0.985 0.015 210);
+  --color-surface-secondary: oklch(0.97 0.02 200);
+  --color-destructive: oklch(0.577 0.245 27);
+  --color-destructive-foreground: oklch(0.985 0.015 210);
+  --color-border: oklch(0.92 0.03 200);
+  --color-input: oklch(0.92 0.03 200);
+  --color-ring: oklch(0.55 0.12 210);
+  --color-chart-1: oklch(0.646 0.222 41);
+  --color-chart-2: oklch(0.6 0.118 184);
+  --color-chart-3: oklch(0.398 0.07 227);
+  --color-chart-4: oklch(0.828 0.189 84);
+  --color-chart-5: oklch(0.769 0.188 70);
 }
 
 :root {
   --radius: 0.5rem;
+  --nav-h: 56px;
+  --sidebar-w: 256px;
 }
 
 .dark {
-  --color-background: hsl(20 14.3% 4.1%);
-  --color-foreground: hsl(60 9.1% 97.8%);
-  --color-card: hsl(20 14.3% 4.1%);
-  --color-card-foreground: hsl(60 9.1% 97.8%);
-  --color-popover: hsl(20 14.3% 4.1%);
-  --color-popover-foreground: hsl(60 9.1% 97.8%);
-  --color-primary: hsl(24 100% 50%); /* Warm orange */
-  --color-primary-foreground: hsl(60 9.1% 97.8%);
-  --color-secondary: hsl(12 6.5% 15.1%);
-  --color-secondary-foreground: hsl(60 9.1% 97.8%);
-  --color-muted: hsl(12 6.5% 15.1%);
-  --color-muted-foreground: hsl(24 5.4% 63.9%);
-  --color-accent: hsl(12 6.5% 15.1%);
-  --color-accent-foreground: hsl(60 9.1% 97.8%);
-  --color-destructive: hsl(0 62.8% 30.6%);
-  --color-destructive-foreground: hsl(60 9.1% 97.8%);
-  --color-border: hsl(12 6.5% 15.1%);
-  --color-input: hsl(12 6.5% 15.1%);
-  --color-ring: hsl(24 100% 50%);
-  --color-chart-1: hsl(220 70% 50%);
-  --color-chart-2: hsl(160 60% 45%);
-  --color-chart-3: hsl(30 80% 55%);
-  --color-chart-4: hsl(280 65% 60%);
-  --color-chart-5: hsl(340 75% 55%);
+  --color-background: oklch(0.25 0.03 210);
+  --color-foreground: oklch(0.95 0.02 200);
+  --color-card: oklch(0.28 0.04 210);
+  --color-card-foreground: oklch(0.95 0.02 200);
+  --color-popover: oklch(0.28 0.04 210);
+  --color-popover-foreground: oklch(0.95 0.02 200);
+  --color-primary: oklch(0.62 0.12 210);
+  --color-primary-foreground: oklch(0.15 0.03 210);
+  --color-primary-light: oklch(0.72 0.12 205);
+  --color-secondary: oklch(0.32 0.04 210);
+  --color-secondary-foreground: oklch(0.95 0.02 200);
+  --color-muted: oklch(0.32 0.04 210);
+  --color-muted-foreground: oklch(0.65 0.04 210);
+  --color-accent: oklch(0.6 0.15 170);
+  --color-accent-foreground: oklch(0.15 0.03 210);
+  --color-surface-secondary: oklch(0.3 0.04 210);
+  --color-destructive: oklch(0.396 0.141 25);
+  --color-destructive-foreground: oklch(0.95 0.02 200);
+  --color-border: oklch(0.35 0.04 210);
+  --color-input: oklch(0.35 0.04 210);
+  --color-ring: oklch(0.62 0.12 210);
+  --color-chart-1: oklch(0.546 0.245 262);
+  --color-chart-2: oklch(0.566 0.17 168);
+  --color-chart-3: oklch(0.666 0.17 60);
+  --color-chart-4: oklch(0.615 0.22 312);
+  --color-chart-5: oklch(0.627 0.22 12);
 }
 
 @layer base {
@@ -72,6 +78,9 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background:
+      radial-gradient(circle at 10% 0%, oklch(0.72 0.12 205 / 0.18), transparent 28rem),
+      linear-gradient(180deg, oklch(0.96 0.01 210) 0%, oklch(0.95 0.015 205) 38%, oklch(0.96 0.008 200) 100%);
   }
 }
 
