@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Cyan Theme — oklch palette */
   --radius-sm: calc(var(--radius) - 4px);
@@ -80,9 +82,12 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background:
+    background-image:
       radial-gradient(circle at 10% 0%, oklch(0.72 0.12 205 / 0.18), transparent 28rem),
       linear-gradient(180deg, oklch(0.96 0.01 210) 0%, oklch(0.95 0.015 205) 38%, oklch(0.96 0.008 200) 100%);
+  }
+  .dark body {
+    background-image: none;
   }
 }
 
