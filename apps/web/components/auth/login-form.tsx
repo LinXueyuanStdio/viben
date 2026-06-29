@@ -47,7 +47,7 @@ export function LoginForm() {
       }
 
       const redirectTo = getRedirectPath();
-      router.push(redirectTo ?? '/mcp-market');
+      router.push(redirectTo ?? '/');
       router.refresh();
     } catch {
       setError(t('auth.somethingWentWrong'));
