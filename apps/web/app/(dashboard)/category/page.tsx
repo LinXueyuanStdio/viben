@@ -115,6 +115,31 @@ export default async function CategoryPage() {
     followerCount: u.followersCount,
   }))
 
+  // If no categories exist, show all pages without tabs
+  if (categories.length === 0) {
+    return (
+      <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+        <div className="grid gap-3">
+          <SectionHead title="全部页面">
+            <RefreshButton />
+          </SectionHead>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {(pagesByCategory["__uncategorized__"] ?? []).slice(0, 8).map((item, i) => (
+              <PageCard key={i} data={item.card} variant="default" href={item.href} />
+            ))}
+          </div>
+        </div>
+        <aside className="grid gap-2 content-start">
+          <SectionHead title="相关作者" />
+          {authorCards.map((author, i) => (
+            <AuthorCard key={i} data={author} />
+          ))}
+        </aside>
+      </div>
+    )
+  }
+
+  // Normal flow with categories
   return (
     <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
       <div className="grid gap-3">

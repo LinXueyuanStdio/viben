@@ -77,7 +77,16 @@
     "packages": "Packages",
     "users": "Users",
     "content": "Content",
-    "reports": "Reports"
+    "reports": "Reports",
+    "browse": "Browse",
+    "records": "Records",
+    "home": "Home",
+    "category": "Category",
+    "leaderboard": "Leaderboard",
+    "moment": "Moments",
+    "search": "Search",
+    "notifications": "Notifications",
+    "history": "History"
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
@@ -1960,6 +1969,9 @@
     "authorType": "Author",
     "momentType": "Moment",
     "paperType": "Paper",
+    "latest": "Latest",
+    "oldest": "Oldest",
+    "followMoreAuthorsToSeeMoments": "Follow more authors to see moments",
     "mySkills": "My Skills",
     "myCollections": "My Collections"
   }

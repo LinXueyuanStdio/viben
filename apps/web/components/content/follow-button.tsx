@@ -15,7 +15,9 @@ export function FollowButton({ userSlug, className }: FollowButtonProps) {
   const [following, setFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleFollow = async () => {
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
     setLoading(true)
     try {
       const method = following ? "DELETE" : "POST"

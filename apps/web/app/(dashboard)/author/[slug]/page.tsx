@@ -118,6 +118,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
       avatarUrl: user.avatarUrl ?? undefined,
       name: user.displayName,
       handle: `@${user.userSlug}`,
+      userSlug: user.userSlug,
       kind: FEED_KIND_MAP[m.kind] ?? "发布",
       timeAgo: timeAgo(m.createdAt),
       source: m.source ?? undefined,

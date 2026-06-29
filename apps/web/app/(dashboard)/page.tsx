@@ -137,6 +137,7 @@ export default async function HomePage() {
       avatarUrl: item.author.avatar_url ?? undefined,
       name: item.author.display_name,
       handle: `@${item.author.user_slug}`,
+      userSlug: item.author.user_slug,
       kind: FEED_KIND_MAP[item.moment.kind] ?? "发布",
       timeAgo: timeAgo(item.moment.created_at),
       source: item.moment.source ?? undefined,

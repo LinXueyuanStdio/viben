@@ -1834,3 +1834,30 @@ export async function getHomeConfig(surface: string, locale: string) {
     fallback_used: true,
   };
 }
+
+export async function listPagesByTag(tag: string, limit: number = 20) {
+  const rows = await db
+    .select({
+      page: publishedPages,
+      author: users,
+    })
+    .from(publishedPages)
+    .innerJoin(users, eq(users.id, publishedPages.userId))
+    .where(and(
+      eq(publishedPages.visibility, "public"),
+      eq(publishedPages.moderationStatus, "approved"),
+      sql`${publishedPages.tags} @> ${JSON.stringify([tag])}::jsonb`
+    ))
+    .orderBy(desc(publishedPages.lastPublishedAt))
+    .limit(limit)
+
+  return rows.map(({ page, author }) => ({
+    ...page,
+    author: {
+      id: author.id,
+      user_slug: author.userSlug,
+      display_name: author.displayName,
+      avatar_url: author.avatarUrl,
+    },
+  }))
+}

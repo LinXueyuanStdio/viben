@@ -73,7 +73,8 @@ export async function searchPages(query: string) {
       or(
         ilike(publishedPages.title, pattern),
         ilike(publishedPages.description, pattern),
-        ilike(publishedPages.authorName, pattern)
+        ilike(publishedPages.authorName, pattern),
+        sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${publishedPages.tags}) as tag WHERE tag ILIKE ${pattern})`
       )
     ))
     .orderBy(desc(publishedPages.viewCount))

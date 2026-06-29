@@ -1,10 +1,11 @@
 "use client"
 
 import React, { useState } from "react"
-import { ChevronRight, Eye, Bookmark, Share2, Heart, UserPlus } from "lucide-react"
+import Link from "next/link"
+import { ChevronRight, Eye, Bookmark, Share2, Heart } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { FollowButton } from "./follow-button"
 import { Pill } from "./pill"
 import { Stat } from "./stats-row"
 import { SectionHead } from "./section-head"
@@ -18,6 +19,7 @@ export interface PageMetaData {
     name: string
     fallbackText: string
     avatarUrl?: string
+    userSlug: string
     followerCount: number
   }
   title: string
@@ -68,20 +70,22 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
     <div className={cn("grid gap-[11px]", className)}>
       {/* Author */}
       <div className="grid grid-cols-[auto_1fr_auto] gap-[9px] items-center">
-        <Avatar className="size-[34px]">
-          <AvatarImage src={author.avatarUrl} alt={author.name} />
-          <AvatarFallback>{author.fallbackText}</AvatarFallback>
-        </Avatar>
-        <div className="grid gap-[3px] min-w-0">
+        <Link href={`/author/${encodeURIComponent(author.userSlug)}`} className="shrink-0">
+          <Avatar className="size-[34px]">
+            <AvatarImage src={author.avatarUrl} alt={author.name} />
+            <AvatarFallback>{author.fallbackText}</AvatarFallback>
+          </Avatar>
+        </Link>
+        <Link href={`/author/${encodeURIComponent(author.userSlug)}`} className="grid gap-[3px] min-w-0 hover:opacity-80 transition-opacity">
           <div className="font-bold text-sm truncate">{author.name}</div>
           <div className="text-[12.5px] text-muted-foreground">
             {t("community.followersCountUnit", { formattedCount: formatCount(author.followerCount) })}
           </div>
-        </div>
-        <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400 shrink-0">
-          <UserPlus className="size-[14px]" />
-          {t('community.follow')}
-        </Button>
+        </Link>
+        <FollowButton
+          userSlug={author.userSlug}
+          className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
+        />
       </div>
 
       {/* Title Row */}
@@ -128,7 +132,9 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2.5">
               {tags.map((tag) => (
-                <Pill key={tag} variant="tag">{tag}</Pill>
+                <Link key={tag} href={`/tags/${encodeURIComponent(tag)}`}>
+                  <Pill variant="tag">{tag}</Pill>
+                </Link>
               ))}
             </div>
           )}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useTranslation } from "react-i18next"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FollowButton } from "./follow-button"
 import { cn } from "@/lib/utils"
@@ -29,10 +30,14 @@ export function AuthorCard({ data, className }: AuthorCardProps) {
   const { fallbackText, avatarUrl, name, handle, userSlug, description, pageCount, followerCount, representativeWork, mutualFollows } = data
 
   return (
-    <div className={cn(
-      "grid grid-cols-[auto_1fr_auto] gap-[9px] rounded-[10px] border border-border p-2.5",
-      className
-    )}>
+    <Link
+      href={`/author/${encodeURIComponent(userSlug)}`}
+      className={cn(
+        "block grid grid-cols-[auto_1fr_auto] gap-[9px] rounded-[10px] border border-border p-2.5",
+        "hover:border-primary transition-colors duration-150",
+        className
+      )}
+    >
       <Avatar className="size-[34px]">
         <AvatarImage src={avatarUrl} alt={name} />
         <AvatarFallback>{fallbackText}</AvatarFallback>
@@ -58,6 +63,6 @@ export function AuthorCard({ data, className }: AuthorCardProps) {
           {mutualFollows != null && <span>{t("community.mutualFollowsPerson", { count: mutualFollows })}</span>}
         </div>
       )}
-    </div>
+    </Link>
   )
 }

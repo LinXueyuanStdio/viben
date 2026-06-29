@@ -268,7 +268,7 @@ function CommentsPanel({
           onClick={() => setSort(sort === "latest" ? "oldest" : "latest")}
           className="inline-flex items-center gap-1 h-[30px] px-2.5 rounded-full bg-surface-secondary text-[13px] font-bold text-muted-foreground hover:text-foreground"
         >
-          {sort === "latest" ? "最新" : "最早"}
+          {sort === "latest" ? t('community.latest') : t('community.oldest')}
           <ChevronDown className="size-3" />
         </button>
       </div>
@@ -334,6 +334,7 @@ export function ReadPageClient({
       name: authorName,
       fallbackText: authorName?.[0] ?? "?",
       avatarUrl: authorAvatarUrl ?? undefined,
+      userSlug: userSlug,
       followerCount: authorFollowersCount,
     },
     title: pageTitle,
@@ -397,9 +398,9 @@ export function ReadPageClient({
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
       <ReadDrawer
         tabs={[
-          { value: "details", label: "详情", content: detailsTab },
-          { value: "comments", label: "评论", badge: pageCommentCount, content: commentsTab },
-          { value: "notes", label: "笔记", badge: 2, content: notesTab },
+          { value: "details", label: t('community.details'), content: detailsTab },
+          { value: "comments", label: t('community.comments'), badge: pageCommentCount, content: commentsTab },
+          { value: "notes", label: t('community.notes'), badge: 2, content: notesTab },
         ]}
         defaultTab="details"
       />

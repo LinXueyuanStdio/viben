@@ -1,6 +1,7 @@
 "use client"
 
 import { useTranslation } from "react-i18next"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { IconButton } from "@/components/ui/icon-button"
 import { MoreHorizontal } from "lucide-react"
@@ -14,6 +15,7 @@ export interface FeedHeadData {
   avatarUrl?: string
   name: string
   handle: string
+  userSlug: string
   kind: FeedKind
   timeAgo: string
   source?: string
@@ -26,17 +28,22 @@ interface FeedHeadProps {
 
 export function FeedHead({ data, className }: FeedHeadProps) {
   const { t } = useTranslation()
-  const { fallbackText, avatarUrl, name, handle, kind, timeAgo, source } = data
+  const { fallbackText, avatarUrl, name, handle, userSlug, kind, timeAgo, source } = data
+  const authorHref = `/author/${encodeURIComponent(userSlug)}`
 
   return (
     <div className={cn("grid grid-cols-[auto_1fr_auto] gap-[9px] items-center", className)}>
-      <Avatar className="size-[34px]">
-        <AvatarImage src={avatarUrl} alt={name} />
-        <AvatarFallback>{fallbackText}</AvatarFallback>
-      </Avatar>
+      <Link href={authorHref} className="shrink-0">
+        <Avatar className="size-[34px]">
+          <AvatarImage src={avatarUrl} alt={name} />
+          <AvatarFallback>{fallbackText}</AvatarFallback>
+        </Avatar>
+      </Link>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-bold text-sm truncate">{name}</span>
+          <Link href={authorHref} className="font-bold text-sm truncate hover:underline">
+            {name}
+          </Link>
           <Pill variant="kind">{kind}</Pill>
         </div>
         <div className="text-[13px] text-muted-foreground truncate">

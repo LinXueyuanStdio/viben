@@ -4,7 +4,7 @@ import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { listMoments } from "@/lib/services/community"
-import { EmptyState } from "@/components/content/i18n-text"
+import { EmptyState, T } from "@/components/content/i18n-text"
 import { db, users } from "@/lib/db"
 import { desc } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
@@ -62,6 +62,7 @@ export default async function MomentPage() {
         avatarUrl: item.author.avatar_url ?? undefined,
         name: item.author.display_name,
         handle: `@${item.author.user_slug}`,
+        userSlug: item.author.user_slug,
         kind: FEED_KIND_MAP[item.moment.kind] ?? "发布",
         timeAgo: timeAgo(item.moment.created_at),
         source: item.moment.source ?? undefined,
@@ -126,7 +127,7 @@ export default async function MomentPage() {
               {tabFeeds[tab.key]?.length === 0 ? (
                 tab.feedType === "following" ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
-                    关注更多作者以查看动态
+                    <T tKey="community.followMoreAuthorsToSeeMoments" fallback="关注更多作者以查看动态" />
                   </p>
                 ) : (
                   <EmptyState tKey="community.noMoments" fallback="暂无动态" />
@@ -143,7 +144,7 @@ export default async function MomentPage() {
         </VibenTabs>
       </div>
       <aside className="grid gap-2 content-start">
-        <SectionHead title="值得关注" />
+        <SectionHead title={<T tKey="community.worthFollowing" fallback="值得关注" />} />
         {authorCards.map((author, i) => (
           <AuthorCard key={i} data={author} />
         ))}

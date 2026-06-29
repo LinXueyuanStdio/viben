@@ -81,7 +81,12 @@
     "browse": "浏览",
     "records": "记录",
     "home": "首页",
-    "category": "分类"
+    "category": "分类",
+    "leaderboard": "榜单",
+    "moment": "动态",
+    "search": "搜索",
+    "notifications": "通知",
+    "history": "浏览历史"
   },
   "sidebar": {
     "setupComplete": "设置完成",
@@ -1990,6 +1995,9 @@
     "authorType": "作者",
     "momentType": "动态",
     "paperType": "论文",
+    "latest": "最新",
+    "oldest": "最早",
+    "followMoreAuthorsToSeeMoments": "关注更多作者以查看动态",
     "mySkills": "我的技能",
     "myCollections": "我的合集"
   }
