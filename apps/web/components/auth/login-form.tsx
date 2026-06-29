@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,17 @@ import { Loader2 } from 'lucide-react';
 export function LoginForm() {
   const { t } = useTranslation();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function getRedirectPath(): string | null {
+    if (typeof window === 'undefined') return null;
+    const redirect = new URLSearchParams(window.location.search).get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      return redirect;
+    }
+    return null;
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,8 +46,8 @@ export function LoginForm() {
         return;
       }
 
-      const redirectTo = searchParams.get('redirect');
-      router.push(redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/mcp-market');
+      const redirectTo = getRedirectPath();
+      router.push(redirectTo ?? '/mcp-market');
       router.refresh();
     } catch {
       setError(t('auth.somethingWentWrong'));

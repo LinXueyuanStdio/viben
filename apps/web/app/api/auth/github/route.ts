@@ -36,9 +36,15 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   const existingDesktopCookie = cookieStore.get('oauth_redirect_uri')?.value;
   if (existingDesktopCookie) {
-    console.warn('[OAuth][GitHub] found stale oauth_redirect_uri cookie, will clear if non-desktop', {
-      existingDesktopCookie: describeDesktopRedirectUri(existingDesktopCookie),
-    });
+    try {
+      console.warn('[OAuth][GitHub] found stale oauth_redirect_uri cookie, will clear if non-desktop', {
+        existingDesktopCookie: describeDesktopRedirectUri(existingDesktopCookie),
+      });
+    } catch {
+      console.warn('[OAuth][GitHub] stale oauth_redirect_uri cookie is malformed, clearing', {
+        cookieLen: existingDesktopCookie.length,
+      });
+    }
   }
 
   cookieStore.set('oauth_state', state, {
