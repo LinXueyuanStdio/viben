@@ -62,6 +62,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 function getDeviceIcon(type: string, platform?: string) {
   if (type === "gateway") return Server;
@@ -264,6 +266,7 @@ function DeviceDetailsDialog({ device, open, onOpenChange }: DeviceDetailsDialog
 
 export function DevicePairPage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const devices = useDeviceStore((s) => s.devices);
   const setDevices = useDeviceStore((s) => s.setDevices);
   const removeDevice = useDeviceStore((s) => s.removeDevice);
@@ -283,13 +286,23 @@ export function DevicePairPage() {
       getDeviceQr(baseUrl).catch(() => null),
       getDevices(baseUrl).catch(() => ({ devices: [] })),
     ]);
-    if (qrRes) setQr(qrRes);
+    if (qrRes) {
+      setQr(qrRes);
+      try {
+        logEvent(AnalyticsEvents.DEVICE_QR_CODE_GENERATED, { device_type: "gateway" });
+      } catch {}
+    }
     setDevices(devRes.devices);
-  }, [setDevices]);
+  }, [setDevices, logEvent]);
 
   useEffect(() => {
     loadData().finally(() => setLoading(false));
   }, [loadData]);
+
+  // Track device_pair_page_opened
+  useEffect(() => {
+    try { logEvent(AnalyticsEvents.DEVICE_PAIR_PAGE_OPENED, { source: "sidebar" }); } catch {}
+  }, []);
 
   const refreshQr = useCallback(async () => {
     setRefreshing(true);

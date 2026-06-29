@@ -33,6 +33,8 @@ import { McpServerConfigDialog } from "./mcp-server-config-dialog";
 import { useServiceKeys } from "@/hooks/use-service-keys";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import type { OfficialServerDisplay } from "@/types/official-registry";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // Re-export the type for consumers
 export type { AgentMcpEntry };
@@ -42,6 +44,7 @@ interface AgentMcpDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedServers: AgentMcpEntry[];
   onServersChange: (servers: AgentMcpEntry[]) => void;
+  agentId?: string;
 }
 
 const BROWSE_MCP_PATH = "/api/mcp-server/browse";
@@ -63,9 +66,11 @@ export function AgentMcpDialog({
   onOpenChange,
   selectedServers,
   onServersChange,
+  agentId,
 }: AgentMcpDialogProps) {
   const [localSelected, setLocalSelected] = useState<AgentMcpEntry[]>(selectedServers);
   const [activeTab, setActiveTab] = useState("builtin");
+  const { logEvent } = useAnalytics();
 
   // Config dialog state for market additions
   const [configTarget, setConfigTarget] = useState<OfficialServerDisplay | null>(null);
@@ -135,6 +140,22 @@ export function AgentMcpDialog({
   }, []);
 
   const handleSave = () => {
+    // Track newly added MCP servers
+    if (agentId) {
+      try {
+        const originalNames = new Set(selectedServers.map((s) => s.name));
+        const newServers = localSelected.filter((s) => !originalNames.has(s.name));
+        for (const server of newServers) {
+          try {
+            logEvent(AnalyticsEvents.AGENT_MCP_SERVER_ADDED, {
+              agent_id: agentId,
+              mcp_server_name: server.name,
+              mcp_server_type: server.type || "http",
+            });
+          } catch { /* ignore analytics errors */ }
+        }
+      } catch { /* ignore analytics errors */ }
+    }
     onServersChange(localSelected);
     onOpenChange(false);
   };

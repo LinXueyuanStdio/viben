@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { SetupStepRow } from "./setup-step-row";
 import { useGatewaySetup } from "@/hooks/use-gateway-setup";
 import { NodejsSection } from "./env-check-sections";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 interface GatewaySetupPageProps {
   onComplete: () => void;
@@ -34,6 +36,46 @@ export function GatewaySetupPage({ onComplete, onBack }: GatewaySetupPageProps) 
     maxRetries,
     scanNodeInstallations,
   } = useGatewaySetup();
+
+  const { logEvent } = useAnalytics();
+
+  // Track onboarding_env_check_completed when isComplete becomes true
+  const prevIsCompleteRef = useRef(false);
+  useEffect(() => {
+    if (isComplete && !prevIsCompleteRef.current) {
+      prevIsCompleteRef.current = true;
+      const failedSteps = steps.filter((s) => s.state === "error").length;
+      try {
+        logEvent(AnalyticsEvents.ONBOARDING_ENV_CHECK_COMPLETED, {
+          git_available: true,
+          node_available: steps.find((s) => s.id === "nodejs")?.state === "success" || steps.every((s) => s.id !== "nodejs"),
+          python_available: true,
+          failed_checks_count: failedSteps,
+        });
+      } catch { /* analytics is best-effort */ }
+    }
+    if (!isComplete) {
+      prevIsCompleteRef.current = false;
+    }
+  }, [isComplete, steps, logEvent]);
+
+  // Track onboarding_gateway_started when gateway-start step succeeds
+  const gatewayStartLoggedRef = useRef(false);
+  useEffect(() => {
+    if (gatewayStartLoggedRef.current) return;
+
+    const gatewayStartStep = steps.find((s) => s.id === "gateway-start");
+    if (gatewayStartStep?.state === "success") {
+      gatewayStartLoggedRef.current = true;
+      try {
+        logEvent(AnalyticsEvents.ONBOARDING_GATEWAY_STARTED, {
+          gateway_version: "",
+          start_method: "manual",
+          duration_ms: 0,
+        });
+      } catch { /* analytics is best-effort */ }
+    }
+  }, [steps, logEvent]);
 
   // State for custom Node.js path input
   const [customNodejsPath, setCustomNodejsPath] = useState("");

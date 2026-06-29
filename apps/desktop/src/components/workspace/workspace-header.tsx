@@ -18,6 +18,8 @@ import {
 } from "@/hooks/use-desktop-routing";
 import { useOptionalNavigationShell } from "@/components/navigation/navigation-shell";
 import { cn } from "@/lib/utils";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 import type { BreadcrumbSegment } from "./workspace-breadcrumb";
 import type { Workspace } from "@/types";
 
@@ -58,6 +60,7 @@ export function WorkspaceHeader({
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { logEvent } = useAnalytics();
 
   const isGlobal = workspace.id === "global";
 
@@ -67,6 +70,15 @@ export function WorkspaceHeader({
     setIsDeleting(true);
     try {
       await onRemove();
+      try {
+        const ageMs = Date.now() - new Date(workspace.created_at).getTime();
+        const workspaceAgeDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+        logEvent(AnalyticsEvents.WORKSPACE_DELETED, {
+          workspace_id: workspace.id,
+          workspace_age_days: workspaceAgeDays,
+          task_count: 0,
+        });
+      } catch { /* ignore analytics errors */ }
       openRoute("/workspace");
     } catch {
       // Error handled in hook

@@ -41,6 +41,9 @@ export default defineConfig({
     "archiver",
     "socket.io",
     "socket.io-client",
+    "firebase",
+    "firebase/app",
+    "firebase/firestore/lite",
   ],
   // Inject version at build time
   define: {

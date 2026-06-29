@@ -17,12 +17,16 @@ import { installTabStoreStorageSync } from "@/stores/tab-store";
 import { AcpChat } from "@/components/acp-chat";
 import { useChatModeStore } from "@/stores/chat-mode-store";
 import { useUiStore } from "@/stores/ui-store";
+import { usePageViewTracking } from "@/lib/analytics";
 
 export function AppLayout() {
   useEffect(() => installTabStoreStorageSync(), []);
 
   // Initialize global keyboard shortcuts (Ctrl+Shift+J for create task, etc.)
   useGlobalShortcuts();
+
+  // Automatic page_view event tracking on route changes
+  usePageViewTracking();
 
 
   // Initialize channel notifications WebSocket connection

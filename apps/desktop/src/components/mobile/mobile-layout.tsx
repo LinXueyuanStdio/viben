@@ -4,6 +4,7 @@ import { Smartphone, Link, MessageSquare, Wifi, WifiOff } from "lucide-react";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useSafeArea } from "@/hooks/use-safe-area";
 import { cn } from "@/lib/utils";
+import { usePageViewTracking } from "@/lib/analytics";
 
 function MobileHeader() {
   const { t } = useTranslation();
@@ -40,6 +41,9 @@ export function MobileLayout() {
 
   // Apply safe area insets from native plugin
   useSafeArea();
+
+  // Automatic page_view event tracking on route changes
+  usePageViewTracking();
 
   return (
     <div className="flex flex-col h-screen bg-background pt-[var(--safe-area-inset-top,0px)]">

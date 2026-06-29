@@ -425,6 +425,7 @@ export function WorkspaceChatPage() {
         agents={chat.agents}
         onCreate={chat.handleCreateGroupChat}
         isCreating={chat.isCreatingGroupChat}
+        workspaceId={resolvedWorkspaceId || undefined}
       />
 
       {chat.currentGroupChat && (

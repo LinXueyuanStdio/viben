@@ -89,6 +89,8 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { getGatewayUrl, getInputHistory } from "@/lib/gateway";
 import { useAcpSession } from "./use-acp-session";
 import { ContextSettingsPopup } from "./context-settings-popup";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 import { useChatDrag } from "@/hooks/use-chat-drag";
 import { ChatDragProvider } from "@/contexts/chat-drag-context";
 import type { SnapPosition } from "@/stores/chat-position-store";
@@ -338,6 +340,7 @@ function buildAcpCompactSummary(
 
 export function AcpChat({ mode, onModeChange, contained = false, className, wsUrl, defaultCwd, enableFullResize = false, windowMode = false }: AcpChatProps) {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
@@ -565,9 +568,18 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   }, []);
 
   const handleSessionListAttach = useCallback(async (targetSessionKey: string) => {
+    const fromSessionId = sessionId ?? "";
     closeSessionDrawer();
     await loadSession(targetSessionKey);
-  }, [closeSessionDrawer, loadSession]);
+    // Analytics: chat_session_switched
+    try {
+      logEvent(AnalyticsEvents.CHAT_SESSION_SWITCHED, {
+        from_session_id: fromSessionId,
+        to_session_id: targetSessionKey,
+        switch_method: "click",
+      });
+    } catch { /* analytics should not break business logic */ }
+  }, [closeSessionDrawer, loadSession, sessionId, logEvent]);
 
   useEffect(() => {
     if (!isSessionDrawerOpen) return;

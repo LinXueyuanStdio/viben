@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
 import { FolderOpen, Plus, Globe, Folder, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,8 @@ import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { useTranslation } from "react-i18next";
 import type { Workspace } from "@/types";
 import { AddWorkspaceModal } from "@/components/workspace";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 interface WorkspaceSectionProps {
   collapsed?: boolean;
@@ -34,6 +36,19 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
   } = useLocalWorkspaces();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { logEvent } = useAnalytics();
+
+  // Wrap selectWorkspace to add analytics tracking
+  const handleWorkspaceSwitch = useCallback((toWorkspaceId: string) => {
+    try {
+      logEvent(AnalyticsEvents.WORKSPACE_SWITCHED, {
+        from_workspace_id: activeWorkspaceId || "none",
+        to_workspace_id: toWorkspaceId,
+        switch_method: "click",
+      });
+    } catch { /* ignore analytics errors */ }
+    selectWorkspace(toWorkspaceId);
+  }, [activeWorkspaceId, selectWorkspace, logEvent]);
 
   const handleAddWorkspace = () => {
     setIsModalOpen(true);
@@ -73,7 +88,7 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
             <div key={ws.id} className="grid place-items-center w-full">
               <SidebarIconButton
                 href={`/workspace/${ws.id}`}
-                onClick={() => selectWorkspace(ws.id)}
+                onClick={() => handleWorkspaceSwitch(ws.id)}
                 icon={ws.id === "global" ? <Globe className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
                 tooltip={ws.name}
               />
@@ -126,7 +141,7 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
                 key={workspace.id}
                 workspace={workspace}
                 isActive={workspace.id === activeWorkspaceId}
-                onSelect={() => selectWorkspace(workspace.id)}
+                onSelect={() => handleWorkspaceSwitch(workspace.id)}
               />
             ))}
           </nav>

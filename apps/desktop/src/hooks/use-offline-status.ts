@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getGatewayClient, type CacheInfo, type CacheSettings } from "@/lib/gateway";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // Re-export types from gateway for consumers of this hook
 export type { CacheInfo, CacheSettings };
@@ -10,7 +12,9 @@ export type { CacheInfo, CacheSettings };
  */
 export function useOfflineStatus() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const [isOffline, setIsOffline] = useState(false);
+  const offlineStartTimeRef = useRef<number | null>(null);
   const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const [cacheSettings, setCacheSettings] = useState<CacheSettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -180,11 +184,23 @@ export function useOfflineStatus() {
   // Listen for browser online/offline events
   useEffect(() => {
     const handleOnline = () => {
+      const offlineDuration = offlineStartTimeRef.current ? Date.now() - offlineStartTimeRef.current : 0;
+      offlineStartTimeRef.current = null;
       checkOffline(true);
+      try {
+        logEvent(AnalyticsEvents.OFFLINE_MODE_EXITED, {
+          offline_duration_ms: offlineDuration,
+          pending_sync_count: 0,
+        });
+      } catch {}
     };
 
     const handleOffline = () => {
+      offlineStartTimeRef.current = Date.now();
       setIsOffline(true);
+      try {
+        logEvent(AnalyticsEvents.OFFLINE_MODE_ENTERED, { trigger: "network_lost" });
+      } catch {}
     };
 
     window.addEventListener("online", handleOnline);
@@ -194,7 +210,7 @@ export function useOfflineStatus() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [checkOffline]);
+  }, [checkOffline, logEvent]);
 
   // Auto-refresh check
   useEffect(() => {

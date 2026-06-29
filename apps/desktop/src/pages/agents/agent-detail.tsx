@@ -64,6 +64,8 @@ import type { TraceSpanNode, TraceTree } from "@/components/observability";
 import type { AgentMessage } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { uiMessageToAgentMessage } from "./utils";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // ============================================================================
 // Main Component
@@ -73,6 +75,7 @@ export function AgentDetailPage() {
   const { t } = useTranslation();
   const { agentId, workspaceId } = useParams<{ agentId: string; workspaceId?: string }>();
   const { currentStack, openSettings, openWorkspaceSection } = useDesktopRouting();
+  const { logEvent } = useAnalytics();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
   const { workspacePath, workspace, isGlobal } = useWorkspaceParam({ workspaceId });
@@ -424,6 +427,31 @@ export function AgentDetailPage() {
       });
 
       await updateAgent(agentId, updatePayload);
+      try {
+        if (agent) {
+          const fieldsChanged: string[] = [];
+          if (formName !== agent.name) fieldsChanged.push("name");
+          if (formDescription !== (agent.description || "")) fieldsChanged.push("description");
+          if (formSystemPrompt !== (agent.system_prompt || "")) fieldsChanged.push("system_prompt");
+          if (formAppendPrompt !== (agent.append_prompt || "")) fieldsChanged.push("append_prompt");
+          if (formTemperature !== (agent.temperature ?? 0.7)) fieldsChanged.push("temperature");
+          if (formModel !== (agent.model || "")) fieldsChanged.push("model");
+          if (formExecutorType !== (agent.executor_type || "CLAUDE_CODE")) fieldsChanged.push("executor_type");
+          if (formPermissionMode !== (agent.permission_mode ?? "default")) fieldsChanged.push("permission_mode");
+          if (formIsTemplate !== (agent.is_template ?? false)) fieldsChanged.push("is_template");
+          if (formTemplateDescription !== (agent.template_description || "")) fieldsChanged.push("template_description");
+          const hasSystemPromptChanged = formSystemPrompt !== (agent.system_prompt || "") || formAppendPrompt !== (agent.append_prompt || "");
+          const hasMcpChanged = JSON.stringify(selectedMcpServers) !== JSON.stringify((agent.mcp_servers || []).map(normalizeAgentMcpEntry));
+          const hasSkillsChanged = !arraysEqual(selectedSkills, agent.skills || []);
+          logEvent(AnalyticsEvents.AGENT_UPDATED, {
+            agent_id: agentId,
+            fields_changed: fieldsChanged,
+            has_system_prompt_changed: hasSystemPromptChanged,
+            has_mcp_changed: hasMcpChanged,
+            has_skills_changed: hasSkillsChanged,
+          });
+        }
+      } catch { /* ignore analytics errors */ }
       setIsDirty(false);
       setLastSaved(new Date());
       toast.success(t("settingsAgents.saveSuccess", "Agent saved successfully"));
@@ -1046,6 +1074,7 @@ export function AgentDetailPage() {
         onOpenChange={setMcpDialogOpen}
         selectedServers={selectedMcpServers}
         onServersChange={setSelectedMcpServers}
+        agentId={agentId}
       />
 
       <AgentSkillsDialog

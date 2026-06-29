@@ -21,6 +21,7 @@ import { PeerStore } from "../mesh/peer-store";
 import { DiscoveryService } from "../discovery/discovery-service";
 import { ClientStore } from "./client-store";
 import type { ClientSocketServer } from "./client-socket-server";
+import { FirebaseService } from "../services/firebase";
 
 /**
  * Application state for the gateway
@@ -60,6 +61,8 @@ export interface AppState {
   clientStore: ClientStore;
   /** Client Socket.io server (set after onReady) */
   clientSocketServer?: ClientSocketServer;
+  /** Firebase service for push notifications, bug reporting, and analytics */
+  firebase: FirebaseService;
 }
 
 export interface AppStateConfig {
@@ -152,6 +155,9 @@ export function createAppState(config: AppStateConfig = {}): AppState {
     port,
   });
 
+  // Create Firebase service (gracefully degrades if not configured)
+  const firebase = new FirebaseService();
+
   if (runtime) {
     discovery.onPeerDiscovered((address) => {
       mesh.connectToPeer(address);
@@ -175,5 +181,6 @@ export function createAppState(config: AppStateConfig = {}): AppState {
     mesh,
     discovery,
     clientStore,
+    firebase,
   };
 }

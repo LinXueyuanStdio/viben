@@ -13,6 +13,8 @@ import { getGatewayClient, type WorkspaceResponse } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { useWorkspaceStore } from "@/stores";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 import { StepChooseMethod, type CreationMethod } from "./steps/step-choose-method";
 import { StepConfigure, type FolderStatus, type ConfigureFormData } from "./steps/step-configure";
 import { StepComplete, type CreationResult } from "./steps/step-complete";
@@ -50,6 +52,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
   const { openWorkspaceSection } = useDesktopRouting();
   const addWorkspaceToStore = useWorkspaceStore((s) => s.addWorkspace);
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
+  const { logEvent } = useAnalytics();
 
   // Wizard state
   const [step, setStep] = useState<WizardStep>("choose");
@@ -185,8 +188,22 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
         vibenFiles: result.viben_files,
       });
       setStep("complete");
+      try {
+        logEvent(AnalyticsEvents.WORKSPACE_CREATED, {
+          workspace_name: workspace.name,
+          workspace_path_depth: workspace.path.split("/").length,
+          has_git: result.git_initialized,
+        });
+      } catch { /* ignore analytics errors */ }
     } catch (err) {
       console.error("Failed to create workspace:", err);
+      try {
+        logEvent(AnalyticsEvents.WORKSPACE_CREATE_FAILED, {
+          error_type: err instanceof Error ? err.constructor.name : "UnknownError",
+          error_message: err instanceof Error ? err.message : String(err),
+          path: data.path,
+        });
+      } catch { /* ignore analytics errors */ }
       toast.error(t("workspace.createFailed", "Failed to create workspace"), {
         description: err instanceof Error ? err.message : undefined,
       });

@@ -89,6 +89,8 @@ import {
 } from "./acp-chat-state";
 import { executeClientTool } from "./client-tool-executor";
 import { isClientSideBashTool } from "@/lib/action-system/client-side-bash";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
@@ -518,6 +520,11 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     setModel: setStoreModel,
   });
 
+  // Analytics
+  const { logEvent } = useAnalytics();
+  const streamStartTimeRef = useRef<number>(0);
+  const streamStartLoggedRef = useRef<boolean>(false);
+
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return buildAcpAgentConfig({
       agent: selectedAgent,
@@ -659,6 +666,17 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     // Previously agent_message_chunk bypassed the queue via streamingText,
     // causing timing mismatches with thinking/tool_call events.
     const targetKey = resolveAcpSessionStateKey(sessionsById, notification.sessionId, activeSessionId, notification.executorType);
+	// Analytics: chat_stream_started
+	try {
+		if (notification.update.sessionUpdate === "agent_message_chunk" && !streamStartLoggedRef.current) {
+			streamStartLoggedRef.current = true;
+			logEvent(AnalyticsEvents.CHAT_STREAM_STARTED, {
+				session_id: notification.sessionId,
+				agent_id: selectedAgentId ?? "",
+				model_id: effectiveSelectedModel ?? "",
+			});
+		}
+	} catch { /* analytics should not break business logic */ }
     enqueueUiSteps(setSessionsById, targetKey, acpSessionUpdateToUiSteps(notification));
   }, [activeSessionId, sessionsById, setSessionsById]);
 
@@ -1069,6 +1087,16 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 	      setSessionsById((current) => ({ ...current, [stateKey]: record }));
 	      setSessionOrder((current) => [stateKey, ...current.filter((item) => item !== stateKey)]);
 	      setActiveSessionId(stateKey);
+	      // Analytics: chat_session_created
+	      try {
+	      	const workspaceId = activeWorkspace?.id ?? "";
+	      	logEvent(AnalyticsEvents.CHAT_SESSION_CREATED, {
+	      		workspace_id: workspaceId,
+	      		agent_id: sessionAgent?.id ?? selectedAgentId ?? "",
+	      		executor_type: sessionAgentConfig.executor_type ?? "",
+	      		session_type: "single",
+	      	});
+	      } catch { /* analytics should not break business logic */ }
 	      enqueueUiSteps(setSessionsById, stateKey, systemTextToUiSteps(`Session ready: ${id}`));
 	      const commands = readSessionAvailableCommands(session);
 	      if (commands) {
@@ -1206,6 +1234,19 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
 	      if (!targetSessionId || !targetSessionKey) return;
 	      enqueueUiSteps(setSessionsById, targetSessionKey, userPromptToUiSteps(text));
+		      // Analytics: chat_message_sent
+		      try {
+		      	logEvent(AnalyticsEvents.CHAT_MESSAGE_SENT, {
+		      		session_id: targetSessionId,
+		      		agent_id: selectedAgentId ?? "",
+		      		model_id: effectiveSelectedModel ?? "",
+		      		message_type: "text",
+		      		message_length: text.length,
+		      		has_attachment: false,
+		      	});
+		      	streamStartTimeRef.current = Date.now();
+		      	streamStartLoggedRef.current = false;
+		      } catch { /* analytics should not break business logic */ }
 	      updateSession(setSessionsById, targetSessionKey, (session) => ({
         ...session,
         promptInFlight: true,
@@ -1224,6 +1265,18 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           promptResult: result,
           lastActiveAt: new Date().toISOString(),
         }));
+        // Analytics: chat_stream_completed
+        try {
+	        const toolCallMsgs = activeSession?.uiMessages?.filter((m: { type?: string }) => m.type === "tool_use") ?? [];
+	        const durationMs = streamStartTimeRef.current > 0 ? Date.now() - streamStartTimeRef.current : 0;
+	        logEvent(AnalyticsEvents.CHAT_STREAM_COMPLETED, {
+	        	session_id: targetSessionId,
+	        	total_tokens: 0,
+	        	tool_calls_count: toolCallMsgs.length,
+	        	duration_ms: durationMs,
+	        	total_cost_tokens: 0,
+	        });
+        } catch { /* analytics should not break business logic */ }
       } catch (promptError) {
 	        updateSession(setSessionsById, targetSessionKey, (session) => ({
           ...flushSessionStreamingText(drainSessionUiStepQueue(session)),
@@ -1270,6 +1323,17 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 	  );
 
   const interrupt = useCallback(async () => {
+	// Analytics: chat_stream_stopped before interrupting
+	try {
+		if (sessionId) {
+			const tokensBeforeStop = 0; // tokens_before_stop not tracked
+			logEvent(AnalyticsEvents.CHAT_STREAM_STOPPED, {
+				session_id: sessionId,
+				tokens_generated_before_stop: tokensBeforeStop,
+				stop_reason: "user_interrupt",
+			});
+		}
+	} catch { /* analytics should not break business logic */ }
     if (!sessionId) return;
     setError(null);
     if (permissionDialog) {
@@ -1302,6 +1366,15 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     setError(null);
     try {
 	      await clientRef.current?.closeSession(sessionId, buildSessionIdentityContext(activeSession));
+	    // Analytics: chat_session_deleted
+	    try {
+	    	const messageCount = activeSession?.uiMessages?.length ?? 0;
+	    	logEvent(AnalyticsEvents.CHAT_SESSION_DELETED, {
+	    		session_id: sessionId,
+	    		session_age_days: 0,
+	    		message_count: messageCount,
+	    	});
+	    } catch { /* analytics should not break business logic */ }
 	      setSessionsById((current) => {
 	        const next = { ...current };
 	        delete next[sessionKey];
@@ -1327,6 +1400,14 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     (command: SlashCommand, selection: SlashCommandSelection) => {
       const args = selection.args.trim();
       const text = `/${command.name}${args ? ` ${args}` : ""}`;
+	    // Analytics: chat_slash_command_used
+	    try {
+	    	logEvent(AnalyticsEvents.CHAT_SLASH_COMMAND_USED, {
+	    		session_id: sessionId ?? "",
+	    		command_name: command.name,
+	    		command_category: command.description ?? "",
+	    	});
+	    } catch { /* analytics should not break business logic */ }
       void sendPrompt(text);
     },
     [sendPrompt]
@@ -1387,6 +1468,13 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           : message
       ),
     }));
+    // Analytics: chat_plan_approved
+    try {
+	    logEvent(AnalyticsEvents.CHAT_PLAN_APPROVED, {
+	    	session_id: sessionId,
+	    	plan_type: pendingPlan?.goal ?? "",
+	    });
+    } catch { /* analytics should not break business logic */ }
     if (!dialog) void sendSteerPrompt("Plan approved. Continue.");
 	  }, [elicitationDialogs, pendingPlan, sendSteerPrompt, sessionId, sessionKey, setSessionsById, setElicitationDialogs, setActiveElicitationDialogId]);
 
@@ -1411,6 +1499,14 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           : message
       ),
     }));
+    // Analytics: chat_plan_rejected
+    try {
+	    logEvent(AnalyticsEvents.CHAT_PLAN_REJECTED, {
+	    	session_id: sessionId,
+	    	plan_type: pendingPlan?.goal ?? "",
+	    	rejection_reason: "user_rejected",
+	    });
+    } catch { /* analytics should not break business logic */ }
     if (!dialog) void sendSteerPrompt("Plan rejected. Stop and ask for revised instructions.");
 	  }, [elicitationDialogs, pendingPlan, sendSteerPrompt, sessionId, sessionKey, setSessionsById, setElicitationDialogs, setActiveElicitationDialogId]);
 

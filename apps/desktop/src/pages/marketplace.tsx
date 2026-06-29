@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 import {
   SearchBar,
   CategoryFilter,
@@ -130,6 +132,7 @@ function buildMcpServerConfig(
 
 export function MarketplacePage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const prefersReducedMotion = useReducedMotion();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [source, setSource] = useState<MarketplaceSource>("official");
@@ -151,6 +154,11 @@ export function MarketplacePage() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Track marketplace opened
+  useEffect(() => {
+    try { logEvent(AnalyticsEvents.MCP_MARKETPLACE_OPENED, { source: "sidebar" }); } catch {}
   }, []);
 
   // Animation variants
@@ -214,12 +222,20 @@ export function MarketplacePage() {
 
   // Handle search input based on current source
   const handleSearch = useCallback((query: string) => {
+    const startTime = Date.now();
     if (source === "official") {
       officialRegistry.search(query);
     } else {
       cloudMcp.search(query);
     }
-  }, [source, officialRegistry, cloudMcp]);
+    try {
+      logEvent(AnalyticsEvents.MCP_MARKETPLACE_SEARCHED, {
+        search_query: query,
+        results_count: 0,
+        search_duration_ms: Date.now() - startTime,
+      });
+    } catch {}
+  }, [source, officialRegistry, cloudMcp, logEvent]);
 
   // Current search query based on source
   const currentSearchQuery = source === "official"
@@ -234,6 +250,13 @@ export function MarketplacePage() {
     setSelectedPackage(pkg);
     cloudMcp.selectPackage(pkg.id);
     setCommunityDetailOpen(true);
+    try {
+      logEvent(AnalyticsEvents.MCP_PACKAGE_DETAIL_VIEWED, {
+        package_name: pkg.name,
+        package_source: "community",
+        package_version: pkg.version || "latest",
+      });
+    } catch {}
   };
 
   // Handle server selection (official)
@@ -241,11 +264,27 @@ export function MarketplacePage() {
     setSelectedServer(server);
     officialRegistry.selectServer(server.id);
     setOfficialDetailOpen(true);
+    try {
+      logEvent(AnalyticsEvents.MCP_PACKAGE_DETAIL_VIEWED, {
+        package_name: server.name,
+        package_source: "official",
+        package_version: server.version || "latest",
+      });
+    } catch {}
   };
 
   // Handle install (community)
   const handleInstallCommunity = async (pkg: CloudMcpPackage) => {
     setInstallingCommunity(true);
+    const startTime = Date.now();
+    try {
+      logEvent(AnalyticsEvents.MCP_PACKAGE_INSTALL_STARTED, {
+        package_name: pkg.name,
+        package_version: pkg.version || "latest",
+        install_source: "marketplace",
+      });
+    } catch {}
+
     try {
       const gateway = getGatewayClient();
 
@@ -270,11 +309,28 @@ export function MarketplacePage() {
         description: t("marketplace.installSuccessDesc", { name: pkg.name }),
       });
       setCommunityDetailOpen(false);
+      try {
+        logEvent(AnalyticsEvents.MCP_PACKAGE_INSTALL_COMPLETED, {
+          package_name: pkg.name,
+          package_version: pkg.version || "latest",
+          install_source: "marketplace",
+          duration_ms: Date.now() - startTime,
+          success: true,
+        });
+      } catch {}
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error(t("marketplace.installFailed"), {
         description: message,
       });
+      try {
+        logEvent(AnalyticsEvents.MCP_PACKAGE_INSTALL_FAILED, {
+          package_name: pkg.name,
+          error_type: err instanceof Error ? err.name : "UnknownError",
+          error_message: message,
+          duration_ms: Date.now() - startTime,
+        });
+      } catch {}
     } finally {
       setInstallingCommunity(false);
     }
@@ -283,13 +339,21 @@ export function MarketplacePage() {
   // Handle install (official)
   const handleInstallOfficial = async (pkg: OfficialPackage) => {
     setInstallingOfficial(true);
+    const startTime = Date.now();
+    const serverName =
+      selectedServer?.name || pkg.identifier.split("/").pop() || pkg.identifier;
+    try {
+      logEvent(AnalyticsEvents.MCP_PACKAGE_INSTALL_STARTED, {
+        package_name: serverName,
+        package_version: pkg.version || "latest",
+        install_source: "official",
+      });
+    } catch {}
+
     try {
       const gateway = getGatewayClient();
 
       // Build MCP server config from official package
-      const serverName =
-        selectedServer?.name || pkg.identifier.split("/").pop() || pkg.identifier;
-
       const serverConfig: WorkspaceMcpServerConfig =
         buildMcpServerConfig(serverName, pkg);
 
@@ -300,11 +364,28 @@ export function MarketplacePage() {
         description: t("marketplace.installSuccessDesc", { name: serverName }),
       });
       setOfficialDetailOpen(false);
+      try {
+        logEvent(AnalyticsEvents.MCP_PACKAGE_INSTALL_COMPLETED, {
+          package_name: serverName,
+          package_version: pkg.version || "latest",
+          install_source: "official",
+          duration_ms: Date.now() - startTime,
+          success: true,
+        });
+      } catch {}
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error(t("marketplace.installFailed"), {
         description: message,
       });
+      try {
+        logEvent(AnalyticsEvents.MCP_PACKAGE_INSTALL_FAILED, {
+          package_name: serverName,
+          error_type: err instanceof Error ? err.name : "UnknownError",
+          error_message: message,
+          duration_ms: Date.now() - startTime,
+        });
+      } catch {}
     } finally {
       setInstallingOfficial(false);
     }

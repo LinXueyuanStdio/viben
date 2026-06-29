@@ -13,6 +13,9 @@ import { getGatewayClient } from "@/lib/gateway";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
 import type { ViewMode, SortField, SortDirection, GroupField } from "@/hooks/use-file-browser";
 import type { FileEntry } from "@/types";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
+import type { FilePreviewParams } from "@/lib/analytics/types";
 
 // Artifact preview components
 import { ImagePreview } from "@/components/artifacts/image-preview";
@@ -463,6 +466,7 @@ function FilePreviewPanel({
  * -------------------------------------------------------------------------- */
 export function WorkspaceFilesPage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading, workspaces } = useLocalWorkspaces();
   const { openDashboard } = useDesktopRouting();
@@ -512,6 +516,19 @@ export function WorkspaceFilesPage() {
   const handleFilePreview = useCallback(async (file: FileEntry) => {
     if (file.is_directory) return;
 
+    // Determine file type
+    const ext = getFileExtension(file.name);
+    const artifactType = getArtifactTypeFromExt(ext);
+
+    // Track file preview event
+    try {
+      logEvent(AnalyticsEvents.FILE_PREVIEWED, {
+        file_extension: ext,
+        file_size_bytes: file.size,
+        preview_type: artifactType as FilePreviewParams["preview_type"],
+      });
+    } catch {}
+
     // Check if tab already exists
     const existingTab = previewTabs.find((tab) => tab.file.path === file.path);
     if (existingTab) {
@@ -519,9 +536,6 @@ export function WorkspaceFilesPage() {
       return;
     }
 
-    // Determine file type to decide if we need to load text content
-    const ext = getFileExtension(file.name);
-    const artifactType = getArtifactTypeFromExt(ext);
     const needsContent = needsTextContent(artifactType);
 
     // For non-text files (images, PDFs, etc.), add tab immediately without loading content
@@ -621,12 +635,26 @@ export function WorkspaceFilesPage() {
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
+  // Track file_browser_opened
+  useEffect(() => {
+    if (workspace) {
+      try { logEvent(AnalyticsEvents.FILE_BROWSER_OPENED, { workspace_id: workspace.id }); } catch {}
+    }
+  }, [workspace]);
+
   // Handle path changes from FileBrowser
   const handlePathChange = useCallback(
     (_path: string, segments: { name: string; path: string }[]) => {
       setCurrentSegments(segments);
+      try {
+        logEvent(AnalyticsEvents.FILE_DIRECTORY_NAVIGATED, {
+          from_path_depth: 0,
+          to_path_depth: segments.length,
+          navigation_method: "tree",
+        });
+      } catch {}
     },
-    []
+    [logEvent]
   );
 
   // Build breadcrumb segments with proper onClick handlers for column navigation

@@ -78,6 +78,8 @@ import {
   getGradientByName,
 } from "@/components/conversation/list-item";
 import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // =============================================================================
 // Helpers
@@ -157,6 +159,7 @@ type Tab = IdeaTab | TypeTab;
 
 export function WorkspaceIdeasPage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
@@ -556,6 +559,7 @@ export function WorkspaceIdeasPage() {
       return;
     }
 
+    const startTime = Date.now();
     // Submit to command queue
     const command = `viben idea generate ${types.join(" ")}`;
     const success = await submitToQueue(command, workspace.path);
@@ -563,10 +567,18 @@ export function WorkspaceIdeasPage() {
     if (success) {
       toast.success(t("ideas.generateTaskSubmitted"));
       setIsGenerateDialogOpen(false);
+      try {
+        logEvent(AnalyticsEvents.IDEAS_GENERATED, {
+          idea_type_id: types.join(","),
+          ideas_count: types.length,
+          duration_ms: Date.now() - startTime,
+          model_used: "default",
+        });
+      } catch {}
     } else {
       toast.error(t("ideas.generateTaskFailed"));
     }
-  }, [workspace?.path, selectedTypesForGenerate, t]);
+  }, [workspace?.path, selectedTypesForGenerate, t, logEvent]);
 
   // Toggle type selection for generate
   const toggleTypeForGenerate = useCallback((typeName: string) => {
@@ -640,11 +652,18 @@ export function WorkspaceIdeasPage() {
       const result = await promoteIdea(idea.id);
       if (result) {
         toast.success(t("ideas.promoteSuccess", { title: idea.title }));
+        try {
+          logEvent(AnalyticsEvents.IDEA_PROMOTED_TO_TASK, {
+            idea_id: idea.id,
+            task_id: result.task_id || "",
+            promotion_method: "button",
+          });
+        } catch {}
       } else {
         toast.error(t("ideas.promoteFailed"));
       }
     },
-    [promoteIdea, t]
+    [promoteIdea, t, logEvent]
   );
 
   // Handle remove idea

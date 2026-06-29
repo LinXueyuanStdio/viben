@@ -29,6 +29,8 @@ import { useSlashCommands } from "@/features/slash-commands";
 import type { CommandContext } from "@/features/slash-commands";
 import type { SlashCommandHandler } from "@viben/chat";
 import { useToast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 import {
   type Conversation,
   fileSessionToConversation,
@@ -48,6 +50,7 @@ export function useWorkspaceChat() {
     openWorkspaceHome,
   } = useDesktopRouting();
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const { logEvent } = useAnalytics();
 
   const navigateWithinDesktop = useCallback(
     (url: string) => {
@@ -390,7 +393,18 @@ export function useWorkspaceChat() {
   }, [selectedExecutorType]);
 
   // Agents
-  const { agents, defaultAgentId, setDefaultAgent, updateAgent, removeAgent, createAgent, templates: agentTemplates, refreshTemplates } = useAgents({ workspacePath: workspace?.path });
+  const { agents, defaultAgentId, setDefaultAgent: _setDefaultAgent, updateAgent, removeAgent, createAgent, templates: agentTemplates, refreshTemplates } = useAgents({ workspacePath: workspace?.path });
+
+  // Wrap setDefaultAgent with analytics tracking
+  const setDefaultAgent = useCallback(async (agentId: string) => {
+    try {
+      logEvent(AnalyticsEvents.AGENT_DEFAULT_SET, {
+        agent_id: agentId,
+        previous_default_id: defaultAgentId,
+      });
+    } catch { /* ignore analytics errors */ }
+    await _setDefaultAgent(agentId);
+  }, [_setDefaultAgent, defaultAgentId, logEvent]);
 
   useEffect(() => {
     refreshTemplates();

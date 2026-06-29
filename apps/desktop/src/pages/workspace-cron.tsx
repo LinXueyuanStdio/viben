@@ -100,6 +100,8 @@ import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings, C
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getChannelTypeName, type ChannelType } from "@/types/channel";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 type ScheduleType = "cron" | "interval";
 
@@ -313,6 +315,7 @@ function describeCronExpression(cron: string, t: (key: string, defaultValue: str
 
 export function WorkspaceCronPage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
@@ -436,12 +439,27 @@ export function WorkspaceCronPage() {
       if (result) {
         setEditingJob(null);
         refreshJobs();
+        try {
+          logEvent(AnalyticsEvents.CRON_JOB_UPDATED, {
+            job_id: editingJob.id,
+            fields_changed: Object.keys(data),
+            has_schedule_changed: !!(data.cron || data.every),
+          });
+        } catch {}
       }
     } else {
       const result = await createJob(data as CreateCronJob);
       if (result) {
         setCreateDialogOpen(false);
         refreshJobs();
+        try {
+          logEvent(AnalyticsEvents.CRON_JOB_CREATED, {
+            job_name: formData.name.trim(),
+            schedule_type: formData.scheduleType,
+            task_type: formData.jobType,
+            has_notification: formData.notifyInApp || formData.notifySystem || formData.notifyChannelIds.length > 0,
+          });
+        } catch {}
       }
     }
   };
@@ -451,6 +469,13 @@ export function WorkspaceCronPage() {
     const result = await deleteJob(job.id);
     if (result) {
       refreshJobs();
+      try {
+        logEvent(AnalyticsEvents.CRON_JOB_DELETED, {
+          job_id: job.id,
+          job_age_days: 0,
+          execution_count: 0,
+        });
+      } catch {}
     }
   };
 
@@ -465,12 +490,30 @@ export function WorkspaceCronPage() {
 
   const handleRunNow = async (job: CronJob) => {
     setRunningJobId(job.id);
+    const startTime = Date.now();
+
+    try {
+      logEvent(AnalyticsEvents.CRON_JOB_RUN_MANUAL, {
+        job_id: job.id,
+        triggered_from: "table",
+      });
+    } catch {}
 
     // Notify that job is starting
     await notifyCronStatus(job.id, job.name, "started");
 
     try {
       const success = await runJob(job.id);
+
+      const durationMs = Date.now() - startTime;
+      try {
+        logEvent(AnalyticsEvents.CRON_JOB_EXECUTED, {
+          job_id: job.id,
+          execution_result: success ? "success" : "failed",
+          duration_ms: durationMs,
+          output_length: 0,
+        });
+      } catch {}
 
       if (success) {
         // Notify successful completion
@@ -483,6 +526,15 @@ export function WorkspaceCronPage() {
       // Notify failure with error message
       const errorMessage = err instanceof Error ? err.message : String(err);
       await notifyCronStatus(job.id, job.name, "failed", errorMessage);
+      const durationMs = Date.now() - startTime;
+      try {
+        logEvent(AnalyticsEvents.CRON_JOB_EXECUTED, {
+          job_id: job.id,
+          execution_result: "failed",
+          duration_ms: durationMs,
+          output_length: 0,
+        });
+      } catch {}
     }
 
     setRunningJobId(null);

@@ -55,7 +55,8 @@ const SkillsMarketPage = lazy(() =>
   import("@/pages/skills-market").then((m) => ({ default: m.SkillsMarketPage }))
 );
 import { useTranslation } from "react-i18next";
-import { Component, type ReactNode } from "react";
+import { ErrorBoundary } from "@/lib/analytics/error-boundary";
+import { AnalyticsContextProvider } from "@/lib/analytics";
 
 /**
  * Loading fallback component for lazy-loaded pages
@@ -70,49 +71,6 @@ function PageLoadingFallback() {
       </div>
     </div>
   );
-}
-
-/**
- * Error boundary to catch rendering errors
- */
-class AppErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("[AppErrorBoundary] Caught error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-background text-foreground p-4">
-          <div className="text-center max-w-md">
-            <h1 className="text-xl font-bold mb-2">Something went wrong</h1>
-            <p className="text-sm text-muted-foreground mb-4">
-              {this.state.error?.message || "Unknown error"}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded"
-            >
-              Reload App
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
 }
 
 function CatchAllRedirect() {
@@ -138,7 +96,8 @@ function App() {
 
   return (
     <TargetRectsProvider>
-    <AppErrorBoundary>
+    <AnalyticsContextProvider>
+    <ErrorBoundary name="App">
       <BrowserRouter>
         <Routes>
           {/* Main app routes with layout */}
@@ -255,7 +214,8 @@ function App() {
       <ActionApprovalDialog />
       <PresentationActionProvider />
       <PetWindowManager />
-    </AppErrorBoundary>
+    </ErrorBoundary>
+    </AnalyticsContextProvider>
     </TargetRectsProvider>
   );
 }

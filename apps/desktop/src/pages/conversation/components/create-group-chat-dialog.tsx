@@ -31,6 +31,8 @@ import {
 } from "@/lib/model-icons";
 import type { AgentInfo } from "@/lib/gateway";
 import type { MemberRole } from "@/lib/gateway";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // ============================================================================
 // Types
@@ -59,6 +61,8 @@ interface CreateGroupChatDialogProps {
   }) => Promise<void>;
   /** Whether creation is in progress */
   isCreating?: boolean;
+  /** Current workspace ID for analytics */
+  workspaceId?: string;
 }
 
 // ============================================================================
@@ -71,8 +75,10 @@ export function CreateGroupChatDialog({
   agents,
   onCreate,
   isCreating = false,
+  workspaceId,
 }: CreateGroupChatDialogProps) {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
 
   // Form state
   const [name, setName] = useState("");
@@ -129,6 +135,13 @@ export function CreateGroupChatDialog({
         description: description.trim() || undefined,
         initial_members,
       });
+      try {
+        logEvent(AnalyticsEvents.GROUP_CHAT_CREATED, {
+          group_name: name.trim(),
+          members_count: initial_members.length,
+          workspace_id: workspaceId || "",
+        });
+      } catch { /* ignore analytics errors */ }
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("groupChat.createFailed"));

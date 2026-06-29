@@ -63,7 +63,20 @@ Dynamic imports make code harder to analyze and tree-shake. Use static imports f
 - `apps/desktop` - Desktop application must compile without errors
 - All workspace packages must build successfully
 
-Always run `pnpm build` or `pnpm typecheck` to verify changes before committing.
+**FORBIDDEN**: Never run `pnpm build` or `pnpm typecheck` from the project root. This triggers turbo to build all 55 packages, which is extremely slow and unnecessary.
+
+Always cd to the specific package directory first:
+
+```bash
+# ✅ GOOD — build/typecheck only the package you changed
+cd packages/core && pnpm build
+cd packages/core && pnpm typecheck
+cd apps/web && pnpm typecheck
+
+# ❌ BAD — never do this at repo root
+pnpm build
+pnpm typecheck
+```
 
 ## Database Migrations (apps/web)
 

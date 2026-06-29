@@ -61,6 +61,8 @@ import { getGatewayClient, type AgentResponse as GatewayAgentTemplate } from "@/
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { buildWorkspaceSectionHeaderSegment } from "@/navigation/page-index";
 import type { ListItem, WorkspaceAgentsPageProps } from "./types";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 export function WorkspaceAgentsPage({
   settingsMode = false,
@@ -73,6 +75,7 @@ export function WorkspaceAgentsPage({
     openWorkspaceExecutorDetail,
     openWorkspaceSection,
   } = useDesktopRouting();
+  const { logEvent } = useAnalytics();
 
   // Translate agent templates
   // API templates from gateway
@@ -316,6 +319,24 @@ export function WorkspaceAgentsPage({
       });
       // Refresh the agent list to show the new agent
       await refreshAgentList();
+      try {
+        const fromTemplate = !!selectedTemplate;
+        logEvent(AnalyticsEvents.AGENT_CREATED, {
+          agent_name: newAgentName.trim(),
+          scope: isWorkspaceAgent ? "workspace" : "global",
+          provider_id: selectedTemplate?.executor_type || selectedExecutorType || "",
+          model_id: "",
+          from_template: fromTemplate,
+        });
+        if (fromTemplate && selectedTemplate) {
+          try {
+            logEvent(AnalyticsEvents.AGENT_FROM_TEMPLATE_CREATED, {
+              template_id: selectedTemplate.id,
+              agent_name: newAgentName.trim(),
+            });
+          } catch { /* ignore analytics errors */ }
+        }
+      } catch { /* ignore analytics errors */ }
       setCreateDialogOpen(false);
       setNewAgentName("");
       setNewAgentDescription("");
@@ -347,6 +368,13 @@ export function WorkspaceAgentsPage({
     if (!confirm(t("settingsAgents.deleteConfirm", { name: agentName }))) return;
     try {
       await removeAgent(agentId);
+      try {
+        logEvent(AnalyticsEvents.AGENT_DELETED, {
+          agent_id: agentId,
+          agent_age_days: 0,
+          sessions_count: 0,
+        });
+      } catch { /* ignore analytics errors */ }
       if (selectedItemId === agentId) {
         setSelectedItemId(null);
       }

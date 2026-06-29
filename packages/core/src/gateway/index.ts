@@ -404,6 +404,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       state.discovery.stop();
       state.mesh.shutdown();
       state.container.killAllRunningProcesses();
+      await state.firebase.shutdown();
       if (telemetry) {
         await telemetry.shutdown();
         telemetry = null;

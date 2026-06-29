@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // Check if running in development mode
 const isDev = import.meta.env.DEV;
@@ -13,6 +15,7 @@ const isDev = import.meta.env.DEV;
 interface StepLoginProps {
   onComplete: () => void;
   onBack: () => void;
+  onSkip?: () => void;
 }
 
 type OAuthStatus = "idle" | "waiting" | "timeout" | "success" | "error";
@@ -22,14 +25,17 @@ const OAUTH_TIMEOUT_MS = 150000; // 2.5 minutes
 // OAuth flow steps for visual feedback - labels are i18n keys
 const OAUTH_STEP_KEYS = ["browser", "authorize", "callback"] as const;
 
-export function StepLogin({ onComplete, onBack }: StepLoginProps) {
+export function StepLogin({ onComplete, onBack, onSkip }: StepLoginProps) {
   const { t } = useTranslation();
   const { isAuthenticated, user, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError, setLoading } = useAuth();
+  const { logEvent } = useAnalytics();
 
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>("idle");
   const [currentStep, setCurrentStep] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const oauthStartTimeRef = useRef<number>(0);
+  const oauthErrorRef = useRef<string>("");
 
   // Dev mode: manual OAuth code input
   const [showDevOAuth, setShowDevOAuth] = useState(false);
@@ -54,8 +60,46 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
       clearTimers();
       setOauthStatus("success");
       setCurrentStep(2); // Show completed step
+
+      const durationMs = Date.now() - oauthStartTimeRef.current;
+      try {
+        logEvent(AnalyticsEvents.ONBOARDING_OAUTH_COMPLETED, {
+          provider: "github" as const,
+        });
+        logEvent(AnalyticsEvents.AUTH_LOGIN_SUCCESS, {
+          provider: "github",
+          user_id_hash: user?.username || user?.displayName || "",
+          is_new_user: false,
+          duration_ms: durationMs,
+        });
+      } catch { /* analytics is best-effort */ }
     }
-  }, [isAuthenticated, oauthStatus, clearTimers]);
+  }, [isAuthenticated, oauthStatus, clearTimers, logEvent, user]);
+
+  // Track oauthStatus transitions for auth_login_failed
+  const prevOauthStatusRef = useRef<OAuthStatus>("idle");
+  useEffect(() => {
+    const prev = prevOauthStatusRef.current;
+    prevOauthStatusRef.current = oauthStatus;
+
+    if (prev === "waiting" && oauthStatus === "timeout") {
+      try {
+        logEvent(AnalyticsEvents.AUTH_LOGIN_FAILED, {
+          provider: "github",
+          error_type: "timeout",
+          error_message: "OAuth timed out after 2.5 minutes",
+        });
+      } catch { /* analytics is best-effort */ }
+    } else if (prev === "waiting" && oauthStatus === "error") {
+      try {
+        logEvent(AnalyticsEvents.AUTH_LOGIN_FAILED, {
+          provider: "github",
+          error_type: "oauth_error",
+          error_message: oauthErrorRef.current || "OAuth flow failed",
+        });
+      } catch { /* analytics is best-effort */ }
+    }
+  }, [oauthStatus, logEvent]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -67,6 +111,17 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
     setFormError(null);
     setOauthStatus("waiting");
     setCurrentStep(0);
+    oauthStartTimeRef.current = Date.now();
+
+    try {
+      logEvent(AnalyticsEvents.AUTH_LOGIN_ATTEMPT, {
+        provider: "github",
+        method: "oauth" as const,
+      });
+      logEvent(AnalyticsEvents.ONBOARDING_OAUTH_STARTED, {
+        provider: "github" as const,
+      });
+    } catch { /* analytics is best-effort */ }
 
     try {
       await loginWithGitHub();
@@ -94,6 +149,7 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
       }, OAUTH_TIMEOUT_MS);
     } catch (err) {
       console.error("[StepLogin] OAuth flow failed:", err);
+      oauthErrorRef.current = err instanceof Error ? err.message : String(err);
       setOauthStatus("error");
     }
   };
@@ -111,7 +167,11 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
   const handleSkip = () => {
     clearTimers();
     setLoading(false);
-    onComplete();
+    if (onSkip) {
+      onSkip();
+    } else {
+      onComplete();
+    }
   };
 
   const handleContinue = () => {

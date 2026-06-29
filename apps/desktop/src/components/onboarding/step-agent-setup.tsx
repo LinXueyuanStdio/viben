@@ -56,6 +56,8 @@ import {
 import { useModels } from "@/hooks/use-models";
 import { useExecutors } from "@/hooks/use-workspace-resources";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // ============================================================================
 // Types
@@ -64,6 +66,7 @@ import { useGatewayStatus } from "@/hooks/use-gateway-status";
 interface StepAgentSetupProps {
   onComplete: () => void;
   onBack: () => void;
+  onSkip?: () => void;
 }
 
 type SubStep = "executor" | "provider" | "model";
@@ -863,12 +866,13 @@ function SuccessView({ agentName, t }: { agentName: string; t: (key: string, opt
 // Main Component
 // ============================================================================
 
-export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
+export function StepAgentSetup({ onComplete, onBack, onSkip }: StepAgentSetupProps) {
   const { t } = useTranslation();
   const { isConnected } = useGatewayStatus();
   const { executors } = useExecutors();
   const { providers, refresh: refreshProviders } = useProviders();
   const { models, loading: modelsLoading, refresh: refreshModels } = useModels();
+  const { logEvent } = useAnalytics();
 
   // Sub-step state
   const [subStep, setSubStep] = useState<SubStep>("executor");
@@ -921,15 +925,29 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
       });
       completeSubStep("model");
       setAgentCreated(true);
+
+      try {
+        logEvent(AnalyticsEvents.ONBOARDING_AGENT_CREATED, {
+          agent_name: agentName.trim(),
+          provider_id: selectedProvider?.id || "",
+          model_id: selectedModel || "",
+          has_mcp: false,
+          has_skills: false,
+        });
+      } catch { /* analytics is best-effort */ }
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsCreating(false);
     }
-  }, [selectedExecutor, selectedModel, selectedProvider, agentName]);
+  }, [selectedExecutor, selectedModel, selectedProvider, agentName, logEvent]);
 
   const handleSkip = () => {
-    onComplete();
+    if (onSkip) {
+      onSkip();
+    } else {
+      onComplete();
+    }
   };
 
   const handleSubStepBack = () => {

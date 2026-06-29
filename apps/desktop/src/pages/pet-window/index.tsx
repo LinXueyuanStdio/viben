@@ -6,6 +6,8 @@ import { listen } from "@tauri-apps/api/event";
 import { PetSprite, type PetConfig, type PetInteraction } from "@viben/pet";
 import { fetchPetConfigFromGateway, loadPetConfig, type PetConfigResponse } from "@/lib/pet-loader";
 import { getGatewayClient } from "@/lib/gateway";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 async function openChatWindow() {
   try {
@@ -58,6 +60,7 @@ const DRAG_GESTURE_MIN_PX = 5;
 const DRAG_AXIS_BIAS = 1.3;
 
 export default function PetWindowPage() {
+  const { logEvent } = useAnalytics();
   const [pet, setPet] = useState<PetConfig | null>(null);
   const [config, setConfig] = useState<PetConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +117,14 @@ export default function PetWindowPage() {
         }
 
         await win.show();
+
+        // Track pet displayed
+        try {
+          logEvent(AnalyticsEvents.PET_DISPLAYED, {
+            pet_type: petData.id || "default",
+            pet_name: petData.name || "pet",
+          });
+        } catch {}
       } catch (err) {
         console.error("[PetWindow] Failed to load pet:", err);
       }
@@ -165,8 +176,17 @@ export default function PetWindowPage() {
       wasDraggedRef.current = false;
       return;
     }
+    try {
+      logEvent(AnalyticsEvents.PET_CLICKED, {
+        pet_type: pet?.id || "default",
+        previous_animation: interaction,
+      });
+      logEvent(AnalyticsEvents.PET_CHAT_OPENED, {
+        pet_type: pet?.id || "default",
+      });
+    } catch {}
     openChatWindow();
-  }, []);
+  }, [pet, interaction, logEvent]);
 
   // Detect drag direction from tauri://move events (stable subscription, no deps on state)
   useEffect(() => {

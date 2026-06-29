@@ -415,6 +415,12 @@ export {
   AgentService,
   agentService,
   type AgentPlan,
+  // Firebase service
+  FirebaseService,
+  firebaseService,
+  type FirebaseConfig,
+  type FirebaseBugReport,
+  type FirebaseAnalyticsEvent,
 } from "./services";
 
 // Group Chat

@@ -53,6 +53,8 @@ import {
   getPagePublishKey,
   usePagePublishStore,
 } from "@/stores/page-publish-store";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // ============================================================================
 // Types
@@ -130,6 +132,7 @@ export function PageSettingPanel({
   className,
 }: PageSettingPanelProps) {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const [isDownloading, setIsDownloading] = useState(false);
   const [publishSettingsView, setPublishSettingsView] =
     useState<PublishSettingsView>("overview");
@@ -297,7 +300,15 @@ export function PageSettingPanel({
     }
 
     const baseUrl = getGatewayUrl();
+    const startTime = Date.now();
     publishActions.startPublish(publishKey);
+    try {
+      logEvent(AnalyticsEvents.PAGE_PUBLISH_STARTED, {
+        page_id: pageUid,
+        page_type: pageType,
+      });
+    } catch {}
+
     try {
       const { page } = await viewPage(baseUrl, workspacePath, pageUid);
       if (!page || page.type !== "static") {
@@ -331,11 +342,27 @@ export function PageSettingPanel({
       toast.success(t("page.settings.publishSuccess", "Page published"), {
         description: result.url,
       });
+      try {
+        logEvent(AnalyticsEvents.PAGE_PUBLISH_COMPLETED, {
+          page_id: pageUid,
+          publish_url: result.url,
+          duration_ms: Date.now() - startTime,
+          asset_count: 0,
+        });
+      } catch {}
     } catch (error) {
       console.error("[PageSettingPanel] publish failed:", error);
       const message = error instanceof Error ? error.message : String(error);
       publishActions.failPublish(publishKey, message);
       toast.error(t("page.settings.publishFailed", "Publish failed"));
+      try {
+        logEvent(AnalyticsEvents.PAGE_PUBLISH_FAILED, {
+          page_id: pageUid,
+          error_type: error instanceof Error ? error.name : "UnknownError",
+          error_message: message,
+          duration_ms: Date.now() - startTime,
+        });
+      } catch {}
     }
   };
 

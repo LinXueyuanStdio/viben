@@ -5,6 +5,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { Stage, Layer, Rect, Ellipse, Arrow, Line, Text } from 'react-konva';
 import './screenshot-overlay.css';
+import { useAnalytics } from '@/lib/analytics';
+import { AnalyticsEvents } from '@/lib/analytics/types';
 
 /**
  * Screenshot Overlay Page — Single-phase workflow:
@@ -37,6 +39,7 @@ interface Annotation {
 
 export function ScreenshotOverlayPage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const searchParams = new URLSearchParams(window.location.search);
   const imageId = searchParams.get('id') || '';
   const scaleFactor = parseFloat(searchParams.get('scale') || '1');
@@ -95,6 +98,11 @@ export function ScreenshotOverlayPage() {
       pixelHeight,
       href: window.location.href,
     });
+    try {
+      logEvent(AnalyticsEvents.SCREENSHOT_OVERLAY_OPENED, {
+        screenshot_type: "region",
+      });
+    } catch {}
   }, [imageId, imagePath, logTrace, pixelHeight, pixelWidth, scaleFactor]);
 
   // Load raw screenshot pixels from the temp file written by Rust and paint them
@@ -245,6 +253,14 @@ export function ScreenshotOverlayPage() {
         screenHeight: window.innerHeight,
         annotationData: annotationData || null,
       });
+      try {
+        logEvent(AnalyticsEvents.SCREENSHOT_CONFIRMED, {
+          screenshot_type: "region",
+          annotation_tools_used: annotations.map(a => a.tool),
+          has_annotation: annotations.length > 0,
+          selection_area_px: r.width * r.height,
+        });
+      } catch {}
     } catch (err) {
       console.error('[Screenshot] Confirm failed:', err);
       // Still close the overlay on error so user isn't stuck

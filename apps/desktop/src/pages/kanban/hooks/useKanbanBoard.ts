@@ -42,10 +42,13 @@ import { getLifecycleActionForStatusChange, validatePriority } from "../utils";
 import { useColumnStatuses } from "./useColumnStatuses";
 import { useKanbanData } from "./useKanbanData";
 import { useKanbanCommands } from "./useKanbanCommands";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 export function useKanbanBoard() {
   const { t } = useTranslation();
   const toast = useToast();
+  const { logEvent } = useAnalytics();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const prefersReducedMotion = useReducedMotion();
   const {
@@ -378,6 +381,21 @@ export function useKanbanBoard() {
           workspace_path: workspace.path,
           task_id: taskId,
         });
+        try {
+          logEvent(AnalyticsEvents.KANBAN_TASK_MOVED, {
+            task_id: taskId,
+            from_column: currentColumn,
+            to_column: newColumnId,
+            from_position: 0,
+            to_position: 0,
+          });
+          logEvent(AnalyticsEvents.KANBAN_TASK_STATUS_CHANGED, {
+            task_id: taskId,
+            from_status: currentStatus,
+            to_status: newStatus,
+            change_source: "drag",
+          });
+        } catch {}
       }
 
       if (isMovingToInProgress) {
@@ -433,13 +451,23 @@ export function useKanbanBoard() {
           worktree: data.worktree,
         });
         toast.success(t("workspace.taskCreated", "Task created successfully"));
+        try {
+          logEvent(AnalyticsEvents.KANBAN_TASK_CREATED, {
+            workspace_id: workspace.id,
+            task_title_length: data.title.length,
+            has_description: !!data.description,
+            priority: "medium",
+            has_labels: false,
+            column_id: "backlog",
+          });
+        } catch {}
       } catch (error) {
         const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
         toast.error(t("workspace.taskCreateFailed", "Failed to create task: {{message}}", { message }));
         throw error;
       }
     },
-    [workspace, createTask, toast, t]
+    [workspace, createTask, toast, t, logEvent]
   );
 
   // Handle inline title edit
@@ -451,8 +479,15 @@ export function useKanbanBoard() {
         data: { title: newTitle },
         workspacePath: workspace.path,
       });
+      try {
+        logEvent(AnalyticsEvents.KANBAN_TASK_UPDATED, {
+          task_id: taskId,
+          fields_changed: ["title"],
+          update_source: "inline",
+        });
+      } catch {}
     },
-    [workspace, updateTask]
+    [workspace, updateTask, logEvent]
   );
 
   // Handle task update from detail panel
@@ -464,8 +499,15 @@ export function useKanbanBoard() {
         data: updates,
         workspacePath: workspace.path,
       });
+      try {
+        logEvent(AnalyticsEvents.KANBAN_TASK_UPDATED, {
+          task_id: selectedTaskId,
+          fields_changed: Object.keys(updates),
+          update_source: "dialog",
+        });
+      } catch {}
     },
-    [workspace, selectedTaskId, updateTask]
+    [workspace, selectedTaskId, updateTask, logEvent]
   );
 
   // Handle card click
@@ -565,10 +607,17 @@ export function useKanbanBoard() {
 
   // Handle delete task (placeholder)
   const handleDeleteTask = useCallback(
-    (_taskId: string) => {
+    (taskId: string) => {
       // TODO: Implement delete when API is available
+      try {
+        logEvent(AnalyticsEvents.KANBAN_TASK_DELETED, {
+          task_id: taskId,
+          task_age_days: 0,
+          column: "backlog",
+        });
+      } catch {}
     },
-    []
+    [logEvent]
   );
 
   // Handle start task - enqueue the task to be automatically picked up

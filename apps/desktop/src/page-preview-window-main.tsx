@@ -1,3 +1,8 @@
+import { initApp } from "@/lib/init";
+import { ErrorBoundary } from "@/lib/analytics/error-boundary";
+
+initApp();
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,8 +23,10 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <PagePreviewWindow />
-      <Toaster />
+      <ErrorBoundary name="PagePreviewWindow">
+        <PagePreviewWindow />
+        <Toaster />
+      </ErrorBoundary>
     </QueryClientProvider>
   </React.StrictMode>
 );

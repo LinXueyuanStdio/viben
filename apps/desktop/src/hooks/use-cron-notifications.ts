@@ -12,6 +12,8 @@ import { useNotificationStore } from "@/stores/notification-store";
 import { toast } from "@/hooks/use-toast";
 import { useSystemNotification } from "@/hooks/use-system-notification";
 import { useTranslation } from "react-i18next";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 export type CronJobStatus = "started" | "completed" | "failed";
 
@@ -55,6 +57,7 @@ export interface UseCronNotificationsReturn {
  */
 export function useCronNotifications(): UseCronNotificationsReturn {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const { addNotification, shouldShowNotification } = useNotificationStore();
   const { notifyIfBackground } = useSystemNotification();
 
@@ -103,6 +106,15 @@ export function useCronNotifications(): UseCronNotificationsReturn {
           actionUrl: `/workspace/cron`,
         },
       });
+
+      // Track notification received
+      try {
+        logEvent(AnalyticsEvents.NOTIFICATION_RECEIVED, {
+          notification_type: status,
+          notification_category: "cron",
+          source: "cron_job",
+        });
+      } catch {}
 
       // Show toast notification for immediate feedback
       switch (status) {

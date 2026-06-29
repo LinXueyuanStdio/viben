@@ -27,6 +27,8 @@ import type { ClawhubSkillDisplay } from "@/types/clawhub-registry";
 import { getGatewayClient } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { SkillMarketGrid } from "./skill-market-grid";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -75,6 +77,7 @@ export function AgentSkillsDialog({
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [pathInput, setPathInput] = useState("");
   const [activeTab, setActiveTab] = useState("discovered");
+  const { logEvent } = useAnalytics();
 
   // Sync local state when dialog opens
   useEffect(() => {
@@ -168,6 +171,23 @@ export function AgentSkillsDialog({
   const hasChanges = !setsEqual(localSelected, selectedSkillIds);
 
   function handleSave() {
+    // Track newly enabled skills
+    if (agentId) {
+      try {
+        const originalSet = new Set(selectedSkillIds);
+        const newSkills = localSelected.filter((id) => !originalSet.has(id));
+        for (const skillId of newSkills) {
+          try {
+            const skill = discoveredSkills.find((s) => s.id === skillId);
+            logEvent(AnalyticsEvents.AGENT_SKILL_ENABLED, {
+              agent_id: agentId,
+              skill_id: skillId,
+              skill_name: skill?.name || skillId,
+            });
+          } catch { /* ignore analytics errors */ }
+        }
+      } catch { /* ignore analytics errors */ }
+    }
     onSkillsChange(localSelected);
     onOpenChange(false);
   }

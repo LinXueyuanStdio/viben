@@ -12,6 +12,8 @@ import type { Workspace } from "@/types";
 import { pollWithBackoff, createPollController } from "@/lib/onboarding/polling";
 import { GATEWAY_READINESS_POLICY } from "@/lib/onboarding/runtime-policies";
 import i18n from "@/i18n";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 export type GatewayStatus = "connected" | "disconnected" | "connecting" | "error";
 
@@ -148,14 +150,44 @@ function stopPingInterval() {
  * Automatically pings the gateway periodically.
  */
 export function useGatewayStatus(): UseGatewayStatusReturn {
+  const { logEvent } = useAnalytics();
   const [, forceUpdate] = useState({});
   const isMounted = useRef(true);
+  const prevStatusRef = useRef<GatewayStatus>("disconnected");
+  const disconnectedAtRef = useRef<number | null>(null);
 
   // Register listener on mount, unregister on unmount
   useEffect(() => {
     isMounted.current = true;
 
     const listener = () => {
+      // Track gateway connection state changes
+      const prevStatus = prevStatusRef.current;
+      const currentStatus = globalStatus;
+
+      if (prevStatus !== currentStatus) {
+        if (currentStatus === "disconnected" && prevStatus === "connected") {
+          disconnectedAtRef.current = Date.now();
+          try {
+            logEvent(AnalyticsEvents.GATEWAY_CONNECTION_LOST, {
+              previous_status: prevStatus,
+              disconnect_reason: "ping_failed",
+              connection_duration_ms: 0,
+            });
+          } catch {}
+        } else if (currentStatus === "connected" && prevStatus === "disconnected") {
+          const outageDuration = disconnectedAtRef.current ? Date.now() - disconnectedAtRef.current : 0;
+          disconnectedAtRef.current = null;
+          try {
+            logEvent(AnalyticsEvents.GATEWAY_CONNECTION_RESTORED, {
+              outage_duration_ms: outageDuration,
+              reconnect_attempts: 1,
+            });
+          } catch {}
+        }
+        prevStatusRef.current = currentStatus;
+      }
+
       if (isMounted.current) {
         forceUpdate({});
       }

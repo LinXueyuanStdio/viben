@@ -1,3 +1,8 @@
+import { initApp } from "@/lib/init";
+import { ErrorBoundary } from "@/lib/analytics/error-boundary";
+
+initApp();
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import PetWindowPage from "@/pages/pet-window";
@@ -9,7 +14,9 @@ const root = document.getElementById("root");
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <PetWindowPage />
+      <ErrorBoundary name="PetWindow">
+        <PetWindowPage />
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

@@ -12,6 +12,8 @@ import { useWorkspaceCommands } from "./use-workspace-commands";
 import { useSkillCommands } from "./use-skill-commands";
 import { toChatSlashCommandData } from "../slash-command-data";
 import i18n from "@/i18n";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 export interface UseSlashCommandsOptions {
   workspacePath?: string;
@@ -42,6 +44,7 @@ export function useSlashCommands(
   options: UseSlashCommandsOptions = {}
 ): UseSlashCommandsReturn {
   const { workspacePath, agentId } = options;
+  const { logEvent } = useAnalytics();
 
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
 
@@ -90,9 +93,18 @@ export function useSlashCommands(
         return null;
       }
 
+      const startTime = Date.now();
       try {
         const result = await definition.execute(payload, context);
         setLastResult(result);
+        try {
+          logEvent(AnalyticsEvents.SLASH_COMMAND_EXECUTED, {
+            command_name: command.name,
+            command_category: definition.category || "general",
+            execution_type: result?.type || "ui",
+            duration_ms: Date.now() - startTime,
+          });
+        } catch {}
         return result;
       } catch (error) {
         console.error(`Failed to execute command /${command.name}:`, error);
@@ -107,7 +119,7 @@ export function useSlashCommands(
         return errorResult;
       }
     },
-    [commandIndex]
+    [commandIndex, logEvent]
   );
 
   // Find a command by name

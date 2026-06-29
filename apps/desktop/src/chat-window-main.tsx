@@ -1,3 +1,8 @@
+import { initApp } from "@/lib/init";
+import { ErrorBoundary } from "@/lib/analytics/error-boundary";
+
+initApp();
+
 import "./i18n";
 import "./index.css";
 
@@ -22,8 +27,10 @@ if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
-        <ChatWindowPage />
-        <Toaster />
+        <ErrorBoundary name="ChatWindow">
+          <ChatWindowPage />
+          <Toaster />
+        </ErrorBoundary>
       </QueryClientProvider>
     </React.StrictMode>
   );

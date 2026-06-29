@@ -17,6 +17,8 @@ import { useWakeWord } from "@/hooks/use-wake-word";
 import { loadVoiceConfig, saveVoiceConfig } from "@/lib/voice/secure-config";
 import { Loader2, Save, RotateCcw, Mic, MicOff, Square, AudioWaveform, CheckCircle2 } from "lucide-react";
 import { SettingsItem, SectionHeader } from "./components";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 /**
  * 预热麦克风权限
@@ -42,6 +44,7 @@ async function warmupMicrophonePermission(): Promise<void> {
 
 export function SettingsVoice() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const store = useVoiceStore();
   const voiceAgent = useVoiceAgent();
 
@@ -61,6 +64,12 @@ export function SettingsVoice() {
     (detection) => {
       setWakeWordDetected(true);
       setLastDetection({ keyword: detection.keyword, score: detection.score });
+      try {
+        logEvent(AnalyticsEvents.VOICE_WAKE_WORD_DETECTED, {
+          wake_word: detection.keyword,
+          detection_confidence: detection.score,
+        });
+      } catch {}
       // Reset detected state after 2 seconds
       setTimeout(() => setWakeWordDetected(false), 2000);
     },
@@ -123,11 +132,24 @@ export function SettingsVoice() {
     if (voiceAgent.isConnected) {
       voiceAgent.disconnect();
     } else {
+      try {
+        logEvent(AnalyticsEvents.VOICE_STARTED, { trigger_method: "button" });
+      } catch {}
       // 确保使用最新输入的 API Key 和 Agent ID（即使尚未保存）
       actions.setConfig({ vocalBridgeApiKey: apiKey, vocalBridgeAgentId: agentId });
-      await voiceAgent.connect();
+      try {
+        await voiceAgent.connect();
+      } catch (err) {
+        try {
+          logEvent(AnalyticsEvents.VOICE_ERROR, {
+            error_type: err instanceof Error ? err.name : "UnknownError",
+            error_message: err instanceof Error ? err.message : String(err),
+            voice_state: "connecting",
+          });
+        } catch {}
+      }
     }
-  }, [voiceAgent, apiKey, agentId, actions]);
+  }, [voiceAgent, apiKey, agentId, actions, logEvent]);
 
   // Wake word test toggle
   const handleWakeWordTestToggle = useCallback(async () => {

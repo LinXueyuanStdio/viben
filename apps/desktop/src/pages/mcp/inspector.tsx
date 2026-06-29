@@ -44,6 +44,8 @@ import {
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import type { InspectorConnectionStatus } from "@/types";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 // Default MCP server config example - now with proxy support
 const DEFAULT_CONFIG: McpServerConfig = {
@@ -53,6 +55,7 @@ const DEFAULT_CONFIG: McpServerConfig = {
 
 export function InspectorPage() {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const {
     inspectorNotifications,
     addInspectorNotification,
@@ -199,6 +202,11 @@ export function InspectorPage() {
     const hash = window.location.hash.slice(1);
     return hash || "tools";
   });
+
+  // Track inspector opened
+  useEffect(() => {
+    try { logEvent(AnalyticsEvents.MCP_INSPECTOR_OPENED, { source: "sidebar" }); } catch {}
+  }, []);
 
   // Auto-refresh Inspector status when proxy mode changes
   useEffect(() => {
@@ -349,6 +357,13 @@ export function InspectorPage() {
           duration,
           status: "success",
         });
+        try {
+          logEvent(AnalyticsEvents.MCP_INSPECTOR_TOOL_CALLED, {
+            tool_name: method,
+            params_count: params ? Object.keys(params).length : 0,
+            has_custom_headers: false,
+          });
+        } catch {}
         return response;
       } catch (error) {
         const duration = Date.now() - startTime;
@@ -363,7 +378,7 @@ export function InspectorPage() {
         throw error;
       }
     },
-    [rawMakeRequest, addInspectorHistory]
+    [rawMakeRequest, addInspectorHistory, logEvent]
   );
 
   const handleConnect = useCallback(async () => {
@@ -385,6 +400,7 @@ export function InspectorPage() {
     }
 
     setIsConnecting(true);
+    const connectStartTime = Date.now();
     try {
       // When using proxy, refresh status to get fresh auth token before connecting
       // This handles the case where gateway was restarted and token changed
@@ -410,19 +426,40 @@ export function InspectorPage() {
         if (freshConfig) {
           console.log("[Inspector] Connecting with fresh config...");
           await connect(freshConfig);
+          try {
+            logEvent(AnalyticsEvents.MCP_INSPECTOR_CONNECTED, {
+              transport_type: freshConfig.transport || "streamable-http",
+              server_name: freshConfig && "url" in freshConfig ? freshConfig.url : "unknown",
+              connection_duration_ms: Date.now() - connectStartTime,
+            });
+          } catch {}
         } else {
           console.error("[Inspector] Failed to build config with fresh status");
         }
       } else {
         console.log("[Inspector] Direct mode (no proxy), connecting with effectiveConfig...");
         await connect();
+        try {
+          logEvent(AnalyticsEvents.MCP_INSPECTOR_CONNECTED, {
+            transport_type: effectiveConfig?.transport || "streamable-http",
+            server_name: effectiveConfig && "url" in effectiveConfig ? effectiveConfig.url : "unknown",
+            connection_duration_ms: Date.now() - connectStartTime,
+          });
+        } catch {}
       }
     } catch (error) {
       console.error("[Inspector] Connection failed:", error);
+      try {
+        logEvent(AnalyticsEvents.MCP_INSPECTOR_CONNECT_FAILED, {
+          transport_type: effectiveConfig?.transport || "unknown",
+          error_type: error instanceof Error ? error.name : "UnknownError",
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      } catch {}
     } finally {
       setIsConnecting(false);
     }
-  }, [canConnect, connectionStatus, connect, disconnect, useProxy, refreshInspectorStatus, buildEffectiveConfig, inspectorStatus]);
+  }, [canConnect, connectionStatus, connect, disconnect, useProxy, refreshInspectorStatus, buildEffectiveConfig, inspectorStatus, logEvent, effectiveConfig]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnect();

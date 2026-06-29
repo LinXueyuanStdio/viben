@@ -173,3 +173,12 @@ export {
   type PreviewConfig,
   type PreviewStatus,
 } from "./preview";
+
+// Firebase service
+export {
+  FirebaseService,
+  firebaseService,
+  type FirebaseConfig,
+  type FirebaseBugReport,
+  type FirebaseAnalyticsEvent,
+} from "./firebase";

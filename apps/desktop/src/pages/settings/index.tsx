@@ -6,6 +6,8 @@ import { useLocation } from "react-router-dom";
 import type { SettingsSection } from "./types";
 import { easeOutExpo } from "./constants";
 import { getSettingsSectionFromPathname } from "./settings-sidebar-utils";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 import { GeneralSection } from "./general-section";
 import { AccountSection } from "./account-section";
 import { ShortcutsSection } from "./shortcuts-section";
@@ -30,10 +32,16 @@ import { PetSection } from "./pet-section";
 export function SettingsPage() {
   const prefersReducedMotion = useReducedMotion();
   const location = useLocation();
+  const { logEvent } = useAnalytics();
 
   const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
     getSettingsSectionFromPathname(location.pathname)
   );
+
+  // Track settings opened
+  useEffect(() => {
+    try { logEvent(AnalyticsEvents.SETTINGS_OPENED, { source: "sidebar" }); } catch {}
+  }, []);
 
   // Update active section when URL changes
   useEffect(() => {

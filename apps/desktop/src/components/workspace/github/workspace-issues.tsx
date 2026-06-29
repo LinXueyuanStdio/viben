@@ -24,6 +24,8 @@ import { IssueList } from "./issue-list";
 import { IssueDetail } from "./issue-detail";
 import { AutoFixQueue } from "./auto-fix-queue";
 import type { GitHubIssue } from "@/lib/github-client";
+import { useAnalytics } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics/types";
 
 interface WorkspaceIssuesProps {
   workspacePath: string;
@@ -31,6 +33,7 @@ interface WorkspaceIssuesProps {
 
 export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
   const { t } = useTranslation();
+  const { logEvent } = useAnalytics();
   const [showQueue, setShowQueue] = useState(false);
 
   // Auth and repo hooks
@@ -156,10 +159,17 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+      try {
+        logEvent(AnalyticsEvents.GITHUB_AUTO_FIX_CREATED, {
+          issue_number: issueNumber,
+          task_type: "auto_fix",
+          estimated_complexity: "medium",
+        });
+      } catch {}
     } catch (error) {
       console.error("Failed to start auto-fix:", error);
     }
-  }, [workspacePath, addAutoFixTask]);
+  }, [workspacePath, addAutoFixTask, logEvent]);
 
   const handleCancelAutoFix = useCallback(async (taskId: string) => {
     try {

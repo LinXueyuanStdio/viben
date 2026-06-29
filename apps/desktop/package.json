@@ -21,6 +21,7 @@
     "test:e2e": "wdio run wdio.conf.ts"
   },
   "dependencies": {
+    "@apmplus/web": "^2.10.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -75,6 +76,7 @@
     "fast-json-patch": "^3.1.1",
     "fastmcp": "^4.0.1",
     "fflate": "^0.8.3",
+    "firebase": "^12.15.0",
     "framer-motion": "^12.29.2",
     "html-to-image": "^1.11.13",
     "i18next": "^26.0.0",
