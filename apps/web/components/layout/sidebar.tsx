@@ -27,7 +27,6 @@ import {
   Key,
   Users,
 } from 'lucide-react';
-import { VibenLogo } from '@/components/shared/viben-logo';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
 
@@ -136,14 +135,6 @@ export function Sidebar({
         collapsed ? "w-0 border-r-0" : "w-[var(--sidebar-w)]"
       )}
     >
-      {/* Logo */}
-      <div className="flex h-16 items-center border-b px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <VibenLogo size={24} />
-          <span className="font-serif text-xl font-semibold">Viben</span>
-        </Link>
-      </div>
-
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {/* Browse Section — always visible */}

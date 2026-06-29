@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ChevronRight, Check } from "lucide-react"
+import { ChevronRight, Check, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,27 @@ import { VibenLogo } from "@/components/shared/viben-logo"
 import {
   resolveBreadcrumbSegments,
   getSiblingRoutes,
+  type DynamicSegmentLabel,
+  type RouteConfig,
 } from "@/lib/navigation/route-registry"
+
+// --- Context ---
+
+interface BreadcrumbLabelEntry {
+  label: string
+  icon?: LucideIcon
+  href?: string
+}
+
+export interface BreadcrumbContextValue {
+  labels?: Record<string, BreadcrumbLabelEntry>
+  /** 自定义下拉项（按 accumulated path 映射） */
+  dropdownItems?: Record<string, Array<{ href: string; config: RouteConfig }>>
+}
+
+export const BreadcrumbDynamicContext = React.createContext<BreadcrumbContextValue>({})
+
+// --- Component ---
 
 interface BreadcrumbNavProps {
   variant?: "global" | "read"
@@ -23,7 +43,13 @@ interface BreadcrumbNavProps {
 export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const segments = React.useMemo(() => resolveBreadcrumbSegments(pathname), [pathname])
+  const ctx = React.useContext(BreadcrumbDynamicContext)
+  const dynamicLabels: Record<string, DynamicSegmentLabel> | undefined = ctx.labels
+
+  const segments = React.useMemo(
+    () => resolveBreadcrumbSegments(pathname, dynamicLabels),
+    [pathname, dynamicLabels]
+  )
 
   // 过滤：read 模式只显示 mode="read" 的路由
   const filteredSegments = React.useMemo(() => {
@@ -57,6 +83,7 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
               icon={seg.config.icon}
               isLast={seg.isLast}
               variant={variant}
+              customSiblings={ctx.dropdownItems?.[seg.href]}
             />
           </React.Fragment>
         )
@@ -71,33 +98,31 @@ interface BreadcrumbSegmentProps {
   icon: React.ComponentType<{ className?: string }>
   isLast: boolean
   variant: "global" | "read"
+  customSiblings?: Array<{ href: string; config: RouteConfig }>
 }
 
-function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant }: BreadcrumbSegmentProps) {
+function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSiblings }: BreadcrumbSegmentProps) {
   const { t } = useTranslation()
   const parentPath = href === "/" ? "/" : href
-  const siblings = getSiblingRoutes(parentPath)
+  const siblings = getSiblingRoutes(parentPath, customSiblings)
   const hasDropdown = siblings.length > 0
   const [open, setOpen] = React.useState(false)
-  const openTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Hover 触发下拉（参考 index.html + NavPopover 的 260ms/180ms 延迟）
+  // Hover 触发：立即打开，120ms 延迟关闭（参考桌面版 breadcrumb-dropdown.tsx）
   const handleMouseEnter = React.useCallback(() => {
     if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null }
     if (!open) {
-      openTimer.current = setTimeout(() => setOpen(true), 260)
+      setOpen(true)
     }
   }, [open])
 
   const handleMouseLeave = React.useCallback(() => {
-    if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null }
-    closeTimer.current = setTimeout(() => setOpen(false), 180)
+    closeTimer.current = setTimeout(() => setOpen(false), 120)
   }, [])
 
   React.useEffect(() => {
     return () => {
-      if (openTimer.current) clearTimeout(openTimer.current)
       if (closeTimer.current) clearTimeout(closeTimer.current)
     }
   }, [])
@@ -111,9 +136,9 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant }: Breadcr
         variant === "read" && "max-w-[170px]",
         isLast && variant === "read" && "max-w-[210px]"
       )}
-      asChild={isLast ? false : !hasDropdown}
+      asChild={hasDropdown ? false : isLast ? false : true}
     >
-      {(!isLast && hasDropdown) ? (
+      {hasDropdown ? (
         <span className="flex items-center gap-1.5 min-w-0">
           <Icon className="h-4 w-4 shrink-0" />
           <span className="truncate">{label}</span>

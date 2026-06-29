@@ -1,5 +1,6 @@
 import {
   Home,
+  FileText,
   TrendingUp,
   Package,
   Sparkles,
@@ -23,6 +24,13 @@ export interface RouteConfig {
   dropdownCategory?: string // 下拉菜单分组
   parent?: string           // 父路由路径
   mode?: "global" | "author" | "read"
+}
+
+/** 动态段标签映射：路径段 → {label, icon?, href?} */
+export interface DynamicSegmentLabel {
+  label: string
+  icon?: LucideIcon
+  href?: string  // 覆盖默认链接
 }
 
 /** 全局路由注册表 — 路径→配置映射 */
@@ -76,12 +84,13 @@ export const routeRegistry: Record<string, RouteConfig> = {
   },
 
   // 阅读面包屑（模式=read 时使用）
-  "/read": { label: "阅读", icon: Home, mode: "read" },
+  "/read": { label: "页面", icon: FileText, mode: "read" },
 }
 
-/** 获取面包屑段 */
+/** 获取面包屑段，支持传入动态段标签 */
 export function resolveBreadcrumbSegments(
-  pathname: string
+  pathname: string,
+  dynamicLabels?: Record<string, DynamicSegmentLabel>
 ): Array<{ href: string; config: RouteConfig; isLast: boolean }> {
   const segments: Array<{ href: string; config: RouteConfig; isLast: boolean }> = []
   const parts = pathname.split("/").filter(Boolean)
@@ -89,16 +98,30 @@ export function resolveBreadcrumbSegments(
 
   for (let i = 0; i < parts.length; i++) {
     accumulated += "/" + parts[i]
-    const config = routeRegistry[accumulated]
+    const staticConfig = routeRegistry[accumulated]
+    const dynamicLabel = dynamicLabels?.[accumulated]
     const isLast = i === parts.length - 1
 
-    if (config) {
-      segments.push({ href: accumulated, config, isLast })
+    if (staticConfig) {
+      segments.push({ href: accumulated, config: staticConfig, isLast })
+    } else if (dynamicLabel) {
+      segments.push({
+        href: dynamicLabel.href ?? accumulated,
+        config: {
+          label: dynamicLabel.label,
+          icon: dynamicLabel.icon ?? Home,
+        },
+        isLast,
+      })
     } else if (!isLast) {
-      // 中间段无注册表项——跳过，但要推进路径
-      continue
+      // 中间段无匹配 — 保留为占位段（用路径段名作为 label）
+      segments.push({
+        href: accumulated,
+        config: { label: parts[i], icon: Home },
+        isLast: false,
+      })
     } else {
-      // 最末段无注册——用路径末段作为 label
+      // 最末段 — 用路径末段作为 label
       segments.push({
         href: accumulated,
         config: { label: parts[i], icon: Home },
@@ -107,24 +130,39 @@ export function resolveBreadcrumbSegments(
     }
   }
 
-  // 如果没有匹配到任何段，至少有一个根
   if (segments.length === 0) {
-    segments.push({
-      href: "/",
-      config: routeRegistry["/"],
-      isLast: true,
-    })
+    segments.push({ href: "/", config: routeRegistry["/"], isLast: true })
   }
 
   return segments
 }
 
-/** 获取同级路由（用于面包屑下拉菜单） */
-export function getSiblingRoutes(parentPath: string): Array<{ href: string; config: RouteConfig }> {
+/**
+ * 获取同级路由（用于面包屑下拉菜单）
+ * parentPath: 父路由路径
+ * customSiblings?: 自定义下拉项（用于动态段）
+ */
+export function getSiblingRoutes(
+  parentPath: string,
+  customSiblings?: Array<{ href: string; config: RouteConfig }>
+): Array<{ href: string; config: RouteConfig }> {
+  if (customSiblings) return customSiblings
+
   const siblings: Array<{ href: string; config: RouteConfig }> = []
 
+  // 对于根路由和 /read 段，只显示社区浏览页（与 index.html 全局下拉一致）
+  if (parentPath === "/" || parentPath === "/read") {
+    for (const [href, config] of Object.entries(routeRegistry)) {
+      if (href === parentPath) continue
+      if (config.dropdownCategory === "浏览") {
+        siblings.push({ href, config })
+      }
+    }
+    return siblings
+  }
+
   for (const [href, config] of Object.entries(routeRegistry)) {
-    if (href === parentPath) continue // 不包括自己
+    if (href === parentPath) continue
     if (config.parent === parentPath || (!config.parent && parentPath === "/")) {
       siblings.push({ href, config })
     }

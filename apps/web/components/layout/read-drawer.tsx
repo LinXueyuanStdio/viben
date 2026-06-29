@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { X } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { IconButton } from "@/components/ui/icon-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
@@ -102,7 +102,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
           </VibenTabs>
 
           <IconButton size="compact" label="关闭抽屉" onClick={() => setOpen(false)}>
-            <X className="h-[18px] w-[18px]" />
+            <ArrowRight className="h-[18px] w-[18px]" />
           </IconButton>
         </div>
 

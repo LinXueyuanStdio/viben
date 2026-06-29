@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Bell, Clock, PanelRight, Maximize2, MoreHorizontal } from "lucide-react"
+import { Bell, Clock, PanelRight, Maximize2, MoreHorizontal, FileText, Columns2 } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
 import { BreadcrumbNav } from "./breadcrumb"
@@ -126,8 +126,8 @@ export function Topbar({
             <div className="pointer-events-auto">
               <VibenTabs defaultValue="page">
                 <VibenTabsList variant="pill">
-                  <VibenTabsTrigger value="page" variant="pill">📄 页面</VibenTabsTrigger>
-                  <VibenTabsTrigger value="side" variant="pill">📋 副页</VibenTabsTrigger>
+                  <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> 页面</VibenTabsTrigger>
+                  <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> 副页</VibenTabsTrigger>
                 </VibenTabsList>
               </VibenTabs>
             </div>

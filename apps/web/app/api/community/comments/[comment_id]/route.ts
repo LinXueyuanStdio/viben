@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { AuthError, requireAuth } from '@/lib/auth/middleware';
-import { deleteCommunityComment, updateCommunityComment } from '@/lib/services/community';
+import { deleteCommunityComment, updateCommunityComment, toggleReaction } from '@/lib/services/community';
 
 interface RouteContext {
   params: Promise<{ comment_id: string }>;
@@ -12,6 +12,19 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const session = await requireAuth(request);
     const { comment_id: commentId } = await params;
     const body = await request.json().catch(() => ({}));
+
+    // Handle reaction toggle
+    if (body.reaction === true) {
+      return NextResponse.json(
+        await toggleReaction({
+          entityType: 'comment',
+          entityId: commentId,
+          reactionType: 'like',
+          session,
+        })
+      );
+    }
+
     if (typeof body.content !== 'string') {
       return NextResponse.json(
         { error: { code: 'invalid_input', message: 'Invalid comment payload' } },
