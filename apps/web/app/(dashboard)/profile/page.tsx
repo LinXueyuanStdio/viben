@@ -47,12 +47,12 @@ const FEED_KIND_MAP: Record<string, FeedKind> = {
 
 export default async function ProfilePage() {
   const session = await getSession()
-  if (!session?.userId) redirect("/login")
+  if (!session?.userId) redirect(`/login?redirect=${encodeURIComponent("/profile")}`)
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, session.userId),
   })
-  if (!user) redirect("/login")
+  if (!user) redirect(`/login?redirect=${encodeURIComponent("/profile")}`)
 
   const [authorPages, authorMoments, userCollections, pageCountResult] = await Promise.all([
     db.select().from(publishedPages)
