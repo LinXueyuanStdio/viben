@@ -1,6 +1,4 @@
 import { redirect } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, skillPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql, inArray } from 'drizzle-orm';
@@ -8,6 +6,8 @@ import { AnalyticsPageHeader } from '@/components/analytics/analytics-page-heade
 import { AnalyticsOverview } from '@/components/analytics/analytics-overview';
 import { AnalyticsCharts } from '@/components/analytics/analytics-charts';
 import { TopPackages } from '@/components/analytics/top-packages';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Analytics',

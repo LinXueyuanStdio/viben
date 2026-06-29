@@ -1,11 +1,11 @@
 import { redirect, notFound } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { AnalyticsCharts } from '@/components/analytics/analytics-charts';
 import { McpAnalyticsHeader } from '@/components/mcp/mcp-analytics-header';
+
+export const dynamic = 'force-dynamic';
 
 interface PackageAnalyticsPageProps {
   params: Promise<{ id: string }>;

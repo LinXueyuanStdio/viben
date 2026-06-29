@@ -9,12 +9,12 @@ import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import { db, users } from "@/lib/db"
 import { desc } from "drizzle-orm"
-
-export const dynamic = "force-dynamic"
 import { FileText, MessageCircle, UserPlus, Bell } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { NotificationItemData } from "@/components/content/notification-item"
 import type { AuthorCardData } from "@/components/content/author-card"
+
+export const dynamic = "force-dynamic"
 
 const NOTIF_TABS = ["全部", "评论", "关注", "订阅"]
 

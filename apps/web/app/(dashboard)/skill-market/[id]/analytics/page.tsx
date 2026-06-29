@@ -1,6 +1,4 @@
 import { redirect, notFound } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { db, skillPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql } from 'drizzle-orm';
@@ -9,6 +7,8 @@ import { AnalyticsCharts } from '@/components/analytics/analytics-charts';
 import { Download, Heart, Star, Calendar, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+
+export const dynamic = 'force-dynamic';
 
 interface SkillAnalyticsPageProps {
   params: Promise<{ id: string }>;
@@ -80,9 +80,9 @@ export default async function SkillAnalyticsPage({
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">{skill.name} Analytics</h1>
+          <h1 className="text-2xl font-bold">{skill.name} 分析</h1>
           <p className="text-muted-foreground">
-            Detailed statistics for your skill
+            您的技能详细统计数据
           </p>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default async function SkillAnalyticsPage({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Downloads
+              总下载量
             </CardTitle>
             <Download className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -104,21 +104,20 @@ export default async function SkillAnalyticsPage({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week</CardTitle>
+            <CardTitle className="text-sm font-medium">本周</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{lastWeek}</div>
             <p className="text-xs text-muted-foreground">
-              {weekChange >= 0 ? '+' : ''}
-              {weekChange}% from last week
+              较上周 {weekChange >= 0 ? '+' : ''}{weekChange}%
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Favorites</CardTitle>
+            <CardTitle className="text-sm font-medium">收藏</CardTitle>
             <Heart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -128,7 +127,7 @@ export default async function SkillAnalyticsPage({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rating</CardTitle>
+            <CardTitle className="text-sm font-medium">评分</CardTitle>
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -136,7 +135,7 @@ export default async function SkillAnalyticsPage({
               {skill.ratingAvg > 0 ? skill.ratingAvg.toFixed(1) : '-'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {skill.ratingCount} ratings
+              {skill.ratingCount} 条评价
             </p>
           </CardContent>
         </Card>

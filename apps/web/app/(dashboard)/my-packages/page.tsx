@@ -1,12 +1,10 @@
-import { redirect } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, skillPackages } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { PackageSearch, Package, Sparkles } from 'lucide-react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,8 +15,10 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
-  title: 'My Packages',
+  title: '我的包',
 };
 
 export default async function MyPackagesPage() {
@@ -32,13 +32,13 @@ export default async function MyPackagesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Packages</h1>
+          <h1 className="text-3xl font-bold tracking-tight">我的包</h1>
           <p className="text-muted-foreground">
-            Manage your published MCP servers and skills.
+            管理您已发布的 MCP 服务器和技能。
           </p>
         </div>
         <Button asChild>
-          <Link href="/publish">Publish New Package</Link>
+          <Link href="/publish">发布新包</Link>
         </Button>
       </div>
 
@@ -87,13 +87,12 @@ async function PackagesList({ userId }: { userId: string }) {
         <div className="rounded-full bg-muted p-4">
           <PackageSearch className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="mt-4 text-lg font-semibold">No packages yet</h3>
+        <h3 className="mt-4 text-lg font-semibold">暂无包</h3>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          You haven&apos;t published any packages yet. Start by publishing your
-          first MCP server or skill.
+          您尚未发布任何包。从发布您的第一个 MCP 服务器或技能开始吧。
         </p>
         <Button asChild className="mt-4">
-          <Link href="/publish">Publish Your First Package</Link>
+          <Link href="/publish">发布您的第一个包</Link>
         </Button>
       </div>
     );
@@ -106,7 +105,7 @@ async function PackagesList({ userId }: { userId: string }) {
         <section>
           <div className="mb-4 flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">MCP Servers</h2>
+            <h2 className="text-xl font-semibold">MCP 服务器</h2>
             <Badge variant="secondary">{mcps.length}</Badge>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -126,7 +125,7 @@ async function PackagesList({ userId }: { userId: string }) {
         <section>
           <div className="mb-4 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Skills</h2>
+            <h2 className="text-xl font-semibold">技能</h2>
             <Badge variant="secondary">{skills.length}</Badge>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -163,6 +162,12 @@ function PackageCard({ package: pkg, href }: PackageCardProps) {
     featured: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   };
+  const statusLabelMap: Record<string, string> = {
+    approved: '已批准',
+    featured: '精选',
+    pending: '待审核',
+    draft: '草稿',
+  };
   const statusColor =
     statusColorMap[status] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
 
@@ -175,7 +180,7 @@ function PackageCard({ package: pkg, href }: PackageCardProps) {
             <span
               className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColor}`}
             >
-              {status}
+              {statusLabelMap[status] ?? status}
             </span>
           </div>
           {pkg.description && (
@@ -186,8 +191,8 @@ function PackageCard({ package: pkg, href }: PackageCardProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{pkg.downloadsCount.toLocaleString()} downloads</span>
-            <span>{pkg.favoritesCount.toLocaleString()} favorites</span>
+            <span>{pkg.downloadsCount.toLocaleString()} 次下载</span>
+            <span>{pkg.favoritesCount.toLocaleString()} 次收藏</span>
           </div>
         </CardContent>
       </Card>

@@ -1,16 +1,16 @@
 import { notFound, redirect } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth/cookies';
 import { getCollection } from '@/lib/services/collections';
 import { EditCollectionForm } from '@/components/collections/edit-collection-form';
+
+export const dynamic = 'force-dynamic';
 
 interface EditCollectionPageProps {
   params: Promise<{ id: string }>;
 }
 
 export const metadata = {
-  title: 'Edit Collection',
+  title: '编辑合集',
 };
 
 export default async function EditCollectionPage({
@@ -37,9 +37,9 @@ export default async function EditCollectionPage({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Edit Collection</h1>
+        <h1 className="text-3xl font-bold">编辑合集</h1>
         <p className="mt-2 text-muted-foreground">
-          Update your collection details
+          更新您的合集信息
         </p>
       </div>
 

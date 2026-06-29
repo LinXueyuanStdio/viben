@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { ProfilePackages } from '@/components/profile/profile-packages';
+
+export const dynamic = 'force-dynamic';
 
 export default async function PackagesPage() {
   const session = await getSession();
