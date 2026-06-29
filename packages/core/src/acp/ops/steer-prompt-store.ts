@@ -354,11 +354,29 @@ function didSqliteUpdateChangeRow(result: unknown): boolean {
 }
 
 function loadDatabaseSync(): DatabaseSyncConstructor {
-  const sqlite = require("node:sqlite") as { DatabaseSync?: DatabaseSyncConstructor };
-  if (!sqlite.DatabaseSync) {
-    throw new Error("node:sqlite DatabaseSync is unavailable");
+  // Try Bun's built-in SQLite first (bun:sqlite) for Bun-compiled binaries.
+  try {
+    const bunSqlite = require("bun:sqlite") as { Database?: DatabaseSyncConstructor };
+    if (bunSqlite.Database) {
+      return bunSqlite.Database;
+    }
+  } catch {
+    // Not running on Bun, fall through to Node.js.
   }
-  return sqlite.DatabaseSync;
+
+  // Try Node.js built-in SQLite (node:sqlite, requires Node >= 22.5).
+  try {
+    const sqlite = require("node:sqlite") as { DatabaseSync?: DatabaseSyncConstructor };
+    if (sqlite.DatabaseSync) {
+      return sqlite.DatabaseSync;
+    }
+  } catch {
+    // Not available on this runtime.
+  }
+
+  throw new Error(
+    "No SQLite backend available. Requires Bun (bun:sqlite) or Node.js >= 22.5 (node:sqlite)."
+  );
 }
 
 function buildListFilter(input: Omit<ListSteerPromptInput, "limit" | "cursor">): {
