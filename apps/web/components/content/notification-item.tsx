@@ -63,7 +63,7 @@ function renderAction(action: NotificationItemData["action"]) {
       )
     case "subscribed":
       return (
-        <button onClick={onClick} className="flex items-center gap-1 text-[13px] font-bold text-emerald-600 shrink-0">
+        <button onClick={onClick} className="flex items-center gap-1 text-[13px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
           <Bell className="size-3.5" />
           {label}
         </button>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Send, Heart, MessageCircle, ChevronDown, User } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { PageMeta } from "@/components/content/page-meta"
 import type { PageMetaData } from "@/components/content/page-meta"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
@@ -97,6 +98,7 @@ function CommentComposer({
   sessionAvatarUrl?: string
   onCommentPosted: () => void
 }) {
+  const { t } = useTranslation()
   const [text, setText] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -127,7 +129,7 @@ function CommentComposer({
   if (!isAuthenticated) {
     return (
       <p className="py-3 text-center text-[13px] text-muted-foreground">
-        登录后参与评论
+        {t('community.loginToComment')}
       </p>
     )
   }
@@ -142,13 +144,13 @@ function CommentComposer({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="写下你的想法"
+          placeholder={t('community.writeComment')}
           className="w-full min-h-[58px] rounded-[10px] border border-border bg-background p-2.5 text-sm resize-y focus:outline-none focus:border-primary placeholder:text-muted-foreground"
         />
         <div className="flex justify-end mt-1.5">
           <Button onClick={handleSubmit} disabled={!text.trim() || submitting} size="sm" className="gap-1.5 min-h-[38px]">
             <Send className="size-3.5" />
-            发布
+            {t('community.published')}
           </Button>
         </div>
       </div>
@@ -168,7 +170,7 @@ function CommentCard({ comment, onReaction }: { comment: CommunityComment; onRea
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
           <span className="font-bold">{comment.author.display_name}</span>
-          <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] shrink-0" />
+          <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
           <span className="text-muted-foreground">{timeAgo(comment.created_at)}</span>
         </div>
         <p className="text-[#173f4c] dark:text-foreground leading-relaxed text-sm mt-1">{comment.content}</p>
@@ -205,6 +207,7 @@ function CommentsPanel({
   sessionUsername?: string
   sessionAvatarUrl?: string
 }) {
+  const { t } = useTranslation()
   const [comments, setComments] = useState<CommunityComment[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<"latest" | "oldest">("latest")
@@ -278,9 +281,9 @@ function CommentsPanel({
         onCommentPosted={fetchComments}
       />
       {loading ? (
-        <p className="py-4 text-center text-[13px] text-muted-foreground">加载中...</p>
+        <p className="py-4 text-center text-[13px] text-muted-foreground">{t('community.commentsLoading')}</p>
       ) : sortedComments.length === 0 ? (
-        <p className="py-4 text-center text-[13px] text-muted-foreground">暂无评论，来发表第一条评论吧</p>
+        <p className="py-4 text-center text-[13px] text-muted-foreground">{t('community.noComments')}</p>
       ) : (
         <div className="grid">
           {sortedComments.map((comment) => (
@@ -320,6 +323,7 @@ export function ReadPageClient({
   communityEntityId,
   recommendations,
 }: ReadPageClientProps) {
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const isDrawerOpen = searchParams.get("drawer") === "open"
 
@@ -378,10 +382,10 @@ export function ReadPageClient({
   const notesTab = (
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-['Lexend'] text-[17px] font-bold">笔记</h2>
-        <button className="text-[14px] font-bold text-primary hover:underline">新建</button>
+        <h2 className="font-['Lexend'] text-[17px] font-bold">{t('community.notes')}</h2>
+        <button className="text-[14px] font-bold text-primary hover:underline">{t('community.newNote')}</button>
       </div>
-      <p className="py-4 text-center text-[13px] text-muted-foreground">笔记功能开发中...</p>
+      <p className="py-4 text-center text-[13px] text-muted-foreground">{t('community.notesFeatureSoon')}</p>
     </div>
   )
 
@@ -414,7 +418,7 @@ export function ReadPageClient({
             title={pageTitle}
             srcDoc={pageHtml}
             sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-            className="w-full border-0 bg-white"
+            className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
             style={{ height: "calc(100vh - var(--nav-h, 56px))" }}
           />
         </div>

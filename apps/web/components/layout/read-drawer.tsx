@@ -62,7 +62,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
         className={cn(
           "fixed inset-0 z-80 transition-colors duration-180",
           open
-            ? "pointer-events-auto bg-[rgba(6,29,38,0.16)]"
+            ? "pointer-events-auto bg-black/15 dark:bg-black/30"
             : "pointer-events-none bg-transparent"
         )}
         onClick={() => setOpen(false)}
@@ -77,7 +77,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
           "grid grid-rows-[auto_1fr]",
           "border-l border-border",
           "bg-background/96 backdrop-blur-[16px]",
-          "shadow-[-18px_0_36px_rgba(8,91,117,0.14)]",
+          "shadow-[-18px_0_36px_rgba(8,91,117,0.14)] dark:shadow-[-18px_0_36px_rgba(0,0,0,0.3)]",
           "transition-transform duration-[220ms] ease-out",
           open ? "translate-x-0" : "translate-x-[104%]"
         )}

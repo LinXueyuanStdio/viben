@@ -1,7 +1,7 @@
 import { PackageFilters, PackageTabs } from '@/components/admin/packages';
 
 export const metadata = {
-  title: 'Package Moderation',
+  title: '包审核',
 };
 
 interface PackagesPageProps {
@@ -24,9 +24,9 @@ export default async function PackagesPage({ searchParams }: PackagesPageProps) 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold">Package Moderation</h1>
+          <h1 className="font-serif text-2xl font-bold">包审核</h1>
           <p className="text-muted-foreground">
-            Review and moderate submitted packages
+            审核提交的包
           </p>
         </div>
         <PackageFilters status={currentStatus} sort={currentSort} />

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
 export const metadata = {
-  title: 'MCP Package Queue',
+  title: 'MCP 包队列',
 };
 
 interface McpQueuePageProps {
@@ -40,10 +40,10 @@ export default async function McpQueuePage({ searchParams }: McpQueuePageProps) 
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="font-serif text-2xl font-bold">MCP Package Queue</h1>
+            <h1 className="font-serif text-2xl font-bold">MCP 包队列</h1>
           </div>
           <p className="text-muted-foreground ml-10">
-            Review MCP packages awaiting moderation
+            审核等待审核的 MCP 包
           </p>
         </div>
         <PackageFilters status={currentStatus} sort={currentSort} />

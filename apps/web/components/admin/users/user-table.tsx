@@ -48,7 +48,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 function formatDate(dateString: string | null) {
   if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -74,12 +74,12 @@ export function UserTable({ users, onRoleUpdate }: UserTableProps) {
     try {
       const success = await onRoleUpdate(userId, newRole);
       if (success) {
-        toast.success(`Role updated to ${newRole}`);
+        toast.success(`角色已更新为 ${newRole === 'user' ? '用户' : '开发者'}`);
       } else {
-        toast.error('Failed to update role');
+        toast.error('更新角色失败');
       }
     } catch {
-      toast.error('Failed to update role');
+      toast.error('更新角色失败');
     } finally {
       setUpdatingUserId(null);
     }
@@ -94,11 +94,11 @@ export function UserTable({ users, onRoleUpdate }: UserTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[300px]">User</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Registered</TableHead>
-            <TableHead>Last Login</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="w-[300px]">用户</TableHead>
+            <TableHead>角色</TableHead>
+            <TableHead>注册时间</TableHead>
+            <TableHead>最后登录</TableHead>
+            <TableHead className="text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -146,8 +146,8 @@ export function UserTable({ users, onRoleUpdate }: UserTableProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="developer">Developer</SelectItem>
+                      <SelectItem value="user">用户</SelectItem>
+                      <SelectItem value="developer">开发者</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

@@ -183,10 +183,10 @@ describe('CommunityInteractions', () => {
     renderInteractions();
 
     expect(await screen.findByText('Useful write-up')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Add a comment'), {
+    fireEvent.change(screen.getByLabelText('添加评论'), {
       target: { value: 'New comment' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Post comment' }));
+    fireEvent.click(screen.getByRole('button', { name: '发布评论' }));
 
     await waitFor(() => expect(screen.getByText('New comment')).toBeInTheDocument());
   });
@@ -214,10 +214,10 @@ describe('CommunityInteractions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /like/i }));
     fireEvent.click(screen.getByRole('button', { name: /favorite/i }));
-    fireEvent.focus(screen.getByLabelText('Add a comment'));
-    fireEvent.click(screen.getByRole('button', { name: 'Post comment' }));
+    fireEvent.focus(screen.getByLabelText('添加评论'));
+    fireEvent.click(screen.getByRole('button', { name: '发布评论' }));
 
-    expect(toast.error).toHaveBeenCalledWith('Sign in to interact with this page.');
+    expect(toast.error).toHaveBeenCalledWith('登录后才能与此页面互动。');
     expect(fetchMock).not.toHaveBeenCalledWith('/api/community/reactions/toggle', expect.anything());
     expect(fetchMock).not.toHaveBeenCalledWith('/api/community/favorites/toggle', expect.anything());
     expect(fetchMock).not.toHaveBeenCalledWith('/api/community/comments', expect.anything());
@@ -231,7 +231,7 @@ describe('CommunityInteractions', () => {
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:3000/read/alice/demo');
     });
-    expect(toast.success).toHaveBeenCalledWith('Link copied.');
+    expect(toast.success).toHaveBeenCalledWith('链接已复制。');
   });
 
   it('prevents authenticated viewers without comment permission from submitting comments', () => {
@@ -255,10 +255,10 @@ describe('CommunityInteractions', () => {
       },
     });
 
-    expect(screen.getByRole('button', { name: 'Post comment' })).toBeDisabled();
-    fireEvent.focus(screen.getByLabelText('Add a comment'));
+    expect(screen.getByRole('button', { name: '发布评论' })).toBeDisabled();
+    fireEvent.focus(screen.getByLabelText('添加评论'));
 
-    expect(toast.error).toHaveBeenCalledWith('You cannot comment on this page.');
+    expect(toast.error).toHaveBeenCalledWith('您无法在此页面评论。');
     expect(fetchMock).not.toHaveBeenCalledWith('/api/community/comments', expect.anything());
   });
 
@@ -321,7 +321,7 @@ describe('CommunityInteractions', () => {
     });
 
     expect(await screen.findByText('Needs moderation')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
+    fireEvent.click(screen.getByRole('button', { name: '删除评论' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

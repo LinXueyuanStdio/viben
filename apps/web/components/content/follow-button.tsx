@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { UserPlus, UserCheck } from "lucide-react"
 
@@ -10,6 +11,7 @@ interface FollowButtonProps {
 }
 
 export function FollowButton({ userSlug, className }: FollowButtonProps) {
+  const { t } = useTranslation()
   const [following, setFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -39,12 +41,12 @@ export function FollowButton({ userSlug, className }: FollowButtonProps) {
       {following ? (
         <>
           <UserCheck className="size-[14px]" />
-          已关注
+          {t("community.following")}
         </>
       ) : (
         <>
           <UserPlus className="size-[14px]" />
-          关注
+          {t("community.follow")}
         </>
       )}
     </Button>

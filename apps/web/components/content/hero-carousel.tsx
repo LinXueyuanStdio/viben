@@ -65,7 +65,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
     <div className={cn("relative overflow-hidden rounded-[12px]", className)}>
       {/* Cover */}
       <div
-        className="relative aspect-[21/9] min-h-[320px]"
+        className="relative aspect-[21/9] min-h-[320px] dark:brightness-75 dark:contrast-125"
         style={{
           background: `linear-gradient(135deg, ${slide.bg1}, ${slide.bg2}), url(${slide.image}) center/cover`,
         }}

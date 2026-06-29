@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { getSession } from '@/lib/auth/cookies';
 
 export const metadata = {
-  title: 'Collections',
+  title: '合集',
 };
 
 interface CollectionsPageProps {
@@ -31,15 +31,15 @@ export default async function CollectionsPage({
     <div className="space-y-6">
       <PageHeader
         icon={Layers}
-        title="Collections"
-        subtitle="Curated lists of MCP servers and skills"
+        title="合集"
+        subtitle="精选的 MCP 服务器和技能列表"
       >
         {session && (
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild>
               <Link href="/collections?mine=true">
                 <Layers className="mr-2 h-4 w-4" />
-                My Collections
+                我的合集
               </Link>
             </Button>
             <CreateCollectionButton />
@@ -49,7 +49,7 @@ export default async function CollectionsPage({
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput
-          placeholder="Search collections..."
+          placeholder="搜索合集..."
           defaultValue={params.q}
         />
         <CollectionsFilters sort={params.sort} />

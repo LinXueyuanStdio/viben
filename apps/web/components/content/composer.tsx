@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { Link as LinkIcon, Image as ImageIcon, Send } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -15,6 +16,7 @@ interface ComposerProps {
 }
 
 export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className }: ComposerProps) {
+  const { t } = useTranslation()
   const [text, setText] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -58,7 +60,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="分享你的想法..."
+            placeholder={t('community.postPlaceholder')}
             className="w-full min-h-[78px] rounded-[10px] border border-border bg-background p-3 text-sm resize-y focus:outline-none focus:border-primary placeholder:text-muted-foreground"
           />
         </div>
@@ -67,7 +69,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => toast.info("链接功能开发中")}
+            onClick={() => toast.info(t("community.linkFeatureSoon"))}
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
             aria-label="添加链接"
           >
@@ -75,7 +77,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
           </button>
           <button
             type="button"
-            onClick={() => toast.info("图片功能开发中")}
+            onClick={() => toast.info(t("community.imageFeatureSoon"))}
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
             aria-label="添加图片"
           >
@@ -84,7 +86,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
         </div>
         <Button onClick={handleSubmit} disabled={!text.trim() || submitting} size="sm" className="gap-1.5 min-h-[38px]">
           <Send className="size-3.5" />
-          {submitting ? "发布中..." : "发布"}
+          {submitting ? "发布中..." : t("community.published")}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
 import { SearchResultCard } from "./search-result-card"
 import { SearchFilterSidebar } from "./search-filter-sidebar"
 import { SearchEmpty } from "./search-empty"
@@ -21,6 +22,7 @@ interface SearchPageContentProps {
 }
 
 export function SearchPageContent({ query, results, filters, activeFilter }: SearchPageContentProps) {
+  const { t } = useTranslation()
   const isEmpty = EMPTY_TRIGGERS.includes(query.toLowerCase()) || results.length === 0
 
   if (isEmpty) {
@@ -31,7 +33,7 @@ export function SearchPageContent({ query, results, filters, activeFilter }: Sea
     <div className="grid gap-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground font-bold">
-          &ldquo;{query}&rdquo; 的搜索结果 共 {results.length} 条
+          {t('community.searchResults', { query, count: results.length })}
         </p>
       </div>
 

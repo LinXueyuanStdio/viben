@@ -73,7 +73,7 @@ type CommunityInteractionsProps = {
   viewer: CommunitySummary['viewer'];
 };
 
-const loginMessage = 'Sign in to interact with this page.';
+const loginMessage = '登录后才能与此页面互动。';
 
 export function CommunityInteractions({
   entityType,
@@ -121,7 +121,7 @@ export function CommunityInteractions({
   function canWriteComment() {
     if (!requireInteractionAuth()) return false;
     if (summary.viewer.can_comment) return true;
-    toast.error('You cannot comment on this page.');
+    toast.error('您无法在此页面评论。');
     return false;
   }
 
@@ -160,7 +160,7 @@ export function CommunityInteractions({
       setComments((current) => (cursor ? [...current, ...data.comments] : data.comments));
       setNextCursor(data.next_cursor);
     } catch {
-      setCommentError('Comments could not be loaded.');
+      setCommentError('无法加载评论。');
     } finally {
       setIsLoadingComments(false);
     }
@@ -197,7 +197,7 @@ export function CommunityInteractions({
       }));
       void refreshSummary();
     } catch {
-      toast.error('Like could not be updated.');
+      toast.error('无法更新点赞。');
     } finally {
       setPendingAction(null);
     }
@@ -233,7 +233,7 @@ export function CommunityInteractions({
       }));
       void refreshSummary();
     } catch {
-      toast.error('Favorite could not be updated.');
+      toast.error('无法更新收藏。');
     } finally {
       setPendingAction(null);
     }
@@ -243,9 +243,9 @@ export function CommunityInteractions({
     try {
       const absoluteUrl = new URL(readPath, window.location.origin).toString();
       await navigator.clipboard.writeText(absoluteUrl);
-      toast.success('Link copied.');
+      toast.success('链接已复制。');
     } catch {
-      toast.error('Link could not be copied.');
+      toast.error('无法复制链接。');
     }
   }
 
@@ -253,7 +253,7 @@ export function CommunityInteractions({
     if (!canWriteComment()) return;
     const content = commentText.trim();
     if (!content) {
-      setCommentError('Comment cannot be empty.');
+      setCommentError('评论不能为空。');
       return;
     }
 
@@ -311,7 +311,7 @@ export function CommunityInteractions({
       setCommentText('');
       void refreshSummary();
     } catch {
-      setCommentError('Comment could not be posted.');
+      setCommentError('无法发布评论。');
     } finally {
       setIsPostingComment(false);
     }
@@ -329,7 +329,7 @@ export function CommunityInteractions({
       }),
     });
     if (!response.ok) {
-      toast.error('Like could not be updated.');
+      toast.error('无法更新点赞。');
       return;
     }
     const data = (await response.json()) as {
@@ -351,14 +351,14 @@ export function CommunityInteractions({
 
   async function deleteComment(commentId: string) {
     if (!requireInteractionAuth()) return;
-    if (!window.confirm('Delete this comment?')) return;
+    if (!window.confirm('确定删除此评论吗？')) return;
     const response = await fetch(`/api/community/comments/${encodeURIComponent(commentId)}`, {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ mode: 'delete' }),
     });
     if (!response.ok) {
-      toast.error('Comment could not be deleted.');
+      toast.error('无法删除评论。');
       return;
     }
     const data = (await response.json()) as { deleted_count?: number };
@@ -380,13 +380,13 @@ export function CommunityInteractions({
       <section className="rounded-lg border border-border bg-card p-4" aria-labelledby="community-actions-title">
         <div className="relative flex items-center justify-between gap-3">
           <h2 id="community-actions-title" className="text-sm font-semibold">
-            Interactions
+            互动
           </h2>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="More actions"
+            aria-label="更多操作"
             aria-haspopup="menu"
             aria-expanded={isMoreOpen}
             className="h-9 w-9"
@@ -409,14 +409,14 @@ export function CommunityInteractions({
                 }}
               >
                 <Share2 className="h-4 w-4" />
-                Copy link
+                复制链接
               </button>
             </div>
           ) : null}
         </div>
         <div className="mt-4 grid gap-2">
           <ActionButton
-            label="Like"
+            label="点赞"
             count={summary.entity.reactions_count}
             active={summary.viewer.has_reacted}
             icon={<ThumbsUp className="h-4 w-4" />}
@@ -424,7 +424,7 @@ export function CommunityInteractions({
             onClick={toggleLike}
           />
           <ActionButton
-            label="Favorite"
+            label="收藏"
             count={summary.entity.favorites_count}
             active={summary.viewer.has_favorited}
             icon={<Star className="h-4 w-4" />}
@@ -432,7 +432,7 @@ export function CommunityInteractions({
             onClick={toggleFavorite}
           />
           <ActionButton
-            label="Comments"
+            label="评论"
             count={summary.entity.comments_count}
             icon={<MessageSquare className="h-4 w-4" />}
             onClick={() => {
@@ -448,21 +448,21 @@ export function CommunityInteractions({
             variant="outline"
             className="h-10 justify-start"
             onClick={copyShareLink}
-            aria-label={`Share ${pageTitle}`}
+            aria-label={`分享 ${pageTitle}`}
           >
             <Share2 className="h-4 w-4" />
-            <span>Share</span>
+            <span>分享</span>
           </Button>
         </div>
       </section>
 
       <section className="rounded-lg border border-border bg-card p-4" aria-labelledby="community-comments-title">
         <h2 id="community-comments-title" className="text-sm font-semibold">
-          Comments
+          评论
         </h2>
         <div className="mt-4 space-y-3">
           <label htmlFor="community-comment" className="text-sm font-medium">
-            Add a comment
+            添加评论
           </label>
           <Textarea
             id="community-comment"
@@ -473,10 +473,10 @@ export function CommunityInteractions({
               if (!summary.viewer.is_authenticated) {
                 toast.error(loginMessage);
               } else if (!summary.viewer.can_comment) {
-                toast.error('You cannot comment on this page.');
+                toast.error('您无法在此页面评论。');
               }
             }}
-            placeholder="Join the discussion"
+            placeholder="参与讨论"
             className="min-h-24 resize-y"
             readOnly={!summary.viewer.can_comment}
           />
@@ -490,7 +490,7 @@ export function CommunityInteractions({
             disabled={isPostingComment || (summary.viewer.is_authenticated && !summary.viewer.can_comment)}
           >
             <Send className="h-4 w-4" />
-            Post comment
+            发布评论
           </Button>
         </div>
 
@@ -505,7 +505,7 @@ export function CommunityInteractions({
             />
           ))}
           {!isLoadingComments && comments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
+            <p className="text-sm text-muted-foreground">暂无评论。</p>
           ) : null}
           {nextCursor ? (
             <Button
@@ -515,7 +515,7 @@ export function CommunityInteractions({
               onClick={() => loadComments(nextCursor)}
               disabled={isLoadingComments}
             >
-              Load more
+              加载更多
             </Button>
           ) : null}
         </div>
@@ -546,7 +546,7 @@ function ActionButton({
       className={cn('h-10 justify-between', active && 'border-primary text-primary')}
       disabled={disabled}
       onClick={onClick}
-      aria-label={`${label}: ${count}`}
+      aria-label={`${label}：${count}`}
       aria-pressed={active}
     >
       <span className="inline-flex items-center gap-2">
@@ -587,7 +587,7 @@ function CommunityCommentItem({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground"
-            aria-label="Delete comment"
+            aria-label="删除评论"
             onClick={() => onDelete(comment.id)}
           >
             <Trash2 className="h-4 w-4" />
@@ -602,12 +602,12 @@ function CommunityCommentItem({
           size="sm"
           className={cn('h-8 px-2', comment.viewer_has_reacted && 'text-primary')}
           onClick={() => onToggleReaction(comment.id)}
-          aria-label={`Like comment: ${comment.reactions_count}`}
+          aria-label={`点赞评论：${comment.reactions_count}`}
         >
           <ThumbsUp className="h-4 w-4" />
           <span className="tabular-nums">{comment.reactions_count}</span>
         </Button>
-        {comment.replies_count > 0 ? <span>{comment.replies_count} replies</span> : null}
+        {comment.replies_count > 0 ? <span>{comment.replies_count} 条回复</span> : null}
       </div>
     </article>
   );

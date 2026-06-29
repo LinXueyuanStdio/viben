@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { SectionHead } from "./section-head"
 import { PageCard } from "./page-card"
 import type { PageCardData } from "./page-card"
@@ -19,6 +20,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export function RecommendedSection({ pages }: RecommendedSectionProps) {
+  const { t } = useTranslation()
   const [shuffledPages, setShuffledPages] = useState(pages)
   const [shuffleKey, setShuffleKey] = useState(0)
 
@@ -34,12 +36,12 @@ export function RecommendedSection({ pages }: RecommendedSectionProps) {
 
   return (
     <section>
-      <SectionHead title="推荐">
+      <SectionHead title={t('community.recommended')}>
         <button
           onClick={handleRefresh}
           className="inline-flex items-center text-[14px] font-bold text-primary min-h-[36px] hover:underline"
         >
-          换一批
+          {t('community.refresh')}
         </button>
       </SectionHead>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">

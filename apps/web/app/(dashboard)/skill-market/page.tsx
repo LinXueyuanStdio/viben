@@ -11,7 +11,7 @@ import { SkillSourceTabs, type SkillSource } from '@/components/skills/skill-sou
 import { OfficialSkillGrid } from '@/components/skills/official-skill-grid';
 
 export const metadata = {
-  title: 'Skills Marketplace',
+  title: '技能市场',
 };
 
 interface SkillsPageProps {
@@ -34,14 +34,14 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
     <div className="space-y-6">
       <PageHeader
         icon={Sparkles}
-        title="Skills Marketplace"
-        subtitle="Discover and install AI agent skills and capabilities"
+        title="技能市场"
+        subtitle="发现和安装 AI 智能体技能与能力"
       >
         {session && (
           <Button variant="outline" asChild>
             <Link href="/my-packages">
               <Sparkles className="mr-2 h-4 w-4" />
-              My Skills
+              我的技能
             </Link>
           </Button>
         )}
@@ -56,7 +56,7 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
       <Suspense fallback={<div className="h-10 w-full max-w-sm animate-pulse rounded-lg bg-muted" />}>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <SearchInput
-            placeholder="Search skills..."
+            placeholder="搜索技能..."
             defaultValue={params.q}
           />
           {source === 'community' && (

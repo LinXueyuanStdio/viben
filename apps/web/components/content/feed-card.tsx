@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { Eye, MessageCircle, Bookmark, Heart, Repeat2, Share2 } from "lucide-react"
 import { toast } from "sonner"
 import { FeedHead } from "./feed-head"
@@ -33,6 +34,7 @@ interface FeedCardProps {
 }
 
 export function FeedCard({ data, variant = "preloaded", className, onAction }: FeedCardProps) {
+  const { t } = useTranslation()
   const handleShare = useCallback(() => {
     const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
     const url = window.location.href
@@ -87,7 +89,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           <StatsRow stats={actionStats} />
           <button
             className="inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
-            aria-label="分享"
+            aria-label={t("community.share")}
             onClick={handleShare}
           >
             <Share2 className="size-4" />

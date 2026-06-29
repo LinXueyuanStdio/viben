@@ -56,7 +56,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
       <div className="grid gap-[7px]">
         <div className="flex items-center gap-[7px]">
           <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
-          <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">{delta}</span>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{delta}</span>
         </div>
         <p className="text-[13px] text-muted-foreground truncate">{description}</p>
         <MetaRow author={author} />

@@ -159,7 +159,7 @@ export function UserManagement({
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by username or email..."
+            placeholder="按用户名或邮箱搜索..."
             value={searchValue}
             onChange={handleSearchChange}
             className="pl-9"
@@ -169,16 +169,16 @@ export function UserManagement({
         <div className="flex gap-2">
           <Select value={currentRole || 'all'} onValueChange={handleRoleChange}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="All roles" />
+              <SelectValue placeholder="所有角色" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-              <SelectItem value="developer">Developer</SelectItem>
-              <SelectItem value="support">Support</SelectItem>
-              <SelectItem value="moderator">Moderator</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
+              <SelectItem value="all">所有角色</SelectItem>
+              <SelectItem value="user">用户</SelectItem>
+              <SelectItem value="developer">开发者</SelectItem>
+              <SelectItem value="support">客服</SelectItem>
+              <SelectItem value="moderator">版主</SelectItem>
+              <SelectItem value="admin">管理员</SelectItem>
+              <SelectItem value="super_admin">超级管理员</SelectItem>
             </SelectContent>
           </Select>
 
@@ -187,8 +187,8 @@ export function UserManagement({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="newest">最新</SelectItem>
+              <SelectItem value="oldest">最早</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -206,12 +206,12 @@ export function UserManagement({
             onClick={fetchUsers}
             className="mt-2 text-sm text-primary hover:underline"
           >
-            Try again
+            重试
           </button>
         </div>
       ) : users.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
-          <p className="text-muted-foreground">No users found</p>
+          <p className="text-muted-foreground">未找到用户</p>
         </div>
       ) : (
         <>
@@ -227,7 +227,7 @@ export function UserManagement({
           )}
 
           <p className="text-sm text-muted-foreground">
-            Showing {users.length} of {pagination.total} users
+            显示 {users.length} / {pagination.total} 位用户
           </p>
         </>
       )}

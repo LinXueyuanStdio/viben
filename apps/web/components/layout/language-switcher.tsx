@@ -42,7 +42,7 @@ export function LanguageSwitcher() {
     return (
       <Button variant="ghost" size="icon" disabled>
         <Globe className="h-[1.2rem] w-[1.2rem]" />
-        <span className="sr-only">Select language</span>
+        <span className="sr-only">选择语言</span>
       </Button>
     );
   }
@@ -53,7 +53,7 @@ export function LanguageSwitcher() {
         <Button variant="ghost" size="icon" title={currentLanguage?.name}>
           <Globe className="h-[1.2rem] w-[1.2rem]" />
           <span className="sr-only">
-            Select language (current: {currentLanguage?.nativeName})
+            选择语言（当前：{currentLanguage?.nativeName}）
           </span>
         </Button>
       </DropdownMenuTrigger>

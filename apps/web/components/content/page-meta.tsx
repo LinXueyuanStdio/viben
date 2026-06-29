@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { ChevronRight, Eye, Bookmark, Share2, Heart, UserPlus } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Pill } from "./pill"
@@ -52,7 +53,8 @@ interface PageMetaProps {
   className?: string
 }
 
-export function PageMeta({ data, defaultExpanded = false, className }: PageMetaProps) {
+export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = false, className }: PageMetaProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { author, title, uid, sidePageUid, description, tags, stats, actions, chapters, chapterProgress, recommendations } = data
 
@@ -78,7 +80,7 @@ export function PageMeta({ data, defaultExpanded = false, className }: PageMetaP
         </div>
         <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400 shrink-0">
           <UserPlus className="size-[14px]" />
-          关注
+          {t('community.follow')}
         </Button>
       </div>
 
@@ -137,7 +139,7 @@ export function PageMeta({ data, defaultExpanded = false, className }: PageMetaP
       {chapters && chapters.length > 0 && (
         <div className="grid gap-2 pt-0.5">
           <SectionHead
-            title="合集"
+            title={t('community.collections')}
             actionLabel={chapterProgress ? `${chapterProgress.current} / ${chapterProgress.total}` : undefined}
             actionHref={undefined}
           />
@@ -162,7 +164,7 @@ export function PageMeta({ data, defaultExpanded = false, className }: PageMetaP
       {/* Recommendations */}
       {recommendations && recommendations.length > 0 && (
         <div className="grid gap-2">
-          <SectionHead title="推荐" />
+          <SectionHead title={t('community.recommended')} />
           <div className="grid gap-2">
             {recommendations.map((rec, i) => (
               <MiniPageCard key={i} data={rec} href={`/read/${rec.authorName}/${i}`} />
@@ -172,4 +174,4 @@ export function PageMeta({ data, defaultExpanded = false, className }: PageMetaP
       )}
     </div>
   )
-}
+})

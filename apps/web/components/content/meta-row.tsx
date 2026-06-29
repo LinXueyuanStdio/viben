@@ -24,7 +24,7 @@ function MetaAuthor({ fallbackText, avatarUrl, name, className }: MetaAuthorProp
 
 // 3px dot separator
 function Dot() {
-  return <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] shrink-0" />
+  return <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
 }
 
 interface MetaRowProps {

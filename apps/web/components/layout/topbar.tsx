@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslation } from "react-i18next"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight } from "lucide-react"
 import { toast } from "sonner"
@@ -35,6 +36,7 @@ export function Topbar({
   hotSearches = [],
   recentSearches = [],
 }: TopbarProps) {
+  const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -92,7 +94,7 @@ export function Topbar({
         {/* ===== Left ===== */}
         <div className="flex items-center gap-2 min-w-0">
           {/* 侧边栏切换按钮 */}
-          <IconButton size="compact" label="切换侧边栏" onClick={onToggleSidebar}>
+          <IconButton size="compact" label={t("community.toggleSidebar")} onClick={onToggleSidebar}>
             <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M3 4h12M3 9h12M3 14h12" />
             </svg>
@@ -133,10 +135,10 @@ export function Topbar({
           {isRead ? (
             <>
               {/* 阅读模式操作 */}
-              <IconButton size="default" label="展开详情侧栏" onClick={toggleDrawer}>
+              <IconButton size="default" label={t("community.expandDetails")} onClick={toggleDrawer}>
                 <PanelRight className="h-[18px] w-[18px]" />
               </IconButton>
-              <IconButton size="default" label="沉浸式阅读" onClick={() => setImmersive(true)}>
+              <IconButton size="default" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
                 <Maximize2 className="h-[18px] w-[18px]" />
               </IconButton>
               <ReadMoreMenu />
@@ -150,16 +152,16 @@ export function Topbar({
                 <>
                   <NavPopover
                     icon={Bell}
-                    label="通知"
+                    label={t("community.notifications")}
                     badge={2}
-                    title="动态"
+                    title={t("community.feed")}
                     items={notificationItems}
                     moreLabel="加载更多动态"
                   />
                   <NavPopover
                     icon={Clock}
-                    label="浏览历史"
-                    title="最近阅读"
+                    label={t("community.history")}
+                    title={t("community.history")}
                     items={historyItems}
                     moreLabel="查看全部历史"
                   />
@@ -177,6 +179,7 @@ export function Topbar({
 }
 
 function ReadMoreMenu() {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -185,19 +188,19 @@ function ReadMoreMenu() {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <IconButton size="default" label="更多操作">
+      <IconButton size="default" label={t("community.moreActions")}>
         <MoreHorizontal className="h-[18px] w-[18px]" />
       </IconButton>
       {open && (
         <div className="absolute top-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
           <button
-            onClick={() => toast.info("举报功能即将上线")}
+            onClick={() => toast.info(t("community.reportFeatureSoon"))}
             className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
             <Flag className="h-4 w-4" /> 举报
           </button>
           <button
-            onClick={() => toast.info("反馈功能即将上线")}
+            onClick={() => toast.info(t("community.feedbackFeatureSoon"))}
             className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
             <MessageSquare className="h-4 w-4" /> 反馈

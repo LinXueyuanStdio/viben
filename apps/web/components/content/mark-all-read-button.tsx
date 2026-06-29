@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { CheckCheck } from "lucide-react"
 import { toast } from "sonner"
 
 export function MarkAllReadButton() {
+  const { t } = useTranslation()
   const [clicked, setClicked] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +38,7 @@ export function MarkAllReadButton() {
       disabled={clicked || loading}
     >
       <CheckCheck className="size-3.5" />
-      {clicked ? "已标记" : "全部已读"}
+      {clicked ? t("community.marked") : t("community.markAllRead")}
     </Button>
   )
 }

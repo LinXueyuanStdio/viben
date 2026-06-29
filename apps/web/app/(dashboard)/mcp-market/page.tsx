@@ -8,7 +8,7 @@ import { SourceTabs, type McpSource } from '@/components/mcp/source-tabs';
 import { OfficialServerGrid } from '@/components/mcp/official-server-grid';
 
 export const metadata = {
-  title: 'MCP Marketplace',
+  title: 'MCP 市场',
 };
 
 interface McpPageProps {

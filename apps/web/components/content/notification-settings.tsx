@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 
 export function NotificationSettings() {
+  const { t } = useTranslation()
   const [settings, setSettings] = useState({
     pageUpdate: true,
     commentReply: true,
@@ -31,7 +33,7 @@ export function NotificationSettings() {
 
   return (
     <div className="rounded-[10px] border border-border p-2.5 grid gap-2">
-      <div className="font-bold text-sm">通知设置</div>
+      <div className="font-bold text-sm">{t('community.notificationSettings')}</div>
       <label className="flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
         <input
           type="checkbox"
@@ -39,7 +41,7 @@ export function NotificationSettings() {
           onChange={() => toggle("pageUpdate")}
           className="rounded"
         />
-        页面更新
+        {t('community.pageUpdates')}
       </label>
       <label className="flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
         <input
@@ -48,7 +50,7 @@ export function NotificationSettings() {
           onChange={() => toggle("commentReply")}
           className="rounded"
         />
-        评论回复
+        {t('community.commentReplies')}
       </label>
     </div>
   )

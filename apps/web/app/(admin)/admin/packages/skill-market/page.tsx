@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Skills Queue',
+  title: '技能队列',
 };
 
 interface SkillsQueuePageProps {
@@ -40,10 +40,10 @@ export default async function SkillsQueuePage({ searchParams }: SkillsQueuePageP
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="font-serif text-2xl font-bold">Skills Queue</h1>
+            <h1 className="font-serif text-2xl font-bold">技能队列</h1>
           </div>
           <p className="text-muted-foreground ml-10">
-            Review skills awaiting moderation
+            审核等待审核的技能
           </p>
         </div>
         <PackageFilters status={currentStatus} sort={currentSort} />

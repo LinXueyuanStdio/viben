@@ -76,7 +76,7 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
         const label = seg.config.titleKey ? t(seg.config.titleKey) : seg.config.label
         return (
           <React.Fragment key={seg.href}>
-            <ChevronRight className="h-4 w-4 text-[#93b4bf] shrink-0" />
+            <ChevronRight className="h-4 w-4 text-[#93b4bf] dark:text-muted-foreground shrink-0" />
             <BreadcrumbSegment
               href={seg.href}
               label={label}
