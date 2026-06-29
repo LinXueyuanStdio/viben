@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Send, Heart, MessageCircle, ChevronDown, User } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -327,6 +327,18 @@ export function ReadPageClient({
   const searchParams = useSearchParams()
   const isDrawerOpen = searchParams.get("drawer") === "open"
 
+  // 参考 index.html: updateReaderHeaderSafe() — 动态测量 topbar 高度
+  React.useEffect(() => {
+    const measure = () => {
+      const topbar = document.querySelector("header")
+      const h = topbar ? Math.ceil(topbar.getBoundingClientRect().height) : 0
+      document.documentElement.style.setProperty("--reader-header-safe", `${h}px`)
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
+
   const chapters =
     Array.isArray(pageChaptersJson) && pageChaptersJson.length > 0
       ? (pageChaptersJson as { number: number; title: string }[])
@@ -409,17 +421,31 @@ export function ReadPageClient({
         />
       )}
 
+      {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
       <div style={{ marginLeft: "calc(-50vw + 50%)", marginRight: "calc(-50vw + 50%)" }}>
         <div
-          className="w-full bg-background"
-          style={{ minHeight: "calc(100vh - var(--nav-h, 56px))" }}
+          className="w-full bg-white dark:bg-[#0a0a0a] overflow-x-hidden"
+          style={{
+            height: "100vh",
+            paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
+            transition: "padding-top 180ms ease",
+          }}
         >
           <iframe
             title={pageTitle}
             srcDoc={pageHtml}
+            onLoad={() => {
+              // 参考 index.html: attachIframeScrollSignal — iframe 加载后重测 topbar
+              const topbar = document.querySelector("header")
+              const h = topbar ? Math.ceil(topbar.getBoundingClientRect().height) : 0
+              document.documentElement.style.setProperty("--reader-header-safe", `${h}px`)
+            }}
             sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
             className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
-            style={{ height: "calc(100vh - var(--nav-h, 56px))" }}
+            style={{
+              height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+              minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+            }}
           />
         </div>
       </div>

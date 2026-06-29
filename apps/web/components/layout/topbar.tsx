@@ -56,6 +56,11 @@ export function Topbar({
     router.replace(qs ? `?${qs}` : pathname, { scroll: false })
   }, [searchParams, router, pathname])
 
+  // 沉浸模式：同步更新 --reader-header-safe（参考 index.html: body.immersive-read .read-viewport { padding-top: 0 }）
+  React.useEffect(() => {
+    document.documentElement.style.setProperty("--reader-header-safe", immersive ? "0px" : "")
+  }, [immersive])
+
   // Escape 键退出沉浸模式
   React.useEffect(() => {
     if (!immersive) return
