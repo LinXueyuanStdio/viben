@@ -1718,6 +1718,13 @@ export async function listRanking(params: {
       tags: page.tags,
       published_at: page.publishedAt.toISOString(),
       last_published_at: page.lastPublishedAt.toISOString(),
+      delta: item.delta,
+      score_label: item.scoreLabel,
+      view_count: item.viewCount,
+      like_count: item.likeCount,
+      comment_count: item.commentCount,
+      author_name: item.authorName,
+      author_avatar_url: item.authorAvatarUrl,
       stats: {
         view_count: page.viewCount,
         read_count: page.readCount,

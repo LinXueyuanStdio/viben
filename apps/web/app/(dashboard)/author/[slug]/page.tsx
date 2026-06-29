@@ -1,30 +1,134 @@
 import { ProfileHero } from "@/components/content/profile-hero"
 import { PageCard } from "@/components/content/page-card"
-import { NotificationItem } from "@/components/content/notification-item"
-import { HistoryItem } from "@/components/content/history-item"
+import { FeedCard } from "@/components/content/feed-card"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { SectionHead } from "@/components/content/section-head"
-import { mockCategoryPages } from "@/lib/mock/pages"
-import { mockHistoryItems } from "@/lib/mock/history"
-import { mockNotifications } from "@/lib/mock/notifications"
+import { db, publishedPages, users, moments } from "@/lib/db"
+import { eq, desc, and, count } from "drizzle-orm"
+import { getSession } from "@/lib/auth/cookies"
+import { notFound } from "next/navigation"
+import type { PageCardData } from "@/components/content/page-card"
+import type { ProfileHeroData } from "@/components/content/profile-hero"
+import type { FeedCardData } from "@/components/content/feed-card"
+import type { FeedKind } from "@/components/content/feed-head"
 
 const AUTHOR_TABS = ["页面", "动态", "合集", "关于"]
 
-const mockProfile = {
-  fallbackText: "李",
-  name: "李明",
-  handle: "@liming",
-  tagline: "NLP 研究员 · 前腾讯 AI Lab",
-  stats: {
-    followers: 12800,
-    pages: 47,
-    mutualFollows: 3,
-  },
+function gradientCover(title: string): string {
+  const hue = title.charCodeAt(0) % 360
+  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
+}
+
+function timeAgo(date: Date | string | null | undefined): string {
+  if (!date) return ""
+  const d = new Date(date)
+  const diff = Date.now() - d.getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "刚刚"
+  if (mins < 60) return `${mins}分钟前`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}天前`
+  if (days < 30) return `${Math.floor(days / 7)}周前`
+  if (days < 365) return `${Math.floor(days / 30)}个月前`
+  return `${Math.floor(days / 365)}年前`
+}
+
+const FEED_KIND_MAP: Record<string, FeedKind> = {
+  post: "发布",
+  page_update: "更新",
+  repost: "转发",
+  system: "更新",
 }
 
 export default async function AuthorPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const profile = { ...mockProfile, name: slug === "liming" ? "李明" : "作者", fallbackText: slug[0]?.toUpperCase() ?? "?" }
+  const session = await getSession()
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.userSlug, slug),
+  })
+
+  if (!user) notFound()
+
+  const [authorPages, authorMoments, pageCountResult] = await Promise.all([
+    db.select().from(publishedPages)
+      .where(and(
+        eq(publishedPages.userId, user.id),
+        eq(publishedPages.visibility, "public"),
+        eq(publishedPages.moderationStatus, "approved")
+      ))
+      .orderBy(desc(publishedPages.lastPublishedAt))
+      .limit(20),
+    db.select().from(moments)
+      .where(and(
+        eq(moments.authorUserId, user.id),
+        eq(moments.visibility, "public"),
+        eq(moments.isDeleted, false)
+      ))
+      .orderBy(desc(moments.createdAt))
+      .limit(10),
+    db.select({ count: count() }).from(publishedPages)
+      .where(and(
+        eq(publishedPages.userId, user.id),
+        eq(publishedPages.visibility, "public"),
+        eq(publishedPages.moderationStatus, "approved")
+      )),
+  ])
+
+  const profile: ProfileHeroData = {
+    fallbackText: user.displayName?.[0] ?? "?",
+    avatarUrl: user.avatarUrl ?? undefined,
+    name: user.displayName,
+    handle: `@${user.userSlug}`,
+    tagline: user.bio ?? "",
+    stats: {
+      followers: user.followersCount,
+      pages: pageCountResult[0]?.count ?? 0,
+    },
+  }
+
+  const pageCards: PageCardData[] = authorPages.map((p) => ({
+    cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
+    title: p.title,
+    description: p.description ?? undefined,
+    author: {
+      name: p.authorName ?? user.displayName,
+      fallbackText: p.authorName?.[0] ?? user.displayName?.[0] ?? "?",
+      avatarUrl: p.authorAvatarUrl ?? user.avatarUrl ?? undefined,
+    },
+    timeAgo: timeAgo(p.lastPublishedAt),
+    stats: {
+      views: p.viewCount,
+      likes: p.likeCount,
+      comments: p.commentCount,
+      bookmarks: p.favoriteCount,
+    },
+  }))
+
+  const feedCards: FeedCardData[] = authorMoments.map((m) => ({
+    head: {
+      fallbackText: user.displayName?.[0] ?? "?",
+      avatarUrl: user.avatarUrl ?? undefined,
+      name: user.displayName,
+      handle: `@${user.userSlug}`,
+      kind: FEED_KIND_MAP[m.kind] ?? "发布",
+      timeAgo: timeAgo(m.createdAt),
+      source: m.source ?? undefined,
+    },
+    text: m.body ?? "",
+    quote: m.quoteText ?? undefined,
+    actions: {
+      views: m.viewCount ?? 0,
+      likes: m.likeCount,
+      comments: m.commentCount,
+      reposts: m.repostCount,
+      bookmarks: m.bookmarkCount ?? 0,
+    },
+  }))
+
+  const unusedSession = session // 预备后续交互功能使用
 
   return (
     <div className="grid gap-4">
@@ -38,35 +142,41 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
         <VibenTabsContent value="页面" className="mt-3">
           <SectionHead title="公开页面" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {mockCategoryPages.slice(0, 3).map((page, i) => (
-              <PageCard key={i} data={page} variant="default" href={`/read/${page.author.name}/${i}`} />
-            ))}
-          </div>
+          {pageCards.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">暂无公开页面</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {pageCards.map((page, i) => (
+                <PageCard key={i} data={page} variant="default" href={`/read/${encodeURIComponent(user.userSlug)}/${i}`} />
+              ))}
+            </div>
+          )}
         </VibenTabsContent>
 
         <VibenTabsContent value="动态" className="mt-3">
-          <div className="grid gap-2">
-            {mockNotifications.slice(0, 2).map((item, i) => (
-              <NotificationItem key={i} data={item} />
-            ))}
-          </div>
+          {feedCards.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">暂无动态</p>
+          ) : (
+            <div className="grid gap-2">
+              {feedCards.map((feed, i) => (
+                <FeedCard key={i} data={feed} variant="rich" />
+              ))}
+            </div>
+          )}
         </VibenTabsContent>
 
         <VibenTabsContent value="合集" className="mt-3">
           <SectionHead title="合集" />
-          <div className="grid gap-2">
-            {mockHistoryItems.slice(0, 1).map((item, i) => (
-              <HistoryItem key={i} data={item} href={`/read/${item.author}/${i}`} />
-            ))}
-            <p className="text-[13px] text-muted-foreground py-4 text-center">更多合集开发中...</p>
-          </div>
+          <p className="py-8 text-center text-sm text-muted-foreground">更多合集开发中...</p>
         </VibenTabsContent>
 
         <VibenTabsContent value="关于" className="mt-3">
           <div className="max-w-[760px] text-sm text-muted-foreground leading-relaxed space-y-3">
-            <p>NLP 研究员，专注于大规模语言模型的可解释性与对齐研究。曾在腾讯 AI Lab 从事自然语言处理相关工作。</p>
-            <p>这里记录了我的研究笔记、论文解读和工程实践。希望通过这些内容帮助更多人理解深度学习与自然语言处理的前沿技术。</p>
+            {user.bio ? (
+              <p>{user.bio}</p>
+            ) : (
+              <p>这位作者还没有填写简介。</p>
+            )}
           </div>
         </VibenTabsContent>
       </VibenTabs>
