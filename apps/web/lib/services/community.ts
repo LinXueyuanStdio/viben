@@ -824,6 +824,11 @@ export async function getBrowseHistory(session: Session, limit: number) {
       last_viewed_at: history.lastViewedAt.toISOString(),
       view_count: history.viewCount,
       last_source: history.lastSource,
+      cover_url: page.coverUrl ?? null,
+      author_name: page.authorName ?? author.displayName ?? null,
+      author_slug: author.userSlug,
+      author_avatar_url: author.avatarUrl ?? null,
+      last_progress: history.lastProgress ?? null,
     })),
   };
 }
@@ -1373,6 +1378,10 @@ export async function listNotifications(
       created_at: notification.createdAt.toISOString(),
       published_page_id: notification.publishedPageId,
       page_update_event_id: notification.pageUpdateEventId,
+      actor_name: notification.actorName ?? null,
+      actor_avatar_url: notification.actorAvatarUrl ?? null,
+      page_uid: notification.pageUid ?? null,
+      page_author_slug: notification.pageAuthorSlug ?? null,
     })),
     next_cursor: cursorSource
       ? encodeCursor({
@@ -1561,6 +1570,10 @@ export async function listMoments(params: {
         comment_count: moment.commentCount,
         repost_count: moment.repostCount,
         created_at: moment.createdAt.toISOString(),
+        source: moment.source,
+        quote_text: moment.quoteText,
+        view_count: moment.viewCount,
+        bookmark_count: moment.bookmarkCount,
       },
       author: {
         id: author.id,
@@ -1577,6 +1590,9 @@ export async function listMoments(params: {
           title: attachment.titleSnapshot,
           description: attachment.descriptionSnapshot,
           cover_url: attachment.coverUrlSnapshot,
+          author_name_snapshot: attachment.authorNameSnapshot,
+          view_count_snapshot: attachment.viewCountSnapshot,
+          comment_count_snapshot: attachment.commentCountSnapshot,
         })),
       topics: [],
       viewer_state: {
