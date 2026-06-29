@@ -55,32 +55,34 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
     return () => { document.body.style.overflow = "" }
   }, [open])
 
+  if (!open) return null
+
   return (
     <>
-      {/* 遮罩层 */}
+      {/* 遮罩层 — 在 topbar 下方 */}
       <div
-        className={cn(
-          "fixed inset-0 z-80 transition-colors duration-180",
-          open
-            ? "pointer-events-auto bg-black/15 dark:bg-black/30"
-            : "pointer-events-none bg-transparent"
-        )}
+        className="fixed inset-0 z-30 bg-black/15 dark:bg-black/30"
+        style={{ top: "var(--nav-h, 56px)" }}
         onClick={() => setOpen(false)}
         aria-hidden="true"
       />
 
-      {/* 抽屉 */}
+      {/* 抽屉 — 在 topbar 下方，参考左侧滑栏的简洁实现 */}
       <div
         className={cn(
-          "fixed top-0 right-0 z-90 h-screen",
+          "fixed right-0 z-30",
           "w-[min(420px,calc(100vw-22px))]",
           "grid grid-rows-[auto_1fr]",
           "border-l border-border",
-          "bg-background/96 backdrop-blur-[16px]",
+          "bg-background",
           "shadow-[-18px_0_36px_rgba(8,91,117,0.14)] dark:shadow-[-18px_0_36px_rgba(0,0,0,0.3)]",
           "transition-transform duration-[220ms] ease-out",
           open ? "translate-x-0" : "translate-x-[104%]"
         )}
+        style={{
+          top: "var(--nav-h, 56px)",
+          height: "calc(100vh - var(--nav-h, 56px))",
+        }}
       >
         {/* 头部 */}
         <div className="flex items-center justify-between gap-2.5 h-[58px] px-3 border-b border-border">
