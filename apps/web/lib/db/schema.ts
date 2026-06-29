@@ -1690,3 +1690,23 @@ export const publishedPageRecordsRelations = relations(
     }),
   })
 );
+
+// ============================================
+// Search Query Logging
+// ============================================
+
+export const searchQueries = pgTable(
+  "search_queries",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    query: text("query").notNull(),
+    resultCount: integer("result_count").default(0),
+    searchedAt: timestamp("searched_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("search_queries_query_idx").on(table.query),
+    index("search_queries_searched_at_idx").on(table.searchedAt),
+    index("search_queries_user_id_idx").on(table.userId),
+  ]
+);

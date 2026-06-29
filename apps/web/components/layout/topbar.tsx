@@ -16,39 +16,24 @@ import { ThemeToggle } from "./theme-toggle"
 import { LanguageSwitcher } from "./language-switcher"
 import type { Session } from "@/lib/auth/types"
 
-// Mock 数据 — 后续接入 API
-const mockNotifications = [
-  { title: "宁舟 发布了 插件发布清单", subtitle: "6 分钟前 · 28 评论", href: "#", thumb: "" },
-  { title: "周一诺 收藏了你的页面", subtitle: "22 分钟前", href: "#", thumb: "" },
-  { title: "林越 评论了 幽蓝塔纪事", subtitle: "1 小时前", href: "#", thumb: "" },
-  { title: "Viben 团队 v1.3.3 版本发布", subtitle: "3 小时前", href: "#", thumb: "" },
-]
-
-const mockHistory = [
-  { title: "幽蓝塔纪事", subtitle: "读到 68% · 第 2 章 · 昨天", href: "#", thumb: "" },
-  { title: "MCP 开发指南", subtitle: "读到 32% · 第 1 章 · 2 天前", href: "#", thumb: "" },
-  { title: "论文写作助手", subtitle: "已读完 · 3 天前 · 来自 榜单", href: "#", thumb: "" },
-]
-
-const mockHotSearches = [
-  { query: "插件发布清单", count: 12345 },
-  { query: "MCP 开发指南", count: 8920 },
-  { query: "Viben 入门教程", count: 6543 },
-  { query: "ClawHub 云开发", count: 5210 },
-  { query: "AI 工作流设计", count: 4876 },
-  { query: "页面发布教程", count: 3421 },
-  { query: "自动化部署指南", count: 2980 },
-  { query: "多智能体协同", count: 2450 },
-]
-
-const mockRecentSearches = ["插件发布清单", "viben教程"]
-
 interface TopbarProps {
   session: Session | null
   onToggleSidebar: () => void
+  // NavPopover + GlobalSearch 数据
+  notificationItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
+  historyItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
+  hotSearches?: Array<{ query: string; count: number }>
+  recentSearches?: string[]
 }
 
-export function Topbar({ session, onToggleSidebar }: TopbarProps) {
+export function Topbar({
+  session,
+  onToggleSidebar,
+  notificationItems = [],
+  historyItems = [],
+  hotSearches = [],
+  recentSearches = [],
+}: TopbarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -148,8 +133,8 @@ export function Topbar({ session, onToggleSidebar }: TopbarProps) {
             </div>
           ) : (
             <GlobalSearch
-              recentSearches={mockRecentSearches}
-              hotSearches={mockHotSearches}
+              recentSearches={recentSearches}
+              hotSearches={hotSearches}
             />
           )}
         </div>
@@ -179,14 +164,14 @@ export function Topbar({ session, onToggleSidebar }: TopbarProps) {
                     label="通知"
                     badge={2}
                     title="动态"
-                    items={mockNotifications}
+                    items={notificationItems}
                     moreLabel="加载更多动态"
                   />
                   <NavPopover
                     icon={Clock}
                     label="浏览历史"
                     title="最近阅读"
-                    items={mockHistory}
+                    items={historyItems}
                     moreLabel="查看全部历史"
                   />
                   <UserMenu session={session} />

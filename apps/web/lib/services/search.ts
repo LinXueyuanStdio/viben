@@ -1,0 +1,102 @@
+import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm"
+import { db, publishedPages, searchQueries, users } from "@/lib/db"
+
+/** Log a search query */
+export async function logSearchQuery(
+  userId: string | null,
+  query: string,
+  resultCount: number = 0
+) {
+  if (!query.trim()) return
+  await db.insert(searchQueries).values({
+    userId,
+    query: query.trim(),
+    resultCount,
+    searchedAt: new Date(),
+  })
+}
+
+/** Get hot searches — aggregated from recent search_queries */
+export async function getHotSearches(limit: number = 8) {
+  const rows = await db
+    .select({
+      query: searchQueries.query,
+      count: count(searchQueries.id).as("count"),
+    })
+    .from(searchQueries)
+    .where(
+      sql`${searchQueries.searchedAt} > now() - interval '7 days'`
+    )
+    .groupBy(searchQueries.query)
+    .orderBy(desc(count(searchQueries.id)))
+    .limit(limit)
+  return rows.map((r) => ({ query: r.query, count: Number(r.count) }))
+}
+
+/** Get recent searches for a user */
+export async function getRecentSearches(userId: string | null, limit: number = 5) {
+  if (!userId) return []
+  const rows = await db
+    .selectDistinct({ query: searchQueries.query })
+    .from(searchQueries)
+    .where(eq(searchQueries.userId, userId))
+    .orderBy(desc(searchQueries.searchedAt))
+    .limit(limit)
+  return rows.map((r) => r.query)
+}
+
+/** Full-text search across published pages */
+export async function searchPages(query: string) {
+  if (!query.trim()) return []
+  const pattern = `%${query.trim()}%`
+  const rows = await db
+    .select({
+      id: publishedPages.id,
+      uid: publishedPages.uid,
+      title: publishedPages.title,
+      description: publishedPages.description,
+      authorName: publishedPages.authorName,
+      authorAvatarUrl: publishedPages.authorAvatarUrl,
+      coverUrl: publishedPages.coverUrl,
+      viewCount: publishedPages.viewCount,
+      likeCount: publishedPages.likeCount,
+      commentCount: publishedPages.commentCount,
+      favoriteCount: publishedPages.favoriteCount,
+      lastPublishedAt: publishedPages.lastPublishedAt,
+      userId: publishedPages.userId,
+    })
+    .from(publishedPages)
+    .where(and(
+      eq(publishedPages.visibility, "public"),
+      eq(publishedPages.moderationStatus, "approved"),
+      or(
+        ilike(publishedPages.title, pattern),
+        ilike(publishedPages.description, pattern),
+        ilike(publishedPages.authorName, pattern)
+      )
+    ))
+    .orderBy(desc(publishedPages.viewCount))
+    .limit(50)
+  return rows
+}
+
+/** Get search filter counts */
+export async function getSearchFilterCounts(query: string) {
+  if (!query.trim()) return []
+  const pattern = `%${query.trim()}%`
+  const pageCount = await db
+    .select({ count: count(publishedPages.id) })
+    .from(publishedPages)
+    .where(and(
+      eq(publishedPages.visibility, "public"),
+      eq(publishedPages.moderationStatus, "approved"),
+      or(
+        ilike(publishedPages.title, pattern),
+        ilike(publishedPages.description, pattern)
+      )
+    ))
+  return [
+    { label: "全部结果", count: Number(pageCount[0]?.count ?? 0), value: "" },
+    { label: "页面", count: Number(pageCount[0]?.count ?? 0), value: "page" },
+  ]
+}
