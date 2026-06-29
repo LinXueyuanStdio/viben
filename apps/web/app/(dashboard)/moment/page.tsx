@@ -148,7 +148,7 @@ export default async function MomentPage() {
       <aside className="grid gap-2 content-start">
         <SectionHead title={<T tKey="community.worthFollowing" fallback="值得关注" />} />
         {authorCards.map((author, i) => (
-          <AuthorCard key={i} data={author} />
+          <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
         ))}
       </aside>
     </div>

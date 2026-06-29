@@ -146,7 +146,7 @@ export default async function NotificationsPage() {
         <NotificationSettings />
         <SectionHead title="订阅作者" />
         {authorCards.map((author, i) => (
-          <AuthorCard key={i} data={author} />
+          <AuthorCard key={i} data={author} currentUserSlug={session.userSlug} />
         ))}
       </aside>
     </div>

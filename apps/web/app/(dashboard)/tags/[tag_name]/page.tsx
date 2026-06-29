@@ -141,7 +141,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
         )}
         <SectionHead title="推荐作者" />
         {authorCards.map((author, i) => (
-          <AuthorCard key={i} data={author} />
+          <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
         ))}
       </aside>
     </div>

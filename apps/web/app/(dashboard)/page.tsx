@@ -213,7 +213,7 @@ export default async function HomePage() {
           <SectionHead title="推荐关注" actionLabel={<T tKey="community.viewAll" fallback="查看全部" />} actionHref="/search" />
           <div className="grid gap-2">
             {authorCards.map((author, i) => (
-              <AuthorCard key={i} data={author} />
+              <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
             ))}
           </div>
         </section>

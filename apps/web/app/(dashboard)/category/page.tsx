@@ -137,7 +137,7 @@ export default async function CategoryPage() {
         <aside className="grid gap-2 content-start">
           <SectionHead title="相关作者" />
           {authorCards.map((author, i) => (
-            <AuthorCard key={i} data={author} />
+            <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
           ))}
         </aside>
       </div>
@@ -171,7 +171,7 @@ export default async function CategoryPage() {
       <aside className="grid gap-2 content-start">
         <SectionHead title="相关作者" />
         {authorCards.map((author, i) => (
-          <AuthorCard key={i} data={author} />
+          <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
         ))}
       </aside>
     </div>
