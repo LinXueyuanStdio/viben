@@ -567,7 +567,7 @@ jobs:
       # Note: DMG bundling is flaky in CI, using retryAttempts to handle intermittent failures
       - name: Build Tauri app (macOS ARM64)
         if: matrix.platform == 'macos-latest'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -582,7 +582,7 @@ jobs:
 
       - name: Build Tauri app (macOS x64)
         if: matrix.platform == 'macos-latest'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -598,7 +598,7 @@ jobs:
       # Windows: Build single target
       - name: Build Tauri app (Windows)
         if: matrix.platform == 'windows-latest'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -613,7 +613,7 @@ jobs:
       # Linux: Build only deb (AppImage is unreliable in CI)
       - name: Build Tauri app (Linux)
         if: matrix.platform == 'ubuntu-22.04'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
