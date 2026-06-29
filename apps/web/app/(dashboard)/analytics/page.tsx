@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, skillPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql, inArray } from 'drizzle-orm';

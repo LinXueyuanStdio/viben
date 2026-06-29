@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, skillPackages } from '@/lib/db';

@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { ProfileSettingsForm } from '@/components/profile/profile-settings-form';
 import { ProfileSettingsHeader } from '@/components/profile/profile-settings-header';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfileSettingsPage() {
   const session = await getSession();
 

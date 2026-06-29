@@ -4,6 +4,8 @@ import { db, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { ProfileHeader } from '@/components/profile/profile-header';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfilePage() {
   const session = await getSession();
 

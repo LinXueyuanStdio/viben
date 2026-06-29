@@ -9,6 +9,8 @@ import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import type { HistoryItemData, HistorySource } from "@/components/content/history-item"
 
+export const dynamic = "force-dynamic"
+
 const HISTORY_TABS = ["全部", "未读完", "今天"]
 
 const SOURCE_MAP: Record<string, HistorySource> = {

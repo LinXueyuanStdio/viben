@@ -8,6 +8,8 @@ import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import { db, users } from "@/lib/db"
 import { desc } from "drizzle-orm"
+
+export const dynamic = "force-dynamic"
 import { CheckCheck, FileText, MessageCircle, UserPlus, Bell } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { NotificationItemData } from "@/components/content/notification-item"

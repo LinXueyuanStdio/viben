@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 import { getSession } from '@/lib/auth';
 import { ProfilePackages } from '@/components/profile/profile-packages';
 

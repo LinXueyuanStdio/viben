@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { PublishWizard } from '@/components/publish/publish-wizard';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PublishPage() {
   const session = await getSession();
 
