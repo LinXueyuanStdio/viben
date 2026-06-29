@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useTranslation } from "react-i18next"
 import { ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { IconButton } from "@/components/ui/icon-button"
@@ -20,6 +21,7 @@ interface ReadDrawerProps {
 }
 
 export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const open = searchParams.get("drawer") === "open"
@@ -103,7 +105,7 @@ export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
             </VibenTabsList>
           </VibenTabs>
 
-          <IconButton size="compact" label="关闭抽屉" onClick={() => setOpen(false)}>
+          <IconButton size="compact" label={t("community.closeDrawer")} onClick={() => setOpen(false)}>
             <ArrowRight className="h-[18px] w-[18px]" />
           </IconButton>
         </div>

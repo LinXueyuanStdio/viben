@@ -38,12 +38,12 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? "发布失败")
+        throw new Error(data.error ?? t("community.publishFailed"))
       }
-      toast.success("发布成功")
+      toast.success(t("community.publishSuccess"))
       setText("")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "发布失败")
+      toast.error(err instanceof Error ? err.message : t("community.publishFailed"))
     } finally {
       setSubmitting(false)
     }
@@ -71,7 +71,7 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
             type="button"
             onClick={() => toast.info(t("community.linkFeatureSoon"))}
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
-            aria-label="添加链接"
+            aria-label={t("community.addLink")}
           >
             <LinkIcon className="size-4" />
           </button>
@@ -79,14 +79,14 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
             type="button"
             onClick={() => toast.info(t("community.imageFeatureSoon"))}
             className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
-            aria-label="添加图片"
+            aria-label={t("community.addImage")}
           >
             <ImageIcon className="size-4" />
           </button>
         </div>
         <Button onClick={handleSubmit} disabled={!text.trim() || submitting} size="sm" className="gap-1.5 min-h-[38px]">
           <Send className="size-3.5" />
-          {submitting ? "发布中..." : t("community.published")}
+          {submitting ? t("community.publishing") : t("community.published")}
         </Button>
       </div>
     </div>

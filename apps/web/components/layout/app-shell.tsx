@@ -2,8 +2,10 @@
 
 import * as React from "react"
 import { createContext, useContext } from "react"
+import { usePathname } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
+import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
 // ===== AppShell Context =====
@@ -44,6 +46,9 @@ export function AppShell({
   hotSearches = [],
   recentSearches = [],
 }: AppShellProps) {
+  const pathname = usePathname()
+  const isRead = pathname.startsWith("/read/")
+
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("viben-sidebar-collapsed") === "true"
@@ -74,13 +79,15 @@ export function AppShell({
           recentSearches={recentSearches}
         />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            session={session}
-            pendingPackagesCount={adminStats?.pendingPackagesCount}
-          />
-          <main className="flex-1 overflow-y-auto">
-            <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
+          {!isRead && (
+            <Sidebar
+              collapsed={sidebarCollapsed}
+              session={session}
+              pendingPackagesCount={adminStats?.pendingPackagesCount}
+            />
+          )}
+          <main className={cn("flex-1", isRead ? "overflow-hidden" : "overflow-y-auto")}>
+            <div className={cn(isRead ? "p-0 max-w-none" : "w-[min(1280px,100%)] mx-auto px-4 py-4")}>
               {children}
             </div>
           </main>

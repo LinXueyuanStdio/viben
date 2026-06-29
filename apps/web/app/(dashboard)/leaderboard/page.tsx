@@ -2,6 +2,7 @@ import { RankItem } from "@/components/content/rank-item"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { listRanking } from "@/lib/services/community"
+import { EmptyState } from "@/components/content/i18n-text"
 import type { RankItemData } from "@/components/content/rank-item"
 
 const RANK_TABS = [
@@ -62,7 +63,7 @@ export default async function LeaderboardPage() {
         {RANK_TABS.map((tab) => (
           <VibenTabsContent key={tab.key} value={tab.key} className="mt-2">
             {tabData[tab.key]?.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">暂无排行数据</p>
+              <EmptyState tKey="community.noRankingData" fallback="暂无排行数据" />
             ) : (
               <div className="grid gap-2">
                 {tabData[tab.key]?.map((item, i) => (

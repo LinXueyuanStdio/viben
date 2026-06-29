@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { useTranslation } from "react-i18next"
 import { Search, X, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover"
@@ -18,6 +19,7 @@ export function GlobalSearch({
   onRemoveRecent,
   hotSearches = [],
 }: GlobalSearchProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const [query, setQuery] = React.useState("")
   const [open, setOpen] = React.useState(false)
@@ -51,14 +53,14 @@ export function GlobalSearch({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => setOpen(true)}
-            placeholder="搜索插件、页面、作者..."
+            placeholder={t("community.searchPlaceholder")}
             className="flex-1 border-0 outline-none bg-transparent text-foreground font-inherit text-[15px] placeholder:text-muted-foreground"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
               className="text-muted-foreground hover:text-foreground"
-              aria-label="清除搜索"
+              aria-label={t("community.clearSearch")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -75,7 +77,7 @@ export function GlobalSearch({
           {/* 最近搜索 */}
           {recentSearches.length > 0 && (
             <div className="grid gap-2">
-              <span className="text-xs font-black text-muted-foreground">最近搜索</span>
+              <span className="text-xs font-black text-muted-foreground">{t("community.recentSearches")}</span>
               <div className="flex flex-wrap gap-1.5">
                 {recentSearches.map((item) => (
                   <span
@@ -104,7 +106,7 @@ export function GlobalSearch({
           {/* 热门搜索 */}
           {hotSearches.length > 0 && (
             <div className="grid gap-1">
-              <span className="text-xs font-black text-muted-foreground">热门搜索</span>
+              <span className="text-xs font-black text-muted-foreground">{t("community.hotSearches")}</span>
               <ScrollArea className="max-h-[240px]">
                 <div className="grid gap-0.5">
                   {hotSearches.map((item, idx) => (
@@ -118,7 +120,7 @@ export function GlobalSearch({
                       </span>
                       <span className="truncate">{item.query}</span>
                       <span className="text-xs text-muted-foreground shrink-0">
-                        {item.count.toLocaleString()} 次
+                        {item.count.toLocaleString()} {t("community.searchCount")}
                         {idx === 0 && <TrendingUp className="inline h-3 w-3 ml-1 text-primary" />}
                       </span>
                     </button>
@@ -131,7 +133,7 @@ export function GlobalSearch({
           {/* 无数据 */}
           {recentSearches.length === 0 && hotSearches.length === 0 && (
             <div className="flex items-center justify-center min-h-[60px] text-sm font-extrabold text-muted-foreground">
-              暂无搜索建议
+              {t("community.noSearchSuggestions")}
             </div>
           )}
         </div>

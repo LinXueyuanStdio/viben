@@ -1670,7 +1670,10 @@
     "addToCollection": "Add to Collection",
     "failedToLoadPackages": "Failed to load packages",
     "itemAddedToCollection": "Item added to collection",
-    "failedToAddItem": "Failed to add item"
+    "failedToAddItem": "Failed to add item",
+    "title": "Collections",
+    "subtitle": "Curated lists of MCP servers and skills",
+    "searchInputPlaceholder": "Search collections..."
   },
   "social": {
     "signInToComment": "Sign in to leave a comment",
@@ -1790,6 +1793,8 @@
       "tags": "Tags",
       "warning": "Please review all details before publishing. Once published, you can update your package but the slug cannot be changed."
     },
+    "pageTitle": "Publish a Package",
+    "pageSubtitle": "Share your MCP server or skill with the community",
     "toast": {
       "publishSuccess": "Package published successfully!",
       "publishFailed": "Failed to publish package",
@@ -1938,6 +1943,24 @@
     "toggleSidebar": "Toggle Sidebar",
     "moreActions": "More Actions",
     "report": "Report",
-    "feedback": "Feedback"
+    "feedback": "Feedback",
+    "clearSearch": "Clear search",
+    "recentSearches": "Recent Searches",
+    "hotSearches": "Hot Searches",
+    "searchCount": "times",
+    "noSearchSuggestions": "No search suggestions",
+    "loadMoreMoments": "Load more moments",
+    "viewAllHistory": "View all history",
+    "closeDrawer": "Close drawer",
+    "breadcrumb": "Breadcrumb",
+    "viben": "Viben",
+    "searchPlaceholder": "Search plugins, pages, authors...",
+    "noResultsHint": "Try a different keyword or fewer qualifiers.",
+    "pageType": "Page",
+    "authorType": "Author",
+    "momentType": "Moment",
+    "paperType": "Paper",
+    "mySkills": "My Skills",
+    "myCollections": "My Collections"
   }
 }

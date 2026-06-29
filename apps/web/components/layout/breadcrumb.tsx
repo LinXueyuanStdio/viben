@@ -62,12 +62,12 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
   }
 
   return (
-    <nav aria-label="面包屑导航" className={cn("flex items-center gap-0.5 min-w-0", className)}>
+    <nav aria-label={t("community.breadcrumb")} className={cn("flex items-center gap-0.5 min-w-0", className)}>
       {/* 品牌标记 — 始终显示，参考 index.html */}
       <Link
         href="/"
         className="inline-flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-transparent shrink-0"
-        aria-label="Viben"
+        aria-label={t("community.viben")}
       >
         <VibenLogo size={22} />
         <span className="font-extrabold text-foreground">Viben</span>

@@ -49,7 +49,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     if (onAction) {
       onAction(action)
     } else {
-      toast.info(`操作: ${action}`)
+      toast.info(`${t("common.actions")}: ${action}`)
     }
   }, [onAction])
 

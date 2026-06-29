@@ -2,21 +2,26 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Search, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
 
 interface SearchInputProps {
   placeholder?: string;
+  placeholderKey?: string;
   defaultValue?: string;
   className?: string;
 }
 
 export function SearchInput({
-  placeholder = '搜索...',
+  placeholder,
+  placeholderKey,
   defaultValue = '',
   className,
 }: SearchInputProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? (placeholderKey ? t(placeholderKey) : t('community.search'));
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -47,7 +52,7 @@ export function SearchInput({
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="search"
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         value={value}
         onChange={(e) => handleSearch(e.target.value)}
         className="pl-10 pr-10 focus-visible:ring-primary/20"
@@ -59,7 +64,7 @@ export function SearchInput({
           type="button"
           onClick={handleClear}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="清除搜索"
+          aria-label={t("community.clearSearch")}
         >
           <X className="h-4 w-4" />
         </button>

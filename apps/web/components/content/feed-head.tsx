@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { IconButton } from "@/components/ui/icon-button"
 import { MoreHorizontal } from "lucide-react"
@@ -22,6 +25,7 @@ interface FeedHeadProps {
 }
 
 export function FeedHead({ data, className }: FeedHeadProps) {
+  const { t } = useTranslation()
   const { fallbackText, avatarUrl, name, handle, kind, timeAgo, source } = data
 
   return (
@@ -42,12 +46,12 @@ export function FeedHead({ data, className }: FeedHeadProps) {
           {source && (
             <>
               <span className="mx-[7px]">·</span>
-              来自 {source}
+              {t("community.fromSource", { source })}
             </>
           )}
         </div>
       </div>
-      <IconButton label="更多操作" size="compact">
+      <IconButton label={t("community.moreActions")} size="compact">
         <MoreHorizontal className="size-4" />
       </IconButton>
     </div>

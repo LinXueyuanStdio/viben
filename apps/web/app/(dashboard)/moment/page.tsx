@@ -4,6 +4,7 @@ import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { listMoments } from "@/lib/services/community"
+import { EmptyState } from "@/components/content/i18n-text"
 import { db, users } from "@/lib/db"
 import { desc } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
@@ -123,9 +124,13 @@ export default async function MomentPage() {
           {MOMENT_TABS.map((tab) => (
             <VibenTabsContent key={tab.key} value={tab.key} className="mt-2">
               {tabFeeds[tab.key]?.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  {tab.feedType === "following" ? "关注更多作者以查看动态" : "暂无动态"}
-                </p>
+                tab.feedType === "following" ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    关注更多作者以查看动态
+                  </p>
+                ) : (
+                  <EmptyState tKey="community.noMoments" fallback="暂无动态" />
+                )
               ) : (
                 <div className="grid gap-2">
                   {tabFeeds[tab.key]?.map((feed, i) => (

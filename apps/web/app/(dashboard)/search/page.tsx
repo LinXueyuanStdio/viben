@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { SearchPageContent } from "@/components/search/search-page-content"
 import { searchPages, getSearchFilterCounts, logSearchQuery } from "@/lib/services/search"
 import { getSession } from "@/lib/auth/cookies"
+import { T } from "@/components/content/i18n-text"
 import type { SearchResultData } from "@/components/search/search-result-card"
 
 interface SearchPageProps {
@@ -60,7 +61,7 @@ async function SearchContent({ searchParams }: SearchPageProps) {
 
 export default function SearchPage(props: SearchPageProps) {
   return (
-    <Suspense fallback={<div className="min-h-[360px] flex items-center justify-center text-muted-foreground">搜索中...</div>}>
+    <Suspense fallback={<div className="min-h-[360px] flex items-center justify-center text-muted-foreground"><T tKey="community.searching" fallback="搜索中..." /></div>}>
       <SearchContent {...props} />
     </Suspense>
   )

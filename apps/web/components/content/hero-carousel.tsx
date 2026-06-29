@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useTranslation } from "react-i18next"
 import { ChevronLeft, ChevronRight, Eye, Heart, MessageCircle } from "lucide-react"
 import { IconButton } from "@/components/ui/icon-button"
 import { StatsRow } from "./stats-row"
@@ -28,6 +29,7 @@ interface HeroCarouselProps {
 }
 
 export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: HeroCarouselProps) {
+  const { t } = useTranslation()
   const [index, setIndex] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -93,7 +95,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
             key={i}
             onClick={() => goTo(i)}
             className="relative h-1 flex-1 rounded-full bg-surface-secondary overflow-hidden"
-            aria-label={`切换到第 ${i + 1} 张`}
+            aria-label={t("community.switchToSlide", { n: i + 1 })}
           >
             <div
               className={cn(
@@ -108,7 +110,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
 
       {/* Nav Arrows */}
       <IconButton
-        label="上一张"
+        label={t("community.previousSlide")}
         size="compact"
         className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0"
         onClick={prev}
@@ -116,7 +118,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
         <ChevronLeft className="size-5" />
       </IconButton>
       <IconButton
-        label="下一张"
+        label={t("community.nextSlide")}
         size="compact"
         className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0"
         onClick={next}

@@ -75,7 +75,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         <div className="grid gap-[3px] min-w-0">
           <div className="font-bold text-sm truncate">{author.name}</div>
           <div className="text-[12.5px] text-muted-foreground">
-            {formatCount(author.followerCount)} 位关注者
+            {t("community.followersCountUnit", { formattedCount: formatCount(author.followerCount) })}
           </div>
         </div>
         <Button variant="outline" size="sm" className="h-9 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400 shrink-0">
@@ -90,7 +90,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         <button
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center justify-center size-8 rounded-[9px] hover:bg-surface-secondary text-muted-foreground shrink-0"
-          aria-label={expanded ? "收起详情" : "展开详情"}
+          aria-label={expanded ? t("community.collapseMore") : t("community.expandMore")}
         >
           <ChevronRight className={cn("size-5 transition-transform", expanded && "rotate-90")} />
         </button>
@@ -120,7 +120,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       {expanded && (
         <div className="grid gap-[7px] text-sm text-muted-foreground leading-relaxed">
           <div className="text-[13px]">
-            UID: {uid}{sidePageUid && <> · 副页: {sidePageUid}</>}
+            UID: {uid}{sidePageUid && <> · {t("community.sidePage")}: {sidePageUid}</>}
           </div>
           {description.map((p, i) => (
             <p key={i} className="max-w-[760px]">{p}</p>

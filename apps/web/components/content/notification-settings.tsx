@@ -23,11 +23,11 @@ export function NotificationSettings() {
       })
       if (!res.ok) {
         setSettings((prev) => ({ ...prev, [key]: !newValue }))
-        toast.error("设置保存失败")
+        toast.error(t("community.settingsSaveFailed"))
       }
     } catch {
       setSettings((prev) => ({ ...prev, [key]: !newValue }))
-      toast.error("设置保存失败")
+      toast.error(t("community.settingsSaveFailed"))
     }
   }
 

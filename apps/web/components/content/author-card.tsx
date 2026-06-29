@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FollowButton } from "./follow-button"
 import { cn } from "@/lib/utils"
@@ -22,6 +25,7 @@ interface AuthorCardProps {
 }
 
 export function AuthorCard({ data, className }: AuthorCardProps) {
+  const { t } = useTranslation()
   const { fallbackText, avatarUrl, name, handle, userSlug, description, pageCount, followerCount, representativeWork, mutualFollows } = data
 
   return (
@@ -39,7 +43,7 @@ export function AuthorCard({ data, className }: AuthorCardProps) {
           <span className="block truncate">{handle}</span>
           <span className="block truncate">{description}</span>
           <span className="block truncate">
-            {pageCount} 页面 · {formatCount(followerCount)} 关注者
+            {pageCount} {t("community.pages")} · {t("community.followersCountWithFormat", { formattedCount: formatCount(followerCount) })}
           </span>
         </div>
       </div>
@@ -49,9 +53,9 @@ export function AuthorCard({ data, className }: AuthorCardProps) {
       />
       {(representativeWork || mutualFollows != null) && (
         <div className="col-span-full text-[13px] text-muted-foreground truncate">
-          {representativeWork && <span>代表作：《{representativeWork}》</span>}
+          {representativeWork && <span>{t("community.representativeWork", { title: representativeWork })}</span>}
           {representativeWork && mutualFollows != null && <span> · </span>}
-          {mutualFollows != null && <span>{mutualFollows} 人共同关注</span>}
+          {mutualFollows != null && <span>{t("community.mutualFollowsPerson", { count: mutualFollows })}</span>}
         </div>
       )}
     </div>

@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FollowButton } from "./follow-button"
 import { Pill } from "./pill"
@@ -24,6 +27,7 @@ interface ProfileHeroProps {
 }
 
 export function ProfileHero({ data, className }: ProfileHeroProps) {
+  const { t } = useTranslation()
   const { fallbackText, avatarUrl, name, handle, tagline, userSlug, stats } = data
 
   return (
@@ -42,10 +46,10 @@ export function ProfileHero({ data, className }: ProfileHeroProps) {
           {handle} · {tagline}
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          <Pill variant="default">{formatCount(stats.followers)} 关注者</Pill>
-          <Pill variant="default">{stats.pages} 页面</Pill>
+          <Pill variant="default">{t("community.followersCountWithFormat", { formattedCount: formatCount(stats.followers) })}</Pill>
+          <Pill variant="default">{stats.pages} {t("community.pages")}</Pill>
           {stats.mutualFollows != null && (
-            <Pill variant="default">{stats.mutualFollows} 共同关注</Pill>
+            <Pill variant="default">{t("community.mutualFollows", { count: stats.mutualFollows })}</Pill>
           )}
         </div>
       </div>

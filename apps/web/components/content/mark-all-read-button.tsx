@@ -19,11 +19,11 @@ export function MarkAllReadButton() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       })
-      if (!res.ok) throw new Error("标记失败")
+      if (!res.ok) throw new Error(t("community.markAllReadFailed"))
       setClicked(true)
-      toast.success("已全部标记为已读")
+      toast.success(t("community.markAllReadSuccess"))
     } catch {
-      toast.error("标记失败，请重试")
+      toast.error(t("community.markAllReadRetry"))
     } finally {
       setLoading(false)
     }

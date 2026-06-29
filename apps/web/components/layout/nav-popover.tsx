@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { IconButton } from "@/components/ui/icon-button"
@@ -33,8 +34,10 @@ export function NavPopover({
   title,
   items,
   onLoadMore,
-  moreLabel = "加载更多",
+  moreLabel,
 }: NavPopoverProps) {
+  const { t } = useTranslation()
+  const defaultMoreLabel = moreLabel ?? t("community.more")
   const [loaded, setLoaded] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const openTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -96,11 +99,11 @@ export function NavPopover({
           {/* 懒加载：首次展开后才渲染内容 */}
           {!loaded ? (
             <div className="flex items-center justify-center min-h-[58px] text-sm font-extrabold text-muted-foreground">
-              加载中...
+              {t("common.loading")}
             </div>
           ) : items.length === 0 ? (
             <div className="flex items-center justify-center min-h-[58px] text-sm font-extrabold text-muted-foreground">
-              暂无内容
+              {t("community.noData")}
             </div>
           ) : (
             <ScrollArea className="max-h-[320px]">
@@ -140,7 +143,7 @@ export function NavPopover({
               className="min-h-[34px] w-full rounded-[9px] bg-surface-secondary font-black text-[13px]"
               onClick={onLoadMore}
             >
-              {moreLabel}
+              {defaultMoreLabel}
             </Button>
           )}
         </div>

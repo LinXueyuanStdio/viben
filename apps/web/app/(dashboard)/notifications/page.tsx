@@ -5,6 +5,7 @@ import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/
 import { MarkAllReadButton } from "@/components/content/mark-all-read-button"
 import { NotificationSettings } from "@/components/content/notification-settings"
 import { listNotifications } from "@/lib/services/community"
+import { EmptyState } from "@/components/content/i18n-text"
 import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import { db, users } from "@/lib/db"
@@ -130,7 +131,7 @@ export default async function NotificationsPage() {
             <VibenTabsContent key={tab} value={tab} className="mt-2">
               <div className="grid gap-2">
                 {filterNotifications(tab).length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">暂无通知</p>
+                  <EmptyState tKey="community.noNotifications" fallback="暂无通知" />
                 ) : (
                   filterNotifications(tab).map((item, i) => (
                     <NotificationItem key={i} data={item} />

@@ -5,6 +5,7 @@ import { Pill } from "@/components/content/pill"
 import { Bookmark, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { getBrowseHistory, listCommunityFavorites } from "@/lib/services/community"
+import { EmptyState, T } from "@/components/content/i18n-text"
 import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import type { HistoryItemData, HistorySource } from "@/components/content/history-item"
@@ -116,7 +117,7 @@ export default async function HistoryPage() {
             <VibenTabsContent key={tab} value={tab} className="mt-2">
               <div className="grid gap-2">
                 {filterItems(tab).length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">暂无浏览记录</p>
+                  <EmptyState tKey="community.noHistory" fallback="暂无浏览记录" />
                 ) : (
                   filterItems(tab).map((item, i) => (
                     <HistoryItem
@@ -138,7 +139,9 @@ export default async function HistoryPage() {
       <aside className="grid gap-3 content-start">
         {bookmarkLinks.length > 0 && (
           <div className="grid gap-2">
-            <div className="font-bold text-sm">收藏过的页面</div>
+            <div className="font-bold text-sm">
+              <T tKey="community.bookmarkedPages" fallback="收藏过的页面" />
+            </div>
             {bookmarkLinks.map((link, i) => (
               <Link
                 key={i}
@@ -156,7 +159,9 @@ export default async function HistoryPage() {
           <div className="flex items-center gap-2.5 rounded-[10px] border border-border p-2.5">
             <BookOpen className="size-4 text-muted-foreground shrink-0" />
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold truncate">继续阅读</div>
+              <div className="text-sm font-bold truncate">
+                <T tKey="community.continueReading" fallback="继续阅读" />
+              </div>
               <div className="text-[12.5px] text-muted-foreground">
                 {unreadCount} 篇未读完
               </div>

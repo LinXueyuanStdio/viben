@@ -6,6 +6,7 @@ import { SectionHead } from "@/components/content/section-head"
 import { RecommendedSection } from "@/components/content/recommended-section"
 import { Pill } from "@/components/content/pill"
 import { Stat } from "@/components/content/stats-row"
+import { T } from "@/components/content/i18n-text"
 import { Eye } from "lucide-react"
 import { listRanking, listMoments } from "@/lib/services/community"
 import { db, publishedPages, users } from "@/lib/db"
@@ -179,7 +180,7 @@ export default async function HomePage() {
         {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
 
         <section>
-          <SectionHead title="精选页面" actionLabel="更多" actionHref="/leaderboard" />
+          <SectionHead title="精选页面" actionLabel={<T tKey="community.more" fallback="更多" />} actionHref="/leaderboard" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {featuredPages.map((page, i) => (
               <PageCard
@@ -195,7 +196,7 @@ export default async function HomePage() {
         <RecommendedSection pages={recommendedEntries} />
 
         <section>
-          <SectionHead title="动态" actionLabel="进入" actionHref="/moment" />
+          <SectionHead title="动态" actionLabel={<T tKey="community.enter" fallback="进入" />} actionHref="/moment" />
           <div className="grid gap-2">
             {feedItems.map((feed, i) => (
               <FeedCard key={i} data={feed} variant="preloaded" />
@@ -206,7 +207,7 @@ export default async function HomePage() {
 
       <aside className="grid gap-3 content-start">
         <section>
-          <SectionHead title="推荐关注" actionLabel="查看" actionHref="/search" />
+          <SectionHead title="推荐关注" actionLabel={<T tKey="community.viewAll" fallback="查看全部" />} actionHref="/search" />
           <div className="grid gap-2">
             {authorCards.map((author, i) => (
               <AuthorCard key={i} data={author} />
@@ -215,7 +216,7 @@ export default async function HomePage() {
         </section>
 
         <section>
-          <SectionHead title="本周上升" actionLabel="榜单" actionHref="/leaderboard" />
+          <SectionHead title="本周上升" actionLabel={<T tKey="community.leaderboard" fallback="榜单" />} actionHref="/leaderboard" />
           <div className="grid gap-2">
             {featuredPages.slice(0, 2).map((page, i) => (
               <div key={i} className="flex items-center gap-2.5">

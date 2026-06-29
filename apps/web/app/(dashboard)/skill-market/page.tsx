@@ -6,6 +6,7 @@ import { SkillsFilters } from '@/components/skills/skills-filters';
 import { SearchInput } from '@/components/shared/search-input';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
+import { T } from '@/components/content/i18n-text';
 import { getSession } from '@/lib/auth/cookies';
 import { SkillSourceTabs, type SkillSource } from '@/components/skills/skill-source-tabs';
 import { OfficialSkillGrid } from '@/components/skills/official-skill-grid';
@@ -34,14 +35,14 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
     <div className="space-y-6">
       <PageHeader
         icon={Sparkles}
-        title="技能市场"
-        subtitle="发现和安装 AI 智能体技能与能力"
+        title={<T tKey="skillsMarket.title" fallback="技能市场" />}
+        subtitle={<T tKey="skillsMarket.subtitle" fallback="发现和安装 AI 技能扩展" />}
       >
         {session && (
           <Button variant="outline" asChild>
             <Link href="/my-packages">
               <Sparkles className="mr-2 h-4 w-4" />
-              我的技能
+              <T tKey="community.mySkills" fallback="我的技能" />
             </Link>
           </Button>
         )}
@@ -56,7 +57,7 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
       <Suspense fallback={<div className="h-10 w-full max-w-sm animate-pulse rounded-lg bg-muted" />}>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <SearchInput
-            placeholder="搜索技能..."
+            placeholderKey="skillsMarket.searchPlaceholder"
             defaultValue={params.q}
           />
           {source === 'community' && (

@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
 import Link from "next/link"
 import { Eye, Heart, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils/index"
@@ -15,14 +16,15 @@ export interface SearchResultData {
   url: string
 }
 
-const typeLabels: Record<string, string> = {
-  page: "页面",
-  author: "作者",
-  moment: "动态",
-  paper: "论文",
+const typeKeyMap: Record<string, string> = {
+  page: "community.pageType",
+  author: "community.authorType",
+  moment: "community.momentType",
+  paper: "community.paperType",
 }
 
 export function SearchResultCard({ data }: { data: SearchResultData }) {
+  const { t } = useTranslation()
   return (
     <Link
       href={data.url}
@@ -41,7 +43,7 @@ export function SearchResultCard({ data }: { data: SearchResultData }) {
       {/* 正文 */}
       <div className="min-w-0 grid content-center gap-1.5">
         <span className="inline-flex items-center gap-1 w-max min-h-[22px] rounded-full bg-surface-secondary text-primary px-1.5 text-xs font-black">
-          {typeLabels[data.type] || data.type}
+          {t(typeKeyMap[data.type] || data.type)}
         </span>
         <h3 className="text-sm font-extrabold truncate">{data.title}</h3>
         <p className="text-[13px] text-muted-foreground truncate">

@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslation } from "react-i18next"
 import { Eye, MessageCircle, X } from "lucide-react"
 import { Cover } from "./cover"
 import { StatsRow } from "./stats-row"
@@ -23,6 +26,7 @@ interface AttachmentProps {
 }
 
 export function Attachment({ data, onRemove, className }: AttachmentProps) {
+  const { t } = useTranslation()
   const { cover, title, authorName, timeAgo, stats } = data
 
   const coverStats: StatProps[] = [
@@ -53,7 +57,7 @@ export function Attachment({ data, onRemove, className }: AttachmentProps) {
         <button
           onClick={(e) => { e.preventDefault(); onRemove() }}
           className="absolute top-1.5 right-1.5 size-6 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60"
-          aria-label="移除附件"
+          aria-label={t("community.removeAttachment")}
         >
           <X className="size-3.5" />
         </button>

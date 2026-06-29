@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 interface SectionHeadProps {
   title: string
-  actionLabel?: string
+  actionLabel?: ReactNode
   actionHref?: string
   children?: ReactNode
   className?: string

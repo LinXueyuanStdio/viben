@@ -7,6 +7,7 @@ import { db, publishedPages, users, moments } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
+import { EmptyState, T } from "@/components/content/i18n-text"
 import type { PageCardData } from "@/components/content/page-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { FeedCardData } from "@/components/content/feed-card"
@@ -148,7 +149,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
         <VibenTabsContent value="页面" className="mt-3">
           <SectionHead title="公开页面" />
           {pageCards.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">暂无公开页面</p>
+            <EmptyState tKey="community.noPages" fallback="暂无公开页面" />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {pageCards.map((item, i) => (
@@ -160,7 +161,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
         <VibenTabsContent value="动态" className="mt-3">
           {feedCards.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">暂无动态</p>
+            <EmptyState tKey="community.noMoments" fallback="暂无动态" />
           ) : (
             <div className="grid gap-2">
               {feedCards.map((feed, i) => (
@@ -172,7 +173,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
         <VibenTabsContent value="合集" className="mt-3">
           <SectionHead title="合集" />
-          <p className="py-8 text-center text-sm text-muted-foreground">更多合集开发中...</p>
+          <EmptyState tKey="community.collectionsSoon" fallback="更多合集开发中..." />
         </VibenTabsContent>
 
         <VibenTabsContent value="关于" className="mt-3">
@@ -180,7 +181,9 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
             {user.bio ? (
               <p>{user.bio}</p>
             ) : (
-              <p>这位作者还没有填写简介。</p>
+              <p>
+                <T tKey="community.noDescription" fallback="这位作者还没有填写简介。" />
+              </p>
             )}
           </div>
         </VibenTabsContent>

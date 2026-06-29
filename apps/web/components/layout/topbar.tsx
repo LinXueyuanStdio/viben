@@ -56,10 +56,25 @@ export function Topbar({
     router.replace(qs ? `?${qs}` : pathname, { scroll: false })
   }, [searchParams, router, pathname])
 
-  // 沉浸模式：同步更新 --reader-header-safe（参考 index.html: body.immersive-read .read-viewport { padding-top: 0 }）
+  // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
+  // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
   React.useEffect(() => {
-    document.documentElement.style.setProperty("--reader-header-safe", immersive ? "0px" : "")
-  }, [immersive])
+    const measure = () => {
+      if (immersive) {
+        document.documentElement.style.setProperty("--reader-header-safe", "0px")
+        return
+      }
+      if (!isRead) {
+        document.documentElement.style.removeProperty("--reader-header-safe")
+        return
+      }
+      const h = document.querySelector("header")?.getBoundingClientRect().height
+      document.documentElement.style.setProperty("--reader-header-safe", `${Math.ceil(h || 0)}px`)
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [isRead, immersive])
 
   // Escape 键退出沉浸模式
   React.useEffect(() => {
@@ -98,12 +113,14 @@ export function Topbar({
       >
         {/* ===== Left ===== */}
         <div className="flex items-center gap-2 min-w-0">
-          {/* 侧边栏切换按钮 */}
-          <IconButton size="compact" label={t("community.toggleSidebar")} onClick={onToggleSidebar}>
-            <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 4h12M3 9h12M3 14h12" />
-            </svg>
-          </IconButton>
+          {/* 侧边栏切换按钮（阅读模式下隐藏，因为侧边栏已被隐藏） */}
+          {!isRead && (
+            <IconButton size="compact" label={t("community.toggleSidebar")} onClick={onToggleSidebar}>
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 4h12M3 9h12M3 14h12" />
+              </svg>
+            </IconButton>
+          )}
 
           {/* 面包屑 */}
           <BreadcrumbNav variant={isRead ? "read" : "global"} />
@@ -122,8 +139,8 @@ export function Topbar({
             <div className="pointer-events-auto">
               <VibenTabs defaultValue="page">
                 <VibenTabsList variant="pill">
-                  <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> 页面</VibenTabsTrigger>
-                  <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> 副页</VibenTabsTrigger>
+                  <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
+                  <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
                 </VibenTabsList>
               </VibenTabs>
             </div>
@@ -161,14 +178,14 @@ export function Topbar({
                     badge={2}
                     title={t("community.feed")}
                     items={notificationItems}
-                    moreLabel="加载更多动态"
+                    moreLabel={t("community.loadMoreMoments")}
                   />
                   <NavPopover
                     icon={Clock}
                     label={t("community.history")}
                     title={t("community.history")}
                     items={historyItems}
-                    moreLabel="查看全部历史"
+                    moreLabel={t("community.viewAllHistory")}
                   />
                   <UserMenu session={session} />
                 </>
@@ -202,13 +219,13 @@ function ReadMoreMenu() {
             onClick={() => toast.info(t("community.reportFeatureSoon"))}
             className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
-            <Flag className="h-4 w-4" /> 举报
+            <Flag className="h-4 w-4" /> {t("community.report")}
           </button>
           <button
             onClick={() => toast.info(t("community.feedbackFeatureSoon"))}
             className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
-            <MessageSquare className="h-4 w-4" /> 反馈
+            <MessageSquare className="h-4 w-4" /> {t("community.feedback")}
           </button>
         </div>
       )}
