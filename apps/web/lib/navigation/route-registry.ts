@@ -4,6 +4,7 @@ import {
   Package,
   Sparkles,
   Layers,
+  Grid3X3,
   MessageSquare,
   Bell,
   Clock,
@@ -11,6 +12,7 @@ import {
   PackageSearch,
   BarChart3,
   Search,
+  User,
   type LucideIcon,
 } from "lucide-react"
 
@@ -31,6 +33,8 @@ export const routeRegistry: Record<string, RouteConfig> = {
   // 社区浏览
   "/leaderboard": { label: "榜单", icon: TrendingUp, parent: "/", dropdownCategory: "浏览" },
   "/moment": { label: "动态", icon: MessageSquare, parent: "/", dropdownCategory: "浏览" },
+  "/category": { label: "分类", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
+  "/author": { label: "作者", icon: User, parent: "/", dropdownCategory: "浏览" },
   "/notifications": { label: "通知", icon: Bell, parent: "/", dropdownCategory: "浏览" },
   "/history": { label: "浏览历史", icon: Clock, parent: "/", dropdownCategory: "浏览" },
   "/search": { label: "搜索", icon: Search, parent: "/" },
