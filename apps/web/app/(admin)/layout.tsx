@@ -1,27 +1,25 @@
-import { redirect } from 'next/navigation';
-import { getSession, isAdminRole } from '@/lib/auth';
-import { SidebarWrapper } from '@/components/layout/sidebar-wrapper';
-import { Header } from '@/components/layout/header';
+import { redirect } from "next/navigation"
+import { getSession, isAdminRole } from "@/lib/auth"
+import { countPendingPackages } from "@/lib/admin/stats"
+import { AppShell } from "@/components/layout/app-shell"
 
 export default async function AdminLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const session = await getSession();
+  const session = await getSession()
 
-  // Verify admin access
+  // 保留管理员鉴权
   if (!session || !isAdminRole(session.role)) {
-    redirect('/');
+    redirect("/")
   }
 
+  const pendingPackagesCount = await countPendingPackages()
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      <SidebarWrapper />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
-  );
+    <AppShell session={session} adminStats={{ pendingPackagesCount }}>
+      {children}
+    </AppShell>
+  )
 }

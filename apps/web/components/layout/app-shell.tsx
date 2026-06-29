@@ -1,0 +1,71 @@
+"use client"
+
+import * as React from "react"
+import { createContext, useContext } from "react"
+import { Topbar } from "./topbar"
+import { Sidebar } from "./sidebar"
+import type { Session } from "@/lib/auth/types"
+
+// ===== AppShell Context =====
+interface AppShellContextType {
+  session: Session | null
+  sidebarCollapsed: boolean
+  toggleSidebar: () => void
+}
+
+const AppShellContext = createContext<AppShellContextType>({
+  session: null,
+  sidebarCollapsed: false,
+  toggleSidebar: () => {},
+})
+
+export function useAppShell() {
+  return useContext(AppShellContext)
+}
+
+// ===== AppShell Component =====
+interface AppShellProps {
+  children: React.ReactNode
+  session: Session | null
+  adminStats?: { pendingPackagesCount: number }
+}
+
+export function AppShell({ children, session, adminStats }: AppShellProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("viben-sidebar-collapsed") === "true"
+  })
+
+  const toggleSidebar = React.useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem("viben-sidebar-collapsed", String(next))
+      return next
+    })
+  }, [])
+
+  const contextValue = React.useMemo<AppShellContextType>(
+    () => ({ session, sidebarCollapsed, toggleSidebar }),
+    [session, sidebarCollapsed, toggleSidebar]
+  )
+
+  return (
+    <AppShellContext.Provider value={contextValue}>
+      <div className="flex h-screen flex-col overflow-hidden">
+        <Topbar session={session} onToggleSidebar={toggleSidebar} />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            session={session}
+            pendingPackagesCount={adminStats?.pendingPackagesCount}
+          />
+          <main className="flex-1 overflow-y-auto">
+            <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
+              {children}
+            </div>
+          </main>
+        </div>
+      </div>
+    </AppShellContext.Provider>
+  )
+}

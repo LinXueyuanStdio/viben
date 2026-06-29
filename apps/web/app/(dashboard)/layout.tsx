@@ -1,18 +1,16 @@
-import { SidebarWrapper } from '@/components/layout/sidebar-wrapper';
-import { Header } from '@/components/layout/header';
+import { getSession } from "@/lib/auth/cookies"
+import { AppShell } from "@/components/layout/app-shell"
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
+  const session = await getSession()
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      <SidebarWrapper />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
-  );
+    <AppShell session={session}>
+      {children}
+    </AppShell>
+  )
 }

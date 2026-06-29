@@ -52,11 +52,9 @@ interface AdminNavItem {
 }
 
 interface SidebarProps {
-  userRole?: string;
-  username?: string;
-  email?: string;
-  avatarUrl?: string;
-  pendingPackagesCount?: number;
+  collapsed: boolean
+  session?: { role?: string; username?: string; email?: string; avatarUrl?: string } | null
+  pendingPackagesCount?: number
 }
 
 function hasPermission(role: string, permission: AdminPermission): boolean {
@@ -77,14 +75,17 @@ function getInitials(name: string): string {
 }
 
 export function Sidebar({
-  userRole,
-  username,
-  email,
-  avatarUrl,
+  collapsed,
+  session,
   pendingPackagesCount = 0,
 }: SidebarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
+
+  const userRole = session?.role;
+  const username = session?.username;
+  const email = session?.email;
+  const avatarUrl = session?.avatarUrl;
 
   const isLoggedIn = Boolean(userRole);
   const showAdmin = userRole && isAdminRole(userRole);
@@ -107,7 +108,12 @@ export function Sidebar({
   ];
 
   return (
-    <aside className="flex w-64 flex-col border-r bg-background">
+    <aside
+      className={cn(
+        "flex flex-col border-r bg-background transition-[width] duration-200 ease-out overflow-hidden",
+        collapsed ? "w-0 border-r-0" : "w-[var(--sidebar-w)]"
+      )}
+    >
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2">
