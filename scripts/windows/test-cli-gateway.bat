@@ -126,9 +126,10 @@ call :pass "gateway status (stopped)"
 
 echo   [INFO] Starting gateway on port %GATEWAY_PORT%...
 set "GATEWAY_LOG=%TEST_DIR%\gateway.log"
-REM Start gateway in background using PowerShell Start-Process
-REM Suppress output to hide Bun stdin redirection warning (gateway still starts fine)
-powershell -NoProfile -Command "Start-Process -FilePath '%VIBEN%' -ArgumentList 'gateway','serve','--port','%GATEWAY_PORT%' -WindowStyle Hidden -RedirectStandardOutput '%GATEWAY_LOG%' -RedirectStandardError '%GATEWAY_LOG%.err'" >nul 2>nul
+REM Start gateway in background using start /B (keeps stdin connected).
+REM PowerShell Start-Process -WindowStyle Hidden closes stdin, which causes
+REM Bun-compiled binaries to exit with "Input redirection is not supported".
+start /B "" "%VIBEN%" gateway serve --port %GATEWAY_PORT% > "%GATEWAY_LOG%" 2>&1
 
 REM Wait for gateway to be ready (up to 30 seconds)
 set READY=false
