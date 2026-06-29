@@ -80,7 +80,7 @@ export class FirebaseService {
   private _initError: string | null = null;
 
   constructor() {
-    log.info("Firebase service ready (lazy init)");
+    log.debug("Firebase service ready (lazy init)");
   }
 
   /** 解析配置：环境变量优先，fallback 到默认 Web 配置 */
