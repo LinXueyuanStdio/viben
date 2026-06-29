@@ -126,10 +126,11 @@ call :pass "gateway status (stopped)"
 
 echo   [INFO] Starting gateway on port %GATEWAY_PORT%...
 set "GATEWAY_LOG=%TEST_DIR%\gateway.log"
-REM Start gateway in background using start /B (keeps stdin connected).
-REM PowerShell Start-Process -WindowStyle Hidden closes stdin, which causes
-REM Bun-compiled binaries to exit with "Input redirection is not supported".
-start /B "" "%VIBEN%" gateway serve --port %GATEWAY_PORT% > "%GATEWAY_LOG%" 2>&1
+REM Start gateway in background using start /B with stdin from nul.
+REM Bun-compiled binaries need a valid stdin handle; in GitHub Actions runners
+REM stdin may be a pipe. < nul provides a valid NUL handle, preventing
+REM "Input redirection is not supported".
+start /B "" "%VIBEN%" gateway serve --port %GATEWAY_PORT% < nul > "%GATEWAY_LOG%" 2>&1
 
 REM Wait for gateway to be ready (up to 30 seconds)
 set READY=false
