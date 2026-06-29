@@ -20,7 +20,7 @@ const iconButtonVariants = cva(
 )
 
 // 注意：边框和背景使用 currentColor 实现半透明效果
-// Tailwind 的 border-current/22 和 bg-current/14 需用 style 或自定义类
+// Tailwind 的 border-current/22 和 bg-current/8 需用 style 或自定义类
 
 interface IconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
