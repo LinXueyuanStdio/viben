@@ -10,7 +10,7 @@ import { T } from "@/components/content/i18n-text"
 import { Eye } from "lucide-react"
 import { listRanking, listMoments } from "@/lib/services/community"
 import { db, publishedPages, users } from "@/lib/db"
-import { desc, eq, and } from "drizzle-orm"
+import { desc, eq, and, ne } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import type { HeroSlideData } from "@/components/content/hero-carousel"
 import type { PageCardData } from "@/components/content/page-card"
@@ -81,7 +81,9 @@ export default async function HomePage() {
       .orderBy(desc(publishedPages.lastPublishedAt))
       .limit(6),
     listMoments({ feedType: "recommended", session, limit: 5 }),
-    db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
+    session?.userId
+      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
+      : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
   ])
 
   // Hero slides from ranking

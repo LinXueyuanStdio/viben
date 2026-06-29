@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/content/i18n-text"
 import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import { db, users } from "@/lib/db"
-import { desc } from "drizzle-orm"
+import { desc, ne } from "drizzle-orm"
 import { FileText, MessageCircle, UserPlus, Bell } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { NotificationItemData } from "@/components/content/notification-item"
@@ -50,7 +50,7 @@ export default async function NotificationsPage() {
 
   const [notifResult, topAuthors] = await Promise.all([
     listNotifications(session, 50, false, null),
-    db.select().from(users).orderBy(desc(users.followersCount)).limit(2),
+    db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(2),
   ])
 
   const rawNotifs = notifResult.items

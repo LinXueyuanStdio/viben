@@ -4,7 +4,8 @@ import { SectionHead } from "@/components/content/section-head"
 import { RefreshButton } from "@/components/content/refresh-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { db, publishedPages, pageCategories, users } from "@/lib/db"
-import { eq, desc, and, asc } from "drizzle-orm"
+import { eq, desc, and, asc, ne } from "drizzle-orm"
+import { getSession } from "@/lib/auth/cookies"
 import type { PageCardData } from "@/components/content/page-card"
 import type { AuthorCardData } from "@/components/content/author-card"
 
@@ -46,6 +47,8 @@ interface PageResult {
 }
 
 export default async function CategoryPage() {
+  const session = await getSession()
+
   const [categories, joinedPages, topAuthors] = await Promise.all([
     db.select().from(pageCategories).where(eq(pageCategories.isActive, true)).orderBy(asc(pageCategories.sortOrder)),
     db.select({
@@ -70,7 +73,9 @@ export default async function CategoryPage() {
       ))
       .orderBy(desc(publishedPages.lastPublishedAt))
       .limit(50),
-    db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
+    session?.userId
+      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
+      : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
   ])
 
   const pagesByCategory: Record<string, { card: PageCardData; href: string }[]> = {}

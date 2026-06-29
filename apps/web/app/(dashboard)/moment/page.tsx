@@ -6,7 +6,7 @@ import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/
 import { listMoments } from "@/lib/services/community"
 import { EmptyState, T } from "@/components/content/i18n-text"
 import { db, users } from "@/lib/db"
-import { desc } from "drizzle-orm"
+import { desc, ne } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { AuthorCardData } from "@/components/content/author-card"
@@ -52,7 +52,9 @@ export default async function MomentPage() {
     listMoments({ feedType: "latest", session, limit: 10 }),
     session ? listMoments({ feedType: "following", session, limit: 10 }) : Promise.resolve(null),
     listMoments({ feedType: "recommended", session, limit: 10 }),
-    db.select().from(users).orderBy(desc(users.followersCount)).limit(1),
+    session?.userId
+      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(1)
+      : db.select().from(users).orderBy(desc(users.followersCount)).limit(1),
   ])
 
   function mapFeedItems(items: typeof latestResult.items): FeedCardData[] {
