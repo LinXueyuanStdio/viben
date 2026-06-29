@@ -25,14 +25,29 @@ export async function GET(request: NextRequest) {
 
   const state = generateId();
 
+  console.info('[OAuth][GitHub] initial request', {
+    client: client ?? 'web',
+    hasRedirectUri: Boolean(redirectUri),
+    hasWebRedirect: Boolean(webRedirect),
+    webRedirect,
+  });
+
   // Store state in cookie for CSRF protection
   const cookieStore = await cookies();
+  const existingDesktopCookie = cookieStore.get('oauth_redirect_uri')?.value;
+  if (existingDesktopCookie) {
+    console.warn('[OAuth][GitHub] found stale oauth_redirect_uri cookie, will clear if non-desktop', {
+      existingDesktopCookie: describeDesktopRedirectUri(existingDesktopCookie),
+    });
+  }
+
   cookieStore.set('oauth_state', state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 600, // 10 minutes
   });
+  console.info('[OAuth][GitHub] oauth_state cookie set', { statePrefix: state.slice(0, 8) });
 
   // Store desktop redirect_uri if present (deep link or local loopback callback)
   if (client === 'desktop' && isAllowedDesktopRedirectUri(redirectUri)) {
@@ -48,6 +63,9 @@ export async function GET(request: NextRequest) {
     // attempt. Without this, a web login would incorrectly take the desktop
     // code path (returning an HTML page) if the cookie from a prior desktop
     // OAuth attempt is still present in the browser.
+    if (existingDesktopCookie) {
+      console.info('[OAuth][GitHub] clearing stale oauth_redirect_uri cookie');
+    }
     cookieStore.delete('oauth_redirect_uri');
 
     if (client === 'desktop') {
@@ -60,6 +78,7 @@ export async function GET(request: NextRequest) {
   // Store web post-login redirect path (for web client "login → back" flow)
   // Only store if this is NOT a desktop client and the redirect path is safe
   if (client !== 'desktop' && webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')) {
+    console.info('[OAuth][GitHub] web redirect stored', { webRedirect });
     cookieStore.set('oauth_web_redirect', webRedirect, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -75,6 +94,7 @@ export async function GET(request: NextRequest) {
     state,
   });
 
+  console.info('[OAuth][GitHub] redirecting to GitHub', { statePrefix: state.slice(0, 8) });
   return NextResponse.redirect(
     `https://github.com/login/oauth/authorize?${params}`
   );

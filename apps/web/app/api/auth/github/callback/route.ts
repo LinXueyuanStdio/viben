@@ -156,11 +156,26 @@ export async function GET(request: NextRequest) {
   const storedState = cookieStore.get('oauth_state')?.value;
   const desktopRedirectUri = cookieStore.get('oauth_redirect_uri')?.value;
   const webRedirect = cookieStore.get('oauth_web_redirect')?.value;
+
+  console.info('[OAuth][GitHub] callback received', {
+    hasCode: Boolean(code),
+    stateMatch: state === storedState,
+    isDesktop: isAllowedDesktopRedirectUri(desktopRedirectUri),
+    hasWebRedirect: Boolean(webRedirect),
+    webRedirect,
+  });
+
   cookieStore.delete('oauth_state');
   cookieStore.delete('oauth_redirect_uri');
   cookieStore.delete('oauth_web_redirect');
 
   if (!code || !state || state !== storedState) {
+    console.warn('[OAuth][GitHub] state validation failed', {
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      hasStoredState: Boolean(storedState),
+      stateMatch: state === storedState,
+    });
     return NextResponse.redirect(`${appUrl}/login?error=invalid_state`);
   }
 
@@ -276,9 +291,15 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to create or find user');
     }
 
+    console.info('[OAuth][GitHub] user resolved', {
+      userId: user.id,
+      username: user.username,
+      isDesktop: isAllowedDesktopRedirectUri(desktopRedirectUri),
+    });
+
     // Check if this is a desktop client callback
     if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
-      console.info('[OAuth][GitHub] redirecting desktop session', describeDesktopRedirectUri(desktopRedirectUri));
+      console.info('[OAuth][GitHub] taking desktop path', describeDesktopRedirectUri(desktopRedirectUri));
       // For desktop client, generate JWT and redirect with session data
       // This avoids the issue of OAuth code being single-use
       const desktopAccessToken = await encryptSession({
@@ -318,6 +339,12 @@ export async function GET(request: NextRequest) {
       // Build the deep link URL (primary path — avoids HTTPS→HTTP redirect issues)
       const deepLinkUrl = `viben://oauth?session=${encodeURIComponent(sessionBase64)}`;
 
+      console.info('[OAuth][GitHub] desktop session prepared', {
+        sessionBase64Len: sessionBase64.length,
+        httpCallbackUrl: httpCallbackUrl.toString().replace(/session=[^&]+/, 'session=***'),
+        deepLinkUrl: deepLinkUrl.replace(/session=[^&]+/, 'session=***'),
+      });
+
       // Return HTML page that tries deep link first, falls back to HTTP callback.
       // This replaces the server-side 307 redirect which is unreliable on Windows:
       // HTTPS→HTTP redirects to localhost can be blocked by browser HTTPS-First mode,
@@ -330,6 +357,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Set session for web client
+    console.info('[OAuth][GitHub] taking web path', {
+      userId: user.id,
+      username: user.username,
+      hasWebRedirect: Boolean(webRedirect),
+      webRedirect,
+    });
     await setSessionCookie({
       userId: user.id,
       username: user.username,
@@ -342,15 +375,20 @@ export async function GET(request: NextRequest) {
     // Redirect to the original page (if login was initiated from a protected page)
     // or to the home page as default. Only accepts same-origin paths for safety.
     if (webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')) {
+      console.info('[OAuth][GitHub] redirecting to stored webRedirect', { webRedirect });
       return NextResponse.redirect(`${appUrl}${webRedirect}`);
     }
+    console.info('[OAuth][GitHub] redirecting to home', { appUrl });
     return NextResponse.redirect(appUrl);
   } catch (error) {
-    console.error('OAuth error:', error);
+    console.error('[OAuth][GitHub] callback error', {
+      message: error instanceof Error ? error.message : String(error),
+      isDesktop: isAllowedDesktopRedirectUri(desktopRedirectUri),
+    });
 
     // If desktop client, return HTML error page (instead of 307 redirect)
     if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
-      console.info('[OAuth][GitHub] redirecting desktop oauth error', describeDesktopRedirectUri(desktopRedirectUri));
+      console.info('[OAuth][GitHub] sending desktop error page', describeDesktopRedirectUri(desktopRedirectUri));
       const httpCallbackUrl = new URL(desktopRedirectUri);
       httpCallbackUrl.searchParams.set('error', 'oauth_failed');
       const deepLinkUrl = 'viben://oauth?error=oauth_failed';
@@ -361,6 +399,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    console.info('[OAuth][GitHub] redirecting to web login error page');
     return NextResponse.redirect(`${appUrl}/login?error=oauth_failed`);
   }
 }
