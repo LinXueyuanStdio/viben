@@ -36,13 +36,14 @@ export async function getHotSearches(limit: number = 8) {
 /** Get recent searches for a user */
 export async function getRecentSearches(userId: string | null, limit: number = 5) {
   if (!userId) return []
-  const rows = await db
-    .selectDistinct({ query: searchQueries.query })
-    .from(searchQueries)
-    .where(eq(searchQueries.userId, userId))
-    .orderBy(desc(searchQueries.searchedAt))
-    .limit(limit)
-  return rows.map((r) => r.query)
+  const rows = await db.execute(sql`
+    SELECT DISTINCT ON (query) query
+    FROM search_queries
+    WHERE user_id = ${userId}
+    ORDER BY query, searched_at DESC
+    LIMIT ${limit}
+  `)
+  return (rows.rows as { query: string }[]).map((r) => r.query)
 }
 
 /** Full-text search across published pages */
