@@ -8,12 +8,18 @@ import { UserPlus, UserCheck } from "lucide-react"
 interface FollowButtonProps {
   userSlug: string
   className?: string
+  currentUserSlug?: string
 }
 
-export function FollowButton({ userSlug, className }: FollowButtonProps) {
+export function FollowButton({ userSlug, className, currentUserSlug }: FollowButtonProps) {
   const { t } = useTranslation()
   const [following, setFollowing] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // 不能关注自己
+  if (currentUserSlug && currentUserSlug === userSlug) {
+    return null
+  }
 
   const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation()

@@ -38,6 +38,7 @@ interface ReadPageClientProps {
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
+  sessionUserSlug?: string
   communityEntityId: string
   recommendationEntries: Array<{ data: MiniPageCardData; href: string }>
 }
@@ -319,6 +320,7 @@ export function ReadPageClient({
   isAuthenticated,
   sessionUsername,
   sessionAvatarUrl,
+  sessionUserSlug,
   communityEntityId,
   recommendationEntries,
 }: ReadPageClientProps) {
@@ -376,7 +378,7 @@ export function ReadPageClient({
     recommendations: recommendationEntries.length > 0 ? recommendationEntries : undefined,
   }
 
-  const detailsTab = useMemo(() => <PageMeta data={pageMeta} />, [pageMeta])
+  const detailsTab = useMemo(() => <PageMeta data={pageMeta} currentUserSlug={sessionUserSlug} />, [pageMeta, sessionUserSlug])
   const commentsTab = useMemo(() => (
     <CommentsPanel
       communityEntityId={communityEntityId}

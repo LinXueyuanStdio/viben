@@ -23,9 +23,10 @@ export interface AuthorCardData {
 interface AuthorCardProps {
   data: AuthorCardData
   className?: string
+  currentUserSlug?: string
 }
 
-export function AuthorCard({ data, className }: AuthorCardProps) {
+export function AuthorCard({ data, className, currentUserSlug }: AuthorCardProps) {
   const { t } = useTranslation()
   const { fallbackText, avatarUrl, name, handle, userSlug, description, pageCount, followerCount, representativeWork, mutualFollows } = data
 
@@ -54,6 +55,7 @@ export function AuthorCard({ data, className }: AuthorCardProps) {
       </div>
       <FollowButton
         userSlug={userSlug}
+        currentUserSlug={currentUserSlug}
         className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
       />
       {(representativeWork || mutualFollows != null) && (

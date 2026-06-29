@@ -128,6 +128,7 @@ export default async function ReadPage({ params }: ReadPageProps) {
       isAuthenticated={!!session}
       sessionUsername={session?.username}
       sessionAvatarUrl={session?.avatarUrl}
+      sessionUserSlug={session?.userSlug}
       communityEntityId={communityEntity.id}
       recommendationEntries={recommendationEntries}
     />

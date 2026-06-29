@@ -53,9 +53,10 @@ interface PageMetaProps {
   data: PageMetaData
   defaultExpanded?: boolean
   className?: string
+  currentUserSlug?: string
 }
 
-export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = false, className }: PageMetaProps) {
+export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = false, className, currentUserSlug }: PageMetaProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { author, title, uid, sidePageUid, description, tags, stats, actions, chapters, chapterProgress, recommendations } = data
@@ -84,6 +85,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         </Link>
         <FollowButton
           userSlug={author.userSlug}
+          currentUserSlug={currentUserSlug}
           className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
         />
       </div>

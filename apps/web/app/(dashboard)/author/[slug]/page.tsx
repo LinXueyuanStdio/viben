@@ -139,7 +139,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
   return (
     <div className="grid gap-4">
-      <ProfileHero data={profile} />
+      <ProfileHero data={profile} currentUserSlug={session?.userSlug} />
       <VibenTabs defaultValue="页面">
         <VibenTabsList>
           {AUTHOR_TABS.map((tab) => (

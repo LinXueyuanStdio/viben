@@ -24,9 +24,10 @@ export interface ProfileHeroData {
 interface ProfileHeroProps {
   data: ProfileHeroData
   className?: string
+  currentUserSlug?: string
 }
 
-export function ProfileHero({ data, className }: ProfileHeroProps) {
+export function ProfileHero({ data, className, currentUserSlug }: ProfileHeroProps) {
   const { t } = useTranslation()
   const { fallbackText, avatarUrl, name, handle, tagline, userSlug, stats } = data
 
@@ -55,6 +56,7 @@ export function ProfileHero({ data, className }: ProfileHeroProps) {
       </div>
       <FollowButton
         userSlug={userSlug}
+        currentUserSlug={currentUserSlug}
         className="h-9 shrink-0 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
       />
     </div>
