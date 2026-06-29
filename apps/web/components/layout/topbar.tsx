@@ -44,6 +44,18 @@ export function Topbar({
   const { toggle: toggleDrawer } = useDrawer()
 
   const [immersive, setImmersive] = React.useState(false)
+  const [readHasSidePage, setReadHasSidePage] = React.useState(true)
+
+  // 监听 ReadPageClient 通过 data 属性传递的副页状态
+  React.useEffect(() => {
+    if (!isRead) return
+    const el = document.documentElement
+    const check = () => setReadHasSidePage(el.getAttribute("data-read-has-side-page") !== "0")
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(el, { attributes: true, attributeFilter: ["data-read-has-side-page"] })
+    return () => observer.disconnect()
+  }, [isRead])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
   // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
@@ -123,11 +135,20 @@ export function Topbar({
           )}
         >
           {isRead ? (
-            <div className="pointer-events-auto">
+            <div
+              className={cn(
+                "pointer-events-auto transition-all duration-300 ease-out",
+                readHasSidePage
+                  ? "opacity-100 scale-100 translate-y-0"
+                  : "opacity-0 scale-95 -translate-y-1 pointer-events-none"
+              )}
+            >
               <VibenTabs defaultValue="page">
                 <VibenTabsList variant="pill">
                   <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
-                  <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
+                  {readHasSidePage && (
+                    <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
+                  )}
                 </VibenTabsList>
               </VibenTabs>
             </div>

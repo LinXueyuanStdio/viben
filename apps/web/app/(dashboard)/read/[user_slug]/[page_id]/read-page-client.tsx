@@ -324,6 +324,14 @@ export function ReadPageClient({
 }: ReadPageClientProps) {
   const { t } = useTranslation()
 
+  // 通知 Topbar 当前阅读页是否有副页（side page）
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-read-has-side-page", pageSidePageUid ? "1" : "0")
+    return () => {
+      document.documentElement.removeAttribute("data-read-has-side-page")
+    }
+  }, [pageSidePageUid])
+
   const chapters =
     Array.isArray(pageChaptersJson) && pageChaptersJson.length > 0
       ? (pageChaptersJson as { number: number; title: string }[])
