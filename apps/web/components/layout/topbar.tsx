@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Bell, Clock, PanelRight, Maximize2, MoreHorizontal, FileText, Columns2 } from "lucide-react"
+import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
 import { BreadcrumbNav } from "./breadcrumb"
@@ -97,18 +98,6 @@ export function Topbar({
             </svg>
           </IconButton>
 
-          {/* 品牌 Logo（default 模式） */}
-          {!isRead && (
-            <span className="inline-flex items-center gap-2 shrink-0">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-linear-to-br from-primary to-accent text-white shadow-sm">
-                <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 0L16 8L8 16L0 8Z" />
-                </svg>
-              </span>
-              <span className="font-bold text-foreground font-[Lexend]">Viben</span>
-            </span>
-          )}
-
           {/* 面包屑 */}
           <BreadcrumbNav variant={isRead ? "read" : "global"} />
         </div>
@@ -201,11 +190,17 @@ function ReadMoreMenu() {
       </IconButton>
       {open && (
         <div className="absolute top-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
-          <button className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground">
-            🚩 举报
+          <button
+            onClick={() => toast.info("举报功能即将上线")}
+            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+          >
+            <Flag className="h-4 w-4" /> 举报
           </button>
-          <button className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground">
-            💬 反馈
+          <button
+            onClick={() => toast.info("反馈功能即将上线")}
+            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+          >
+            <MessageSquare className="h-4 w-4" /> 反馈
           </button>
         </div>
       )}

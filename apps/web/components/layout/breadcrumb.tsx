@@ -160,16 +160,23 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
   if (!hasDropdown) return segment
 
   return (
-    <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>{segment}</PopoverTrigger>
-        <PopoverContent
-          className="w-[min(292px,calc(100vw-28px))] p-1.5"
-          align="start"
-          sideOffset={4}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span
+          className="inline-flex"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
+          {segment}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[min(292px,calc(100vw-28px))] p-1.5"
+        align="start"
+        sideOffset={4}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
           <ScrollArea className="max-h-[320px]">
             <div className="grid gap-0.5">
               {siblings.map((sib) => (
@@ -193,6 +200,5 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
           </ScrollArea>
         </PopoverContent>
       </Popover>
-    </div>
   )
 }
