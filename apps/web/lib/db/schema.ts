@@ -452,7 +452,7 @@ export const reports = pgTable(
 
     // What is being reported
     entityType: text('entity_type', {
-      enum: ['mcp', 'skill', 'comment', 'collection', 'user'],
+      enum: ['mcp', 'skill', 'comment', 'collection', 'user', 'published_page'],
     }).notNull(),
     entityId: text('entity_id').notNull(),
 
@@ -482,6 +482,31 @@ export const reports = pgTable(
     index('reports_reporter_id_idx').on(table.reporterId),
     index('reports_status_idx').on(table.status),
     index('reports_created_at_idx').on(table.createdAt),
+  ]
+);
+
+// ============================================
+// Feedback Tables
+// ============================================
+
+export const feedbacks = pgTable(
+  'feedbacks',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    pageId: text('page_id').notNull(),
+    reporterId: text('reporter_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    category: text('category', {
+      enum: ['bug', 'suggestion', 'other'],
+    }).notNull(),
+    rating: integer('rating').notNull(),
+    content: text('content').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('feedbacks_page_id_idx').on(table.pageId),
+    index('feedbacks_reporter_idx').on(table.reporterId),
   ]
 );
 
@@ -540,6 +565,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   collections: many(collections),
   comments: many(comments),
   reports: many(reports),
+  feedbacks: many(feedbacks),
   moderationLogs: many(moderationLogs),
   drafts: many(drafts),
   githubConnection: one(githubConnections, {
@@ -611,6 +637,13 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   }),
   resolver: one(users, {
     fields: [reports.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
+export const feedbacksRelations = relations(feedbacks, ({ one }) => ({
+  reporter: one(users, {
+    fields: [feedbacks.reporterId],
     references: [users.id],
   }),
 }));
