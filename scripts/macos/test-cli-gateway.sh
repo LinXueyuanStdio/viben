@@ -180,6 +180,112 @@ run_test_json "json mode"    "$VIBEN --json config list"
 
 # ===== Part 2: Gateway Tests =====
 
+# ---------------------------------------------------------------------------
+# Socket.IO / WebSocket upgrade coexistence tests
+#
+# Covers: TypeError null is not an object at abortHandshake (ws)
+# when @fastify/websocket intercepted Socket.io upgrades before the
+# URL-routed dispatcher was added.
+# ---------------------------------------------------------------------------
+test_gateway_socketio() {
+    section "Socket.IO WebSocket upgrade"
+
+    # Helper: return 0 if WebSocket upgrade succeeds (101), 1 otherwise.
+    # NOTE: curl exits 28 on --max-time when the WebSocket stays open,
+    # which with "set -o pipefail" would poison the grep result.
+    # The "(curl ... || true)" pattern discards curl's exit code so grep
+    # is the sole decider.
+    ws_upgrade_ok() {
+        ( curl -s -i --max-time 3 --noproxy "*" \
+            -H "Connection: Upgrade" \
+            -H "Upgrade: websocket" \
+            -H "Sec-WebSocket-Version: 13" \
+            -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+            "http://127.0.0.1:$GATEWAY_PORT$1" 2>/dev/null || true ) \
+            | grep -q "^HTTP/1.1 101"
+    }
+
+    # Single Socket.IO upgrade (without sid — Engine.IO will 101 new connections)
+    if ws_upgrade_ok "/socket.io/client/?EIO=4&transport=websocket"; then
+        success "Socket.IO upgrade returns HTTP 101"
+    else
+        fail "Socket.IO upgrade did NOT return HTTP 101"
+    fi
+
+    # Socket.IO upgrade with an unknown SID (the original crash scenario).
+    # Engine.IO closes the connection without an HTTP response for unknown
+    # sessions — this is normal. The test just validates the gateway survives.
+    if curl -s -i --max-time 3 --noproxy "*" \
+        -H "Connection: Upgrade" \
+        -H "Upgrade: websocket" \
+        -H "Sec-WebSocket-Version: 13" \
+        -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+        "http://127.0.0.1:$GATEWAY_PORT/socket.io/client/?EIO=4&transport=websocket&sid=deadbeef" 2>/dev/null | grep -q "^HTTP"; then
+        success "Socket.IO upgrade with SID: gateway survived (got HTTP response)"
+    else
+        success "Socket.IO upgrade with SID: gateway survived (Engine.IO closed unknown session)"
+    fi
+
+    # 3 rapid consecutive Socket.IO upgrades (regression)
+    RAPID_FAIL=0
+    for i in 1 2 3; do
+        sleep 0.3
+        ws_upgrade_ok "/socket.io/client/?EIO=4&transport=websocket" || RAPID_FAIL=$((RAPID_FAIL + 1))
+    done
+    if [ "$RAPID_FAIL" -eq 0 ]; then
+        success "3 rapid Socket.IO upgrades all return 101"
+    else
+        fail "$RAPID_FAIL/3 rapid Socket.IO upgrades failed (expected all 101)"
+    fi
+
+    # Mixed upgrades: Socket.IO → /ws → Socket.IO
+    sleep 0.3
+    MIX_OK=true
+    ws_upgrade_ok "/socket.io/client/?EIO=4&transport=websocket" || MIX_OK=false
+    sleep 0.3
+    ws_upgrade_ok "/ws" || MIX_OK=false
+    sleep 0.3
+    ws_upgrade_ok "/socket.io/client/?EIO=4&transport=websocket" || MIX_OK=false
+    if [ "$MIX_OK" = true ]; then
+        success "Mixed upgrades (SIO→ws→SIO) all return 101"
+    else
+        fail "Mixed upgrade sequence: not all returned 101"
+    fi
+
+    # Gateway still alive after all upgrades
+    HEALTH_AFTER=$(curl -sf "http://127.0.0.1:$GATEWAY_PORT/health" 2>/dev/null || echo "DEAD")
+    if echo "$HEALTH_AFTER" | jq -e '.status == "ok"' > /dev/null 2>&1; then
+        success "Gateway alive after WebSocket upgrade tests"
+    else
+        fail "Gateway crashed/unhealthy: $HEALTH_AFTER"
+    fi
+
+    # Log audit: no abortHandshake crash
+    CRASH_COUNT=$(grep -c "null is not an object.*message\|TypeError.*message\|abortHandshake" "$GATEWAY_LOG" 2>/dev/null || echo "0")
+    CRASH_COUNT=$(echo "$CRASH_COUNT" | tr -d '[:space:]')
+    if [ "${CRASH_COUNT:-0}" -eq 0 ]; then
+        success "No abortHandshake crash in gateway logs"
+    else
+        fail "Gateway log contains abortHandshake crash ($CRASH_COUNT occurrences)"
+    fi
+
+    # Log audit: no upgrade conflict noise
+    NOISE=$(grep -c "headers already sent\|Cannot writeHead\|websocket upgrade failed" "$GATEWAY_LOG" 2>/dev/null || echo "0")
+    NOISE=$(echo "$NOISE" | tr -d '[:space:]')
+    if [ "${NOISE:-0}" -eq 0 ]; then
+        success "No upgrade conflict noise in gateway logs"
+    else
+        fail "Gateway log contains upgrade conflict noise ($NOISE occurrences)"
+    fi
+
+    # Dispatcher installed
+    if grep -q "upgrade dispatcher installed" "$GATEWAY_LOG" 2>/dev/null; then
+        success "WebSocket upgrade dispatcher installed"
+    else
+        fail "Upgrade dispatcher NOT found in gateway log"
+    fi
+}
+
 section "Gateway tests"
 
 run_test "gateway status (stopped)" "$VIBEN gateway status --port $GATEWAY_PORT || true"
@@ -234,6 +340,10 @@ if [ "$READY" = true ]; then
     else
         fail "/ws WebSocket upgrade (no 101 response)"
     fi
+
+    # ── Socket.IO WebSocket upgrade tests ──
+    test_gateway_socketio
+
 else
     fail "gateway did not become ready within 30s"
 fi

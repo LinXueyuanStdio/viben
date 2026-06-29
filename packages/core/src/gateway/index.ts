@@ -206,6 +206,19 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     log.warn({ err: e }, "Failed to register multipart plugin");
   }
 
+  // Create application state with configured host/port
+  const state = createAppState({ host, port, runtime });
+
+  // Create client socket server (Socket.io) BEFORE @fastify/websocket so we can
+  // capture both upgrade listeners and replace them with a URL-routed dispatcher.
+  // Only mounted during normal gateway startup (runtime=true), not for
+  // openapi.json export (runtime=false).
+  if (runtime) {
+    const httpServer = app.server;
+    state.clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
+    log.info("Client Socket.io server started");
+  }
+
   // Register WebSocket plugin once at the top level
   // This prevents ERR_HTTP_SOCKET_ASSIGNED errors when multiple routes try to register it separately
   try {
@@ -215,8 +228,27 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     log.warn({ err: e }, "Failed to register WebSocket plugin");
   }
 
-  // Create application state with configured host/port
-  const state = createAppState({ host, port, runtime });
+  // Replace the two independent upgrade listeners (Socket.io + @fastify/websocket)
+  // with a single URL-routed dispatcher. Each upgrade request goes to exactly one
+  // handler — no double-processing, no "headers already sent" noise.
+  if (runtime) {
+    const listeners = app.server.listeners("upgrade");
+    const socketIOListener = listeners[0] as (...args: any[]) => void;
+    const fwsListener = listeners[1] as (...args: any[]) => void;
+
+    if (socketIOListener && fwsListener) {
+      app.server.removeAllListeners("upgrade");
+      app.server.on("upgrade", (req: any, socket: any, head: any) => {
+        const url: string = req.url || "";
+        if (url.startsWith("/socket.io/client")) {
+          socketIOListener(req, socket, head);
+        } else {
+          fwsListener(req, socket, head);
+        }
+      });
+      log.info("WebSocket upgrade dispatcher installed (Socket.io + Fastify)");
+    }
+  }
 
   // Register routes
   await registerRoutes(app, state);
@@ -225,15 +257,6 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     await cleanupStaleAcpSessionsForStartup(acpSessionManager.storage);
   } catch (err) {
     log.warn({ err }, "Stale ACP session cleanup failed");
-  }
-
-  // Create client socket server (Socket.io) after ready when httpServer is available
-  if (runtime) {
-    app.addHook("onReady", async () => {
-      const httpServer = app.server;
-      state.clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
-      log.info("Client Socket.io server started");
-    });
   }
 
   // Set startup configuration for health endpoint

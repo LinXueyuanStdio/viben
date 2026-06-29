@@ -151,6 +151,7 @@ call :pass "gateway starts and becomes ready"
 call :test_health
 call :test_api_agent
 call :test_ws_upgrade
+call :test_gateway_socketio
 goto :gateway_tests_done
 
 :gateway_not_ready
@@ -294,6 +295,99 @@ if !errorlevel! equ 0 (
 )
 goto :eof
 
+:ws_upgrade_ok
+REM Helper: send WebSocket upgrade and check for HTTP 101
+REM %~1 = URL path, sets errorlevel 0 on 101
+set "WSUO_PATH=%~1"
+curl.exe -s -i --max-time 3 --noproxy "*" -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "http://127.0.0.1:%GATEWAY_PORT%!WSUO_PATH!" > "%TEST_DIR%\ws_upgrade.tmp" 2>nul
+findstr /C:"HTTP/1.1 101" "%TEST_DIR%\ws_upgrade.tmp" >nul 2>&1
+goto :eof
+
+:test_gateway_socketio
+REM Socket.IO / WebSocket upgrade coexistence tests
+REM Covers: TypeError null is not an object at abortHandshake (ws)
+echo.
+echo   Socket.IO WebSocket upgrade
+echo   ----------------------------------------------
+
+REM Single Socket.IO upgrade
+call :ws_upgrade_ok "/socket.io/client/?EIO=4^&transport=websocket"
+if !errorlevel! equ 0 (
+    call :pass "Socket.IO upgrade returns HTTP 101"
+) else (
+    call :fail "Socket.IO upgrade did NOT return HTTP 101"
+)
+
+REM Upgrade with unknown SID (original crash scenario)
+curl.exe -s -i --max-time 3 --noproxy "*" -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "http://127.0.0.1:%GATEWAY_PORT%/socket.io/client/?EIO=4^&transport=websocket^&sid=deadbeef" > "%TEST_DIR%\sio_sid.tmp" 2>nul
+findstr /C:"HTTP/" "%TEST_DIR%\sio_sid.tmp" >nul 2>&1
+if !errorlevel! equ 0 (
+    call :pass "Socket.IO upgrade with SID: gateway survived (got HTTP response)"
+) else (
+    call :pass "Socket.IO upgrade with SID: gateway survived (Engine.IO closed unknown session)"
+)
+
+REM 3 rapid upgrades
+set RAPID_FAIL=0
+for /L %%i in (1,1,3) do (
+    timeout /T 1 /NOBREAK >nul
+    call :ws_upgrade_ok "/socket.io/client/?EIO=4^&transport=websocket"
+    if !errorlevel! neq 0 set /a RAPID_FAIL+=1
+)
+if !RAPID_FAIL! equ 0 (
+    call :pass "3 rapid Socket.IO upgrades all return 101"
+) else (
+    call :fail "!RAPID_FAIL!/3 rapid Socket.IO upgrades failed (expected all 101)"
+)
+
+REM Mixed upgrades: SIO -> /ws -> SIO
+timeout /T 1 /NOBREAK >nul
+set MIX_OK=true
+call :ws_upgrade_ok "/socket.io/client/?EIO=4^&transport=websocket" || set MIX_OK=false
+timeout /T 1 /NOBREAK >nul
+call :ws_upgrade_ok "/ws" || set MIX_OK=false
+timeout /T 1 /NOBREAK >nul
+call :ws_upgrade_ok "/socket.io/client/?EIO=4^&transport=websocket" || set MIX_OK=false
+if "!MIX_OK!"=="true" (
+    call :pass "Mixed upgrades (SIO->ws->SIO) all return 101"
+) else (
+    call :fail "Mixed upgrade sequence: not all returned 101"
+)
+
+REM Gateway alive after all upgrades
+timeout /T 1 /NOBREAK >nul
+powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'DEAD' }" > "%TEST_DIR%\health_after.tmp" 2>nul
+findstr /C:"\"status\":\"ok\"" "%TEST_DIR%\health_after.tmp" >nul 2>&1
+if !errorlevel! equ 0 (
+    call :pass "Gateway alive after WebSocket upgrade tests"
+) else (
+    call :fail "Gateway crashed/unhealthy after upgrade tests"
+)
+
+REM Log audit: no crash signatures
+findstr /C:"null is not an object" /C:"abortHandshake" "%GATEWAY_LOG%" >nul 2>&1
+if !errorlevel! neq 0 (
+    call :pass "No abortHandshake crash in gateway logs"
+) else (
+    call :fail "Gateway log contains abortHandshake crash"
+)
+
+REM Log audit: no upgrade conflict noise
+findstr /C:"headers already sent" /C:"Cannot writeHead" /C:"websocket upgrade failed" "%GATEWAY_LOG%" >nul 2>&1
+if !errorlevel! neq 0 (
+    call :pass "No upgrade conflict noise in gateway logs"
+) else (
+    call :fail "Gateway log contains upgrade conflict noise"
+)
+
+REM Dispatcher installed
+findstr /C:"upgrade dispatcher installed" "%GATEWAY_LOG%" >nul 2>&1
+if !errorlevel! equ 0 (
+    call :pass "WebSocket upgrade dispatcher installed"
+) else (
+    call :fail "Upgrade dispatcher NOT found in gateway log"
+)
+goto :eof
 :test_ws_upgrade
 REM Test /ws WebSocket endpoint - check for HTTP 101 Switching Protocols
 REM Uses curl.exe (available on Windows Server 2019+) matching Linux/macOS approach
