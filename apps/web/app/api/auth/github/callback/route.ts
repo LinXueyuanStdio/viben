@@ -25,6 +25,93 @@ interface GitHubEmail {
   verified: boolean;
 }
 
+/**
+ * Generate an HTML page that delivers the OAuth result back to the desktop app.
+ *
+ * Uses two delivery mechanisms to maximize reliability across platforms:
+ * 1. Deep link (viben://oauth) — primary, works in release builds where the
+ *    protocol is registered by the NSIS/MSI installer.
+ * 2. HTTP callback (127.0.0.1:{port}/oauth) — fallback, works in dev builds
+ *    and non-installed portable builds via the local TCP server.
+ *
+ * This replaces server-side 307 redirects because HTTPS→HTTP redirects to
+ * localhost are unreliable on Windows: browser HTTPS-First mode may upgrade
+ * the connection to TLS (which the TCP server doesn't support), security
+ * software may block the redirect, and long session tokens in the URL can
+ * trigger security heuristics.
+ */
+function renderDesktopOAuthCallbackPage(options: {
+  type: 'session' | 'error';
+  httpCallbackUrl: string;
+  deepLinkUrl: string;
+}): NextResponse {
+  const { type, httpCallbackUrl, deepLinkUrl } = options;
+  const isError = type === 'error';
+  const title = isError ? 'Login Failed' : 'Login Complete!';
+  const message = isError
+    ? 'An error occurred during GitHub authentication. Returning to Viben...'
+    : 'You have signed in with GitHub. Returning to Viben...';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viben — ${title}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: #0a0a0a; color: #e0e0e0;
+  }
+  .card {
+    text-align: center; max-width: 400px; padding: 40px 32px;
+    background: #1a1a1a; border-radius: 12px; border: 1px solid #2a2a2a;
+  }
+  .icon { font-size: 48px; margin-bottom: 16px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  p { font-size: 14px; color: #999; margin-bottom: 24px; line-height: 1.5; }
+  .hint { font-size: 12px; color: #666; }
+  .hint a { color: #6b9fff; text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">${isError ? '&#10060;' : '&#10003;'}</div>
+  <h1>${title}</h1>
+  <p>${message}</p>
+  <p class="hint">If the app doesn&rsquo;t open automatically,<br><a href="${deepLinkUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">click here to open Viben</a>.</p>
+</div>
+<script>
+(function(){
+  var deepLink = ${JSON.stringify(deepLinkUrl)};
+  var httpCallback = ${JSON.stringify(httpCallbackUrl)};
+
+  // Primary: navigate to deep link (viben:// protocol)
+  // This will prompt the user to open Viben if the protocol is registered,
+  // or silently fail if it isn't (dev builds, portable builds).
+  window.location.href = deepLink;
+
+  // Fallback: after a short delay, also poke the local TCP callback server.
+  // The TCP server only needs to receive the HTTP request to extract the
+  // session/error from query params — the actual response content is irrelevant.
+  // Using fetch() instead of navigation avoids replacing the current page.
+  setTimeout(function(){
+    try { fetch(httpCallback, { mode: "no-cors" }); } catch(e) {}
+  }, 600);
+})();
+</script>
+</body>
+</html>`;
+
+  return new NextResponse(html, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const searchParams = request.nextUrl.searchParams;
@@ -189,9 +276,22 @@ export async function GET(request: NextRequest) {
       // Encode session data as base64 URL-safe string
       const sessionBase64 = Buffer.from(JSON.stringify(sessionData)).toString('base64url');
 
-      const redirectUrl = new URL(desktopRedirectUri);
-      redirectUrl.searchParams.set('session', sessionBase64);
-      return NextResponse.redirect(redirectUrl.toString());
+      // Build the HTTP callback URL (for TCP server fallback)
+      const httpCallbackUrl = new URL(desktopRedirectUri);
+      httpCallbackUrl.searchParams.set('session', sessionBase64);
+
+      // Build the deep link URL (primary path — avoids HTTPS→HTTP redirect issues)
+      const deepLinkUrl = `viben://oauth?session=${encodeURIComponent(sessionBase64)}`;
+
+      // Return HTML page that tries deep link first, falls back to HTTP callback.
+      // This replaces the server-side 307 redirect which is unreliable on Windows:
+      // HTTPS→HTTP redirects to localhost can be blocked by browser HTTPS-First mode,
+      // Windows security software, or triggered by long session tokens in the URL.
+      return renderDesktopOAuthCallbackPage({
+        type: 'session',
+        httpCallbackUrl: httpCallbackUrl.toString(),
+        deepLinkUrl,
+      });
     }
 
     // Set session for web client
@@ -204,16 +304,21 @@ export async function GET(request: NextRequest) {
       avatarUrl: user.avatarUrl ?? undefined,
     });
 
-    return NextResponse.redirect(`${appUrl}/mcp`);
+    return NextResponse.redirect(appUrl);
   } catch (error) {
     console.error('OAuth error:', error);
 
-    // If desktop client, redirect with error
+    // If desktop client, return HTML error page (instead of 307 redirect)
     if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
       console.info('[OAuth][GitHub] redirecting desktop oauth error', describeDesktopRedirectUri(desktopRedirectUri));
-      const redirectUrl = new URL(desktopRedirectUri);
-      redirectUrl.searchParams.set('error', 'oauth_failed');
-      return NextResponse.redirect(redirectUrl.toString());
+      const httpCallbackUrl = new URL(desktopRedirectUri);
+      httpCallbackUrl.searchParams.set('error', 'oauth_failed');
+      const deepLinkUrl = 'viben://oauth?error=oauth_failed';
+      return renderDesktopOAuthCallbackPage({
+        type: 'error',
+        httpCallbackUrl: httpCallbackUrl.toString(),
+        deepLinkUrl,
+      });
     }
 
     return NextResponse.redirect(`${appUrl}/login?error=oauth_failed`);
