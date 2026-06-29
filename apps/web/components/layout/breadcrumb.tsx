@@ -115,11 +115,11 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
     if (!open) {
       setOpen(true)
     }
-  }, [open])
+  }, [open, setOpen])
 
   const handleMouseLeave = React.useCallback(() => {
     closeTimer.current = setTimeout(() => setOpen(false), 120)
-  }, [])
+  }, [setOpen])
 
   React.useEffect(() => {
     return () => {
