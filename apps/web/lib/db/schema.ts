@@ -42,6 +42,7 @@ export const users = pgTable(
       .default('developer')
       .notNull(),
     followersCount: integer('followers_count').default(0).notNull(),
+    pageCount: integer('page_count').default(0),
 
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -678,6 +679,11 @@ export const publishedPages = pgTable(
     subscriberCount: integer('subscriber_count').default(0).notNull(),
     versionCount: integer('version_count').default(0).notNull(),
     statsUpdatedAt: timestamp('stats_updated_at'),
+    coverUrl: text('cover_url'),
+    authorName: text('author_name'),
+    authorAvatarUrl: text('author_avatar_url'),
+    sidePageUid: text('side_page_uid'),
+    chaptersJson: jsonb('chapters_json'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -733,6 +739,11 @@ export const publishedPageVersions = pgTable(
       .default('approved')
       .notNull(),
     publishedAt: timestamp('published_at').defaultNow().notNull(),
+    coverUrl: text('cover_url'),
+    authorName: text('author_name'),
+    authorAvatarUrl: text('author_avatar_url'),
+    sidePageUid: text('side_page_uid'),
+    chaptersJson: jsonb('chapters_json'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
@@ -1028,6 +1039,7 @@ export const userBrowseHistory = pgTable(
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
+    snapshotAuthorName: text('snapshot_author_name'),
   },
   (table) => [
     uniqueIndex('user_browse_history_unique_idx').on(
@@ -1173,6 +1185,10 @@ export const moments = pgTable(
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
+    source: text('source'),
+    quoteText: text('quote_text'),
+    viewCount: integer('view_count').default(0),
+    bookmarkCount: integer('bookmark_count').default(0),
   },
   (table) => [
     uniqueIndex('moments_uid_idx').on(table.uid),
@@ -1203,6 +1219,9 @@ export const momentAttachments = pgTable(
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     sortOrder: integer('sort_order').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    authorNameSnapshot: text('author_name_snapshot'),
+    viewCountSnapshot: integer('view_count_snapshot').default(0),
+    commentCountSnapshot: integer('comment_count_snapshot').default(0),
   },
   (table) => [
     index('moment_attachments_moment_idx').on(table.momentId, table.sortOrder),
@@ -1394,6 +1413,10 @@ export const notifications = pgTable(
     body: text('body'),
     readAt: timestamp('read_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    actorName: text('actor_name'),
+    actorAvatarUrl: text('actor_avatar_url'),
+    pageUid: text('page_uid'),
+    pageAuthorSlug: text('page_author_slug'),
   },
   (table) => [
     uniqueIndex('notifications_event_unique_idx').on(
@@ -1476,6 +1499,13 @@ export const rankingItems = pgTable(
     publishedAt: timestamp('published_at'),
     lastPublishedAt: timestamp('last_published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    delta: text('delta'),
+    scoreLabel: text('score_label').default('热度'),
+    viewCount: integer('view_count').default(0),
+    likeCount: integer('like_count').default(0),
+    commentCount: integer('comment_count').default(0),
+    authorName: text('author_name'),
+    authorAvatarUrl: text('author_avatar_url'),
   },
   (table) => [
     uniqueIndex('ranking_items_snapshot_entity_idx').on(
