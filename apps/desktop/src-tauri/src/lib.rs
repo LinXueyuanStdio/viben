@@ -155,14 +155,17 @@ async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::Pat
         return;
     }
 
-    eprintln!("[Gateway] Auto-starting on port {}...", config.port);
+    let msg = format!("[Gateway] Auto-starting on port {}...", config.port);
+    eprintln!("{}", msg);
+    commands::gateway::write_gateway_log(&msg);
 
-    // Use unified ensure_gateway_running with silent mode
+    // Use ensure_gateway_running. stderr is always captured to log file
+    // regardless of verbose flag (see start_gateway_process).
     match commands::gateway::ensure_gateway_running(
         state,
         commands::gateway::StartGatewayOptions {
             exe_dir,
-            verbose: false, // Silent mode for auto-start
+            verbose: false, // Console output stays quiet; stderr → log file always
             ..Default::default()
         },
     )
@@ -170,13 +173,19 @@ async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::Pat
     {
         Ok(status) => {
             if status.pid.is_some() {
-                eprintln!("[Gateway] Started with PID {:?}", status.pid);
+                let msg = format!("[Gateway] Started with PID {:?}", status.pid);
+                eprintln!("{}", msg);
+                commands::gateway::write_gateway_log(&msg);
             } else {
-                eprintln!("[Gateway] Already running on port {}", status.port);
+                let msg = format!("[Gateway] Already running on port {}", status.port);
+                eprintln!("{}", msg);
+                commands::gateway::write_gateway_log(&msg);
             }
         }
         Err(e) => {
-            eprintln!("[Gateway] Failed to start: {}", e);
+            let msg = format!("[Gateway] Failed to start: {}", e);
+            eprintln!("{}", msg);
+            commands::gateway::write_gateway_log(&msg);
         }
     }
 }

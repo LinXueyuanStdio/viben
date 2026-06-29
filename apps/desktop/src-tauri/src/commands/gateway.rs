@@ -4,8 +4,10 @@
 //! Commands for starting, stopping, and managing the viben gateway process.
 //! 用于启动、停止和管理 viben 网关进程的命令。
 
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -131,6 +133,28 @@ pub async fn ping_gateway(host: &str, port: u16) -> bool {
     {
         Ok(resp) => resp.status().is_success(),
         Err(_) => false,
+    }
+}
+
+/// Get the path for the gateway desktop log file
+/// Returns ~/.viben/logs/gateway-desktop.log, creating the directory if needed
+fn get_gateway_log_path() -> Option<PathBuf> {
+    let log_dir = dirs::home_dir()?.join(".viben").join("logs");
+    std::fs::create_dir_all(&log_dir).ok()?;
+    Some(log_dir.join("gateway-desktop.log"))
+}
+
+/// Write a timestamped line to the gateway desktop log file
+pub fn write_gateway_log(line: &str) {
+    if let Some(log_path) = get_gateway_log_path() {
+        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+        {
+            let _ = writeln!(file, "[{}] {}", timestamp, line);
+        }
     }
 }
 
@@ -348,49 +372,60 @@ async fn start_gateway_process(
 
     cmd.envs(&env);
 
-    // Configure stdio based on verbose mode
+    // Always pipe stderr for logging and error reporting (even in non-verbose mode).
+    // Stdout is piped only in verbose mode — it can be noisy with gateway output.
+    cmd.stderr(Stdio::piped());
     if verbose {
-        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+        cmd.stdout(Stdio::piped());
     } else {
-        cmd.stdout(Stdio::null()).stderr(Stdio::null());
+        cmd.stdout(Stdio::null());
     }
 
+    // Log the command we're about to run
+    write_gateway_log(&format!("Starting: {}", full_command));
+
     let mut child = cmd.spawn().map_err(|e| {
+        let msg = format!("[gateway] Failed to spawn: {}", e);
+        write_gateway_log(&msg);
         if verbose {
-            eprintln!("[gateway] Failed to spawn: {}", e);
+            eprintln!("{}", msg);
         }
         format!("Failed to start gateway: {}", e)
     })?;
 
     let pid = child.id().unwrap_or(0);
+    write_gateway_log(&format!("Spawned PID: {}", pid));
 
-    // Capture stderr for error reporting
+    // Capture stderr for error reporting — always active
     let stderr_lines = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::<String>::new()));
     let stderr_lines_clone = stderr_lines.clone();
 
-    if verbose {
-        eprintln!("[gateway] Spawned PID: {}", pid);
-
-        // Capture stderr in background for debugging and error reporting
-        if let Some(stderr) = child.stderr.take() {
-            let stderr_lines_inner = stderr_lines_clone.clone();
-            tokio::spawn(async move {
-                use tokio::io::{AsyncBufReadExt, BufReader};
-                let reader = BufReader::new(stderr);
-                let mut lines = reader.lines();
-                while let Ok(Some(line)) = lines.next_line().await {
+    // Capture stderr in background — ALWAYS active for log file + error reporting
+    if let Some(stderr) = child.stderr.take() {
+        let stderr_lines_inner = stderr_lines_clone.clone();
+        tokio::spawn(async move {
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                // Always write to log file for production debugging
+                write_gateway_log(&format!("[stderr] {}", line));
+                // Verbose: also print to console
+                if verbose {
                     eprintln!("[gateway:stderr] {}", line);
-                    // Store for error reporting (keep last 20 lines)
-                    let mut stored = stderr_lines_inner.lock().await;
-                    stored.push(line);
-                    if stored.len() > 20 {
-                        stored.remove(0);
-                    }
                 }
-            });
-        }
+                // Store for error reporting (keep last 20 lines)
+                let mut stored = stderr_lines_inner.lock().await;
+                stored.push(line);
+                if stored.len() > 20 {
+                    stored.remove(0);
+                }
+            }
+        });
+    }
 
-        // Capture stdout in background for debugging
+    // Capture stdout in background — only in verbose mode (can be noisy)
+    if verbose {
         if let Some(stdout) = child.stdout.take() {
             tokio::spawn(async move {
                 use tokio::io::{AsyncBufReadExt, BufReader};
