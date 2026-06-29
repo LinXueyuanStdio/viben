@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { Toaster } from "@/components/ui/toaster";
 
-// Initialize Analytics and Sentry before app renders
+// Initialize Analytics before app renders
 import { initApp } from "@/lib/init";
 import { getProvider } from "@/lib/analytics/factory";
 import { AnalyticsEvents, getSessionId } from "@/lib/analytics/types";

@@ -390,48 +390,22 @@ await initAnalytics(firebaseConfig);
 
 ---
 
-## 七、与 Sentry 的关系
-
-Sentry 负责**错误监控 + 性能追踪**，是独立维度，不经过 Analytics 抽象层。理由：
-
-1. Sentry 的 Breadcrumbs、Error Boundaries、Transaction 等概念与 Analytics 的事件模型差异太大，强行抽象会过度设计
-2. Sentry 在行业中几乎无替代品，切换概率极低
-3. 两个系统通过 `sentry_event_id` 参数在 Analytics 事件中关联（见 `02-sentry-integration.md §6`）
-
-```
-Analytics 抽象层                        Sentry（独立）
-┌────────────────────┐              ┌──────────────────┐
-│ AnalyticsProvider  │              │ Sentry.init()    │
-│  ├─ Firebase       │              │ ErrorBoundary    │
-│  └─ Volcengine (F) │              │ window.onerror   │
-└────────┬───────────┘              └────────┬─────────┘
-         │                                   │
-         │  logEvent('page_view', {...       │  captureException(error)
-         │    sentry_event_id: 'abc'})        │
-         └───────────────────────────────────┘
-                  通过 sentry_event_id 串联
-```
-
----
-
-## 八、更新后的实施计划
+## 七、更新后的实施计划
 
 基于抽象层设计，`03-implementation-plan.md` 的 Phase 1 文件结构需调整为：
 
 ```
 apps/desktop/src/lib/
-├── analytics/                    # ← 新增的分析抽象层
+├── analytics/                    # ← 分析抽象层
 │   ├── index.ts                  # 公共 API
 │   ├── types.ts                  # 事件常量 + 参数类型
 │   ├── provider.ts               # AnalyticsProvider 接口
 │   ├── factory.ts                # 单例工厂
 │   ├── context.tsx               # React Context
-│   ├── hooks.ts                  # useAnalytics / usePageView
+│   ├── hooks.ts                  # useAnalytics / usePageViewTracking
 │   └── providers/
-│       └── firebase.ts           # Firebase 实现
-├── sentry/                       # ← 独立，不经过抽象层
-│   ├── init.ts
-│   └── error-boundary.tsx
+│       ├── firebase.ts           # Firebase 实现
+│       └── volcengine.ts         # (future) 火山引擎实现
 ```
 
 此架构下，未来的 `providers/volcengine.ts` 只需实现同一接口即可完成切换。

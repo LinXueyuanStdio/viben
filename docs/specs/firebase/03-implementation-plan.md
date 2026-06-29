@@ -8,7 +8,7 @@
 
 基于《Viben Desktop 增长分析报告》中定义的 218 个事件和 `apps/desktop` 现有代码结构，本计划覆盖以下四个层面的实施：
 
-1. **基础设施层**：建立 `src/lib/analytics/` 分析抽象层（Provider 可替换架构），引入 `@sentry/react`，建立统一的 ErrorBoundary 和错误报告机制
+1. **基础设施层**：建立 `src/lib/analytics/` 分析抽象层（Provider 可替换架构），建立统一的初始化入口
 2. **全局埋点层**：建立类型化的事件跟踪函数库，实现应用生命周期事件（app_launch、session_start/end、page_view 等）的自动采集
 3. **核心路径埋点**：对 Chat、Workspace、Onboarding、MCP 等核心业务路径实施关键事件埋点
 4. **次要路径埋点**：对 Settings、Kanban、Cron、File Viewer、Skill、Pet 等辅助路径实施事件埋点
@@ -26,16 +26,14 @@
 ### 1.3 现有代码分析
 
 当前状态：
-- `src/lib/firebase.ts`（18 行）：仅初始化 Firebase App 和 Analytics，**从未调用 `logEvent()`**，将被 `src/lib/analytics/providers/firebase.ts` 替代
-- `App.tsx` 和 `MobileApp.tsx` 各自内联定义了一个完全相同的 `AppErrorBoundary` 类组件，仅 `console.error` + `window.location.reload()`，无远程上报
-- 4 个子窗口入口点（chat-window、pet-window、page-preview、screenshot-overlay）**完全没有 ErrorBoundary 保护**
-- 项目中**不存在 `@sentry/react` 依赖**，无任何 Sentry 相关代码
-- `packages/core/src/services/firebase.ts` 中有 `FirebaseService`（含 `reportBug()` 和 `trackEvent()`），但 `apps/desktop` 未引用
+- `src/lib/analytics/providers/firebase.ts`：已实现 `FirebaseAnalyticsProvider`，Provider 可替换架构
+- `src/lib/analytics/` 分析抽象层已建立，业务代码通过 `useAnalytics()` hook 调用
+- `src/lib/init.ts`：应用初始化入口，统一管理 Analytics Provider 注册和初始化
+- `packages/core/src/services/firebase.ts` 中有 `FirebaseService`（含 `reportBug()` 和 `trackEvent()`），可用于 Gateway 侧日志收集
 
 架构变更要点（详见 `00-analytics-architecture.md`）：
-- 新增 `src/lib/analytics/` 分析抽象层，业务代码通过 `useAnalytics()` hook 调用，不直接依赖 Firebase SDK
+- 已实现 `src/lib/analytics/` 分析抽象层，业务代码通过 `useAnalytics()` hook 调用，不直接依赖 Firebase SDK
 - Firebase 实现作为 `AnalyticsProvider` 接口的一个 Provider，未来可替换为火山引擎等后端
-- Sentry 保持独立（`src/lib/sentry/`），不经过 analytics 抽象层
 
 ---
 
@@ -55,27 +53,19 @@
 | 6 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/analytics/providers/firebase.ts` | `FirebaseAnalyticsProvider` 实现（`AnalyticsProvider` 接口） |
 | 7 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/analytics/index.ts` | 公共 API 入口（统一 re-export） |
 
-#### 2.1.2 Sentry 模块 `src/lib/sentry/`（独立，不经过 analytics 抽象）
+#### 2.1.2 初始化入口 `src/lib/`
 
 | # | 文件路径（绝对路径） | 用途 |
 |---|---------------------|------|
-| 8 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/sentry/init.ts` | Sentry 初始化配置 |
-| 9 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/sentry/error-boundary.tsx` | 通用 ErrorBoundary 组件（含 Sentry + Analytics 双通道上报） |
+| 8 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/init.ts` | 应用初始化入口（注册 Analytics Provider + 初始化 Firebase） |
 
 ### 2.2 修改文件
 
 | # | 文件路径（绝对路径） | 变更说明 |
 |---|---------------------|---------|
-| 1 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/main.tsx` | （1）删除 `import "./lib/firebase"`，替换为 analytics factory 初始化流程；<br>（2）添加 `app_launch` 事件；<br>（3）添加全局错误处理（`window.onerror` + `unhandledrejection`）；<br>（4）包裹 `AppErrorBoundary` |
-| 2 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/firebase.ts` | **删除**（Firebase 初始化逻辑已迁移到 `analytics/providers/firebase.ts`，业务代码改用 `useAnalytics()` hook） |
-| 3 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/App.tsx` | 删除内联 `AppErrorBoundary`，替换为 `@/lib/sentry/error-boundary` 导入 |
-| 4 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/MobileApp.tsx` | 删除内联 `AppErrorBoundary`，替换为 `@/lib/sentry/error-boundary` 导入 |
-| 5 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/chat-window-main.tsx` | 添加 ErrorBoundary 包裹 |
-| 6 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/pet-window-main.tsx` | 添加 ErrorBoundary 包裹 |
-| 7 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/page-preview-window-main.tsx` | 添加 ErrorBoundary 包裹 |
-| 8 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/screenshot-overlay-main.tsx` | 添加 ErrorBoundary 包裹 |
-| 9 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/app-layout.tsx` | 添加 `usePageView()` hook（来自 `@/lib/analytics/hooks`）实现 page_view 自动跟踪 |
-| 10 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/package.json` | 添加 `@sentry/react` 依赖 |
+| 1 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/main.tsx` | （1）替换为 `initApp()` 初始化流程；<br>（2）添加 `app_launch`、`app_session_start`、`app_session_end` 事件 |
+| 2 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/layout/app-layout.tsx` | 添加 `usePageViewTracking()` 实现 page_view 自动跟踪 |
+| 3 | `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/components/mobile/mobile-layout.tsx` | 添加 `usePageViewTracking()` 实现 page_view 自动跟踪 |
 
 ### 2.3 Phase 3-4 修改文件（通过 `useAnalytics().logEvent()` 新增埋点调用）
 
@@ -113,7 +103,7 @@
 
 ### Phase 1 — 基础设施（~4 小时）
 
-**目标**：建立分析抽象层（`src/lib/analytics/`），Provider 可替换架构；建立 Sentry 错误上报基础设施，统一 ErrorBoundary 组件。
+**目标**：建立分析抽象层（`src/lib/analytics/`），Provider 可替换架构；建立统一的应用初始化入口。
 
 #### 任务清单
 
@@ -151,73 +141,21 @@
   - 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/analytics/index.ts`
     - 统一 re-export 所有公共 API
 
-- [ ] **1.5 安装 @sentry/react**（10 分钟）
-  - `cd apps/desktop && pnpm add @sentry/react`
-  - 验证安装成功：`pnpm typecheck`
+- [ ] **1.5 创建应用初始化入口**（20 分钟）
+  - 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/init.ts`
+  - 实现 `initApp()` 函数：
+    - 注册 `FirebaseAnalyticsProvider`
+    - 初始化 Firebase Analytics
+  - 幂等操作——多次调用只执行一次
 
-- [ ] **1.6 创建 Sentry 初始化模块**（30 分钟）
-  - 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/sentry/init.ts`
-  - 实现 `initializeSentry()` 函数：
-    - DSN 配置（环境变量 `VITE_SENTRY_DSN`，开发环境可用空值跳过）
-    - `beforeSend` 过滤 PII（个人敏感信息）
-    - 设置 `environment`（development/production）
-    - 设置 `release`（app_version）
-    - React Router Instrumentation（`createRoutesFromChildren` + `matchRoutes`）
-    - `Sentry.replayIntegration()` 用于错误回放（可选）
+- [ ] **1.6 更新 main.tsx 初始化流程**（30 分钟）
+  - 导入 `initApp()` 初始化入口
+  - 添加 `app_launch`、`app_session_start`、`app_session_end` 事件
 
-- [ ] **1.7 创建通用 ErrorBoundary 组件**（1 小时）
-  - 创建 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/sentry/error-boundary.tsx`
-  - 使用 `@sentry/react` 的 `ErrorBoundary` 作为基础
-  - 在 `componentDidCatch` / `beforeCapture` 中：
-    - 通过 Sentry 上报错误（含 componentStack）
-    - 通过 `getProvider().logEvent()` 记录 `app_error_boundary_triggered` 事件（不直接依赖 Firebase SDK）
-  - 提供自定义 `fallback` prop，默认回退 UI：
-    - 显示错误信息和「重新加载」按钮
-    - 支持 `onReset` 回调
-    - 国际化文本（使用 `useTranslation`）
-  - 导出 `AppErrorBoundary` 组件
-
-- [ ] **1.8 更新 main.tsx 初始化流程**（30 分钟）
-  - 删除 `import "./lib/firebase"` 旧导入
-  - 添加 analytics factory 初始化：
-    ```typescript
-    import { FirebaseAnalyticsProvider } from "@/lib/analytics/providers/firebase";
-    import { setupAnalyticsProvider, initAnalytics } from "@/lib/analytics/factory";
-    setupAnalyticsProvider(new FirebaseAnalyticsProvider());
-    await initAnalytics(firebaseConfig);
-    ```
-  - 添加 `<AnalyticsProvider>` Context 包裹
-  - 添加 `app_launch` 事件上报
-  - 添加全局错误处理（`window.onerror` + `unhandledrejection`）
-  - 包裹 `<AppErrorBoundary>`
-
-- [ ] **1.9 替换 App.tsx 中的内联 ErrorBoundary**（20 分钟）
-  - 删除 App.tsx 中的内联 `AppErrorBoundary` 类组件
-  - 导入 `import { AppErrorBoundary } from "@/lib/sentry/error-boundary"`
-  - 更新 `<AppErrorBoundary>` 使用方式，添加 `fallback` prop
-
-- [ ] **1.10 替换 MobileApp.tsx 中的内联 ErrorBoundary**（15 分钟）
-  - 删除 MobileApp.tsx 中的内联 `AppErrorBoundary` 类组件
-  - 导入统一的 `AppErrorBoundary`
-  - 更新使用方式
-
-- [ ] **1.11 为子窗口添加 ErrorBoundary**（30 分钟）
-  - `chat-window-main.tsx`：用 `AppErrorBoundary` 包裹 `ChatWindowPage`
-  - `pet-window-main.tsx`：用 `AppErrorBoundary` 包裹 `PetWindowPage`
-  - `page-preview-window-main.tsx`：用 `AppErrorBoundary` 包裹 `PagePreviewWindow`
-  - `screenshot-overlay-main.tsx`：用 `AppErrorBoundary` 包裹 `ScreenshotOverlayPage`
-  - 各窗口的 `fallback` 适配窗口尺寸（宠物窗口 128x128 需特殊处理）
-
-- [ ] **1.12 删除旧 firebase.ts**（5 分钟）
-  - 删除 `/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/desktop/src/lib/firebase.ts`
-  - 验证项目中无残留 `import "./lib/firebase"` 引用
-
-- [ ] **1.13 验证 Phase 1**（30 分钟）
+- [ ] **1.7 验证 Phase 1**（30 分钟）
   - `pnpm typecheck` 通过
   - 桌面应用正常启动（无白屏）
-  - 故意触发错误，验证 ErrorBoundary 回退 UI 显示
-  - 子窗口各自触发错误，验证 ErrorBoundary 隔离性
-  - 检查 Sentry 开发环境是否有事件上报（dev 模式仅 console 日志）
+  - 在 Firebase Console DebugView 中验证 `app_launched` 事件
   - 验证 Analytics Provider 工厂初始化流程正常
 
 ---

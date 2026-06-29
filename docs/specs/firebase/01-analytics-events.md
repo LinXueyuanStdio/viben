@@ -8,14 +8,12 @@
 
 ## 一、概述
 
-Viben Desktop 分析系统采用 **Firebase Analytics + Sentry 双通道** 架构：
+Viben Desktop 分析系统采用 **Firebase Analytics** 单通道架构：
 
 - **Firebase Analytics**：负责用户行为事件采集、转化漏斗分析、用户留存追踪。所有用户交互事件（点击、页面浏览、功能使用）通过 `logEvent()` 上报至 Firebase，在 Google Analytics 控制台进行聚合分析。
-- **Sentry**：负责错误监控与性能追踪。React Error Boundary 捕获的崩溃、Gateway 连接异常、API 调用失败等错误事件自动上报至 Sentry，同时关键操作的性能指标（首Token延迟、SSE连接耗时）也通过 Sentry Performance 进行追踪。
+- 通过 `session_id` 和 `user_id_hash` 实现用户行为关联，可按用户维度查询完整行为序列。
 
-两个通道通过共享的 `session_id` 和 `user_id_hash` 实现数据关联，可在 Sentry 中查看错误发生前的用户行为序列，或在 Firebase 中按错误类型筛选受影响的用户群。
-
-当前代码库中 Firebase Analytics 已通过 `initializeApp()` 完成初始化，但尚未在任何业务组件中调用 `logEvent()`。本规范定义了完整的埋点事件体系，作为后续实施的依据。
+本规范定义了完整的埋点事件体系，已在 30+ 模块中完成接入。
 
 ### 设计原则
 
