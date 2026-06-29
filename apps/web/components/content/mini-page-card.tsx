@@ -1,8 +1,9 @@
 import Link from "next/link"
-import { Eye, Heart } from "lucide-react"
+import { Eye, Heart, MessageCircle } from "lucide-react"
 import { Cover } from "./cover"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
 export interface MiniPageCardData {
@@ -10,6 +11,9 @@ export interface MiniPageCardData {
   title: string
   description: string
   authorName: string
+  authorAvatarUrl?: string
+  authorFallbackText?: string
+  commentCount?: number
   stats: {
     views: number
     likes: number
@@ -23,11 +27,12 @@ interface MiniPageCardProps {
 }
 
 export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
-  const { cover, title, description, stats } = data
+  const { cover, title, description, authorName, authorAvatarUrl, authorFallbackText, commentCount, stats } = data
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
     { icon: Heart, value: stats.likes, format: true },
+    ...(commentCount !== undefined ? [{ icon: MessageCircle, value: commentCount, format: true } as StatProps] : []),
   ]
 
   return (
@@ -44,7 +49,18 @@ export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
       <div className="grid gap-0.5 min-w-0">
         <strong className="text-[14px] font-bold truncate">{title}</strong>
         <p className="text-[13px] text-muted-foreground truncate">{description}</p>
-        <StatsRow stats={detailStats} />
+        <div className="flex items-center gap-2">
+          {authorAvatarUrl !== undefined && (
+            <div className="flex items-center gap-1 min-w-0">
+              <Avatar className="size-[14px] shrink-0">
+                <AvatarImage src={authorAvatarUrl} />
+                <AvatarFallback className="text-[8px] leading-none">{authorFallbackText ?? authorName[0]}</AvatarFallback>
+              </Avatar>
+              <span className="text-[12px] text-muted-foreground truncate">{authorName}</span>
+            </div>
+          )}
+          <StatsRow stats={detailStats} />
+        </div>
       </div>
     </Link>
   )

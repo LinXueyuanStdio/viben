@@ -102,14 +102,12 @@ export function Topbar({
       >
         {/* ===== Left ===== */}
         <div className="flex items-center gap-2 min-w-0">
-          {/* 侧边栏切换按钮（阅读模式下隐藏，因为侧边栏已被隐藏） */}
-          {!isRead && (
-            <IconButton size="compact" label={t("community.toggleSidebar")} onClick={onToggleSidebar}>
-              <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M3 4h12M3 9h12M3 14h12" />
-              </svg>
-            </IconButton>
-          )}
+          {/* 侧边栏切换按钮 */}
+          <IconButton size="compact" label={t("community.toggleSidebar")} onClick={onToggleSidebar}>
+            <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 4h12M3 9h12M3 14h12" />
+            </svg>
+          </IconButton>
 
           {/* 面包屑 */}
           <BreadcrumbNav variant={isRead ? "read" : "global"} />

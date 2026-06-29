@@ -39,7 +39,7 @@ interface ReadPageClientProps {
   sessionUsername?: string
   sessionAvatarUrl?: string
   communityEntityId: string
-  recommendations: MiniPageCardData[]
+  recommendationEntries: Array<{ data: MiniPageCardData; href: string }>
 }
 
 interface CommunityComment {
@@ -320,7 +320,7 @@ export function ReadPageClient({
   sessionUsername,
   sessionAvatarUrl,
   communityEntityId,
-  recommendations,
+  recommendationEntries,
 }: ReadPageClientProps) {
   const { t } = useTranslation()
 
@@ -365,7 +365,7 @@ export function ReadPageClient({
       chapters.length > 0
         ? { current: 0, total: chapters.length }
         : undefined,
-    recommendations: recommendations.length > 0 ? recommendations : undefined,
+    recommendations: recommendationEntries.length > 0 ? recommendationEntries : undefined,
   }
 
   const detailsTab = useMemo(() => <PageMeta data={pageMeta} />, [pageMeta])

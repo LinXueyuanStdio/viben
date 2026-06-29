@@ -2,7 +2,8 @@ import { PageCard } from "@/components/content/page-card"
 import { SectionHead } from "@/components/content/section-head"
 import { AuthorCard } from "@/components/content/author-card"
 import { db, publishedPages, users } from "@/lib/db"
-import { desc, eq, and, sql } from "drizzle-orm"
+import { desc, eq, and, ne, sql } from "drizzle-orm"
+import { getSession } from "@/lib/auth/cookies"
 import { EmptyState } from "@/components/content/i18n-text"
 import type { PageCardData } from "@/components/content/page-card"
 import type { AuthorCardData } from "@/components/content/author-card"
@@ -31,6 +32,7 @@ function timeAgo(date: Date | string | null | undefined): string {
 export default async function TagPage({ params }: { params: Promise<{ tag_name: string }> }) {
   const { tag_name } = await params
   const tag = decodeURIComponent(tag_name)
+  const session = await getSession()
 
   const [pages, topAuthors, relatedTags] = await Promise.all([
     db.select({
@@ -55,7 +57,9 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
       ))
       .orderBy(desc(publishedPages.lastPublishedAt))
       .limit(20),
-    db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
+    session?.userId
+      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
+      : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
     // Get related tags: other tags that appear alongside this tag
     db.execute(sql`
       SELECT DISTINCT tag, COUNT(*) as cnt

@@ -81,13 +81,11 @@ export function AppShell({
           recentSearches={recentSearches}
         />
         <div className="flex flex-1 overflow-hidden">
-          {!isRead && (
-            <Sidebar
-              collapsed={sidebarCollapsed}
-              session={session}
-              pendingPackagesCount={adminStats?.pendingPackagesCount}
-            />
-          )}
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            session={session}
+            pendingPackagesCount={adminStats?.pendingPackagesCount}
+          />
           <main className={cn("flex-1", isRead ? "overflow-hidden" : "overflow-y-auto")}>
             <div className={cn(isRead ? "p-0 max-w-none" : "w-[min(1280px,100%)] mx-auto px-4 py-4")}>
               {children}

@@ -2,7 +2,7 @@ import { after } from "next/server"
 import { eq, and, ne, desc } from "drizzle-orm"
 import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
-import { db, publishedPages } from "@/lib/db"
+import { db, publishedPages, users } from "@/lib/db"
 import { notFound } from "next/navigation"
 import { ReadPageClient } from "./read-page-client"
 import type { Metadata } from "next"
@@ -56,22 +56,25 @@ export default async function ReadPage({ params }: ReadPageProps) {
     }
   })
 
-  // Fetch recommendations (same category or same author pages)
-  let recommendations: MiniPageCardData[] = []
+  // Fetch recommendations (same category or same author pages, with author detail)
+  type RecEntry = { data: MiniPageCardData; href: string }
+  let recommendationEntries: RecEntry[] = []
   try {
     const relatedRows = await db
       .select({
-        id: publishedPages.id,
         uid: publishedPages.uid,
         title: publishedPages.title,
         description: publishedPages.description,
         authorName: publishedPages.authorName,
+        authorAvatarUrl: publishedPages.authorAvatarUrl,
         coverUrl: publishedPages.coverUrl,
         viewCount: publishedPages.viewCount,
         likeCount: publishedPages.likeCount,
-        userId: publishedPages.userId,
+        commentCount: publishedPages.commentCount,
+        userSlug: users.userSlug,
       })
       .from(publishedPages)
+      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(
         and(
           eq(publishedPages.visibility, "public"),
@@ -84,15 +87,21 @@ export default async function ReadPage({ params }: ReadPageProps) {
       )
       .orderBy(desc(publishedPages.viewCount))
       .limit(3)
-    recommendations = relatedRows.map((r) => ({
-      cover: r.coverUrl ? `url(${r.coverUrl})` : gradientCover(r.title),
-      title: r.title,
-      description: r.description ?? "",
-      authorName: r.authorName ?? "?",
-      stats: { views: r.viewCount, likes: r.likeCount },
+    recommendationEntries = relatedRows.map((r) => ({
+      data: {
+        cover: r.coverUrl ? `url(${r.coverUrl})` : gradientCover(r.title),
+        title: r.title,
+        description: r.description ?? "",
+        authorName: r.authorName ?? "?",
+        authorAvatarUrl: r.authorAvatarUrl ?? undefined,
+        authorFallbackText: r.authorName?.[0] ?? "?",
+        commentCount: r.commentCount,
+        stats: { views: r.viewCount, likes: r.likeCount },
+      } satisfies MiniPageCardData,
+      href: `/read/${encodeURIComponent(r.userSlug)}/${encodeURIComponent(r.uid)}`,
     }))
   } catch {
-    recommendations = []
+    recommendationEntries = []
   }
 
   return (
@@ -120,7 +129,7 @@ export default async function ReadPage({ params }: ReadPageProps) {
       sessionUsername={session?.username}
       sessionAvatarUrl={session?.avatarUrl}
       communityEntityId={communityEntity.id}
-      recommendations={recommendations}
+      recommendationEntries={recommendationEntries}
     />
   )
 }

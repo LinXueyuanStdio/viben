@@ -46,7 +46,7 @@ export interface PageMetaData {
     current: number
     total: number
   }
-  recommendations?: MiniPageCardData[]
+  recommendations?: Array<{ data: MiniPageCardData; href: string }>
 }
 
 interface PageMetaProps {
@@ -172,8 +172,8 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         <div className="grid gap-2">
           <SectionHead title={t('community.recommended')} />
           <div className="grid gap-2">
-            {recommendations.map((rec, i) => (
-              <MiniPageCard key={i} data={rec} href={`/read/${rec.authorName}/${i}`} />
+            {recommendations.map((entry, i) => (
+              <MiniPageCard key={i} data={entry.data} href={entry.href} />
             ))}
           </div>
         </div>

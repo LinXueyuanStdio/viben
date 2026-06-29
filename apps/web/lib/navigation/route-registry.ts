@@ -46,6 +46,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/notifications": { label: "通知", icon: Bell, parent: "/", dropdownCategory: "浏览" },
   "/history": { label: "浏览历史", icon: Clock, parent: "/", dropdownCategory: "浏览" },
   "/search": { label: "搜索", icon: Search, parent: "/" },
+  "/tags": { label: "标签", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
 
   // 市场
   "/mcp": { label: "MCP 市场", icon: Package, parent: "/", dropdownCategory: "市场" },
@@ -150,8 +151,11 @@ export function getSiblingRoutes(
 
   const siblings: Array<{ href: string; config: RouteConfig }> = []
 
-  // 对于根路由和 /read 段，只显示社区浏览页（与 index.html 全局下拉一致）
-  if (parentPath === "/" || parentPath === "/read") {
+  // 对于根路由、/read 段、以及根路由的直接子路由（/category、/leaderboard 等），
+  // 显示社区浏览页下拉（与 index.html 全局下拉一致）
+  const parentRoute = routeRegistry[parentPath]
+  const isRootChild = parentRoute?.parent === "/"
+  if (parentPath === "/" || parentPath === "/read" || isRootChild) {
     for (const [href, config] of Object.entries(routeRegistry)) {
       if (href === parentPath) continue
       if (config.dropdownCategory === "浏览") {
