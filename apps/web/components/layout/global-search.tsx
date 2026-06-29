@@ -1,0 +1,143 @@
+"use client"
+
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import { Search, X, TrendingUp } from "lucide-react"
+import { cn } from "@/lib/utils/index"
+import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+interface GlobalSearchProps {
+  recentSearches: string[]
+  onRemoveRecent?: (query: string) => void
+  hotSearches: { query: string; count: number }[]
+}
+
+export function GlobalSearch({
+  recentSearches = [],
+  onRemoveRecent,
+  hotSearches = [],
+}: GlobalSearchProps) {
+  const router = useRouter()
+  const [query, setQuery] = React.useState("")
+  const [open, setOpen] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleSearch = (q: string) => {
+    setOpen(false)
+    router.push(`/search?q=${encodeURIComponent(q)}`)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && query.trim()) {
+      handleSearch(query.trim())
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div
+          className={cn(
+            "relative flex items-center gap-2 h-10 px-3 w-full max-w-[520px]",
+            "border border-border rounded-[10px] bg-surface shadow-sm"
+          )}
+        >
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setOpen(true)}
+            placeholder="搜索插件、页面、作者..."
+            className="flex-1 border-0 outline-none bg-transparent text-foreground font-inherit text-[15px] placeholder:text-muted-foreground"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="清除搜索"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        className="w-[min(520px,calc(100vw-28px))] p-3"
+        align="start"
+        sideOffset={6}
+        onInteractOutside={() => setOpen(false)}
+      >
+        <div className="grid gap-3">
+          {/* 最近搜索 */}
+          {recentSearches.length > 0 && (
+            <div className="grid gap-2">
+              <span className="text-xs font-black text-muted-foreground">最近搜索</span>
+              <div className="flex flex-wrap gap-1.5">
+                {recentSearches.map((item) => (
+                  <span
+                    key={item}
+                    className="inline-flex items-center gap-1 min-h-[28px] rounded-full bg-surface-secondary px-2.5 text-xs font-extrabold cursor-pointer hover:bg-surface"
+                  >
+                    <span onClick={() => handleSearch(item)}>{item}</span>
+                    {onRemoveRecent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRemoveRecent(item)
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`删除 ${item}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 热门搜索 */}
+          {hotSearches.length > 0 && (
+            <div className="grid gap-1">
+              <span className="text-xs font-black text-muted-foreground">热门搜索</span>
+              <ScrollArea className="max-h-[240px]">
+                <div className="grid gap-0.5">
+                  {hotSearches.map((item, idx) => (
+                    <button
+                      key={item.query}
+                      onClick={() => handleSearch(item.query)}
+                      className="grid grid-cols-[22px_1fr_auto] items-center gap-2 min-h-[34px] rounded-lg px-2 text-left text-[13px] font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+                    >
+                      <span className={cn("text-center", idx < 3 && "text-primary")}>
+                        {idx + 1}
+                      </span>
+                      <span className="truncate">{item.query}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {item.count.toLocaleString()} 次
+                        {idx === 0 && <TrendingUp className="inline h-3 w-3 ml-1 text-primary" />}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* 无数据 */}
+          {recentSearches.length === 0 && hotSearches.length === 0 && (
+            <div className="flex items-center justify-center min-h-[60px] text-sm font-extrabold text-muted-foreground">
+              暂无搜索建议
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
