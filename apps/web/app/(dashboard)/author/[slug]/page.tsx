@@ -154,7 +154,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {pageCards.map((item, i) => (
-                <PageCard key={i} data={item.card} variant="default" href={item.href} />
+                <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
               ))}
             </div>
           )}

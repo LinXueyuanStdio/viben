@@ -1,5 +1,11 @@
+"use client"
+
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import Link from "next/link"
-import { Eye, MessageCircle, Bookmark, Heart } from "lucide-react"
+import { Eye, MessageCircle, Bookmark, Heart, MoreHorizontal, Flag, MessageSquare } from "lucide-react"
 import { Cover } from "./cover"
 import { MetaRow } from "./meta-row"
 import { StatsRow } from "./stats-row"
@@ -29,9 +35,54 @@ interface PageCardProps {
   variant?: "default" | "home"
   href: string
   className?: string
+  hideAuthor?: boolean
 }
 
-export function PageCard({ data, variant = "default", href, className }: PageCardProps) {
+function MoreMenu() {
+  const { t } = useTranslation()
+  const [open, setOpen] = React.useState(false)
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        className="inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
+        aria-label={t("community.moreActions")}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MoreHorizontal className="size-4" />
+      </button>
+      {open && (
+        <div className="absolute bottom-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toast.info(t("community.reportFeatureSoon"))
+            }}
+            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+          >
+            <Flag className="h-4 w-4" /> {t("community.report")}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toast.info(t("community.feedbackFeatureSoon"))
+            }}
+            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+          >
+            <MessageSquare className="h-4 w-4" /> {t("community.feedback")}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function PageCard({ data, variant = "default", href, className, hideAuthor }: PageCardProps) {
+  const router = useRouter()
   const { cover, title, description, author, timeAgo, stats } = data
 
   const coverStats: StatProps[] = [
@@ -46,11 +97,15 @@ export function PageCard({ data, variant = "default", href, className }: PageCar
     ...(stats.comments != null ? [{ icon: MessageCircle, value: stats.comments, format: true }] : []),
   ]
 
+  const handleClick = () => {
+    router.push(href)
+  }
+
   return (
-    <Link
-      href={href}
+    <div
+      onClick={handleClick}
       className={cn(
-        "block rounded-[12px] border border-border bg-background shadow-sm overflow-hidden",
+        "relative block rounded-[12px] border border-border bg-background shadow-sm overflow-hidden cursor-pointer",
         "hover:border-primary transition-colors duration-150",
         className
       )}
@@ -74,12 +129,19 @@ export function PageCard({ data, variant = "default", href, className }: PageCar
         {variant === "default" && description && (
           <p className="text-[13px] text-muted-foreground truncate">{description}</p>
         )}
-        <MetaRow
-          author={author}
-          meta={[timeAgo]}
-        />
-        {variant === "default" && <StatsRow stats={detailStats} />}
+        {!hideAuthor && (
+          <MetaRow
+            author={author}
+            meta={[timeAgo]}
+          />
+        )}
+        {variant === "default" && (
+          <div className="flex items-end justify-between">
+            <StatsRow stats={detailStats} />
+            <MoreMenu />
+          </div>
+        )}
       </div>
-    </Link>
+    </div>
   )
 }
