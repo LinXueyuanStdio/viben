@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Build order by
     const orderBy =
       sort === 'popular'
-        ? desc(mcpPackages.favoritesCount)
+        ? desc(mcpPackages.bookmarksCount)
         : sort === 'downloads'
           ? desc(mcpPackages.downloadsCount)
           : desc(mcpPackages.createdAt);
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         transport: mcpPackages.transport,
         tags: mcpPackages.tags,
         category: mcpPackages.category,
-        favoritesCount: mcpPackages.favoritesCount,
+        favoritesCount: mcpPackages.bookmarksCount,
         downloadsCount: mcpPackages.downloadsCount,
         ratingAvg: mcpPackages.ratingAvg,
         createdAt: mcpPackages.createdAt,

@@ -61,7 +61,7 @@ vi.mock('@/lib/db', () => ({
       communityReactions: {
         findFirst: mocks.findReaction,
       },
-      communityFavorites: {
+      communityBookmarks: {
         findFirst: mocks.findFavorite,
       },
       pageUpdateEvents: {
@@ -101,7 +101,7 @@ vi.mock('@/lib/db', () => ({
     userId: 'reactionUserId',
     reactionType: 'reactionType',
   },
-  communityFavorites: {
+  communityBookmarks: {
     communityEntityId: 'favoriteCommunityEntityId',
     userId: 'favoriteUserId',
   },
@@ -174,7 +174,7 @@ import {
   ensureCommunityEntityForPage,
   getCommunitySummary,
   listCommunityComments,
-  listCommunityFavorites,
+  listCommunityBookmarks,
   listNotifications,
   listSubscriptionFeed,
   markNotificationsRead,
@@ -317,7 +317,7 @@ describe('community service permissions', () => {
       visibility: 'unlisted',
       status: 'active',
       reactionsCount: 0,
-      favoritesCount: 0,
+      bookmarksCount: 0,
       commentsCount: 0,
       canonicalPath: '/read/alice/demo',
     });
@@ -335,7 +335,7 @@ describe('community service permissions', () => {
       visibility: 'unlisted',
       status: 'hidden',
       reactionsCount: 0,
-      favoritesCount: 0,
+      bookmarksCount: 0,
       commentsCount: 0,
       canonicalPath: '/read/alice/demo',
     });
@@ -379,7 +379,7 @@ describe('community service permissions', () => {
       visibility: 'public',
       status: 'hidden',
       reactionsCount: 0,
-      favoritesCount: 0,
+      bookmarksCount: 0,
       commentsCount: 0,
       canonicalPath: '/read/alice/demo',
     });
@@ -1119,7 +1119,7 @@ describe('community service permissions', () => {
   });
 
   it('filters favorite pages by current published page visibility', async () => {
-    await listCommunityFavorites({
+    await listCommunityBookmarks({
       session: {
         userId: 'reader-1',
         username: 'reader',

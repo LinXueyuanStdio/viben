@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Build order by
     const orderBy =
       sort === 'popular'
-        ? desc(skillPackages.favoritesCount)
+        ? desc(skillPackages.bookmarksCount)
         : sort === 'downloads'
           ? desc(skillPackages.downloadsCount)
           : desc(skillPackages.createdAt);
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         tags: skillPackages.tags,
         category: skillPackages.category,
         compatibility: skillPackages.compatibility,
-        favoritesCount: skillPackages.favoritesCount,
+        favoritesCount: skillPackages.bookmarksCount,
         downloadsCount: skillPackages.downloadsCount,
         ratingAvg: skillPackages.ratingAvg,
         createdAt: skillPackages.createdAt,

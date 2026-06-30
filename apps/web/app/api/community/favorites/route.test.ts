@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
-  listCommunityFavorites: vi.fn(),
+  listCommunityBookmarks: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/middleware', () => ({
@@ -17,7 +17,7 @@ vi.mock('@/lib/auth/middleware', () => ({
 }));
 
 vi.mock('@/lib/services/community', () => ({
-  listCommunityFavorites: mocks.listCommunityFavorites,
+  listCommunityBookmarks: mocks.listCommunityBookmarks,
 }));
 
 import { GET } from './route';
@@ -33,7 +33,7 @@ describe('GET /api/community/favorites', () => {
       role: 'user',
       expiresAt: Date.now() + 1000,
     });
-    mocks.listCommunityFavorites.mockResolvedValue({
+    mocks.listCommunityBookmarks.mockResolvedValue({
       items: [],
       next_cursor: null,
       has_more: false,
@@ -48,7 +48,7 @@ describe('GET /api/community/favorites', () => {
     const response = await GET(request);
 
     expect(response.status).toBe(200);
-    expect(mocks.listCommunityFavorites).toHaveBeenCalledWith({
+    expect(mocks.listCommunityBookmarks).toHaveBeenCalledWith({
       session: expect.objectContaining({ userId: 'reader-1' }),
       entityType: 'published_page',
       limit: 5,

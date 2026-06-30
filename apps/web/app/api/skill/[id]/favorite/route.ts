@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { toggleFavorite, isFavorited } from '@/lib/services/social';
+import { toggleBookmark, isBookmarked } from '@/lib/services/social';
 
 export async function POST(
   request: NextRequest,
@@ -13,13 +13,13 @@ export async function POST(
     }
 
     const { id } = await params;
-    const result = await toggleFavorite(session.userId, 'skill', id);
+    const result = await toggleBookmark(session.userId, 'skill', id);
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Failed to toggle favorite:', error);
+    console.error('Failed to toggle bookmark:', error);
     return NextResponse.json(
-      { error: 'Failed to toggle favorite' },
+      { error: 'Failed to toggle bookmark' },
       { status: 500 }
     );
   }
@@ -32,17 +32,17 @@ export async function GET(
   try {
     const session = await getSession();
     if (!session?.userId) {
-      return NextResponse.json({ isFavorited: false });
+      return NextResponse.json({ isBookmarked: false });
     }
 
     const { id } = await params;
-    const favorited = await isFavorited(session.userId, 'skill', id);
+    const bookmarked = await isBookmarked(session.userId, 'skill', id);
 
-    return NextResponse.json({ isFavorited: favorited });
+    return NextResponse.json({ isBookmarked: bookmarked });
   } catch (error) {
-    console.error('Failed to get favorite status:', error);
+    console.error('Failed to get bookmark status:', error);
     return NextResponse.json(
-      { error: 'Failed to get favorite status' },
+      { error: 'Failed to get bookmark status' },
       { status: 500 }
     );
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { AuthError, requireAuth } from '@/lib/auth/middleware';
-import { toggleFavorite } from '@/lib/services/community';
+import { toggleBookmark } from '@/lib/services/community';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,12 +13,12 @@ export async function POST(request: NextRequest) {
       typeof body.entity_id !== 'string'
     ) {
       return NextResponse.json(
-        { error: { code: 'invalid_input', message: 'Invalid favorite payload' } },
+        { error: { code: 'invalid_input', message: 'Invalid bookmark payload' } },
         { status: 400 }
       );
     }
 
-    const result = await toggleFavorite({
+    const result = await toggleBookmark({
       entityType: body.entity_type,
       entityId: body.entity_id,
       session,

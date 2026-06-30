@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         transport: mcpPackages.transport,
         tags: mcpPackages.tags,
         category: mcpPackages.category,
-        favoritesCount: mcpPackages.favoritesCount,
+        favoritesCount: mcpPackages.bookmarksCount,
         downloadsCount: mcpPackages.downloadsCount,
         ratingAvg: mcpPackages.ratingAvg,
         createdAt: mcpPackages.createdAt,

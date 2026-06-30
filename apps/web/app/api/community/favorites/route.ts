@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { AuthError, requireAuth } from '@/lib/auth/middleware';
-import { listCommunityFavorites } from '@/lib/services/community';
+import { listCommunityBookmarks } from '@/lib/services/community';
 
 function toLimit(value: string | null, fallback: number, max: number) {
   const parsed = Number(value);
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         : undefined;
 
     return NextResponse.json(
-      await listCommunityFavorites({
+      await listCommunityBookmarks({
         session,
         entityType,
         limit: toLimit(searchParams.get('limit'), 30, 100),
