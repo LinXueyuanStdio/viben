@@ -112,9 +112,14 @@ function CommentComposer({
       if (res.ok) {
         setText("")
         onCommentPosted()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        console.error("Post comment failed:", res.status, err)
+        toast.error(t("community.commentFailed"))
       }
     } catch (err) {
       console.error("Failed to post comment:", err)
+      toast.error(t("community.commentFailed"))
     } finally {
       setSubmitting(false)
     }

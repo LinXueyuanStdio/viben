@@ -107,13 +107,19 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
           reaction_type: "like",
         }),
       })
-      if (!res.ok) throw new Error("failed")
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error("Like failed:", res.status, err)
+        throw new Error(err?.error?.message ?? "failed")
+      }
       const result = await res.json()
       setHasReacted(result.has_reacted)
       setLikeCount(result.reactions_count)
-    } catch {
+    } catch (e) {
+      console.error("Like error:", e)
       setHasReacted(wasReacted)
       setLikeCount(c => c + (wasReacted ? 1 : -1))
+      toast.error(t("community.likeFailed"))
     } finally {
       setLikePending(false)
     }
@@ -138,13 +144,19 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
           entity_id: data.pageDbId,
         }),
       })
-      if (!res.ok) throw new Error("failed")
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error("Bookmark failed:", res.status, err)
+        throw new Error(err?.error?.message ?? "failed")
+      }
       const result = await res.json()
       setHasFavorited(result.has_favorited)
       setBookmarkCount(result.favorites_count)
-    } catch {
+    } catch (e) {
+      console.error("Bookmark error:", e)
       setHasFavorited(wasFavorited)
       setBookmarkCount(c => c + (wasFavorited ? 1 : -1))
+      toast.error(t("community.bookmarkFailed"))
     } finally {
       setBookmarkPending(false)
     }
