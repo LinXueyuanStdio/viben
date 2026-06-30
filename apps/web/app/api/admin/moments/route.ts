@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         commentCount: moments.commentCount,
         repostCount: moments.repostCount,
         viewCount: moments.viewCount,
+        attachmentCount: moments.attachmentCount,
         isPinned: moments.isPinned,
         createdAt: moments.createdAt,
         authorId: moments.authorUserId,
