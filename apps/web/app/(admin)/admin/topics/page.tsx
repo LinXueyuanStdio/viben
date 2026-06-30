@@ -1,9 +1,10 @@
-import { TopicManagement } from '@/components/admin/topics';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '话题管理',
-};
+const TopicManagement = dynamic(
+  () => import('@/components/admin/topics').then(m => ({ default: m.TopicManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function TopicsPage() {
-  return <TopicManagement />;
-}
+export const metadata = { title: '话题管理' };
+export default function Page() { return <TopicManagement />; }

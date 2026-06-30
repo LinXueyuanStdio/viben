@@ -1,9 +1,10 @@
-import { OperationManagement } from '@/components/admin/operations';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '运营位管理',
-};
+const OperationManagement = dynamic(
+  () => import('@/components/admin/operations').then(m => ({ default: m.OperationManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function OperationsPage() {
-  return <OperationManagement />;
-}
+export const metadata = { title: '运营位管理' };
+export default function Page() { return <OperationManagement />; }

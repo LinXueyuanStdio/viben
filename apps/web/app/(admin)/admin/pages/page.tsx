@@ -1,9 +1,10 @@
-import { PageReviewManagement } from '@/components/admin/pages';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '页面审核',
-};
+const PageReviewManagement = dynamic(
+  () => import('@/components/admin/pages').then(m => ({ default: m.PageReviewManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function PagesReviewPage() {
-  return <PageReviewManagement />;
-}
+export const metadata = { title: '页面审核' };
+export default function Page() { return <PageReviewManagement />; }

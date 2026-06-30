@@ -1,9 +1,10 @@
-import { ActivityFeed } from '@/components/admin/activity';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '活动流',
-};
+const ActivityFeed = dynamic(
+  () => import('@/components/admin/activity').then(m => ({ default: m.ActivityFeed })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function ActivityPage() {
-  return <ActivityFeed />;
-}
+export const metadata = { title: '活动流' };
+export default function Page() { return <ActivityFeed />; }

@@ -1,9 +1,10 @@
-import { AnalyticsDashboard } from '@/components/admin/analytics';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '内容分析',
-};
+const AnalyticsDashboard = dynamic(
+  () => import('@/components/admin/analytics').then(m => ({ default: m.AnalyticsDashboard })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function AnalyticsPage() {
-  return <AnalyticsDashboard />;
-}
+export const metadata = { title: '内容分析' };
+export default function Page() { return <AnalyticsDashboard />; }

@@ -1,38 +1,10 @@
-import { getSession } from '@/lib/auth';
-import { UserManagement } from '@/components/admin/users/user-management';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '用户管理',
-};
+const UserManagement = dynamic(
+  () => import('@/components/admin/users').then(m => ({ default: m.UserManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-interface UsersPageProps {
-  searchParams: Promise<{
-    page?: string;
-    search?: string;
-    role?: string;
-    sort?: string;
-  }>;
-}
-
-export default async function UsersPage({ searchParams }: UsersPageProps) {
-  const params = await searchParams;
-  const session = await getSession();
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-bold">用户管理</h1>
-        <p className="text-muted-foreground">
-          管理用户账号和角色
-        </p>
-      </div>
-
-      <UserManagement
-        initialSearch={params.search}
-        initialRole={params.role}
-        initialSort={params.sort}
-        currentUserRole={session?.role ?? ''}
-      />
-    </div>
-  );
-}
+export const metadata = { title: '用户管理' };
+export default function Page() { return <UserManagement />; }

@@ -1,9 +1,10 @@
-import { ApiKeyManagement } from '@/components/admin/api-keys';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: 'API 密钥管理',
-};
+const ApiKeyManagement = dynamic(
+  () => import('@/components/admin/api-keys').then(m => ({ default: m.ApiKeyManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function ApiKeysPage() {
-  return <ApiKeyManagement />;
-}
+export const metadata = { title: 'API 密钥管理' };
+export default function Page() { return <ApiKeyManagement />; }

@@ -1,9 +1,10 @@
-import { FeedbackManagement } from '@/components/admin/feedbacks';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '反馈管理',
-};
+const FeedbackManagement = dynamic(
+  () => import('@/components/admin/feedbacks').then(m => ({ default: m.FeedbackManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function FeedbacksPage() {
-  return <FeedbackManagement />;
-}
+export const metadata = { title: '反馈管理' };
+export default function Page() { return <FeedbackManagement />; }

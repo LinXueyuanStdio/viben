@@ -1,12 +1,14 @@
-import { AdminDashboardContent } from '@/components/admin/admin-dashboard-content';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 import { getAdminStats } from '@/lib/admin/stats';
 
-export const metadata = {
-  title: 'Admin Dashboard',
-};
+const AdminDashboardContent = dynamic(
+  () => import('@/components/admin/admin-dashboard-content').then(m => ({ default: m.AdminDashboardContent })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default async function AdminDashboardPage() {
+export const metadata = { title: 'Admin Dashboard' };
+export default async function Page() {
   const stats = await getAdminStats();
-
   return <AdminDashboardContent stats={stats} />;
 }

@@ -1,9 +1,10 @@
-import { ReportManagement } from '@/components/admin/reports';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '举报管理',
-};
+const ReportManagement = dynamic(
+  () => import('@/components/admin/reports').then(m => ({ default: m.ReportManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function ReportsPage() {
-  return <ReportManagement />;
-}
+export const metadata = { title: '举报管理' };
+export default function Page() { return <ReportManagement />; }

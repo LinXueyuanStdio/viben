@@ -1,9 +1,10 @@
-import { RankingManagement } from '@/components/admin/rankings';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '榜单管理',
-};
+const RankingManagement = dynamic(
+  () => import('@/components/admin/rankings').then(m => ({ default: m.RankingManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function RankingsPage() {
-  return <RankingManagement />;
-}
+export const metadata = { title: '榜单管理' };
+export default function Page() { return <RankingManagement />; }

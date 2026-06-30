@@ -1,9 +1,10 @@
-import { CollectionModeration } from '@/components/admin/collections';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '合集管理',
-};
+const CollectionModeration = dynamic(
+  () => import('@/components/admin/collections').then(m => ({ default: m.CollectionModeration })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function CollectionsPage() {
-  return <CollectionModeration />;
-}
+export const metadata = { title: '合集管理' };
+export default function Page() { return <CollectionModeration />; }

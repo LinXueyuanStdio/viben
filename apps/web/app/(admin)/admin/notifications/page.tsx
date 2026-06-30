@@ -1,9 +1,10 @@
-import { NotificationManagement } from '@/components/admin/notifications';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '通知管理',
-};
+const NotificationManagement = dynamic(
+  () => import('@/components/admin/notifications').then(m => ({ default: m.NotificationManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function NotificationsPage() {
-  return <NotificationManagement />;
-}
+export const metadata = { title: '通知管理' };
+export default function Page() { return <NotificationManagement />; }

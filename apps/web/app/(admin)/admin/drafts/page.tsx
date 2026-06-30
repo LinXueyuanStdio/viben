@@ -1,9 +1,10 @@
-import { DraftManagement } from '@/components/admin/drafts';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '草稿管理',
-};
+const DraftManagement = dynamic(
+  () => import('@/components/admin/drafts').then(m => ({ default: m.DraftManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function DraftsPage() {
-  return <DraftManagement />;
-}
+export const metadata = { title: '草稿管理' };
+export default function Page() { return <DraftManagement />; }

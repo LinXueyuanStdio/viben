@@ -1,9 +1,10 @@
-import { MediaManagement } from '@/components/admin/media';
+import dynamic from 'next/dynamic';
+import { AdminPageSkeleton } from '@/components/admin/admin-page-skeleton';
 
-export const metadata = {
-  title: '媒体管理',
-};
+const MediaManagement = dynamic(
+  () => import('@/components/admin/media').then(m => ({ default: m.MediaManagement })),
+  { loading: () => <AdminPageSkeleton /> }
+);
 
-export default function MediaPage() {
-  return <MediaManagement />;
-}
+export const metadata = { title: '媒体管理' };
+export default function Page() { return <MediaManagement />; }
