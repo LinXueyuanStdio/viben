@@ -12,6 +12,8 @@ import {
   skillPackages,
   comments,
   collections,
+  moments,
+  publishedPages,
 } from '@/lib/db';
 import { eq, and, desc, count, inArray } from 'drizzle-orm';
 import type { ModerationAction, ModerationEntityType } from '@/lib/types/admin';
@@ -261,7 +263,7 @@ async function batchResolveEntityNames(
           .select({ id: collections.id, name: collections.name })
           .from(collections)
           .where(inArray(collections.id, idsArray));
-        
+
         for (const collection of collectionResults) {
           entityNameMap.set(`collection:${collection.id}`, collection.name);
         }
@@ -269,6 +271,41 @@ async function batchResolveEntityNames(
         for (const id of idsArray) {
           if (!entityNameMap.has(`collection:${id}`)) {
             entityNameMap.set(`collection:${id}`, `Collection ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
+      case 'moment': {
+        const momentResults = await db
+          .select({ id: moments.id, body: moments.body })
+          .from(moments)
+          .where(inArray(moments.id, idsArray));
+
+        for (const m of momentResults) {
+          const displayContent = (m.body || '').length > 50
+            ? `${(m.body || '').slice(0, 50)}...`
+            : (m.body || '');
+          entityNameMap.set(`moment:${m.id}`, displayContent || `Moment ${m.id.slice(0, 8)}`);
+        }
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`moment:${id}`)) {
+            entityNameMap.set(`moment:${id}`, `Moment ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
+      case 'published_page': {
+        const pages = await db
+          .select({ id: publishedPages.id, title: publishedPages.title })
+          .from(publishedPages)
+          .where(inArray(publishedPages.id, idsArray));
+
+        for (const p of pages) {
+          entityNameMap.set(`published_page:${p.id}`, p.title);
+        }
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`published_page:${id}`)) {
+            entityNameMap.set(`published_page:${id}`, `Page ${id.slice(0, 8)}`);
           }
         }
         break;

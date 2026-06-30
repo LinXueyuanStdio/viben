@@ -94,9 +94,9 @@ export async function PATCH(
 
     await createModerationLog({
       adminId: session.userId,
-      entityType: 'comment', // using existing enum
+      entityType: 'moment',
       entityId: id,
-      action: action === 'delete' ? 'delete' : 'warn',
+      action: action === 'delete' ? 'delete' : action === 'hide' ? 'hide' : 'unhide',
       reason: `Moment ${action}d`,
     });
 
@@ -131,7 +131,7 @@ export async function DELETE(
 
     await createModerationLog({
       adminId: session.userId,
-      entityType: 'comment',
+      entityType: 'moment',
       entityId: id,
       action: 'delete',
       reason: 'Moment deleted by admin',

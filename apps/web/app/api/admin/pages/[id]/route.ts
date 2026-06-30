@@ -12,6 +12,7 @@ import { getSession } from '@/lib/auth';
 import { db, publishedPages, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
+import type { ModerationAction } from '@/lib/types/admin';
 import { z } from 'zod';
 
 const moderatePageSchema = z.object({
@@ -91,14 +92,14 @@ export async function PATCH(
 
     // Log the moderation action
     if (session?.userId) {
-      const actionMap: Record<string, 'approve' | 'reject' | 'delete'> = {
+      const actionMap: Record<string, ModerationAction> = {
         approved: 'approve',
         rejected: 'reject',
-        hidden: 'delete',
+        hidden: 'hide',
       };
       await createModerationLog({
         adminId: session.userId,
-        entityType: 'collection', // Using existing enum value - treating published_page as collection for logging
+        entityType: 'published_page',
         entityId: id,
         action: actionMap[data.moderation_status] || 'reject',
         reason: data.rejection_reason || `Page ${data.moderation_status}`,

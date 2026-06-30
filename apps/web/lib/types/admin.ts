@@ -195,7 +195,9 @@ export type ModerationEntityType =
   | 'comment'
   | 'collection'
   | 'user'
-  | 'report';
+  | 'report'
+  | 'moment'
+  | 'published_page';
 
 /**
  * Actions that can be performed during moderation.
@@ -208,7 +210,9 @@ export type ModerationAction =
   | 'delete'
   | 'warn'
   | 'ban'
-  | 'unban';
+  | 'unban'
+  | 'hide'
+  | 'unhide';
 
 // ============================================
 // Helper Types

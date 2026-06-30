@@ -528,7 +528,7 @@ export const moderationLogs = pgTable(
 
     // What was affected
     entityType: text('entity_type', {
-      enum: ['mcp', 'skill', 'comment', 'collection', 'user', 'report'],
+      enum: ['mcp', 'skill', 'comment', 'collection', 'user', 'report', 'moment', 'published_page'],
     }).notNull(),
     entityId: text('entity_id').notNull(),
 
@@ -543,6 +543,8 @@ export const moderationLogs = pgTable(
         'warn',
         'ban',
         'unban',
+        'hide',
+        'unhide',
       ],
     }).notNull(),
 
