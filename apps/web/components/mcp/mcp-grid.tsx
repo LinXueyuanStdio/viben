@@ -12,9 +12,10 @@ interface McpGridProps {
     sort?: string;
     page?: string;
   };
+  isAuthenticated?: boolean;
 }
 
-export async function McpGrid({ searchParams }: McpGridProps) {
+export async function McpGrid({ searchParams, isAuthenticated = false }: McpGridProps) {
   const { q, category, sort = 'latest', page = '1' } = searchParams;
   const limit = 12;
   const offset = (Number(page) - 1) * limit;
@@ -82,7 +83,7 @@ export async function McpGrid({ searchParams }: McpGridProps) {
     <div className="space-y-6">
       <AnimatedGrid>
         {packages.map((pkg) => (
-          <McpCard key={pkg.id} package={pkg} />
+          <McpCard key={pkg.id} package={pkg} isAuthenticated={isAuthenticated} />
         ))}
       </AnimatedGrid>
 

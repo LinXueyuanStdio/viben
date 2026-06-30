@@ -38,9 +38,10 @@ interface DbSkillPackage {
 
 interface ProfilePackagesProps {
   userId: string;
+  isAuthenticated?: boolean;
 }
 
-export function ProfilePackages({ userId }: ProfilePackagesProps) {
+export function ProfilePackages({ userId, isAuthenticated = false }: ProfilePackagesProps) {
   const { t } = useTranslation();
   const [mcps, setMcps] = useState<DbMcpPackage[]>([]);
   const [skills, setSkills] = useState<DbSkillPackage[]>([]);
@@ -132,6 +133,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
                   ratingAvg: pkg.ratingAvg,
                   author: null,
                 }}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>
@@ -158,6 +160,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
                   ratingAvg: pkg.ratingAvg,
                   author: null,
                 }}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>

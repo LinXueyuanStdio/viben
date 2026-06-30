@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bookmark, Download, Star, Zap } from 'lucide-react';
+import { Download, Star, Zap } from 'lucide-react';
+import { BookmarkButton } from '@/components/social';
 
 /**
  * Format large numbers with K/M suffix
@@ -54,9 +55,10 @@ interface SkillCardProps {
       avatarUrl: string | null;
     } | null;
   };
+  isAuthenticated?: boolean;
 }
 
-export function SkillCard({ package: pkg }: SkillCardProps) {
+export function SkillCard({ package: pkg, isAuthenticated = false }: SkillCardProps) {
   const { t } = useTranslation();
   const ratingAvg = pkg.ratingAvg || 0;
 
@@ -104,10 +106,14 @@ export function SkillCard({ package: pkg }: SkillCardProps) {
           )}
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Bookmark className="h-3 w-3" />
-              {formatNumber(pkg.bookmarksCount)}
-            </span>
+            <div onClick={(e) => e.stopPropagation()}>
+              <BookmarkButton
+                entityType="skill"
+                entityId={pkg.id}
+                initialCount={pkg.bookmarksCount}
+                isAuthenticated={isAuthenticated}
+              />
+            </div>
             <span className="flex items-center gap-1">
               <Download className="h-3 w-3" />
               {formatNumber(pkg.downloadsCount)}

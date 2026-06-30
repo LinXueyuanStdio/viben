@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bookmark, Download, Star } from 'lucide-react';
+import { Download, Star } from 'lucide-react';
+import { BookmarkButton } from '@/components/social';
 
 /**
  * Format large numbers with K/M suffix
@@ -36,9 +37,10 @@ interface McpCardProps {
       avatarUrl: string | null;
     } | null;
   };
+  isAuthenticated?: boolean;
 }
 
-export function McpCard({ package: pkg }: McpCardProps) {
+export function McpCard({ package: pkg, isAuthenticated = false }: McpCardProps) {
   const { t } = useTranslation();
   const ratingAvg = pkg.ratingAvg || 0;
 
@@ -77,10 +79,14 @@ export function McpCard({ package: pkg }: McpCardProps) {
           )}
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Bookmark className="h-3 w-3" />
-              {formatNumber(pkg.bookmarksCount)}
-            </span>
+            <div onClick={(e) => e.stopPropagation()}>
+              <BookmarkButton
+                entityType="mcp"
+                entityId={pkg.id}
+                initialCount={pkg.bookmarksCount}
+                isAuthenticated={isAuthenticated}
+              />
+            </div>
             <span className="flex items-center gap-1">
               <Download className="h-3 w-3" />
               {formatNumber(pkg.downloadsCount)}

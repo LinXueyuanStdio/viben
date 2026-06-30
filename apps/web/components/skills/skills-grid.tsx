@@ -13,9 +13,10 @@ interface SkillsGridProps {
     sort?: string;
     page?: string;
   };
+  isAuthenticated?: boolean;
 }
 
-export async function SkillsGrid({ searchParams }: SkillsGridProps) {
+export async function SkillsGrid({ searchParams, isAuthenticated = false }: SkillsGridProps) {
   const { q, category, type, sort = 'latest', page = '1' } = searchParams;
   const limit = 12;
   const offset = (Number(page) - 1) * limit;
@@ -86,7 +87,7 @@ export async function SkillsGrid({ searchParams }: SkillsGridProps) {
     <div className="space-y-6">
       <AnimatedGrid>
         {packages.map((pkg) => (
-          <SkillCard key={pkg.id} package={pkg} />
+          <SkillCard key={pkg.id} package={pkg} isAuthenticated={isAuthenticated} />
         ))}
       </AnimatedGrid>
 
