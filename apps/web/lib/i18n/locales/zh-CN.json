@@ -1577,16 +1577,56 @@
       "displayName": "显示名称",
       "bio": "个人简介",
       "bioPlaceholder": "介绍一下你自己...",
-      "saveChanges": "保存更改"
+      "websiteUrl": "网站",
+      "websiteUrlPlaceholder": "https://your-website.com",
+      "avatar": "头像",
+      "avatarHint": "点击上传新头像。支持 PNG、JPEG、WebP 格式（最大 2MB）。",
+      "avatarUploading": "上传中...",
+      "bioCount": "{{count}}/500",
+      "saveChanges": "保存更改",
+      "unsavedChanges": "你有未保存的更改。确定要离开吗？"
     },
     "validation": {
       "displayNameRequired": "显示名称为必填项",
       "displayNameMax": "显示名称最多100个字符",
-      "bioMax": "个人简介最多500个字符"
+      "bioMax": "个人简介最多500个字符",
+      "websiteUrlInvalid": "请输入有效的网址"
+    },
+    "sections": {
+      "profile": "个人资料",
+      "profileDesc": "你的公开个人资料信息",
+      "account": "账户",
+      "accountDesc": "你的账户标识",
+      "security": "安全",
+      "securityDesc": "管理你的密码",
+      "danger": "危险区域",
+      "dangerDesc": "不可撤销的操作"
     },
     "toast": {
       "profileUpdated": "个人资料已更新",
-      "failedToUpdateProfile": "更新个人资料失败"
+      "failedToUpdateProfile": "更新个人资料失败",
+      "avatarUpdated": "头像已更新",
+      "avatarUploadFailed": "头像上传失败"
+    },
+    "password": {
+      "title": "修改密码",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "minLength": "密码至少需要 8 个字符",
+      "mismatch": "两次输入的密码不一致",
+      "changed": "密码修改成功",
+      "changeFailed": "密码修改失败",
+      "incorrectCurrent": "当前密码不正确"
+    },
+    "danger": {
+      "deleteAccount": "删除账户",
+      "description": "一旦删除账户，将无法恢复。请确认。",
+      "confirmTitle": "删除账户",
+      "confirmDesc": "此操作不可撤销。你的所有数据将被永久删除。",
+      "deleteConfirm": "删除我的账户",
+      "deleted": "账户已删除",
+      "deleteFailed": "删除账户失败"
     },
     "header": {
       "memberSince": "注册于 {{date}}",
@@ -2286,6 +2326,8 @@
     "loading": "加载中...",
     "replyingTo": "回复 {{name}}",
     "edited": "已编辑",
+    "subscribeCollection": "订阅合集",
+    "subscribedCollection": "已订阅合集",
     "mySkills": "我的技能",
     "myCollections": "我的合集",
     "report": "举报",
@@ -2385,6 +2427,12 @@
     "invalidFileType": "不支持的图片类型，仅支持 PNG、JPEG、WebP 和 GIF 格式。",
     "fileTooLarge": "图片大小不能超过 10MB。",
     "tagLimitReached": "最多添加 12 个标签",
-    "parseError": "Markdown 解析失败，请检查语法"
+    "parseError": "Markdown 解析失败，请检查语法",
+    "collectionLabel": "合集（可选）",
+    "collectionPlaceholder": "选择合集...",
+    "newCollection": "新建合集",
+    "collectionName": "合集名称",
+    "createCollection": "创建合集",
+    "noCollections": "暂无合集"
   }
 }

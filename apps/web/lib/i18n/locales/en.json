@@ -1577,16 +1577,56 @@
       "displayName": "Display Name",
       "bio": "Bio",
       "bioPlaceholder": "Tell us about yourself...",
-      "saveChanges": "Save Changes"
+      "websiteUrl": "Website",
+      "websiteUrlPlaceholder": "https://your-website.com",
+      "avatar": "Avatar",
+      "avatarHint": "Click to upload a new avatar. Supports PNG, JPEG, WebP (max 2MB).",
+      "avatarUploading": "Uploading...",
+      "bioCount": "{{count}}/500",
+      "saveChanges": "Save Changes",
+      "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?"
     },
     "validation": {
       "displayNameRequired": "Display name is required",
       "displayNameMax": "Display name must be at most 100 characters",
-      "bioMax": "Bio must be at most 500 characters"
+      "bioMax": "Bio must be at most 500 characters",
+      "websiteUrlInvalid": "Please enter a valid URL"
+    },
+    "sections": {
+      "profile": "Profile",
+      "profileDesc": "Your public profile information",
+      "account": "Account",
+      "accountDesc": "Your account identifiers",
+      "security": "Security",
+      "securityDesc": "Manage your password",
+      "danger": "Danger Zone",
+      "dangerDesc": "Irreversible actions"
     },
     "toast": {
       "profileUpdated": "Profile updated",
-      "failedToUpdateProfile": "Failed to update profile"
+      "failedToUpdateProfile": "Failed to update profile",
+      "avatarUpdated": "Avatar updated",
+      "avatarUploadFailed": "Failed to upload avatar"
+    },
+    "password": {
+      "title": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "minLength": "Password must be at least 8 characters",
+      "mismatch": "Passwords do not match",
+      "changed": "Password changed successfully",
+      "changeFailed": "Failed to change password",
+      "incorrectCurrent": "Current password is incorrect"
+    },
+    "danger": {
+      "deleteAccount": "Delete Account",
+      "description": "Once you delete your account, there is no going back. Please be certain.",
+      "confirmTitle": "Delete Account",
+      "confirmDesc": "This action cannot be undone. All your data will be permanently removed.",
+      "deleteConfirm": "Delete my account",
+      "deleted": "Account deleted",
+      "deleteFailed": "Failed to delete account"
     },
     "header": {
       "memberSince": "Member since {{date}}",
@@ -2286,6 +2326,8 @@
     "loading": "Loading...",
     "replyingTo": "Reply to {{name}}",
     "edited": "Edited",
+    "subscribeCollection": "Subscribe",
+    "subscribedCollection": "Subscribed",
     "mySkills": "My Skills",
     "myCollections": "My Collections",
     "report": "Report",
@@ -2385,6 +2427,12 @@
     "invalidFileType": "Invalid file type. Only PNG, JPEG, WebP and GIF are supported.",
     "fileTooLarge": "File size must not exceed 10MB.",
     "tagLimitReached": "Maximum 12 tags allowed",
-    "parseError": "Markdown parse error, please check syntax"
+    "parseError": "Markdown parse error, please check syntax",
+    "collectionLabel": "Collection (optional)",
+    "collectionPlaceholder": "Select collection...",
+    "newCollection": "New Collection",
+    "collectionName": "Collection name",
+    "createCollection": "Create Collection",
+    "noCollections": "No collections yet"
   }
 }
