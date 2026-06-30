@@ -152,6 +152,24 @@ export const routeRegistry: Record<string, RouteConfig> = {
     parent: "/admin",
     dropdownCategory: "管理",
   },
+  "/admin/notifications": {
+    label: "通知管理",
+    icon: Bell,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/search-analytics": {
+    label: "搜索分析",
+    icon: Search,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/api-keys": {
+    label: "API 密钥",
+    icon: Key,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
 
   // 阅读面包屑（模式=read 时使用）
   "/read": { label: "页面", icon: FileText, mode: "read" },
