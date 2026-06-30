@@ -5,16 +5,16 @@ import { PageActivityHeatmap } from "@/components/content/page-activity-heatmap"
 import type { PageActivityDay } from "@/components/content/page-activity-heatmap"
 
 interface ActivityHeatmapLoaderProps {
-  userId: string
+  userSlug: string
 }
 
-function HeatmapInner({ userId }: ActivityHeatmapLoaderProps) {
+function HeatmapInner({ userSlug }: ActivityHeatmapLoaderProps) {
   const [data, setData] = useState<PageActivityDay[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/users/${userId}/activity`)
+    fetch(`/api/users/${userSlug}/activity`)
       .then((r) => r.json())
       .then((json) => {
         if (!cancelled) {
@@ -26,7 +26,7 @@ function HeatmapInner({ userId }: ActivityHeatmapLoaderProps) {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [userId])
+  }, [userSlug])
 
   if (loading) {
     return (
@@ -48,7 +48,7 @@ function HeatmapInner({ userId }: ActivityHeatmapLoaderProps) {
   )
 }
 
-export function ActivityHeatmapLoader({ userId }: ActivityHeatmapLoaderProps) {
+export function ActivityHeatmapLoader({ userSlug }: ActivityHeatmapLoaderProps) {
   return (
     <Suspense fallback={
       <div className="rounded-xl border border-border bg-card p-4 animate-pulse">
@@ -60,7 +60,7 @@ export function ActivityHeatmapLoader({ userId }: ActivityHeatmapLoaderProps) {
         </div>
       </div>
     }>
-      <HeatmapInner userId={userId} />
+      <HeatmapInner userSlug={userSlug} />
     </Suspense>
   )
 }

@@ -320,7 +320,7 @@ export default async function UserSlugPage({
               )}
 
               {/* Activity heatmap (lazy-loaded) */}
-              <ActivityHeatmapLoader userId={user.id} />
+              <ActivityHeatmapLoader userSlug={user.userSlug} />
 
               {/* Recent moments */}
               {feedCards.length > 0 && (
