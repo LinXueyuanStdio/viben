@@ -261,7 +261,7 @@ export default async function UserSlugPage({
               {/* Avatar + identity */}
               <div className="flex flex-col items-center lg:items-start gap-2">
                 {avatarUrl && (
-                  <Avatar className="w-full max-w-[200px] aspect-square rounded-full">
+                  <Avatar className="w-full max-w-[200px] h-auto aspect-square rounded-full">
                     <AvatarImage src={avatarUrl} alt={displayName} />
                     <AvatarFallback className="text-3xl font-semibold text-muted-foreground">
                       {displayName[0] ?? "?"}
