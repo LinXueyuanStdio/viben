@@ -315,3 +315,5 @@ docs/index/
 .claude.json
 .mcp.json
 **/CLAUDE.local.md
+
+.vscode/settings.json
