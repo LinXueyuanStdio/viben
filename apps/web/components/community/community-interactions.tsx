@@ -422,6 +422,7 @@ export function CommunityInteractions({
             active={summary.viewer.has_reacted}
             icon={<ThumbsUp className="h-4 w-4" />}
             disabled={pendingAction === 'like'}
+            loading={pendingAction === 'like'}
             onClick={toggleLike}
           />
           <ActionButton
@@ -430,6 +431,7 @@ export function CommunityInteractions({
             active={summary.viewer.has_favorited}
             icon={<Star className="h-4 w-4" />}
             disabled={pendingAction === 'favorite'}
+            loading={pendingAction === 'favorite'}
             onClick={toggleFavorite}
           />
           <ActionButton

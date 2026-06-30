@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatCount } from "@/lib/utils/format"
 
@@ -11,9 +12,10 @@ export interface StatProps {
   onClick?: (action: string) => void
   disabled?: boolean
   active?: boolean
+  loading?: boolean
 }
 
-export function Stat({ icon: Icon, value, format = false, className, dataAction, onClick, disabled, active }: StatProps) {
+export function Stat({ icon: Icon, value, format = false, className, dataAction, onClick, disabled, active, loading }: StatProps) {
   const displayValue = format && typeof value === "number" ? formatCount(value) : value
 
   if (onClick && dataAction) {
@@ -27,12 +29,17 @@ export function Stat({ icon: Icon, value, format = false, className, dataAction,
         className={cn(
           "inline-flex items-center gap-1 text-[12.5px] text-muted-foreground rounded-md px-1 py-0.5 -mx-1 transition-all duration-200",
           !disabled && "hover:text-foreground",
-          disabled && "opacity-60 cursor-default",
+          disabled && loading && "opacity-100 cursor-default",
+          disabled && !loading && "opacity-60 cursor-default",
           active && "text-red-500",
           className
         )}
       >
-        <Icon className={cn("size-[14px] shrink-0 transition-transform duration-200", active && "scale-110")} />
+        {loading ? (
+          <Loader2 className="size-[14px] shrink-0 animate-spin" />
+        ) : (
+          <Icon className={cn("size-[14px] shrink-0 transition-transform duration-200", active && "scale-110")} />
+        )}
         <span>{displayValue}</span>
       </button>
     )

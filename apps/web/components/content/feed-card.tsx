@@ -185,6 +185,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           dataAction: "like",
           onClick: handleAction,
           disabled: pendingAction !== null,
+          loading: pendingAction === "like",
           active: likedActive,
         },
         {
@@ -210,6 +211,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           dataAction: "bookmark",
           onClick: handleAction,
           disabled: pendingAction !== null,
+          loading: pendingAction === "bookmark",
           active: bookmarkedActive,
         },
       ]
