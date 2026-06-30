@@ -147,7 +147,7 @@ export function Sidebar({
           permission: 'packages.review',
           badgeCount: pendingPackagesCount,
         },
-        { name: t('nav.pages', '页面审核'), href: '/admin/pages', icon: FileText, permission: 'pages.review' },
+        { name: t('nav.pageReview', '页面审核'), href: '/admin/pages', icon: FileText, permission: 'pages.review' },
         { name: t('nav.comments', '评论管理'), href: '/admin/comments', icon: MessageSquare, permission: 'content.moderate' },
         { name: t('nav.collections', '合集管理'), href: '/admin/collections', icon: Layers, permission: 'content.moderate' },
         { name: t('nav.moments', '动态管理'), href: '/admin/moments', icon: Clock, permission: 'moments.moderate' },
