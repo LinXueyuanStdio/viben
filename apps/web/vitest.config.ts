@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  // @ts-expect-error - version mismatch between vite and @vitejs/plugin-react
+  // @ts-expect-error - Type incompatibility: @vitejs/plugin-react v4.x targets Vite 5/6,
+  // but vitest v4 bundles Vite 7. The runtime API is compatible; only types conflict.
   plugins: [react()],
   test: {
     environment: 'jsdom',
