@@ -243,19 +243,75 @@ export default async function UserSlugPage({
 
   return (
     <div className="grid gap-4">
-      <ProfileHero data={profile} currentUserSlug={session?.userSlug} />
-      {isOwnProfile && (
-        <div className="flex justify-end">
-          <Link
-            href="/profile"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Settings className="size-3.5" />
-            <T tKey="profile.editProfile" fallback="编辑资料" />
-          </Link>
-        </div>
-      )}
       <ProfileTabs
+        overview={
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+            {/* Left sidebar — GitHub-style profile card */}
+            <div className="space-y-4">
+              <div className="flex flex-col items-center lg:items-start gap-3">
+                <Avatar className="size-20 lg:size-24 rounded-full ring-2 ring-border/60">
+                  <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
+                  <AvatarFallback className="text-2xl">{displayName[0] ?? "?"}</AvatarFallback>
+                </Avatar>
+                <div className="text-center lg:text-left">
+                  <h2 className="text-xl font-bold">{user.displayName}</h2>
+                  <p className="text-sm text-muted-foreground">@{user.userSlug}</p>
+                </div>
+              </div>
+              {user.bio && (
+                <p className="text-sm text-muted-foreground leading-relaxed">{user.bio}</p>
+              )}
+              <div className="flex items-center gap-4 text-sm">
+                <div>
+                  <span className="font-semibold">{user.followersCount}</span>{" "}
+                  <span className="text-muted-foreground">关注者</span>
+                </div>
+                <div>
+                  <span className="font-semibold">{pageCountResult[0]?.count ?? 0}</span>{" "}
+                  <span className="text-muted-foreground">页面</span>
+                </div>
+              </div>
+              {isOwnProfile && (
+                <Link
+                  href="/profile"
+                  className="inline-flex items-center justify-center w-full gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-secondary hover:text-foreground transition-colors"
+                >
+                  <Settings className="size-3.5" />
+                  <T tKey="profile.editProfile" fallback="编辑资料" />
+                </Link>
+              )}
+            </div>
+
+            {/* Right area — content */}
+            <div className="space-y-5 min-w-0">
+              {pageCards.length > 0 && (
+                <section>
+                  <SectionHead title="热门页面" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {pageCards.slice(0, 6).map((item, i) => (
+                      <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {feedCards.length > 0 && (
+                <section>
+                  <SectionHead title="最近动态" />
+                  <div className="grid gap-2">
+                    {feedCards.slice(0, 5).map((feed, i) => (
+                      <FeedCard key={i} data={feed} variant="rich" />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {pageCards.length === 0 && feedCards.length === 0 && (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <p>暂无内容</p>
+                </div>
+              )}
+            </div>
+          </div>
+        }
         pages={
           <>
             <SectionHead title="公开页面" />

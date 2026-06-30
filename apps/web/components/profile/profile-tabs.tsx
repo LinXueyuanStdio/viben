@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 
 const TAB_LABELS: Record<string, string> = {
+  overview: "概览",
   pages: "页面",
   likes: "喜欢",
   favorites: "收藏",
@@ -14,6 +15,7 @@ const TAB_LABELS: Record<string, string> = {
 }
 
 interface ProfileTabsProps {
+  overview: React.ReactNode
   pages: React.ReactNode
   likes: React.ReactNode
   favorites: React.ReactNode
@@ -22,17 +24,19 @@ interface ProfileTabsProps {
   about: React.ReactNode
 }
 
-export function ProfileTabs({ pages, likes, favorites, moments, collections, about }: ProfileTabsProps) {
+const DEFAULT_TAB = "概览"
+
+export function ProfileTabs({ overview, pages, likes, favorites, moments, collections, about }: ProfileTabsProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get("tab")
-  const activeTab = TAB_LABELS[currentTab ?? "pages"] ?? "页面"
+  const activeTab = TAB_LABELS[currentTab ?? "overview"] ?? DEFAULT_TAB
 
   const handleTabChange = useCallback((value: string) => {
     const key = Object.entries(TAB_LABELS).find(([, label]) => label === value)?.[0]
     const params = new URLSearchParams(searchParams.toString())
-    if (key && key !== "pages") {
+    if (key && key !== "overview") {
       params.set("tab", key)
     } else {
       params.delete("tab")
@@ -42,6 +46,7 @@ export function ProfileTabs({ pages, likes, favorites, moments, collections, abo
   }, [router, pathname, searchParams])
 
   const content: Record<string, React.ReactNode> = {
+    "概览": overview,
     "页面": pages,
     "喜欢": likes,
     "收藏": favorites,
