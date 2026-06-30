@@ -3,7 +3,6 @@ import { PageCard } from "@/components/content/page-card"
 import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { SectionHead } from "@/components/content/section-head"
-import { PageActivityHeatmap } from "@/components/content/page-activity-heatmap"
 import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityFavorites } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
@@ -15,6 +14,7 @@ import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { FeedKind } from "@/components/content/feed-head"
+import type { ProfileHeroData } from "@/components/content/profile-hero"
 
 function gradientCover(title: string): string {
   const hue = title.charCodeAt(0) % 360
@@ -203,20 +203,9 @@ export default async function UserSlugPage({
       .limit(1),
   ])
 
-  const profile: ProfileHeroData = {
-    fallbackText: displayName[0] ?? "?",
-    avatarUrl: user.avatarUrl ?? undefined,
-    name: user.displayName,
-    handle: `@${user.userSlug}`,
-    userSlug: user.userSlug,
-    tagline: user.bio ?? "",
-    stats: {
-      followers: user.followersCount,
-      pages: pageCountResult[0]?.count ?? 0,
-    },
-  }
-
   const pageCards = authorPages.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
+  const pinnedCards = pinnedPageRows.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
+  const readmePage = profileReadmePage[0]
   const likedCards = likedPageRows.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
   const favoritedCards = favoritedPageRows.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
 
@@ -266,7 +255,7 @@ export default async function UserSlugPage({
       <ProfileTabs
         overview={
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-            {/* Left sidebar — GitHub-style profile card */}
+            {/* Left sidebar */}
             <div className="space-y-4">
               <div className="flex flex-col items-center lg:items-start gap-3">
                 <Avatar className="size-20 lg:size-24 rounded-full ring-2 ring-border/60">
@@ -302,18 +291,34 @@ export default async function UserSlugPage({
               )}
             </div>
 
-            {/* Right area — content */}
+            {/* Right area */}
             <div className="space-y-5 min-w-0">
-              {pageCards.length > 0 && (
+              {/* Profile README */}
+              {readmePage && (
+                <section className="rounded-xl border border-border overflow-hidden">
+                  <iframe
+                    title="Profile README"
+                    srcDoc={readmePage.html}
+                    sandbox="allow-scripts allow-same-origin"
+                    className="w-full border-0"
+                    style={{ height: Math.min(500, (readmePage.html.length / 50) + 100) + 'px' }}
+                  />
+                </section>
+              )}
+
+              {/* Pinned pages */}
+              {pinnedCards.length > 0 && (
                 <section>
-                  <SectionHead title="热门页面" />
+                  <SectionHead title="置顶页面" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {pageCards.slice(0, 6).map((item, i) => (
+                    {pinnedCards.map((item, i) => (
                       <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
                     ))}
                   </div>
                 </section>
               )}
+
+              {/* Recent moments */}
               {feedCards.length > 0 && (
                 <section>
                   <SectionHead title="最近动态" />
@@ -324,7 +329,8 @@ export default async function UserSlugPage({
                   </div>
                 </section>
               )}
-              {pageCards.length === 0 && feedCards.length === 0 && (
+
+              {!readmePage && pinnedCards.length === 0 && feedCards.length === 0 && (
                 <div className="flex items-center justify-center py-16 text-muted-foreground">
                   <p>暂无内容</p>
                 </div>
