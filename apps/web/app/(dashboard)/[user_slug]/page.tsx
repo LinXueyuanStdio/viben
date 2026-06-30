@@ -103,7 +103,7 @@ export default async function UserSlugPage({
     pinnedPageRows,
     profileReadmePage,
   ] = await Promise.all([
-    db.select().from(publishedPages)
+    db.select(pageColumns).from(publishedPages)
       .where(and(
         eq(publishedPages.userId, user.id),
         eq(publishedPages.visibility, "public"),
@@ -157,7 +157,7 @@ export default async function UserSlugPage({
       .orderBy(desc(communityBookmarks.createdAt))
       .limit(20),
     // Pinned pages (up to 6)
-    db.select().from(publishedPages)
+    db.select(pageColumns).from(publishedPages)
       .where(and(
         eq(publishedPages.userId, user.id),
         eq(publishedPages.isPinned, true),
@@ -213,12 +213,12 @@ export default async function UserSlugPage({
     <div className="grid gap-4">
       <ProfileTabs
         overview={
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
             {/* Left sidebar */}
-            <div className="space-y-5">
+            <div className="space-y-3">
               {/* Avatar + identity */}
-              <div className="flex flex-col items-center lg:items-start gap-3">
-                <Avatar className="size-24 lg:size-28 rounded-full ring-2 ring-border/40 ring-offset-2 ring-offset-background">
+              <div className="flex flex-col items-center lg:items-start gap-2">
+                <Avatar className="w-full max-w-[200px] aspect-square rounded-full">
                   <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
                   <AvatarFallback className="text-3xl font-semibold text-muted-foreground">
                     {displayName[0] ?? "?"}
@@ -285,10 +285,10 @@ export default async function UserSlugPage({
             </div>
 
             {/* Right area */}
-            <div className="space-y-5 min-w-0">
+            <div className="space-y-4 min-w-0">
               {/* Profile README */}
               {readmePage && (
-                <section className="rounded-xl border border-border overflow-hidden">
+                <section>
                   <iframe
                     title="Profile README"
                     srcDoc={readmePage.html}
