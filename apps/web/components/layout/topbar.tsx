@@ -14,6 +14,8 @@ import { NavPopover } from "./nav-popover"
 import { IconButton } from "@/components/ui/icon-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
+import { ReportDialog } from "@/components/content/report-dialog"
+import { FeedbackDialog } from "@/components/content/feedback-dialog"
 import { HeaderAuthButtons } from "./header-auth-buttons"
 import { ThemeToggle } from "./theme-toggle"
 import { LanguageSwitcher } from "./language-switcher"
@@ -210,7 +212,20 @@ export function Topbar({
 
 function ReadMoreMenu() {
   const { t } = useTranslation()
+  const pathname = usePathname()
   const [open, setOpen] = React.useState(false)
+  const [reportOpen, setReportOpen] = React.useState(false)
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
+
+  // 从 pathname 解析 pageId：/read/[user_slug]/[page_id]
+  const pageId = React.useMemo(() => {
+    const parts = pathname.split("/")
+    // 例如 pathname = "/read/alice/my-article"
+    if (parts[1] === "read" && parts.length >= 4) {
+      return parts[3]
+    }
+    return ""
+  }, [pathname])
 
   return (
     <div
@@ -224,19 +239,36 @@ function ReadMoreMenu() {
       {open && (
         <div className="absolute top-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
           <button
-            onClick={() => toast.info(t("community.reportFeatureSoon"))}
+            onClick={() => {
+              setOpen(false)
+              setReportOpen(true)
+            }}
             className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
             <Flag className="h-4 w-4" /> {t("community.report")}
           </button>
           <button
-            onClick={() => toast.info(t("community.feedbackFeatureSoon"))}
+            onClick={() => {
+              setOpen(false)
+              setFeedbackOpen(true)
+            }}
             className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
             <MessageSquare className="h-4 w-4" /> {t("community.feedback")}
           </button>
         </div>
       )}
+      <ReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        entityType="published_page"
+        entityId={pageId}
+      />
+      <FeedbackDialog
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        pageId={pageId}
+      />
     </div>
   )
 }
