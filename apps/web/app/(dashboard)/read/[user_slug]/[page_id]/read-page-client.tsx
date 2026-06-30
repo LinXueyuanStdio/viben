@@ -84,12 +84,17 @@ function parseChapters(raw: unknown): ParsedChapters {
   // New format: { collection_slug, collection_name, chapters: [...] }
   const obj = raw as Record<string, unknown>
   if (obj.collection_slug && Array.isArray(obj.chapters)) {
-    const chapters = (obj.chapters as Array<Record<string, unknown>>).filter(
-      (ch): ch is ChapterEntry =>
-        typeof ch === "object" && ch !== null &&
-        typeof (ch as Record<string, unknown>).number === "number" &&
-        typeof (ch as Record<string, unknown>).title === "string"
-    )
+    const chapters: ChapterEntry[] = []
+    for (const ch of obj.chapters as Array<Record<string, unknown>>) {
+      if (ch && typeof ch === "object" && typeof ch.number === "number" && typeof ch.title === "string") {
+        chapters.push({
+          number: ch.number,
+          title: ch.title,
+          status: typeof ch.status === "string" ? ch.status : undefined,
+          page_slug: typeof ch.page_slug === "string" ? ch.page_slug : undefined,
+        })
+      }
+    }
     return {
       chapters,
       collectionSlug: typeof obj.collection_slug === "string" ? obj.collection_slug : undefined,
@@ -99,12 +104,17 @@ function parseChapters(raw: unknown): ParsedChapters {
 
   // Old format: [{ number, title, page_slug }]
   if (Array.isArray(raw)) {
-    const chapters = (raw as Array<Record<string, unknown>>).filter(
-      (ch): ch is ChapterEntry =>
-        typeof ch === "object" && ch !== null &&
-        typeof (ch as Record<string, unknown>).number === "number" &&
-        typeof (ch as Record<string, unknown>).title === "string"
-    )
+    const chapters: ChapterEntry[] = []
+    for (const ch of raw as Array<Record<string, unknown>>) {
+      if (ch && typeof ch === "object" && typeof ch.number === "number" && typeof ch.title === "string") {
+        chapters.push({
+          number: ch.number,
+          title: ch.title,
+          status: typeof ch.status === "string" ? ch.status : undefined,
+          page_slug: typeof ch.page_slug === "string" ? ch.page_slug : undefined,
+        })
+      }
+    }
     return { chapters }
   }
 
