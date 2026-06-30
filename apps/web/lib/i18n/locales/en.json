@@ -2419,6 +2419,7 @@
     "commentSent": "Reply sent",
     "viewReplies": "View all {{count}} replies →",
     "collapseReplies": "Collapse replies",
+    "loadMoreReplies": "Load more replies",
     "commentPlaceholder": "Post your reply...",
     "tags": {
       "title": "Tags",

@@ -171,11 +171,17 @@ function CommentCard({
   const { t } = useTranslation()
   const isOwnComment = sessionUserId ? comment.author.id === sessionUserId : false
   const [replies, setReplies] = useState<CommunityComment[]>([])
-  const [loadingReplies, setLoadingReplies] = useState(false)
   const [threadOpen, setThreadOpen] = useState(false)
   const [allReplies, setAllReplies] = useState<CommunityComment[]>([])
+  const [replyCursor, setReplyCursor] = useState<string | null>(null)
+  const [replyHasMore, setReplyHasMore] = useState(false)
+  const [loadingReplies, setLoadingReplies] = useState(false)
   const [threadText, setThreadText] = useState("")
   const [threadSubmitting, setThreadSubmitting] = useState(false)
+  const [optimisticRepliesCount, setOptimisticRepliesCount] = useState(comment.replies_count)
+
+  // Sync replies_count from props
+  useEffect(() => { setOptimisticRepliesCount(comment.replies_count) }, [comment.replies_count])
 
   // Fetch initial replies (max 2) on mount
   useEffect(() => {
@@ -185,14 +191,42 @@ function CommentCard({
     }
   }, [comment.id, comment.replies_count, pageDbId, entityType])
 
-  // Fetch ALL replies when thread opens
+  // Fetch first page of replies when thread opens (10 per page)
   useEffect(() => {
     if (threadOpen && pageDbId) {
       setLoadingReplies(true)
-      fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=50`)
-        .then(r => r.json()).then(d => { setAllReplies(d.comments ?? []); setLoadingReplies(false) })
+      fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=10`)
+        .then(r => r.json()).then(d => {
+          setAllReplies(d.comments ?? [])
+          setReplyCursor(d.next_cursor ?? null)
+          setReplyHasMore(d.has_more ?? false)
+          setLoadingReplies(false)
+        })
     }
   }, [threadOpen, comment.id, pageDbId, entityType])
+
+  const loadMoreReplies = async () => {
+    if (!replyCursor || loadingReplies) return
+    setLoadingReplies(true)
+    try {
+      const params = new URLSearchParams({
+        entity_type: entityType!,
+        entity_id: pageDbId!,
+        parent_comment_id: comment.id,
+        limit: "10",
+        cursor: replyCursor,
+      })
+      const res = await fetch(`/api/community/comments?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setAllReplies((prev) => [...prev, ...(data.comments ?? [])])
+        setReplyCursor(data.next_cursor ?? null)
+        setReplyHasMore(data.has_more ?? false)
+      }
+    } finally {
+      setLoadingReplies(false)
+    }
+  }
 
   const handleThreadSubmit = async () => {
     if (!threadText.trim() || threadSubmitting) return
@@ -205,11 +239,14 @@ function CommentCard({
         parentCommentId: comment.id,
       })
       setThreadText("")
-      // Refetch replies
-      const res = await fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=50`)
-      if (res.ok) {
-        const data = await res.json()
+      setOptimisticRepliesCount((c) => c + 1)
+      // Refetch first page of replies
+      const fetchRes = await fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=10`)
+      if (fetchRes.ok) {
+        const data = await fetchRes.json()
         setAllReplies(data.comments ?? [])
+        setReplyCursor(data.next_cursor ?? null)
+        setReplyHasMore(data.has_more ?? false)
       }
     } catch {
       toast.error(t("community.commentFailed"))
@@ -271,48 +308,69 @@ function CommentCard({
           )}
         </div>
 
-        {/* Preloaded replies */}
-        {replies.length > 0 && (
-          <div className="ml-8 mt-2 border-l-2 border-border/60 pl-3 space-y-2">
+        {/* Preloaded replies — hidden when thread is open to avoid duplication */}
+        {!threadOpen && replies.length > 0 && (
+          <div className="mt-2 space-y-2">
             {replies.map((r) => (
-              <div key={r.id} className="text-[13px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold">{r.author.display_name}</span>
-                  <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
+              <div key={r.id} className="grid gap-2 text-[13px]" style={{ gridTemplateColumns: "auto 1fr" }}>
+                <Avatar className="size-[20px] shrink-0">
+                  <AvatarImage src={r.author.avatar_url ?? undefined} alt={r.author.display_name} />
+                  <AvatarFallback className="text-[10px]">{r.author.display_name?.[0] ?? "?"}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold">{r.author.display_name}</span>
+                    <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed mt-0.5">{r.content}</p>
                 </div>
-                <p className="text-muted-foreground leading-relaxed mt-0.5">{r.content}</p>
               </div>
             ))}
           </div>
         )}
 
         {/* "查看全部 N 条回复" button */}
-        {comment.replies_count > 2 && (
+        {optimisticRepliesCount > 2 && (
           <button
             onClick={() => setThreadOpen(!threadOpen)}
-            className="ml-8 mt-1.5 text-[13px] text-primary hover:underline font-bold"
+            className="mt-1.5 text-[13px] text-primary hover:underline font-bold"
           >
             {threadOpen
               ? t("community.collapseReplies")
-              : t("community.viewReplies", { count: comment.replies_count })}
+              : t("community.viewReplies", { count: optimisticRepliesCount })}
           </button>
         )}
 
         {/* Thread sub-panel */}
         {threadOpen && (
-          <div className="ml-8 mt-2 border-l-2 border-primary/30 pl-3 space-y-2">
-            {loadingReplies ? (
+          <div className="mt-2 space-y-2">
+            {loadingReplies && allReplies.length === 0 ? (
               <p className="text-[13px] text-muted-foreground py-2">{t("community.commentsLoading")}</p>
             ) : (
               allReplies.map((r) => (
-                <div key={r.id} className="text-[13px] py-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold">{r.author.display_name}</span>
-                    <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
+                <div key={r.id} className="grid gap-2 text-[13px] py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
+                  <Avatar className="size-[20px] shrink-0">
+                    <AvatarImage src={r.author.avatar_url ?? undefined} alt={r.author.display_name} />
+                    <AvatarFallback className="text-[10px]">{r.author.display_name?.[0] ?? "?"}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold">{r.author.display_name}</span>
+                      <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
+                    </div>
+                    <p className="text-foreground leading-relaxed mt-0.5">{r.content}</p>
                   </div>
-                  <p className="text-foreground leading-relaxed mt-0.5">{r.content}</p>
                 </div>
               ))
+            )}
+            {replyHasMore && (
+              <button
+                onClick={loadMoreReplies}
+                disabled={loadingReplies}
+                className="text-[13px] text-primary hover:underline font-bold"
+              >
+                {loadingReplies ? t("community.loading") : t("community.loadMoreReplies")}
+              </button>
             )}
             {/* Mini composer */}
             {isAuthenticated ? (
