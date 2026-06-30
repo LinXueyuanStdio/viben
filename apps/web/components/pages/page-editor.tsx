@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { CollectionSelector } from "./collection-selector"
+import type { CollectionSelectorValue } from "./collection-selector"
 import {
   Select,
   SelectContent,
@@ -43,6 +45,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [collection, setCollection] = useState<CollectionSelectorValue | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleTitleChange = useCallback((value: string) => {
@@ -145,6 +148,8 @@ export function PageEditor({ userSlug }: PageEditorProps) {
           visibility,
           tags: tags.length > 0 ? tags : undefined,
           cover_asset_id: coverAssetId,
+          collection_slug: collection?.slug,
+          collection_name: collection?.name,
         }),
       })
       const data = await res.json()
@@ -159,7 +164,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
     } finally {
       setIsSubmitting(false)
     }
-  }, [title, uid, htmlContent, description, visibility, tags, coverAssetId, router, t, userSlug])
+  }, [title, uid, htmlContent, description, visibility, tags, coverAssetId, collection, router, t, userSlug])
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 py-8">
@@ -310,6 +315,12 @@ export function PageEditor({ userSlug }: PageEditorProps) {
             className="min-w-[120px] flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
+      </div>
+
+      {/* Collection selector */}
+      <div className="space-y-2">
+        <Label>{t("pageEditor.collectionLabel")}</Label>
+        <CollectionSelector value={collection} onChange={setCollection} />
       </div>
 
       {/* Editor + Preview split */}

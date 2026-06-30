@@ -10,7 +10,7 @@ import {
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { recordPageUpdateAndNotify } from '@/lib/services/community';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 
 interface IconPayload {
   type: string;
@@ -55,6 +55,8 @@ export async function POST(request: NextRequest) {
       tags,
       visibility,
       importance,
+      collection_slug: collectionSlug,
+      collection_name: collectionName,
     } = body;
 
     if (typeof uid !== 'string' || !uid.trim() || typeof title !== 'string' || !title.trim() || typeof html !== 'string' || !html) {
@@ -118,6 +120,74 @@ export async function POST(request: NextRequest) {
       const nextVersion = (latestVersion?.version ?? 0) + 1;
       const eventType = latestVersion ? 'updated' : 'published';
 
+      // Compute chaptersJson for collection sync
+      const normalizedCollectionSlug = typeof collectionSlug === 'string' && collectionSlug.trim()
+        ? collectionSlug.trim()
+        : null;
+      const normalizedCollectionName = typeof collectionName === 'string' && collectionName.trim()
+        ? collectionName.trim()
+        : null;
+
+      let chaptersJson: Record<string, unknown> | null = null;
+
+      if (normalizedCollectionSlug && normalizedCollectionName) {
+        // Find existing pages in the same collection (same author)
+        const siblingPages = await tx.query.publishedPages.findMany({
+          where: and(
+            eq(publishedPages.userId, session.userId),
+            isNotNull(publishedPages.chaptersJson)
+          ),
+        });
+
+        const collectionPages = siblingPages.filter((p) => {
+          try {
+            const cj = p.chaptersJson as Record<string, unknown> | null;
+            return cj && typeof cj === 'object' && cj.collection_slug === normalizedCollectionSlug;
+          } catch {
+            return false;
+          }
+        });
+
+        // Collect existing chapters from sibling pages
+        const existingChapters = new Map<number, { number: number; title: string; page_slug: string }>();
+        for (const p of collectionPages) {
+          const cj = p.chaptersJson as Record<string, unknown> | null;
+          const chapters = cj?.chapters as Array<Record<string, unknown>> | undefined;
+          if (Array.isArray(chapters)) {
+            for (const ch of chapters) {
+              if (typeof ch.number === 'number' && typeof ch.title === 'string') {
+                existingChapters.set(ch.number, {
+                  number: ch.number,
+                  title: ch.title as string,
+                  page_slug: typeof ch.page_slug === 'string' ? ch.page_slug : '',
+                });
+              }
+            }
+          }
+        }
+
+        // Add/update current page as a chapter
+        existingChapters.set(existingChapters.size + 1, {
+          number: existingChapters.size + 1,
+          title: title.trim(),
+          page_slug: uid,
+        });
+
+        const sortedChapters = Array.from(existingChapters.values())
+          .sort((a, b) => a.number - b.number)
+          .map((ch, idx) => ({
+            number: idx + 1,
+            title: ch.title,
+            page_slug: ch.page_slug,
+          }));
+
+        chaptersJson = {
+          collection_slug: normalizedCollectionSlug,
+          collection_name: normalizedCollectionName,
+          chapters: sortedChapters,
+        } as unknown as Record<string, unknown>;
+      }
+
       await tx
         .insert(publishedPages)
         .values({
@@ -136,6 +206,7 @@ export async function POST(request: NextRequest) {
           publishedAt: sql`now()`,
           lastPublishedAt: sql`now()`,
           versionCount: nextVersion,
+          chaptersJson,
         })
         .onConflictDoUpdate({
           target: [publishedPages.userId, publishedPages.uid],
@@ -153,6 +224,7 @@ export async function POST(request: NextRequest) {
             lastPublishedAt: sql`now()`,
             versionCount: nextVersion,
             updatedAt: sql`now()`,
+            chaptersJson,
           },
         });
 
@@ -165,6 +237,31 @@ export async function POST(request: NextRequest) {
 
       if (!updatedPublishedPage) {
         throw new Error('Published page was not found after upsert');
+      }
+
+      // Sync chaptersJson to sibling pages in the same collection
+      if (chaptersJson) {
+        const collectionSlugVal = (chaptersJson as Record<string, unknown>).collection_slug as string;
+        if (collectionSlugVal) {
+          const siblingPages = await tx.query.publishedPages.findMany({
+            where: and(
+              eq(publishedPages.userId, session.userId),
+              isNotNull(publishedPages.chaptersJson),
+              // Exclude the page we just upserted
+              sql`${publishedPages.id} != ${updatedPublishedPage.id}`
+            ),
+          });
+
+          for (const sibling of siblingPages) {
+            const cj = sibling.chaptersJson as Record<string, unknown> | null;
+            if (cj && typeof cj === 'object' && cj.collection_slug === collectionSlugVal && sibling.id !== updatedPublishedPage.id) {
+              await tx
+                .update(publishedPages)
+                .set({ chaptersJson })
+                .where(eq(publishedPages.id, sibling.id));
+            }
+          }
+        }
       }
 
       await tx.insert(publishedPageVersions).values({
@@ -182,6 +279,7 @@ export async function POST(request: NextRequest) {
         visibility: normalizedVisibility,
         moderationStatus: 'approved',
         publishedAt: new Date(),
+        chaptersJson: chaptersJson as Record<string, unknown> | undefined,
       });
 
       const latestRecord = await tx.query.publishedPageRecords.findFirst({
