@@ -29,6 +29,9 @@ import {
   Flag,
   ScrollText,
   FileText,
+  Activity,
+  Star,
+  FileEdit,
 } from 'lucide-react';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
@@ -189,6 +192,24 @@ export function Sidebar({
       href: '/admin/feedbacks',
       icon: Heart,
       permission: 'reports.view',
+    },
+    {
+      name: t('nav.activity', '活动流'),
+      href: '/admin/activity',
+      icon: Activity,
+      permission: 'rankings.view',
+    },
+    {
+      name: t('nav.ratings', '评分管理'),
+      href: '/admin/ratings',
+      icon: Star,
+      permission: 'content.moderate',
+    },
+    {
+      name: t('nav.drafts', '草稿管理'),
+      href: '/admin/drafts',
+      icon: FileEdit,
+      permission: 'content.delete',
     },
     {
       name: t('nav.logs'),
