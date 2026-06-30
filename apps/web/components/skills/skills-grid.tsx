@@ -40,7 +40,7 @@ export async function SkillsGrid({ searchParams }: SkillsGridProps) {
   // Build order
   const orderBy =
     sort === 'popular'
-      ? desc(skillPackages.favoritesCount)
+      ? desc(skillPackages.bookmarksCount)
       : sort === 'downloads'
         ? desc(skillPackages.downloadsCount)
         : desc(skillPackages.createdAt);
@@ -55,7 +55,7 @@ export async function SkillsGrid({ searchParams }: SkillsGridProps) {
       description: skillPackages.description,
       category: skillPackages.category,
       skillType: skillPackages.skillType,
-      favoritesCount: skillPackages.favoritesCount,
+      favoritesCount: skillPackages.bookmarksCount,
       downloadsCount: skillPackages.downloadsCount,
       ratingAvg: skillPackages.ratingAvg,
       author: {

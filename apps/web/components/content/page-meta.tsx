@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ChevronRight, Eye, Star, Share2, ThumbsUp, Check, Loader2 } from "lucide-react"
+import { ChevronRight, Eye, Bookmark, Share2, ThumbsUp, Check, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -79,12 +79,12 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
 
   // Optimistic state for action buttons
   const [hasReacted, setHasReacted] = useState(data.viewerHasReacted)
-  const [hasFavorited, setHasFavorited] = useState(data.viewerHasFavorited)
+  const [hasBookmarked, setHasBookmarked] = useState(data.viewerHasFavorited)
   const [likeCount, setLikeCount] = useState(actions.likes)
-  const [favoriteCount, setFavoriteCount] = useState(actions.bookmarks)
+  const [bookmarkCount, setBookmarkCount] = useState(actions.bookmarks)
   const [shareCount, setShareCount] = useState(actions.shares)
   const [likePending, setLikePending] = useState(false)
-  const [favoritePending, setFavoritePending] = useState(false)
+  const [bookmarkPending, setBookmarkPending] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleLike = async () => {
@@ -125,18 +125,18 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
     }
   }
 
-  const handleFavorite = async () => {
+  const handleBookmark = async () => {
     if (!data.isAuthenticated) {
       toast.error(t("community.loginRequired"))
       return
     }
-    if (favoritePending) return
-    setFavoritePending(true)
-    const wasFavorited = hasFavorited
-    setHasFavorited(!wasFavorited)
-    setFavoriteCount(c => c + (wasFavorited ? -1 : 1))
+    if (bookmarkPending) return
+    setBookmarkPending(true)
+    const wasBookmarked = hasBookmarked
+    setHasBookmarked(!wasBookmarked)
+    setBookmarkCount(c => c + (wasBookmarked ? -1 : 1))
     try {
-      const res = await fetch("/api/community/favorites/toggle", {
+      const res = await fetch("/api/community/bookmarks/toggle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,19 +146,19 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        console.error("Favorite failed:", res.status, err)
+        console.error("Bookmark failed:", res.status, err)
         throw new Error(err?.error?.message ?? "failed")
       }
       const result = await res.json()
-      setHasFavorited(result.has_favorited)
-      setFavoriteCount(result.favorites_count)
+      setHasBookmarked(result.has_bookmarked)
+      setBookmarkCount(result.bookmarks_count)
     } catch (e) {
-      console.error("Favorite error:", e)
-      setHasFavorited(wasFavorited)
-      setFavoriteCount(c => c + (wasFavorited ? 1 : -1))
+      console.error("Bookmark error:", e)
+      setHasBookmarked(wasBookmarked)
+      setBookmarkCount(c => c + (wasBookmarked ? 1 : -1))
       toast.error(t("community.bookmarkFailed"))
     } finally {
-      setFavoritePending(false)
+      setBookmarkPending(false)
     }
   }
 
@@ -252,7 +252,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       {/* Stats */}
       <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
         <Stat icon={Eye} value={stats.views} format />
-        <Stat icon={Star} value={stats.bookmarks} format />
+        <Stat icon={Bookmark} value={stats.bookmarks} format />
         <span>{stats.date}</span>
       </div>
 
@@ -271,7 +271,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
           {likePending ? (
             <Loader2 className="size-5 animate-spin" />
           ) : (
-            <Heart className={cn("size-5 transition-transform duration-200 hover:scale-110", hasReacted && "fill-current")} />
+            <ThumbsUp className={cn("size-5 transition-transform duration-200 hover:scale-110", hasReacted && "fill-current")} />
           )}
           <span className="text-[13px] font-bold">{formatCount(likeCount)}</span>
         </button>
@@ -280,12 +280,16 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
           disabled={bookmarkPending}
           className={cn(
             "flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] transition-colors",
-            hasFavorited
+            hasBookmarked
               ? "bg-amber-50 dark:bg-amber-950/20 text-amber-500"
               : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
           )}
         >
-          <Bookmark className={cn("size-5", hasFavorited && "fill-current")} />
+          {bookmarkPending ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Bookmark className={cn("size-5", hasBookmarked && "fill-current")} />
+          )}
           <span className="text-[13px] font-bold">{formatCount(bookmarkCount)}</span>
         </button>
         <button

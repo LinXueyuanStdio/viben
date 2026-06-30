@@ -9,7 +9,7 @@ interface Package {
   id: string;
   name: string;
   downloadsCount: number;
-  favoritesCount: number;
+  bookmarksCount: number;
 }
 
 interface TopPackagesProps {
@@ -56,7 +56,7 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
                     </span>
                     <span className="flex items-center gap-1">
                       <Heart className="h-3 w-3" />
-                      {pkg.favoritesCount}
+                      {pkg.bookmarksCount}
                     </span>
                   </div>
                 </div>
@@ -100,7 +100,7 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
                     </span>
                     <span className="flex items-center gap-1">
                       <Heart className="h-3 w-3" />
-                      {pkg.favoritesCount}
+                      {pkg.bookmarksCount}
                     </span>
                   </div>
                 </div>

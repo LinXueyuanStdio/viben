@@ -17,7 +17,7 @@ interface SkillHeaderProps {
     category: string | null;
     tags: string[] | null;
     triggerPatterns: string[] | null;
-    favoritesCount: number;
+    bookmarksCount: number;
     downloadsCount: number;
     ratingAvg: number;
     ratingCount: number;
@@ -86,7 +86,7 @@ export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHead
 
       <SkillActions
         packageId={pkg.id}
-        favoritesCount={pkg.favoritesCount}
+        favoritesCount={pkg.bookmarksCount}
         isAuthenticated={isAuthenticated}
       />
 

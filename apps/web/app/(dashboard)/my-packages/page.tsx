@@ -59,7 +59,7 @@ async function PackagesList({ userId }: { userId: string }) {
         description: true,
         status: true,
         downloadsCount: true,
-        favoritesCount: true,
+        bookmarksCount: true,
         createdAt: true,
       },
       orderBy: (packages, { desc }) => [desc(packages.createdAt)],
@@ -72,7 +72,7 @@ async function PackagesList({ userId }: { userId: string }) {
         description: true,
         status: true,
         downloadsCount: true,
-        favoritesCount: true,
+        bookmarksCount: true,
         createdAt: true,
       },
       orderBy: (packages, { desc }) => [desc(packages.createdAt)],
@@ -150,7 +150,7 @@ interface PackageCardProps {
     description: string | null;
     status: string | null;
     downloadsCount: number;
-    favoritesCount: number;
+    bookmarksCount: number;
   };
   href: string;
 }
@@ -192,7 +192,7 @@ function PackageCard({ package: pkg, href }: PackageCardProps) {
         <CardContent>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>{pkg.downloadsCount.toLocaleString()} 次下载</span>
-            <span>{pkg.favoritesCount.toLocaleString()} 次收藏</span>
+            <span>{pkg.bookmarksCount.toLocaleString()} 次收藏</span>
           </div>
         </CardContent>
       </Card>

@@ -4,7 +4,7 @@ import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityFavorites } from "@/lib/db"
+import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityBookmarks } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
@@ -172,17 +172,17 @@ export default async function UserSlugPage({
       .orderBy(desc(communityReactions.createdAt))
       .limit(20),
     db.select(pageColumns)
-      .from(communityFavorites)
-      .innerJoin(communityEntities, eq(communityEntities.id, communityFavorites.communityEntityId))
+      .from(communityBookmarks)
+      .innerJoin(communityEntities, eq(communityEntities.id, communityBookmarks.communityEntityId))
       .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
       .where(and(
-        eq(communityFavorites.userId, user.id),
+        eq(communityBookmarks.userId, user.id),
         eq(communityEntities.entityType, "published_page"),
         eq(communityEntities.status, "active"),
         eq(publishedPages.visibility, "public"),
         eq(publishedPages.moderationStatus, "approved")
       ))
-      .orderBy(desc(communityFavorites.createdAt))
+      .orderBy(desc(communityBookmarks.createdAt))
       .limit(20),
     // Pinned pages (up to 6)
     db.select().from(publishedPages)

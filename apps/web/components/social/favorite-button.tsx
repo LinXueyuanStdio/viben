@@ -27,7 +27,7 @@ export function FavoriteButton({
   className,
 }: FavoriteButtonProps) {
   const { t } = useTranslation();
-  const [isFavorited, setIsFavorited] = useState(initialFavorited);
+  const [isBookmarked, setIsFavorited] = useState(initialFavorited);
   const [count, setCount] = useState(initialCount);
   const [isLoading, setIsLoading] = useState(false);
   const prefersReducedMotion = useReducedMotion();
@@ -43,7 +43,7 @@ export function FavoriteButton({
         const response = await fetch(`/api/${apiPath}/${entityId}/favorite`);
         if (response.ok) {
           const data = await response.json();
-          setIsFavorited(data.isFavorited);
+          setIsFavorited(data.isBookmarked);
         }
       } catch (error) {
         console.error('Failed to fetch favorite status:', error);
@@ -59,9 +59,9 @@ export function FavoriteButton({
     }
 
     // Optimistic update
-    const wasAFavorite = isFavorited;
-    setIsFavorited(!isFavorited);
-    setCount((prev) => (isFavorited ? prev - 1 : prev + 1));
+    const wasAFavorite = isBookmarked;
+    setIsFavorited(!isBookmarked);
+    setCount((prev) => (isBookmarked ? prev - 1 : prev + 1));
     setIsLoading(true);
 
     try {
@@ -71,7 +71,7 @@ export function FavoriteButton({
 
       if (response.ok) {
         const data = await response.json();
-        setIsFavorited(data.isFavorited);
+        setIsFavorited(data.isBookmarked);
         setCount(data.count);
       } else {
         // Revert on error
@@ -95,17 +95,17 @@ export function FavoriteButton({
       onClick={handleToggle}
       disabled={isLoading || !isAuthenticated}
       className={cn('gap-2', className)}
-      title={isAuthenticated ? (isFavorited ? t('social.removeFromFavorites') : t('social.addToFavorites')) : t('social.signInToFavorite')}
+      title={isAuthenticated ? (isBookmarked ? t('social.removeFromFavorites') : t('social.addToFavorites')) : t('social.signInToFavorite')}
     >
       <motion.div
         initial={false}
-        animate={isFavorited ? { scale: prefersReducedMotion ? 1 : [1, 1.3, 1] } : { scale: 1 }}
+        animate={isBookmarked ? { scale: prefersReducedMotion ? 1 : [1, 1.3, 1] } : { scale: 1 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeOut' }}
       >
         <Heart
           className={cn(
             'h-5 w-5 transition-colors',
-            isFavorited
+            isBookmarked
               ? 'fill-primary text-primary'
               : 'text-muted-foreground hover:text-primary'
           )}

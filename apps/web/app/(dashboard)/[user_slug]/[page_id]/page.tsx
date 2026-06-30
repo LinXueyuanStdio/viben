@@ -48,7 +48,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
 
   const summary = await getCommunitySummary("published_page", ctx.page.id, session)
   const viewerHasReacted = summary?.viewer.has_reacted ?? false
-  const viewerHasFavorited = summary?.viewer.has_favorited ?? false
+  const viewerHasFavorited = summary?.viewer.has_bookmarked ?? false
 
   // Ensure community entity exists for comments
   const communityEntity = await ensureCommunityEntityForPage(ctx)

@@ -16,7 +16,7 @@ interface McpHeaderProps {
     transport: string;
     category: string | null;
     tags: string[] | null;
-    favoritesCount: number;
+    bookmarksCount: number;
     downloadsCount: number;
     ratingAvg: number;
     ratingCount: number;
@@ -85,7 +85,7 @@ export function McpHeader({ package: pkg, isAuthenticated = false }: McpHeaderPr
 
       <McpActions
         packageId={pkg.id}
-        favoritesCount={pkg.favoritesCount}
+        favoritesCount={pkg.bookmarksCount}
         repositoryUrl={pkg.repositoryUrl}
         isAuthenticated={isAuthenticated}
       />

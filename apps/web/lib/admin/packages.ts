@@ -347,7 +347,7 @@ export async function getPackageDetails(
       transport: mcpPkg.transport,
       entryPoint: mcpPkg.entryPoint,
       reviewHistory,
-      favoritesCount: mcpPkg.favoritesCount,
+      favoritesCount: mcpPkg.bookmarksCount,
       downloadsCount: mcpPkg.downloadsCount,
       commentsCount,
     };
@@ -389,7 +389,7 @@ export async function getPackageDetails(
       content: skillPkg.content,
       triggerPatterns: skillPkg.triggerPatterns as string[] | null,
       reviewHistory,
-      favoritesCount: skillPkg.favoritesCount,
+      favoritesCount: skillPkg.bookmarksCount,
       downloadsCount: skillPkg.downloadsCount,
       commentsCount,
     };

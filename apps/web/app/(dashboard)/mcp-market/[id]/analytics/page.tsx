@@ -76,7 +76,7 @@ export default async function PackageAnalyticsPage({
         downloadsCount={pkg.downloadsCount}
         weekDownloads={lastWeek}
         weekChange={weekChange}
-        favoritesCount={pkg.favoritesCount}
+        favoritesCount={pkg.bookmarksCount}
         ratingAvg={pkg.ratingAvg}
         ratingCount={pkg.ratingCount}
       />

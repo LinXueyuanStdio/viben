@@ -27,7 +27,7 @@ export default async function AnalyticsPage() {
         id: true,
         name: true,
         downloadsCount: true,
-        favoritesCount: true,
+        bookmarksCount: true,
       },
     }),
     db.query.skillPackages.findMany({
@@ -36,7 +36,7 @@ export default async function AnalyticsPage() {
         id: true,
         name: true,
         downloadsCount: true,
-        favoritesCount: true,
+        bookmarksCount: true,
       },
     }),
   ]);
@@ -51,8 +51,8 @@ export default async function AnalyticsPage() {
     skills.reduce((sum, p) => sum + p.downloadsCount, 0);
 
   const totalFavorites =
-    mcps.reduce((sum, p) => sum + p.favoritesCount, 0) +
-    skills.reduce((sum, p) => sum + p.favoritesCount, 0);
+    mcps.reduce((sum, p) => sum + p.bookmarksCount, 0) +
+    skills.reduce((sum, p) => sum + p.bookmarksCount, 0);
 
   // Get downloads over time (last 30 days)
   const thirtyDaysAgo = new Date();

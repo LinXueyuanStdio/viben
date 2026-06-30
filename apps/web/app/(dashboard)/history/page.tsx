@@ -4,7 +4,7 @@ import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/
 import { Pill } from "@/components/content/pill"
 import { Bookmark, BookOpen } from "lucide-react"
 import Link from "next/link"
-import { getBrowseHistory, listCommunityFavorites } from "@/lib/services/community"
+import { getBrowseHistory, listCommunityBookmarks } from "@/lib/services/community"
 import { EmptyState, T } from "@/components/content/i18n-text"
 import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
@@ -50,7 +50,7 @@ export default async function HistoryPage() {
 
   const [historyResult, favoritesResult] = await Promise.all([
     getBrowseHistory(session, 50),
-    listCommunityFavorites({ session, entityType: "published_page", limit: 5, cursor: null }),
+    listCommunityBookmarks({ session, entityType: "published_page", limit: 5, cursor: null }),
   ])
 
   // Keep raw items for date-based filtering

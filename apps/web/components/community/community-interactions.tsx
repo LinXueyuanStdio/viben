@@ -26,14 +26,14 @@ type CommunitySummary = {
     visibility: string;
     status: string;
     reactions_count: number;
-    favorites_count: number;
+    bookmarks_count: number;
     comments_count: number;
     canonical_path?: string | null;
   };
   viewer: {
     is_authenticated: boolean;
     has_reacted: boolean;
-    has_favorited: boolean;
+    has_bookmarked: boolean;
     can_comment: boolean;
     can_moderate: boolean;
     user_id?: string | null;
@@ -204,7 +204,7 @@ export function CommunityInteractions({
     }
   }
 
-  async function toggleFavorite() {
+  async function toggleBookmark() {
     if (!requireInteractionAuth()) return;
     setPendingAction('favorite');
     try {
@@ -218,18 +218,18 @@ export function CommunityInteractions({
       });
       if (!response.ok) throw new Error('favorite_failed');
       const data = (await response.json()) as {
-        has_favorited: boolean;
-        favorites_count: number;
+        has_bookmarked: boolean;
+        bookmarks_count: number;
       };
       setSummary((current) => ({
         ...current,
         entity: {
           ...current.entity,
-          favorites_count: data.favorites_count,
+          bookmarks_count: data.bookmarks_count,
         },
         viewer: {
           ...current.viewer,
-          has_favorited: data.has_favorited,
+          has_bookmarked: data.has_bookmarked,
         },
       }));
       void refreshSummary();
@@ -427,12 +427,12 @@ export function CommunityInteractions({
           />
           <ActionButton
             label="收藏"
-            count={summary.entity.favorites_count}
-            active={summary.viewer.has_favorited}
+            count={summary.entity.bookmarks_count}
+            active={summary.viewer.has_bookmarked}
             icon={<Star className="h-4 w-4" />}
             disabled={pendingAction === 'favorite'}
             loading={pendingAction === 'favorite'}
-            onClick={toggleFavorite}
+            onClick={toggleBookmark}
           />
           <ActionButton
             label="评论"

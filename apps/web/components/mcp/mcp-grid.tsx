@@ -36,7 +36,7 @@ export async function McpGrid({ searchParams }: McpGridProps) {
   // Build order
   const orderBy =
     sort === 'popular'
-      ? desc(mcpPackages.favoritesCount)
+      ? desc(mcpPackages.bookmarksCount)
       : sort === 'downloads'
         ? desc(mcpPackages.downloadsCount)
         : desc(mcpPackages.createdAt);
@@ -51,7 +51,7 @@ export async function McpGrid({ searchParams }: McpGridProps) {
       description: mcpPackages.description,
       category: mcpPackages.category,
       transport: mcpPackages.transport,
-      favoritesCount: mcpPackages.favoritesCount,
+      favoritesCount: mcpPackages.bookmarksCount,
       downloadsCount: mcpPackages.downloadsCount,
       ratingAvg: mcpPackages.ratingAvg,
       author: {
