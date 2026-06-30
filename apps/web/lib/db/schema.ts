@@ -140,7 +140,7 @@ export const mcpPackages = pgTable(
     category: text('category').default('general'),
 
     // Social counts (denormalized for performance)
-    bookmarksCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('bookmarks_count').default(0).notNull(),
     downloadsCount: integer('downloads_count').default(0).notNull(),
     ratingAvg: real('rating_avg').default(0).notNull(),
     ratingCount: integer('rating_count').default(0).notNull(),
@@ -205,7 +205,7 @@ export const skillPackages = pgTable(
     compatibility: json('compatibility').$type<string[]>().default([]),
 
     // Social counts
-    bookmarksCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('bookmarks_count').default(0).notNull(),
     downloadsCount: integer('downloads_count').default(0).notNull(),
     ratingAvg: real('rating_avg').default(0).notNull(),
     ratingCount: integer('rating_count').default(0).notNull(),
@@ -256,7 +256,7 @@ export const collections = pgTable(
     itemCount: integer('item_count').default(0).notNull(),
     forksCount: integer('forks_count').default(0).notNull(),
     forkedFromId: text('forked_from_id'),
-    favoritesCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('bookmarks_count').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -319,8 +319,8 @@ export const comments = pgTable(
   ]
 );
 
-export const favorites = pgTable(
-  'favorites',
+export const bookmarks = pgTable(
+  'bookmarks',
   {
     userId: text('user_id')
       .notNull()
@@ -331,7 +331,7 @@ export const favorites = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.userId, table.entityType, table.entityId] }),
-    index('favorites_entity_idx').on(table.entityType, table.entityId),
+    index('bookmarks_entity_idx').on(table.entityType, table.entityId),
   ]
 );
 
@@ -714,7 +714,7 @@ export const publishedPages = pgTable(
     uniqueViewCount: integer('unique_view_count').default(0).notNull(),
     readCount: integer('read_count').default(0).notNull(),
     likeCount: integer('like_count').default(0).notNull(),
-    favoriteCount: integer('favorite_count').default(0).notNull(),
+    bookmarkCount: integer('bookmark_count').default(0).notNull(),
     commentCount: integer('comment_count').default(0).notNull(),
     shareCount: integer('share_count').default(0).notNull(),
     repostCount: integer('repost_count').default(0).notNull(),
@@ -869,7 +869,7 @@ export const entityStatsDaily = pgTable(
     uniqueViewCount: integer('unique_view_count').default(0).notNull(),
     readCount: integer('read_count').default(0).notNull(),
     likeCount: integer('like_count').default(0).notNull(),
-    favoriteCount: integer('favorite_count').default(0).notNull(),
+    bookmarkCount: integer('bookmark_count').default(0).notNull(),
     commentCount: integer('comment_count').default(0).notNull(),
     shareCount: integer('share_count').default(0).notNull(),
     repostCount: integer('repost_count').default(0).notNull(),
@@ -913,7 +913,7 @@ export const communityEntities = pgTable(
     title: text('title'),
     canonicalPath: text('canonical_path'),
     reactionsCount: integer('reactions_count').default(0).notNull(),
-    bookmarksCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('bookmarks_count').default(0).notNull(),
     commentsCount: integer('comments_count').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -960,7 +960,7 @@ export const communityReactions = pgTable(
 );
 
 export const communityBookmarks = pgTable(
-  'community_favorites',
+  'community_bookmarks',
   {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     communityEntityId: text('community_entity_id')
@@ -972,12 +972,12 @@ export const communityBookmarks = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('community_favorites_unique_idx').on(
+    uniqueIndex('community_bookmarks_unique_idx').on(
       table.communityEntityId,
       table.userId
     ),
-    index('community_favorites_user_idx').on(table.userId, table.createdAt),
-    index('community_favorites_entity_idx').on(
+    index('community_bookmarks_user_idx').on(table.userId, table.createdAt),
+    index('community_bookmarks_entity_idx').on(
       table.communityEntityId,
       table.createdAt
     ),

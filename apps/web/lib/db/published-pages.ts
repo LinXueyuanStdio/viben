@@ -56,7 +56,7 @@ export function ensurePublishedPagesTable(): Promise<void> {
       ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "like_count" integer DEFAULT 0 NOT NULL
     `);
     await db.execute(sql`
-      ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "favorite_count" integer DEFAULT 0 NOT NULL
+      ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "bookmark_count" integer DEFAULT 0 NOT NULL
     `);
     await db.execute(sql`
       ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "comment_count" integer DEFAULT 0 NOT NULL
@@ -231,7 +231,7 @@ export function ensurePublishedPagesTable(): Promise<void> {
         "unique_view_count" integer DEFAULT 0 NOT NULL,
         "read_count" integer DEFAULT 0 NOT NULL,
         "like_count" integer DEFAULT 0 NOT NULL,
-        "favorite_count" integer DEFAULT 0 NOT NULL,
+        "bookmark_count" integer DEFAULT 0 NOT NULL,
         "comment_count" integer DEFAULT 0 NOT NULL,
         "share_count" integer DEFAULT 0 NOT NULL,
         "repost_count" integer DEFAULT 0 NOT NULL,
@@ -254,7 +254,7 @@ export function ensurePublishedPagesTable(): Promise<void> {
         "title" text,
         "canonical_path" text,
         "reactions_count" integer DEFAULT 0 NOT NULL,
-        "favorites_count" integer DEFAULT 0 NOT NULL,
+        "bookmarks_count" integer DEFAULT 0 NOT NULL,
         "comments_count" integer DEFAULT 0 NOT NULL,
         "created_at" timestamp DEFAULT now() NOT NULL,
         "updated_at" timestamp DEFAULT now() NOT NULL
@@ -276,16 +276,16 @@ export function ensurePublishedPagesTable(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS "community_reactions_entity_idx" ON "community_reactions" USING btree ("community_entity_id", "reaction_type")`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS "community_reactions_user_idx" ON "community_reactions" USING btree ("user_id", "created_at")`);
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS "community_favorites" (
+      CREATE TABLE IF NOT EXISTS "community_bookmarks" (
         "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text NOT NULL,
         "community_entity_id" text NOT NULL REFERENCES "community_entities"("id") ON DELETE CASCADE,
         "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "created_at" timestamp DEFAULT now() NOT NULL
       )
     `);
-    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "community_favorites_unique_idx" ON "community_favorites" USING btree ("community_entity_id", "user_id")`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS "community_favorites_user_idx" ON "community_favorites" USING btree ("user_id", "created_at")`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS "community_favorites_entity_idx" ON "community_favorites" USING btree ("community_entity_id", "created_at")`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "community_bookmarks_unique_idx" ON "community_bookmarks" USING btree ("community_entity_id", "user_id")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "community_bookmarks_user_idx" ON "community_bookmarks" USING btree ("user_id", "created_at")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "community_bookmarks_entity_idx" ON "community_bookmarks" USING btree ("community_entity_id", "created_at")`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "community_comments" (
         "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text NOT NULL,
