@@ -6,8 +6,9 @@ import { SectionHead } from "@/components/content/section-head"
 import { db, publishedPages, users, moments, collections } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
-import { redirect } from "next/navigation"
 import { EmptyState, T } from "@/components/content/i18n-text"
+import Link from "next/link"
+import { LogIn } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { FeedCardData } from "@/components/content/feed-card"
@@ -47,41 +48,85 @@ const FEED_KIND_MAP: Record<string, FeedKind> = {
 
 export default async function ProfilePage() {
   const session = await getSession()
-  if (!session?.userId) redirect(`/login?redirect=${encodeURIComponent("/profile")}`)
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.userId),
-  })
-  if (!user) redirect(`/login?redirect=${encodeURIComponent("/profile")}`)
+  // 未登录时展示友好提示（不执行 redirect，避免 session 丢失体验）
+  if (!session?.userId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-bold"><T tKey="auth.signInRequired" fallback="需要登录" /></h2>
+          <p className="text-muted-foreground"><T tKey="auth.signInRequiredDescription" fallback="请登录以访问此功能" /></p>
+        </div>
+        <Link
+          href={`/login?redirect=${encodeURIComponent("/profile")}`}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-bold hover:opacity-90 transition-opacity"
+        >
+          <LogIn className="size-4" />
+          <T tKey="auth.signIn" fallback="登录" />
+        </Link>
+      </div>
+    )
+  }
 
-  const [authorPages, authorMoments, userCollections, pageCountResult] = await Promise.all([
-    db.select().from(publishedPages)
-      .where(and(
-        eq(publishedPages.userId, user.id),
-        eq(publishedPages.visibility, "public"),
-        eq(publishedPages.moderationStatus, "approved")
-      ))
-      .orderBy(desc(publishedPages.lastPublishedAt))
-      .limit(20),
-    db.select().from(moments)
-      .where(and(
-        eq(moments.authorUserId, user.id),
-        eq(moments.visibility, "public"),
-        eq(moments.isDeleted, false)
-      ))
-      .orderBy(desc(moments.createdAt))
-      .limit(10),
-    db.select().from(collections)
-      .where(eq(collections.ownerId, user.id))
-      .orderBy(desc(collections.updatedAt))
-      .limit(10),
-    db.select({ count: count() }).from(publishedPages)
-      .where(and(
-        eq(publishedPages.userId, user.id),
-        eq(publishedPages.visibility, "public"),
-        eq(publishedPages.moderationStatus, "approved")
-      )),
-  ])
+  let user
+  try {
+    user = await db.query.users.findFirst({
+      where: eq(users.id, session.userId),
+    })
+  } catch {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <EmptyState tKey="common.error" fallback="加载失败，请稍后重试" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <EmptyState tKey="common.error" fallback="用户数据未找到" />
+      </div>
+    )
+  }
+
+  // 数据获取 — try/catch 保护，避免 DB 异常导致页面崩溃
+  let authorPages: typeof publishedPages.$inferSelect[] = []
+  let authorMoments: typeof moments.$inferSelect[] = []
+  let userCollections: typeof collections.$inferSelect[] = []
+  let pageCountResult: { count: number }[] = [{ count: 0 }]
+
+  try {
+    [authorPages, authorMoments, userCollections, pageCountResult] = await Promise.all([
+      db.select().from(publishedPages)
+        .where(and(
+          eq(publishedPages.userId, user.id),
+          eq(publishedPages.visibility, "public"),
+          eq(publishedPages.moderationStatus, "approved")
+        ))
+        .orderBy(desc(publishedPages.lastPublishedAt))
+        .limit(20),
+      db.select().from(moments)
+        .where(and(
+          eq(moments.authorUserId, user.id),
+          eq(moments.visibility, "public"),
+          eq(moments.isDeleted, false)
+        ))
+        .orderBy(desc(moments.createdAt))
+        .limit(10),
+      db.select().from(collections)
+        .where(eq(collections.ownerId, user.id))
+        .orderBy(desc(collections.updatedAt))
+        .limit(10),
+      db.select({ count: count() }).from(publishedPages)
+        .where(and(
+          eq(publishedPages.userId, user.id),
+          eq(publishedPages.visibility, "public"),
+          eq(publishedPages.moderationStatus, "approved")
+        )),
+    ])
+  } catch (error) {
+    console.error("[Profile] Failed to fetch profile data:", error)
+  }
 
   const profile: ProfileHeroData = {
     fallbackText: user.displayName?.[0] ?? "?",
@@ -130,7 +175,6 @@ export default async function ProfilePage() {
     },
     text: m.body ?? "",
     quote: m.quoteText ?? undefined,
-    shareUrl: `/author/${encodeURIComponent(user.userSlug)}`,
     actions: {
       views: m.viewCount ?? 0,
       likes: m.likeCount,
@@ -142,7 +186,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="grid gap-4">
-      <ProfileHero data={profile} />
+      <ProfileHero data={profile} currentUserSlug={user.userSlug} />
       <VibenTabs defaultValue="页面">
         <VibenTabsList>
           {PROFILE_TABS.map((tab) => (
