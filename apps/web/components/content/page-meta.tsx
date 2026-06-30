@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ChevronRight, Eye, Bookmark, Share2, Heart, Check, Loader2 } from "lucide-react"
+import { ChevronRight, Eye, Star, Share2, ThumbsUp, Check, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -81,10 +81,10 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
   const [hasReacted, setHasReacted] = useState(data.viewerHasReacted)
   const [hasFavorited, setHasFavorited] = useState(data.viewerHasFavorited)
   const [likeCount, setLikeCount] = useState(actions.likes)
-  const [bookmarkCount, setBookmarkCount] = useState(actions.bookmarks)
+  const [favoriteCount, setFavoriteCount] = useState(actions.bookmarks)
   const [shareCount, setShareCount] = useState(actions.shares)
   const [likePending, setLikePending] = useState(false)
-  const [bookmarkPending, setBookmarkPending] = useState(false)
+  const [favoritePending, setFavoritePending] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleLike = async () => {
@@ -125,16 +125,16 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
     }
   }
 
-  const handleBookmark = async () => {
+  const handleFavorite = async () => {
     if (!data.isAuthenticated) {
       toast.error(t("community.loginRequired"))
       return
     }
-    if (bookmarkPending) return
-    setBookmarkPending(true)
+    if (favoritePending) return
+    setFavoritePending(true)
     const wasFavorited = hasFavorited
     setHasFavorited(!wasFavorited)
-    setBookmarkCount(c => c + (wasFavorited ? -1 : 1))
+    setFavoriteCount(c => c + (wasFavorited ? -1 : 1))
     try {
       const res = await fetch("/api/community/favorites/toggle", {
         method: "POST",
@@ -146,19 +146,19 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        console.error("Bookmark failed:", res.status, err)
+        console.error("Favorite failed:", res.status, err)
         throw new Error(err?.error?.message ?? "failed")
       }
       const result = await res.json()
       setHasFavorited(result.has_favorited)
-      setBookmarkCount(result.favorites_count)
+      setFavoriteCount(result.favorites_count)
     } catch (e) {
-      console.error("Bookmark error:", e)
+      console.error("Favorite error:", e)
       setHasFavorited(wasFavorited)
-      setBookmarkCount(c => c + (wasFavorited ? 1 : -1))
+      setFavoriteCount(c => c + (wasFavorited ? 1 : -1))
       toast.error(t("community.bookmarkFailed"))
     } finally {
-      setBookmarkPending(false)
+      setFavoritePending(false)
     }
   }
 
@@ -252,7 +252,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       {/* Stats */}
       <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
         <Stat icon={Eye} value={stats.views} format />
-        <Stat icon={Bookmark} value={stats.bookmarks} format />
+        <Stat icon={Star} value={stats.bookmarks} format />
         <span>{stats.date}</span>
       </div>
 

@@ -647,7 +647,7 @@ export async function toggleReaction(params: {
   });
 }
 
-export async function toggleFavorite(params: {
+export async function toggleBookmark(params: {
   entityType: 'published_page' | 'moment';
   entityId: string;
   session: Session;
@@ -745,8 +745,8 @@ export async function toggleFavorite(params: {
     });
 
     return {
-      has_favorited: !existing,
-      favorites_count: updated?.favoritesCount ?? 0,
+      has_bookmarked: !existing,
+      bookmarks_count: updated?.favoritesCount ?? 0,
     };
   });
 }
