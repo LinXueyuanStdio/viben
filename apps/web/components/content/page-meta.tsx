@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ChevronRight, Eye, Bookmark, Share2, Heart, Check } from "lucide-react"
+import { ChevronRight, Eye, Bookmark, Share2, Heart, Check, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -268,7 +268,11 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
               : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
           )}
         >
-          <Heart className={cn("size-5", hasReacted && "fill-current")} />
+          {likePending ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Heart className={cn("size-5 transition-transform duration-200 hover:scale-110", hasReacted && "fill-current")} />
+          )}
           <span className="text-[13px] font-bold">{formatCount(likeCount)}</span>
         </button>
         <button

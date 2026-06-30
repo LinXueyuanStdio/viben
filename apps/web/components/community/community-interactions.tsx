@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Loader2,
   MessageSquare,
   MoreHorizontal,
   Send,
@@ -530,6 +531,7 @@ function ActionButton({
   icon,
   active = false,
   disabled = false,
+  loading = false,
   onClick,
 }: {
   label: string;
@@ -537,6 +539,7 @@ function ActionButton({
   icon: React.ReactNode;
   active?: boolean;
   disabled?: boolean;
+  loading?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -550,7 +553,7 @@ function ActionButton({
       aria-pressed={active}
     >
       <span className="inline-flex items-center gap-2">
-        {icon}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
         {label}
       </span>
       <span className="min-w-6 text-right tabular-nums">{count}</span>

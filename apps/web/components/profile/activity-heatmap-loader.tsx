@@ -30,9 +30,8 @@ function HeatmapInner({ userSlug }: ActivityHeatmapLoaderProps) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4 animate-pulse">
-        <div className="h-3 w-24 rounded bg-muted mb-3" />
-        <div className="grid grid-cols-53 gap-[2px]">
+      <div className="rounded-xl border border-border bg-card">
+        <div className="grid grid-cols-53 gap-[2px] p-2">
           {Array.from({ length: 371 }).map((_, i) => (
             <div key={i} className="aspect-square rounded-sm bg-muted" />
           ))}
@@ -42,7 +41,7 @@ function HeatmapInner({ userSlug }: ActivityHeatmapLoaderProps) {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
+    <section className="rounded-xl border border-border bg-card">
       <PageActivityHeatmap data={data} />
     </section>
   )
@@ -51,7 +50,7 @@ function HeatmapInner({ userSlug }: ActivityHeatmapLoaderProps) {
 export function ActivityHeatmapLoader({ userSlug }: ActivityHeatmapLoaderProps) {
   return (
     <Suspense fallback={
-      <div className="rounded-xl border border-border bg-card p-4 animate-pulse">
+      <div className="rounded-xl border border-border bg-card">
         <div className="h-3 w-24 rounded bg-muted mb-3" />
         <div className="grid grid-cols-53 gap-[2px]">
           {Array.from({ length: 371 }).map((_, i) => (

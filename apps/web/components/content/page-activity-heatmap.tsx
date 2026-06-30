@@ -90,15 +90,10 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
   return (
     <div
       ref={ref}
-      className={`rounded-xl border bg-card p-4 transition-all duration-300 ${
+      className={`rounded-xl border bg-card transition-all duration-300 ${
         isInView ? 'animate-fade-in-up' : 'opacity-0'
       }`}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-semibold">
-          {totalPages} pages published in the last year
-        </span>
-      </div>
 
       <div className="overflow-x-auto">
         <svg
