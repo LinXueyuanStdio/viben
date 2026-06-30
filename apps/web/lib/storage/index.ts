@@ -26,14 +26,9 @@ export function getStorage(): StorageProvider {
   const provider = resolveProvider();
 
   switch (provider) {
-    case 'vercel-blob': {
-      const token = process.env.BLOB_READ_WRITE_TOKEN;
-      if (!token) {
-        throw new Error('BLOB_READ_WRITE_TOKEN is required for Vercel Blob storage');
-      }
-      storageInstance = new VercelBlobStorage({ token });
+    case 'vercel-blob':
+      storageInstance = new VercelBlobStorage();
       break;
-    }
 
     case 'huggingface':
       if (!process.env.HF_TOKEN || !process.env.HF_REPO_ID) {
