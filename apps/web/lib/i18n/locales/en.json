@@ -244,11 +244,13 @@
           "type": "Type",
           "triggers": "Triggers",
           "reviewHistory": "Review History",
+          "releaseHistory": "Version History",
           "byAdmin": "by {{name}}",
           "revoke": "Revoke",
           "reopenApprove": "Reopen & Approve",
           "fetchError": "Failed to fetch package details",
-          "loadError": "Failed to load package"
+          "loadError": "Failed to load package",
+          "download": "Download"
         },
         "card": {
           "skill": "Skill",
@@ -340,7 +342,9 @@
         "unknown": "Unknown",
         "allDone": "All pages reviewed",
         "noMatching": "No matching pages",
-        "detailLabels": { "author": "Author:", "visibility": "Visibility:", "moderationStatus": "Status:", "publishedAt": "Published:", "description": "Description", "cover": "Cover", "stats": "Stats", "preview": "Content Preview" },
+        "detailLabels": { "author": "Author:", "visibility": "Visibility:", "moderationStatus": "Status:", "publishedAt": "Published:", "description": "Description", "cover": "Cover", "stats": "Stats", "preview": "Content Preview", "updateHistory": "Update History" },
+        "eventTypes": { "published": "Published", "updated": "Updated", "republished": "Republished", "unpublished": "Unpublished" },
+        "eventImportance": { "normal": "Normal", "major": "Major" },
         "rejectTitle": "Reject Page",
         "rejectDescription": "Please provide a rejection reason (optional). This reason will be visible to the author.",
         "rejectReasonLabel": "Rejection Reason",
@@ -411,7 +415,19 @@
         "filterPublic": "Public",
         "filterPrivate": "Private",
         "columns": { "author": "Author", "content": "Content", "visibility": "Visibility", "likes": "Likes", "comments": "Comments", "time": "Time", "actions": "Actions" },
-        "showing": "Showing {{count}} / {{total}} moments"
+        "showing": "Showing {{count}} / {{total}} moments",
+        "detailTitle": "Moment Detail",
+        "detailContent": "Content",
+        "detailAttachments": "Attachments",
+        "detailRepostChain": "Repost Chain",
+        "repostSource": "Repost Source",
+        "repostBy": "Reposted by",
+        "repostEntity": "Entity",
+        "repostStatus": "Status",
+        "repostFailure": "Failure reason",
+        "repostUpstream": "Upstream",
+        "repostDownstream": "Downstream",
+        "attachmentTypes": { "published_page": "Page", "collection": "Collection", "mcp": "MCP", "skill": "Skill", "media": "Media" }
       },
       "feedbacks": {
         "title": "Feedback Management",
@@ -486,7 +502,19 @@
         "form": { "uid": "UID", "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "description": "Description", "layoutType": "Layout Type", "locale": "Locale", "minItems": "Min Items", "maxItems": "Max Items", "sortOrder": "Sort Order", "contentType": "Content Type", "contentId": "Content ID", "title": "Title", "subtitle": "Subtitle", "imageUrl": "Image URL", "linkUrl": "Link URL", "ctaLabel": "CTA Label", "badgeLabel": "Badge", "visibility": "Visibility", "isActive": "Active" },
         "layoutTypes": { "list": "List", "grid": "Grid", "carousel": "Carousel", "hero": "Hero", "sidebar": "Sidebar" },
         "columns": { "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "Layout", "locale": "Locale", "status": "Status", "minMax": "Limits", "actions": "Actions" },
-        "itemColumns": { "title": "Title", "type": "Type", "target": "Target", "status": "Status", "actions": "Actions" }
+        "itemColumns": { "title": "Title", "type": "Type", "target": "Target", "status": "Status", "actions": "Actions" },
+        "revisions": {
+          "title": "Revision History",
+          "button": "Revision History",
+          "revisionNumber": "Revision #",
+          "status": "Status",
+          "publishedAt": "Published At",
+          "publishedBy": "Published By",
+          "createdBy": "Created By",
+          "createdAt": "Created At",
+          "noRevisions": "No revisions",
+          "loadError": "Failed to load revisions"
+        }
       },
       "logs": {
         "title": "Operation Logs",

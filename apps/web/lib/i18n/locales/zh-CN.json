@@ -244,11 +244,13 @@
           "type": "类型",
           "triggers": "触发器",
           "reviewHistory": "审核历史",
+          "releaseHistory": "版本历史",
           "byAdmin": "由 {{name}}",
           "revoke": "撤销",
           "reopenApprove": "重新打开并通过",
           "fetchError": "获取包详情失败",
-          "loadError": "加载包失败"
+          "loadError": "加载包失败",
+          "download": "下载"
         },
         "card": {
           "skill": "技能",
@@ -340,7 +342,9 @@
         "unknown": "未知",
         "allDone": "所有页面已审核完毕",
         "noMatching": "没有符合条件的页面",
-        "detailLabels": { "author": "作者：", "visibility": "可见性：", "moderationStatus": "审核状态：", "publishedAt": "发布时间：", "description": "描述", "cover": "封面", "stats": "数据统计", "preview": "内容预览" },
+        "detailLabels": { "author": "作者：", "visibility": "可见性：", "moderationStatus": "审核状态：", "publishedAt": "发布时间：", "description": "描述", "cover": "封面", "stats": "数据统计", "preview": "内容预览", "updateHistory": "更新历史" },
+        "eventTypes": { "published": "发布", "updated": "更新", "republished": "重新发布", "unpublished": "取消发布" },
+        "eventImportance": { "normal": "常规", "major": "重要" },
         "rejectTitle": "拒绝页面",
         "rejectDescription": "请填写拒绝原因（可选），该原因将对作者可见。",
         "rejectReasonLabel": "拒绝原因",
@@ -411,7 +415,19 @@
         "filterPublic": "公开",
         "filterPrivate": "私密",
         "columns": { "author": "作者", "content": "内容", "visibility": "可见性", "likes": "点赞", "comments": "评论", "time": "时间", "actions": "操作" },
-        "showing": "显示 {{count}} / {{total}} 条动态"
+        "showing": "显示 {{count}} / {{total}} 条动态",
+        "detailTitle": "动态详情",
+        "detailContent": "内容",
+        "detailAttachments": "附件",
+        "detailRepostChain": "转发链",
+        "repostSource": "转发来源",
+        "repostBy": "转发者",
+        "repostEntity": "转发实体",
+        "repostStatus": "转发状态",
+        "repostFailure": "转发失败原因",
+        "repostUpstream": "上游",
+        "repostDownstream": "下游",
+        "attachmentTypes": { "published_page": "页面", "collection": "合集", "mcp": "MCP", "skill": "技能", "media": "媒体" }
       },
       "feedbacks": {
         "title": "反馈管理",
@@ -486,7 +502,19 @@
         "form": { "uid": "UID", "name": "名称", "surface": "位置", "slotKey": "标识", "description": "描述", "layoutType": "布局类型", "locale": "区域", "minItems": "最小条目数", "maxItems": "最大条目数", "sortOrder": "排序", "contentType": "内容类型", "contentId": "内容 ID", "title": "标题", "subtitle": "副标题", "imageUrl": "图片地址", "linkUrl": "链接地址", "ctaLabel": "按钮文案", "badgeLabel": "角标", "visibility": "可见性", "isActive": "启用状态" },
         "layoutTypes": { "list": "列表", "grid": "网格", "carousel": "轮播", "hero": "Hero", "sidebar": "侧边栏" },
         "columns": { "name": "名称", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "布局", "locale": "区域", "status": "状态", "minMax": "条目限制", "actions": "操作" },
-        "itemColumns": { "title": "标题", "type": "类型", "target": "目标", "status": "状态", "actions": "操作" }
+        "itemColumns": { "title": "标题", "type": "类型", "target": "目标", "status": "状态", "actions": "操作" },
+        "revisions": {
+          "title": "修订历史",
+          "button": "修订历史",
+          "revisionNumber": "修订号",
+          "status": "状态",
+          "publishedAt": "发布时间",
+          "publishedBy": "发布人",
+          "createdBy": "创建人",
+          "createdAt": "创建时间",
+          "noRevisions": "暂无修订记录",
+          "loadError": "加载修订历史失败"
+        }
       },
       "logs": {
         "title": "操作日志",
