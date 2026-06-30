@@ -56,30 +56,27 @@ export async function POST(
       note = data.note;
     }
 
-    // Use transaction to ensure atomicity
-    await db.transaction(async (tx) => {
-      // Update package status
-      const updateData: Record<string, unknown> = {
-        status: 'approved' as PackageStatus,
-        reviewedAt: new Date(),
-        reviewedBy: session.userId,
-      };
+    // Update package status
+    const updateData: Record<string, unknown> = {
+      status: 'approved' as PackageStatus,
+      reviewedAt: new Date(),
+      reviewedBy: session.userId,
+    };
 
-      if (packageType === 'mcp') {
-        await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
-      } else {
-        await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
-      }
+    if (packageType === 'mcp') {
+      await db.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+    } else {
+      await db.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+    }
 
-      // Create moderation log
-      await tx.insert(moderationLogs).values({
-        adminId: session.userId,
-        entityType: packageType,
-        entityId: id,
-        action: 'approve',
-        reason: note ?? null,
-        metadata: null,
-      });
+    // Create moderation log
+    await db.insert(moderationLogs).values({
+      adminId: session.userId,
+      entityType: packageType,
+      entityId: id,
+      action: 'approve',
+      reason: note ?? null,
+      metadata: null,
     });
 
     return NextResponse.json({

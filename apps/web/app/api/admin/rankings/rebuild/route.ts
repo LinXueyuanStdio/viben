@@ -197,65 +197,61 @@ export async function POST(request: NextRequest) {
       scoreLabel: '热度',
     }));
 
-    // Transaction: expire old snapshots + create new one + insert items
-    const result = await db.transaction(async (tx) => {
-      // 1. Mark existing ready snapshots as expired
-      await tx
-        .update(rankingSnapshots)
-        .set({ status: 'expired', validUntil: new Date() })
-        .where(
-          and(
-            eq(rankingSnapshots.rankingKey, rankingKey),
-            eq(rankingSnapshots.timeWindow, timeWindow),
-            eq(rankingSnapshots.status, 'ready')
-          )
-        );
+    // Expire old snapshots + create new one + insert items
+    // 1. Mark existing ready snapshots as expired
+    await db
+      .update(rankingSnapshots)
+      .set({ status: 'expired', validUntil: new Date() })
+      .where(
+        and(
+          eq(rankingSnapshots.rankingKey, rankingKey),
+          eq(rankingSnapshots.timeWindow, timeWindow),
+          eq(rankingSnapshots.status, 'ready')
+        )
+      );
 
-      // 2. Create new snapshot with id
-      const snapshotId = crypto.randomUUID();
+    // 2. Create new snapshot with id
+    const snapshotId = crypto.randomUUID();
 
-      await tx.insert(rankingSnapshots).values({
-        id: snapshotId,
-        rankingKey,
-        entityType: 'published_page',
-        timeWindow,
-        scopeType: 'global',
-        algorithmVersion,
-        status: 'building',
-        validFrom: now,
-        sourceFrom,
-        sourceUntil,
-        itemCount: 0,
-      });
-
-      // 3. Batch insert ranking items (in chunks of 100 to avoid oversized statements)
-      const chunkSize = 100;
-      for (let i = 0; i < rankingItemsData.length; i += chunkSize) {
-        const chunk = rankingItemsData.slice(i, i + chunkSize).map((item) => ({
-          ...item,
-          snapshotId,
-        }));
-        await tx.insert(rankingItems).values(chunk);
-      }
-
-      // 4. Update snapshot to ready
-      await tx
-        .update(rankingSnapshots)
-        .set({
-          status: 'ready',
-          itemCount: rankingItemsData.length,
-          generatedAt: new Date(),
-        })
-        .where(eq(rankingSnapshots.id, snapshotId));
-
-      // Fetch the final snapshot
-      const [snapshot] = await tx
-        .select()
-        .from(rankingSnapshots)
-        .where(eq(rankingSnapshots.id, snapshotId));
-
-      return snapshot;
+    await db.insert(rankingSnapshots).values({
+      id: snapshotId,
+      rankingKey,
+      entityType: 'published_page',
+      timeWindow,
+      scopeType: 'global',
+      algorithmVersion,
+      status: 'building',
+      validFrom: now,
+      sourceFrom,
+      sourceUntil,
+      itemCount: 0,
     });
+
+    // 3. Batch insert ranking items (in chunks of 100 to avoid oversized statements)
+    const chunkSize = 100;
+    for (let i = 0; i < rankingItemsData.length; i += chunkSize) {
+      const chunk = rankingItemsData.slice(i, i + chunkSize).map((item) => ({
+        ...item,
+        snapshotId,
+      }));
+      await db.insert(rankingItems).values(chunk);
+    }
+
+    // 4. Update snapshot to ready
+    await db
+      .update(rankingSnapshots)
+      .set({
+        status: 'ready',
+        itemCount: rankingItemsData.length,
+        generatedAt: new Date(),
+      })
+      .where(eq(rankingSnapshots.id, snapshotId));
+
+    // Fetch the final snapshot
+    const [result] = await db
+      .select()
+      .from(rankingSnapshots)
+      .where(eq(rankingSnapshots.id, snapshotId));
 
     return NextResponse.json({
       success: true,
