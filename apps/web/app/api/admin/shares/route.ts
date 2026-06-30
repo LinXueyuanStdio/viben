@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, shareLinks, users } from '@/lib/db';
-import { eq, desc, count, and, isNull, isNotNull, type SQL } from 'drizzle-orm';
+import { eq, desc, count, and, isNull, isNotNull, or, lt } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listSharesQuerySchema = z.object({
@@ -29,30 +29,32 @@ export async function GET(request: NextRequest) {
     const { page, limit, status } = query;
     const offset = (page - 1) * limit;
 
-    const conditions: SQL[] = [];
+    // Build where condition based on status filter
+    let statusCondition = undefined;
     if (status === 'active') {
-      conditions.push(isNull(shareLinks.revokedAt));
-      conditions.push(
-        // Not expired: expiresAt is null or in the future
-        and(
-          isNull(shareLinks.revokedAt)
+      // Not revoked AND (no expiry OR not yet expired)
+      statusCondition = and(
+        isNull(shareLinks.revokedAt),
+        or(
+          isNull(shareLinks.expiresAt),
+          lt(new Date(), shareLinks.expiresAt!)
         )
       );
-      // Active = not revoked AND (no expiry OR expiry in the future)
-      // Since we already added revokedAt is null, just ensure expiresAt is null or future
     } else if (status === 'expired') {
-      conditions.push(isNotNull(shareLinks.expiresAt));
-      conditions.push(isNull(shareLinks.revokedAt));
+      // Not revoked AND expired (has expiry date AND it has passed)
+      statusCondition = and(
+        isNull(shareLinks.revokedAt),
+        isNotNull(shareLinks.expiresAt),
+        lt(shareLinks.expiresAt!, new Date())
+      );
     } else if (status === 'revoked') {
-      conditions.push(isNotNull(shareLinks.revokedAt));
+      statusCondition = isNotNull(shareLinks.revokedAt);
     }
-
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [totalResult] = await db
       .select({ count: count() })
       .from(shareLinks)
-      .where(whereClause);
+      .where(statusCondition ?? and());
 
     const total = totalResult?.count ?? 0;
 
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
       })
       .from(shareLinks)
       .leftJoin(users, eq(shareLinks.createdByUserId, users.id))
-      .where(whereClause)
+      .where(statusCondition ?? and())
       .orderBy(desc(shareLinks.createdAt))
       .limit(limit)
       .offset(offset);
