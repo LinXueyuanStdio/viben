@@ -1,34 +1,69 @@
-'use client';
+"use client"
 
-import { useTranslation } from 'react-i18next';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProfilePackages } from './profile-packages';
-import { ProfileFavorites } from './profile-favorites';
-import { ProfileApiKeys } from './profile-api-keys';
+import { useCallback } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 
-interface ProfileTabsProps {
-  userId: string;
+const TAB_LABELS: Record<string, string> = {
+  pages: "页面",
+  likes: "喜欢",
+  favorites: "收藏",
+  moments: "动态",
+  collections: "合集",
+  about: "关于",
 }
 
-export function ProfileTabs({ userId }: ProfileTabsProps) {
-  const { t } = useTranslation();
+interface ProfileTabsProps {
+  pages: React.ReactNode
+  likes: React.ReactNode
+  favorites: React.ReactNode
+  moments: React.ReactNode
+  collections: React.ReactNode
+  about: React.ReactNode
+}
+
+export function ProfileTabs({ pages, likes, favorites, moments, collections, about }: ProfileTabsProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentTab = searchParams.get("tab")
+  const activeTab = TAB_LABELS[currentTab ?? "pages"] ?? "页面"
+
+  const handleTabChange = useCallback((value: string) => {
+    const key = Object.entries(TAB_LABELS).find(([, label]) => label === value)?.[0]
+    const params = new URLSearchParams(searchParams.toString())
+    if (key && key !== "pages") {
+      params.set("tab", key)
+    } else {
+      params.delete("tab")
+    }
+    const query = params.toString()
+    router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false })
+  }, [router, pathname, searchParams])
+
+  const content: Record<string, React.ReactNode> = {
+    "页面": pages,
+    "喜欢": likes,
+    "收藏": favorites,
+    "动态": moments,
+    "合集": collections,
+    "关于": about,
+  }
 
   return (
-    <Tabs defaultValue="packages" className="w-full">
-      <TabsList>
-        <TabsTrigger value="packages">{t('profile.tabs.myPackages')}</TabsTrigger>
-        <TabsTrigger value="favorites">{t('profile.tabs.favorites')}</TabsTrigger>
-        <TabsTrigger value="api-keys">{t('profile.tabs.apiKeys')}</TabsTrigger>
-      </TabsList>
-      <TabsContent value="packages" className="mt-6">
-        <ProfilePackages userId={userId} />
-      </TabsContent>
-      <TabsContent value="favorites" className="mt-6">
-        <ProfileFavorites />
-      </TabsContent>
-      <TabsContent value="api-keys" className="mt-6">
-        <ProfileApiKeys />
-      </TabsContent>
-    </Tabs>
-  );
+    <VibenTabs value={activeTab} onValueChange={handleTabChange}>
+      <VibenTabsList>
+        {Object.keys(TAB_LABELS).map((key) => (
+          <VibenTabsTrigger key={key} value={TAB_LABELS[key]}>
+            {TAB_LABELS[key]}
+          </VibenTabsTrigger>
+        ))}
+      </VibenTabsList>
+      {Object.entries(content).map(([label, node]) => (
+        <VibenTabsContent key={label} value={label} className="mt-3">
+          {node}
+        </VibenTabsContent>
+      ))}
+    </VibenTabs>
+  )
 }

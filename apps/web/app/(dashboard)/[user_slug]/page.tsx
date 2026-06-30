@@ -1,7 +1,7 @@
 import { ProfileHero } from "@/components/content/profile-hero"
 import { PageCard } from "@/components/content/page-card"
 import { FeedCard } from "@/components/content/feed-card"
-import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
+import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { SectionHead } from "@/components/content/section-head"
 import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityFavorites } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
@@ -15,17 +15,6 @@ import type { PageCardData } from "@/components/content/page-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { FeedKind } from "@/components/content/feed-head"
-
-const PROFILE_TABS = ["页面", "喜欢", "收藏", "动态", "合集", "关于"]
-
-const TAB_KEY_TO_CHINESE: Record<string, string> = {
-  pages: "页面",
-  likes: "喜欢",
-  favorites: "收藏",
-  moments: "动态",
-  collections: "合集",
-  about: "关于",
-}
 
 function gradientCover(title: string): string {
   const hue = title.charCodeAt(0) % 360
@@ -100,13 +89,10 @@ function mapPageToCard(
 
 export default async function UserSlugPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ user_slug: string }>
-  searchParams: Promise<{ tab?: string }>
 }) {
   const { user_slug: slug } = await params
-  const { tab: tabKey } = await searchParams
   const session = await getSession()
 
   const user = await db.query.users.findFirst({
@@ -116,7 +102,6 @@ export default async function UserSlugPage({
   if (!user) notFound()
 
   const isOwnProfile = session?.userId === user.id
-  const defaultTab = tabKey ? (TAB_KEY_TO_CHINESE[tabKey] ?? "页面") : "页面"
   const displayName = user.displayName ?? "?"
   const avatarUrl = user.avatarUrl
 
@@ -270,54 +255,51 @@ export default async function UserSlugPage({
           </Link>
         </div>
       )}
-      <VibenTabs defaultValue={defaultTab}>
-        <VibenTabsList>
-          {PROFILE_TABS.map((tab) => (
-            <VibenTabsTrigger key={tab} value={tab}>{tab}</VibenTabsTrigger>
-          ))}
-        </VibenTabsList>
-
-        <VibenTabsContent value="页面" className="mt-3">
-          <SectionHead title="公开页面" />
-          {pageCards.length === 0 ? (
-            <EmptyState tKey="community.noPages" fallback="暂无公开页面" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {pageCards.map((item, i) => (
-                <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
-              ))}
-            </div>
-          )}
-        </VibenTabsContent>
-
-        <VibenTabsContent value="喜欢" className="mt-3">
-          <SectionHead title="喜欢的页面" />
-          {likedCards.length === 0 ? (
-            <EmptyState tKey="community.noLikedPages" fallback="暂无喜欢的页面" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {likedCards.map((item, i) => (
-                <PageCard key={i} data={item.card} variant="default" href={item.href} />
-              ))}
-            </div>
-          )}
-        </VibenTabsContent>
-
-        <VibenTabsContent value="收藏" className="mt-3">
-          <SectionHead title="收藏的页面" />
-          {favoritedCards.length === 0 ? (
-            <EmptyState tKey="community.noFavoritedPages" fallback="暂无收藏的页面" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {favoritedCards.map((item, i) => (
-                <PageCard key={i} data={item.card} variant="default" href={item.href} />
-              ))}
-            </div>
-          )}
-        </VibenTabsContent>
-
-        <VibenTabsContent value="动态" className="mt-3">
-          {feedCards.length === 0 ? (
+      <ProfileTabs
+        pages={
+          <>
+            <SectionHead title="公开页面" />
+            {pageCards.length === 0 ? (
+              <EmptyState tKey="community.noPages" fallback="暂无公开页面" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {pageCards.map((item, i) => (
+                  <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
+                ))}
+              </div>
+            )}
+          </>
+        }
+        likes={
+          <>
+            <SectionHead title="喜欢的页面" />
+            {likedCards.length === 0 ? (
+              <EmptyState tKey="community.noLikedPages" fallback="暂无喜欢的页面" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {likedCards.map((item, i) => (
+                  <PageCard key={i} data={item.card} variant="default" href={item.href} />
+                ))}
+              </div>
+            )}
+          </>
+        }
+        favorites={
+          <>
+            <SectionHead title="收藏的页面" />
+            {favoritedCards.length === 0 ? (
+              <EmptyState tKey="community.noFavoritedPages" fallback="暂无收藏的页面" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {favoritedCards.map((item, i) => (
+                  <PageCard key={i} data={item.card} variant="default" href={item.href} />
+                ))}
+              </div>
+            )}
+          </>
+        }
+        moments={
+          feedCards.length === 0 ? (
             <EmptyState tKey="community.noMoments" fallback="暂无动态" />
           ) : (
             <div className="grid gap-2">
@@ -325,23 +307,23 @@ export default async function UserSlugPage({
                 <FeedCard key={i} data={feed} variant="rich" />
               ))}
             </div>
-          )}
-        </VibenTabsContent>
-
-        <VibenTabsContent value="合集" className="mt-3">
-          <SectionHead title="创建的合集" />
-          {createdCollectionCards.length === 0 ? (
-            <EmptyState tKey="community.noCollections" fallback="暂无创建的合集" />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {createdCollectionCards.map((item, i) => (
-                <CollectionCard key={i} collection={item.collection} isOwner />
-              ))}
-            </div>
-          )}
-        </VibenTabsContent>
-
-        <VibenTabsContent value="关于" className="mt-3">
+          )
+        }
+        collections={
+          <>
+            <SectionHead title="创建的合集" />
+            {createdCollectionCards.length === 0 ? (
+              <EmptyState tKey="community.noCollections" fallback="暂无创建的合集" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {createdCollectionCards.map((item, i) => (
+                  <CollectionCard key={i} collection={item.collection} isOwner />
+                ))}
+              </div>
+            )}
+          </>
+        }
+        about={
           <div className="max-w-[760px] text-sm text-muted-foreground leading-relaxed space-y-3">
             {user.bio ? (
               <p>{user.bio}</p>
@@ -351,8 +333,8 @@ export default async function UserSlugPage({
               </p>
             )}
           </div>
-        </VibenTabsContent>
-      </VibenTabs>
+        }
+      />
     </div>
   )
 }
