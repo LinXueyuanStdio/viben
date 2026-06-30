@@ -30,7 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Loader2, AlertTriangle, Ban, CheckCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, Ban, CheckCircle, Eye } from 'lucide-react';
 
 interface User {
   id: string;
@@ -52,6 +52,7 @@ interface UserTableProps {
   onBan: (userId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
   onUnban: (userId: string) => Promise<{ success: boolean; error?: string }>;
   onWarn: (userId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
+  onViewDetail: (userId: string) => void;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -90,7 +91,7 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban, onWarn }: UserTableProps) {
+export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban, onWarn, onViewDetail }: UserTableProps) {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [banDialog, setBanDialog] = useState<{ userId: string; username: string } | null>(null);
   const [warnDialog, setWarnDialog] = useState<{ userId: string; username: string } | null>(null);
@@ -239,6 +240,16 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
+                    {/* Detail button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="查看详情"
+                      onClick={() => onViewDetail(user.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+
                     {user.role !== 'super_admin' && getAvailableRoles(user.role).length > 0 && (
                       updatingUserId === user.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Pagination } from '@/components/shared/pagination';
 import { UserTable } from './user-table';
+import { UserDetailDialog } from './user-detail-dialog';
 import { Loader2, Search } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
@@ -59,6 +60,7 @@ export function UserManagement({
   const currentRole = searchParams.get('role') || initialRole || '';
   const currentSort = searchParams.get('sort') || initialSort || 'newest';
 
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState(currentSearch);
 
   const fetchUsers = useCallback(async () => {
@@ -215,6 +217,10 @@ export function UserManagement({
     }
   };
 
+  const handleViewDetail = (userId: string) => {
+    setDetailUserId(userId);
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -285,6 +291,7 @@ export function UserManagement({
             onBan={handleBan}
             onUnban={handleUnban}
             onWarn={handleWarn}
+            onViewDetail={handleViewDetail}
           />
 
           {pagination.totalPages > 1 && (
@@ -301,6 +308,12 @@ export function UserManagement({
           </p>
         </>
       )}
+
+      <UserDetailDialog
+        userId={detailUserId}
+        isOpen={!!detailUserId}
+        onClose={() => setDetailUserId(null)}
+      />
     </div>
   );
 }
