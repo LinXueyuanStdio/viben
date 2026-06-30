@@ -215,7 +215,7 @@ export function Sidebar({
       ],
     },
     {
-      label: t('nav.adminUsers', '用户与反馈'),
+      label: t('nav.adminUsersGroup', '用户与反馈'),
       items: [
         {
           name: t('nav.users'),
