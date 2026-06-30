@@ -7,6 +7,7 @@ import { PageMeta } from "@/components/content/page-meta"
 import type { PageMetaData } from "@/components/content/page-meta"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import { ReadDrawer } from "@/components/layout/read-drawer"
+import { NotesPanel } from "@/components/content/notes-panel"
 import { BreadcrumbDynamicContext } from "@/components/layout/breadcrumb"
 import type { BreadcrumbContextValue } from "@/components/layout/breadcrumb"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -387,15 +388,7 @@ export function ReadPageClient({
       sessionAvatarUrl={sessionAvatarUrl}
     />
   ), [communityEntityId, isAuthenticated, sessionUsername, sessionAvatarUrl])
-  const notesTab = useMemo(() => (
-    <div className="grid gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-['Lexend'] text-[17px] font-bold">{t('community.notes')}</h2>
-        <button className="text-[14px] font-bold text-primary hover:underline">{t('community.newNote')}</button>
-      </div>
-      <p className="py-4 text-center text-[13px] text-muted-foreground">{t('community.notesFeatureSoon')}</p>
-    </div>
-  ), [t])
+  const notesTab = useMemo(() => <NotesPanel pageId={pageUid} />, [pageUid])
 
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
@@ -410,7 +403,7 @@ export function ReadPageClient({
         tabs={[
           { value: "details", label: t('community.details'), content: detailsTab },
           { value: "comments", label: t('community.comments'), badge: pageCommentCount, content: commentsTab },
-          { value: "notes", label: t('community.notes'), badge: 2, content: notesTab },
+          { value: "notes", label: t('community.notes'), content: notesTab },
         ]}
         defaultTab="details"
       />
