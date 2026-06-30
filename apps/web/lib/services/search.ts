@@ -65,8 +65,10 @@ export async function searchPages(query: string) {
       favoriteCount: publishedPages.favoriteCount,
       lastPublishedAt: publishedPages.lastPublishedAt,
       userId: publishedPages.userId,
+      userSlug: users.userSlug,
     })
     .from(publishedPages)
+    .leftJoin(users, eq(users.id, publishedPages.userId))
     .where(and(
       eq(publishedPages.visibility, "public"),
       eq(publishedPages.moderationStatus, "approved"),

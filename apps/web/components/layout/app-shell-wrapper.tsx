@@ -46,7 +46,7 @@ export function AppShellWrapper({ children }: AppShellWrapperProps) {
         const s: Session = {
           userId: user.id,
           username: user.username,
-          userSlug: user.username,
+          userSlug: user.userSlug,
           email: user.email,
           role: user.role,
           avatarUrl: user.avatarUrl,
