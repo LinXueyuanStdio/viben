@@ -70,25 +70,25 @@ export function UserMenu({ session }: UserMenuProps) {
 
         {/* Section 1: Profile, Pages, Likes, Favorites */}
         <DropdownMenuItem asChild>
-          <Link href="/profile">
+          <Link href={`/${session.userSlug}`}>
             <Spacer />
             {t("auth.profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/page/${session.userSlug}`}>
+          <Link href={`/${session.userSlug}?tab=pages`}>
             <FileText className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.pages", "页面")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/profile/likes">
+          <Link href={`/${session.userSlug}?tab=likes`}>
             <Heart className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.likes", "喜欢")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/profile/favorites">
+          <Link href={`/${session.userSlug}?tab=favorites`}>
             <Star className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.favorites", "收藏")}
           </Link>
@@ -98,7 +98,7 @@ export function UserMenu({ session }: UserMenuProps) {
 
         {/* Section 2: Settings */}
         <DropdownMenuItem asChild>
-          <Link href="/profile/settings">
+          <Link href={`/${session.userSlug}/settings`}>
             <Spacer />
             {t("common.settings")}
           </Link>
