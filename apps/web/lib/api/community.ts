@@ -67,7 +67,7 @@ export async function createComment(params: {
   const body: Record<string, string> = {
     entity_type: params.entityType,
     entity_id: params.entityId,
-    parent_comment_id: params.parentCommentId ?? "",
+    parent_comment_id: params.parentCommentId || "",
     content: params.content,
   }
   return postCommunityApi("/api/community/comments", body) as Promise<CreateCommentResult>

@@ -153,17 +153,70 @@ function CommentComposer({
 
 function CommentCard({
   comment,
+  entityType,
+  pageDbId,
+  isAuthenticated,
   onReply,
   onDelete,
   sessionUserId,
 }: {
   comment: CommunityComment
+  entityType?: "published_page" | "moment"
+  pageDbId?: string
+  isAuthenticated?: boolean
   onReply?: (username: string, commentId: string) => void
   onDelete?: (id: string) => void
   sessionUserId?: string
 }) {
   const { t } = useTranslation()
   const isOwnComment = sessionUserId ? comment.author.id === sessionUserId : false
+  const [replies, setReplies] = useState<CommunityComment[]>([])
+  const [loadingReplies, setLoadingReplies] = useState(false)
+  const [threadOpen, setThreadOpen] = useState(false)
+  const [allReplies, setAllReplies] = useState<CommunityComment[]>([])
+  const [threadText, setThreadText] = useState("")
+  const [threadSubmitting, setThreadSubmitting] = useState(false)
+
+  // Fetch initial replies (max 2) on mount
+  useEffect(() => {
+    if (comment.replies_count > 0 && pageDbId) {
+      fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=2`)
+        .then(r => r.json()).then(d => setReplies(d.comments ?? []))
+    }
+  }, [comment.id, comment.replies_count, pageDbId, entityType])
+
+  // Fetch ALL replies when thread opens
+  useEffect(() => {
+    if (threadOpen && pageDbId) {
+      setLoadingReplies(true)
+      fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=50`)
+        .then(r => r.json()).then(d => { setAllReplies(d.comments ?? []); setLoadingReplies(false) })
+    }
+  }, [threadOpen, comment.id, pageDbId, entityType])
+
+  const handleThreadSubmit = async () => {
+    if (!threadText.trim() || threadSubmitting) return
+    setThreadSubmitting(true)
+    try {
+      await createComment({
+        entityType: entityType as "published_page" | "moment",
+        entityId: pageDbId!,
+        content: threadText.trim(),
+        parentCommentId: comment.id,
+      })
+      setThreadText("")
+      // Refetch replies
+      const res = await fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=50`)
+      if (res.ok) {
+        const data = await res.json()
+        setAllReplies(data.comments ?? [])
+      }
+    } catch {
+      toast.error(t("community.commentFailed"))
+    } finally {
+      setThreadSubmitting(false)
+    }
+  }
 
   const like = useToggleLike({
     entityType: "comment",
@@ -217,6 +270,77 @@ function CommentCard({
             </button>
           )}
         </div>
+
+        {/* Preloaded replies */}
+        {replies.length > 0 && (
+          <div className="ml-8 mt-2 border-l-2 border-border/60 pl-3 space-y-2">
+            {replies.map((r) => (
+              <div key={r.id} className="text-[13px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold">{r.author.display_name}</span>
+                  <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
+                </div>
+                <p className="text-muted-foreground leading-relaxed mt-0.5">{r.content}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* "查看全部 N 条回复" button */}
+        {comment.replies_count > 2 && (
+          <button
+            onClick={() => setThreadOpen(!threadOpen)}
+            className="ml-8 mt-1.5 text-[13px] text-primary hover:underline font-bold"
+          >
+            {threadOpen
+              ? t("community.collapseReplies")
+              : t("community.viewReplies", { count: comment.replies_count })}
+          </button>
+        )}
+
+        {/* Thread sub-panel */}
+        {threadOpen && (
+          <div className="ml-8 mt-2 border-l-2 border-primary/30 pl-3 space-y-2">
+            {loadingReplies ? (
+              <p className="text-[13px] text-muted-foreground py-2">{t("community.commentsLoading")}</p>
+            ) : (
+              allReplies.map((r) => (
+                <div key={r.id} className="text-[13px] py-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold">{r.author.display_name}</span>
+                    <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
+                  </div>
+                  <p className="text-foreground leading-relaxed mt-0.5">{r.content}</p>
+                </div>
+              ))
+            )}
+            {/* Mini composer */}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  value={threadText}
+                  onChange={(e) => setThreadText(e.target.value)}
+                  placeholder={t("community.writeComment")}
+                  className="flex-1 min-w-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[13px] focus:outline-none focus:border-primary placeholder:text-muted-foreground"
+                />
+                <button
+                  onClick={handleThreadSubmit}
+                  disabled={!threadText.trim() || threadSubmitting}
+                  className="shrink-0 inline-flex items-center gap-1 text-[13px] text-primary font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {threadSubmitting ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Send className="size-3.5" />
+                  )}
+                  {t("community.published")}
+                </button>
+              </div>
+            ) : (
+              <p className="text-[13px] text-muted-foreground">{t("community.loginToComment")}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -335,6 +459,9 @@ export function CommentsPanel({
               <CommentCard
                 key={comment.id}
                 comment={comment}
+                entityType={entityType}
+                pageDbId={pageDbId}
+                isAuthenticated={isAuthenticated}
                 onReply={(username, commentId) => setReplyTo({ username, commentId })}
                 onDelete={handleDelete}
                 sessionUserId={sessionUserId}

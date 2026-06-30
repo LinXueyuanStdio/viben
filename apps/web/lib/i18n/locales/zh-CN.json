@@ -2415,6 +2415,8 @@
     "bookmarkFailed": "收藏失败",
     "commentFailed": "评论失败",
     "commentSent": "评论已发送",
+    "viewReplies": "查看全部 {{count}} 条回复 →",
+    "collapseReplies": "收起回复",
     "commentPlaceholder": "发表评论...",
     "tags": {
       "title": "标签",

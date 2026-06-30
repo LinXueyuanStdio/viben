@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       entityType: body.entity_type,
       entityId: body.entity_id,
       parentCommentId:
-        typeof body.parent_comment_id === 'string' ? body.parent_comment_id : null,
+        typeof body.parent_comment_id === 'string' && body.parent_comment_id ? body.parent_comment_id : null,
       content: body.content,
       session,
     });

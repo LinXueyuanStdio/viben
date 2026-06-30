@@ -2416,6 +2416,8 @@
     "bookmarkFailed": "Bookmark failed",
     "commentFailed": "Comment failed",
     "commentSent": "Reply sent",
+    "viewReplies": "View all {{count}} replies →",
+    "collapseReplies": "Collapse replies",
     "commentPlaceholder": "Post your reply...",
     "tags": {
       "title": "Tags",
