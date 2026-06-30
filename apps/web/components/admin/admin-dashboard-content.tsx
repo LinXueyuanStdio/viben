@@ -52,6 +52,47 @@ export function AdminDashboardContent({ stats }: AdminDashboardContentProps) {
         />
       </div>
 
+      {/* More Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title={t('dashboard.admin.totalPublishedPages')}
+          value={stats.totalPublishedPages}
+          icon={<FileText className="h-4 w-4" />}
+          href="/admin/pages"
+        />
+        <StatsCard
+          title={t('dashboard.admin.totalMoments')}
+          value={stats.totalMoments}
+          icon={<MessageSquare className="h-4 w-4" />}
+        />
+        <StatsCard
+          title={t('dashboard.admin.totalPackages')}
+          value={stats.totalPackages}
+          icon={<Package className="h-4 w-4" />}
+          href="/admin/packages"
+        />
+        <StatsCard
+          title={t('dashboard.admin.newUsersToday')}
+          value={stats.newUsersToday}
+          icon={<Users className="h-4 w-4" />}
+        />
+        <StatsCard
+          title={t('dashboard.admin.newUsersThisWeek')}
+          value={stats.newUsersThisWeek}
+          icon={<Users className="h-4 w-4" />}
+        />
+        <StatsCard
+          title={t('dashboard.admin.totalDownloads')}
+          value={stats.totalDownloads}
+          icon={<Download className="h-4 w-4" />}
+        />
+        <StatsCard
+          title={t('dashboard.admin.totalComments')}
+          value={stats.totalComments}
+          icon={<MessageSquare className="h-4 w-4" />}
+        />
+      </div>
+
       {/* Recent Activity and Pending Queue */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
