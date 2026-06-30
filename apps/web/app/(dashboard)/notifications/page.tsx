@@ -114,7 +114,7 @@ export default async function NotificationsPage() {
   }))
 
   return (
-    <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <div className="flex items-center justify-between">
           <SectionHead title="通知" />

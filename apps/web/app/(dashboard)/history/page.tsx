@@ -103,7 +103,7 @@ export default async function HistoryPage() {
   const unreadCount = allItems.filter((item) => item.progress < 100).length
 
   return (
-    <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <VibenTabs defaultValue="全部">
           <VibenTabsList>

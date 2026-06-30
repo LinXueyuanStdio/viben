@@ -108,7 +108,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
   const relatedTagList = (relatedTags.rows as { tag: string; cnt: number }[]).filter(r => r.tag?.trim())
 
   return (
-    <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <SectionHead title={`标签：${tag}`} />
         {pageCards.length === 0 ? (

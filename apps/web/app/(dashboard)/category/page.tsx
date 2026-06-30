@@ -123,7 +123,7 @@ export default async function CategoryPage() {
   // If no categories exist, show all pages without tabs
   if (categories.length === 0) {
     return (
-      <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+      <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
         <div className="grid gap-3">
           <SectionHead title="全部页面">
             <RefreshButton />
@@ -146,7 +146,7 @@ export default async function CategoryPage() {
 
   // Normal flow with categories
   return (
-    <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <VibenTabs defaultValue={categories[0]?.slug ?? ""}>
           <VibenTabsList>
