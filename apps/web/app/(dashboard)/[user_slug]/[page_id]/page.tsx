@@ -4,7 +4,7 @@ import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommun
 import { getSession } from "@/lib/auth/cookies"
 import { db, publishedPages, users } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
-import { ReadPageClient } from "../../read/[user_slug]/[page_id]/read-page-client"
+import { ReadPageClient } from "@/components/pages/read-page-client"
 import type { Metadata } from "next"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
 
