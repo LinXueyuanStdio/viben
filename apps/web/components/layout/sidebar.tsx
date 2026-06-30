@@ -32,6 +32,9 @@ import {
   Activity,
   Star,
   FileEdit,
+  Image,
+  Download,
+  Share2,
 } from 'lucide-react';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
