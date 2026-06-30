@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { eq, and, ne, desc } from "drizzle-orm"
-import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView } from "@/lib/services/community"
+import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
 import { db, publishedPages, users } from "@/lib/db"
 import { notFound } from "next/navigation"
@@ -38,9 +38,20 @@ export default async function ReadPage({ params }: ReadPageProps) {
   }
 
   const summary = await getCommunitySummary("published_page", ctx.page.id, session)
+  const viewerHasReacted = summary?.viewer.has_reacted ?? false
+  const viewerHasFavorited = summary?.viewer.has_favorited ?? false
 
   // Ensure community entity exists for comments
   const communityEntity = await ensureCommunityEntityForPage(ctx)
+
+  // Prefetch initial comments
+  const initialComments = await listCommunityComments({
+    entityType: "published_page",
+    entityId: ctx.page.id,
+    parentCommentId: null,
+    limit: 20,
+    session,
+  })
 
   // Record page view (fire-and-forget via after())
   after(async () => {
@@ -129,7 +140,12 @@ export default async function ReadPage({ params }: ReadPageProps) {
       sessionUsername={session?.username}
       sessionAvatarUrl={session?.avatarUrl}
       sessionUserSlug={session?.userSlug}
+      sessionUserId={session?.userId}
+      viewerHasReacted={viewerHasReacted}
+      viewerHasFavorited={viewerHasFavorited}
       communityEntityId={communityEntity.id}
+      initialComments={initialComments.comments}
+      initialCommentsNextCursor={initialComments.next_cursor}
       recommendationEntries={recommendationEntries}
     />
   )
