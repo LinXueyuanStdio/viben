@@ -472,14 +472,20 @@
         "addItem": "添加条目",
         "editItem": "编辑条目",
         "deleteItem": "删除条目",
+        "deleteItemError": "删除条目失败",
         "deleteItemConfirm": "此操作不可撤销。确定要删除这个条目吗？",
+        "itemCreateSuccess": "条目创建成功",
+        "itemUpdateSuccess": "条目更新成功",
+        "itemActionError": "保存条目失败",
         "backToList": "返回运营位列表",
         "itemDetail": "{{name}} 的条目",
         "active": "启用",
         "inactive": "禁用",
-        "form": { "name": "名称", "surface": "位置", "slotKey": "标识", "description": "描述", "layoutType": "布局类型", "minItems": "最小条目数", "maxItems": "最大条目数", "sortOrder": "排序", "contentType": "内容类型", "contentId": "内容 ID", "title": "标题", "imageUrl": "图片地址", "linkUrl": "链接地址" },
-        "columns": { "name": "名称", "surface": "位置", "slotKey": "标识", "layoutType": "布局", "items": "条目", "active": "状态", "sortOrder": "排序", "actions": "操作" },
-        "itemColumns": { "title": "标题", "contentType": "类型", "contentId": "内容 ID", "startAt": "开始时间", "endAt": "结束时间", "sortOrder": "排序", "actions": "操作" }
+        "visibility": { "draft": "草稿", "scheduled": "已排期", "published": "已发布", "archived": "已归档" },
+        "showing": "共 {{count}} 个运营位",
+        "form": { "uid": "UID", "name": "名称", "surface": "位置", "slotKey": "标识", "description": "描述", "layoutType": "布局类型", "locale": "区域", "minItems": "最小条目数", "maxItems": "最大条目数", "sortOrder": "排序", "contentType": "内容类型", "contentId": "内容 ID", "title": "标题", "subtitle": "副标题", "imageUrl": "图片地址", "linkUrl": "链接地址", "ctaLabel": "按钮文案", "badgeLabel": "角标", "visibility": "可见性", "isActive": "启用状态" },
+        "columns": { "name": "名称", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "布局", "locale": "区域", "status": "状态", "minMax": "条目限制", "actions": "操作" },
+        "itemColumns": { "title": "标题", "type": "类型", "target": "目标", "status": "状态", "actions": "操作" }
       },
       "logs": {
         "title": "操作日志",

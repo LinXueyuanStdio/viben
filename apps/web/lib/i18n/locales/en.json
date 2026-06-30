@@ -472,14 +472,20 @@
         "addItem": "Add Item",
         "editItem": "Edit Item",
         "deleteItem": "Delete Item",
+        "deleteItemError": "Failed to delete item",
         "deleteItemConfirm": "This action cannot be undone. Are you sure you want to delete this item?",
+        "itemCreateSuccess": "Item created",
+        "itemUpdateSuccess": "Item updated",
+        "itemActionError": "Failed to save item",
         "backToList": "Back to slots",
         "itemDetail": "Items for {{name}}",
         "active": "Active",
         "inactive": "Inactive",
-        "form": { "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "description": "Description", "layoutType": "Layout Type", "minItems": "Min Items", "maxItems": "Max Items", "sortOrder": "Sort Order", "contentType": "Content Type", "contentId": "Content ID", "title": "Title", "imageUrl": "Image URL", "linkUrl": "Link URL" },
-        "columns": { "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "Layout", "items": "Items", "active": "Active", "sortOrder": "Order", "actions": "Actions" },
-        "itemColumns": { "title": "Title", "contentType": "Type", "contentId": "Content ID", "startAt": "Start", "endAt": "End", "sortOrder": "Order", "actions": "Actions" }
+        "visibility": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published", "archived": "Archived" },
+        "showing": "{{count}} slots",
+        "form": { "uid": "UID", "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "description": "Description", "layoutType": "Layout Type", "locale": "Locale", "minItems": "Min Items", "maxItems": "Max Items", "sortOrder": "Sort Order", "contentType": "Content Type", "contentId": "Content ID", "title": "Title", "subtitle": "Subtitle", "imageUrl": "Image URL", "linkUrl": "Link URL", "ctaLabel": "CTA Label", "badgeLabel": "Badge", "visibility": "Visibility", "isActive": "Active" },
+        "columns": { "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "Layout", "locale": "Locale", "status": "Status", "minMax": "Limits", "actions": "Actions" },
+        "itemColumns": { "title": "Title", "type": "Type", "target": "Target", "status": "Status", "actions": "Actions" }
       },
       "logs": {
         "title": "Operation Logs",
