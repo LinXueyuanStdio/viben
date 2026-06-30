@@ -34,11 +34,22 @@ interface PageForReview {
   authorUsername: string | null;
 }
 
+interface UpdateEvent {
+  version: number;
+  eventType: string;
+  importance: string;
+  title: string;
+  changeSummary: string | null;
+  createdAt: string;
+}
+
 interface PageDetail extends PageForReview {
   html: string;
   tags: string[];
   categoryId: string | null;
   authorEmail: string | null;
+  subscriberCount: number;
+  updateEvents: UpdateEvent[];
 }
 
 function formatDateTime(dateStr: string | null) {
@@ -103,7 +114,7 @@ export function PageReviewManagement() {
       const res = await fetch(`/api/admin/pages/${pageId}`);
       if (!res.ok) throw new Error('Failed to fetch page detail');
       const data = await res.json();
-      setSelectedPage(data.page);
+      setSelectedPage({ ...data.page, subscriberCount: data.subscriberCount, updateEvents: data.updateEvents });
       setDetailOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.pages.loadError'));
@@ -350,7 +361,7 @@ export function PageReviewManagement() {
                 <div>
                   <Label className="text-muted-foreground">{t('dashboard.admin.pages.detailLabels.stats')}</Label>
                   <p className="mt-1 text-sm">
-                    {`\u{1F441} ${selectedPage.viewCount} · ❤ ${selectedPage.likeCount} · \u{1F4AC} ${selectedPage.commentCount}`}
+                    {`\u{1F441} ${selectedPage.viewCount} · ❤ ${selectedPage.likeCount} · \u{1F4AC} ${selectedPage.commentCount} · \u{1F516} ${selectedPage.subscriberCount}`}
                   </p>
                 </div>
                 {selectedPage.html && (
@@ -361,6 +372,42 @@ export function PageReviewManagement() {
                         {selectedPage.html.replace(/<[^>]*>/g, '').slice(0, 500)}
                         {(selectedPage.html.replace(/<[^>]*>/g, '').length > 500) && '...'}
                       </div>
+                    </div>
+                  </div>
+                )}
+                {selectedPage.updateEvents && selectedPage.updateEvents.length > 0 && (
+                  <div>
+                    <Label className="text-muted-foreground">{t('dashboard.admin.pages.detailLabels.updateHistory')}</Label>
+                    <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border divide-y">
+                      {selectedPage.updateEvents.map((event, i) => {
+                        const eventTypeLabels: Record<string, string> = {
+                          published: t('dashboard.admin.pages.eventTypes.published'),
+                          updated: t('dashboard.admin.pages.eventTypes.updated'),
+                          republished: t('dashboard.admin.pages.eventTypes.republished'),
+                          unpublished: t('dashboard.admin.pages.eventTypes.unpublished'),
+                        };
+                        const importanceVariant = event.importance === 'major' ? 'default' as const : 'secondary' as const;
+                        return (
+                          <div key={i} className="px-3 py-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="shrink-0 text-xs">
+                                {eventTypeLabels[event.eventType] || event.eventType}
+                              </Badge>
+                              <Badge variant={importanceVariant} className="shrink-0 text-xs">
+                                {event.importance === 'major' ? t('dashboard.admin.pages.eventImportance.major') : t('dashboard.admin.pages.eventImportance.normal')}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground shrink-0">v{event.version}</span>
+                              <span className="text-xs text-muted-foreground ml-auto shrink-0">{formatDateTime(event.createdAt)}</span>
+                            </div>
+                            {event.title && (
+                              <p className="mt-1 font-medium truncate">{event.title}</p>
+                            )}
+                            {event.changeSummary && (
+                              <p className="mt-0.5 text-muted-foreground line-clamp-2">{event.changeSummary}</p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

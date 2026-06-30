@@ -9,8 +9,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { getSession } from '@/lib/auth';
-import { db, publishedPages, users } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { db, publishedPages, users, pageSubscriptions, pageUpdateEvents } from '@/lib/db';
+import { eq, count, desc } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
 import type { ModerationAction } from '@/lib/types/admin';
 import { z } from 'zod';
@@ -60,7 +60,30 @@ export async function GET(
       return NextResponse.json({ error: 'Page not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ page });
+    // Fetch subscriber count
+    const [subCount] = await db
+      .select({ value: count() })
+      .from(pageSubscriptions)
+      .where(eq(pageSubscriptions.publishedPageId, id));
+
+    const subscriberCount = subCount?.value ?? 0;
+
+    // Fetch last 10 update events
+    const updateEvents = await db
+      .select({
+        version: pageUpdateEvents.version,
+        eventType: pageUpdateEvents.eventType,
+        importance: pageUpdateEvents.importance,
+        title: pageUpdateEvents.title,
+        changeSummary: pageUpdateEvents.changeSummary,
+        createdAt: pageUpdateEvents.createdAt,
+      })
+      .from(pageUpdateEvents)
+      .where(eq(pageUpdateEvents.publishedPageId, id))
+      .orderBy(desc(pageUpdateEvents.createdAt))
+      .limit(10);
+
+    return NextResponse.json({ page, subscriberCount, updateEvents });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
