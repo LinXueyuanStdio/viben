@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Không thể tải bình luận",
     "tryAgain": "Thử lại",
     "noComments": "Chưa có bình luận. Hãy là người đầu tiên bình luận!",
-    "addToFavorites": "Thêm vào yêu thích",
-    "removeFromFavorites": "Xóa khỏi yêu thích",
-    "signInToFavorite": "Đăng nhập để yêu thích"
+    "addToBookmarks": "Thêm vào yêu thích",
+    "removeFromBookmarks": "Xóa khỏi yêu thích",
+    "signInToBookmark": "Đăng nhập để yêu thích"
   },
   "publish": {
     "wizard": {

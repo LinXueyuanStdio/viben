@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Gagal memuatkan komen",
     "tryAgain": "Cuba lagi",
     "noComments": "Tiada komen lagi. Jadilah yang pertama untuk mengomen!",
-    "addToFavorites": "Tambah ke kegemaran",
-    "removeFromFavorites": "Buang dari kegemaran",
-    "signInToFavorite": "Log masuk untuk menyukai"
+    "addToBookmarks": "Tambah ke kegemaran",
+    "removeFromBookmarks": "Buang dari kegemaran",
+    "signInToBookmark": "Log masuk untuk menyukai"
   },
   "publish": {
     "wizard": {

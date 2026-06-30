@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Не вдалося завантажити коментарі",
     "tryAgain": "Спробувати знову",
     "noComments": "Коментарів ще немає. Будьте першим!",
-    "addToFavorites": "Додати до обраних",
-    "removeFromFavorites": "Видалити з обраних",
-    "signInToFavorite": "Увійдіть, щоб додати до обраних"
+    "addToBookmarks": "Додати до обраних",
+    "removeFromBookmarks": "Видалити з обраних",
+    "signInToBookmark": "Увійдіть, щоб додати до обраних"
   },
   "publish": {
     "wizard": {

@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Не удалось загрузить комментарии",
     "tryAgain": "Попробовать снова",
     "noComments": "Комментариев пока нет. Будьте первым!",
-    "addToFavorites": "Добавить в избранное",
-    "removeFromFavorites": "Удалить из избранного",
-    "signInToFavorite": "Войдите, чтобы добавить в избранное"
+    "addToBookmarks": "Добавить в избранное",
+    "removeFromBookmarks": "Удалить из избранного",
+    "signInToBookmark": "Войдите, чтобы добавить в избранное"
   },
   "publish": {
     "wizard": {

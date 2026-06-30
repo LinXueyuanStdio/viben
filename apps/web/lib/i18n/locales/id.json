@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Gagal memuat komentar",
     "tryAgain": "Coba lagi",
     "noComments": "Belum ada komentar. Jadilah yang pertama berkomentar!",
-    "addToFavorites": "Tambah ke favorit",
-    "removeFromFavorites": "Hapus dari favorit",
-    "signInToFavorite": "Masuk untuk memfavoritkan"
+    "addToBookmarks": "Tambah ke favorit",
+    "removeFromBookmarks": "Hapus dari favorit",
+    "signInToBookmark": "Masuk untuk memfavoritkan"
   },
   "publish": {
     "wizard": {

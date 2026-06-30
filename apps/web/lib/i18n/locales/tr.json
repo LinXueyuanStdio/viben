@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Yorumlar yüklenemedi",
     "tryAgain": "Tekrar dene",
     "noComments": "Henüz yorum yok. İlk yorumu siz yapın!",
-    "addToFavorites": "Favorilere ekle",
-    "removeFromFavorites": "Favorilerden çıkar",
-    "signInToFavorite": "Favorilere eklemek için giriş yapın"
+    "addToBookmarks": "Favorilere ekle",
+    "removeFromBookmarks": "Favorilerden çıkar",
+    "signInToBookmark": "Favorilere eklemek için giriş yapın"
   },
   "publish": {
     "wizard": {

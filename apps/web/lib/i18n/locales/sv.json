@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Kunde inte ladda kommentarer",
     "tryAgain": "Försök igen",
     "noComments": "Inga kommentarer ännu. Bli den första att kommentera!",
-    "addToFavorites": "Lägg till i favoriter",
-    "removeFromFavorites": "Ta bort från favoriter",
-    "signInToFavorite": "Logga in för att lägga till som favorit"
+    "addToBookmarks": "Lägg till i favoriter",
+    "removeFromBookmarks": "Ta bort från favoriter",
+    "signInToBookmark": "Logga in för att lägga till som favorit"
   },
   "publish": {
     "wizard": {

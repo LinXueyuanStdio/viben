@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Reacties laden mislukt",
     "tryAgain": "Opnieuw proberen",
     "noComments": "Nog geen reacties. Wees de eerste om te reageren!",
-    "addToFavorites": "Aan favorieten toevoegen",
-    "removeFromFavorites": "Uit favorieten verwijderen",
-    "signInToFavorite": "Log in om als favoriet te markeren"
+    "addToBookmarks": "Aan favorieten toevoegen",
+    "removeFromBookmarks": "Uit favorieten verwijderen",
+    "signInToBookmark": "Log in om als favoriet te markeren"
   },
   "publish": {
     "wizard": {

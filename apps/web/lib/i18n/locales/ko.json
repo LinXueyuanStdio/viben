@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "댓글 불러오기 실패",
     "tryAgain": "다시 시도",
     "noComments": "아직 댓글이 없습니다. 첫 번째로 댓글을 달아보세요!",
-    "addToFavorites": "즐겨찾기에 추가",
-    "removeFromFavorites": "즐겨찾기에서 제거",
-    "signInToFavorite": "즐겨찾기하려면 로그인하세요"
+    "addToBookmarks": "즐겨찾기에 추가",
+    "removeFromBookmarks": "즐겨찾기에서 제거",
+    "signInToBookmark": "즐겨찾기하려면 로그인하세요"
   },
   "publish": {
     "wizard": {

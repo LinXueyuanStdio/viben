@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "टिप्पणियाँ लोड करने में विफल",
     "tryAgain": "पुनः प्रयास करें",
     "noComments": "अभी तक कोई टिप्पणी नहीं। पहली टिप्पणी करें!",
-    "addToFavorites": "पसंदीदा में जोड़ें",
-    "removeFromFavorites": "पसंदीदा से हटाएं",
-    "signInToFavorite": "पसंदीदा करने के लिए साइन इन करें"
+    "addToBookmarks": "पसंदीदा में जोड़ें",
+    "removeFromBookmarks": "पसंदीदा से हटाएं",
+    "signInToBookmark": "पसंदीदा करने के लिए साइन इन करें"
   },
   "publish": {
     "wizard": {

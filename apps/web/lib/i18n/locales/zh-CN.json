@@ -2041,9 +2041,9 @@
     "failedToLoadComments": "加载评论失败",
     "tryAgain": "重试",
     "noComments": "暂无评论，成为第一个评论的人吧！",
-    "addToFavorites": "添加到收藏",
-    "removeFromFavorites": "取消收藏",
-    "signInToFavorite": "登录后收藏"
+    "addToBookmarks": "添加到收藏",
+    "removeFromBookmarks": "取消收藏",
+    "signInToBookmark": "登录后收藏"
   },
   "publish": {
     "wizard": {
@@ -2290,6 +2290,7 @@
     "toggleSidebar": "切换侧边栏",
     "moreActions": "更多操作",
     "report": "举报",
+    "reportFeatureSoon": "举报功能即将上线",
     "feedback": "反馈",
     "followers": "关注者",
     "followersCountWithFormat": "{{formattedCount}} 关注者",
@@ -2361,6 +2362,7 @@
     "save": "保存",
     "loadMore": "加载更多",
     "loading": "加载中...",
+    "loadFailed": "加载失败",
     "replyingTo": "回复 {{name}}",
     "edited": "已编辑",
     "read": "阅读",

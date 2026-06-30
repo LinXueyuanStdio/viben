@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Impossibile caricare i commenti",
     "tryAgain": "Riprova",
     "noComments": "Nessun commento ancora. Sii il primo a commentare!",
-    "addToFavorites": "Aggiungi ai preferiti",
-    "removeFromFavorites": "Rimuovi dai preferiti",
-    "signInToFavorite": "Accedi per aggiungere ai preferiti"
+    "addToBookmarks": "Aggiungi ai preferiti",
+    "removeFromBookmarks": "Rimuovi dai preferiti",
+    "signInToBookmark": "Accedi per aggiungere ai preferiti"
   },
   "publish": {
     "wizard": {

@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Nie udało się załadować komentarzy",
     "tryAgain": "Spróbuj ponownie",
     "noComments": "Brak komentarzy. Bądź pierwszy!",
-    "addToFavorites": "Dodaj do ulubionych",
-    "removeFromFavorites": "Usuń z ulubionych",
-    "signInToFavorite": "Zaloguj się, aby dodać do ulubionych"
+    "addToBookmarks": "Dodaj do ulubionych",
+    "removeFromBookmarks": "Usuń z ulubionych",
+    "signInToBookmark": "Zaloguj się, aby dodać do ulubionych"
   },
   "publish": {
     "wizard": {

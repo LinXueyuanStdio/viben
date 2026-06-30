@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Kommentare konnten nicht geladen werden",
     "tryAgain": "Erneut versuchen",
     "noComments": "Noch keine Kommentare. Seien Sie der Erste!",
-    "addToFavorites": "Zu Favoriten hinzufügen",
-    "removeFromFavorites": "Aus Favoriten entfernen",
-    "signInToFavorite": "Anmelden, um zu favorisieren"
+    "addToBookmarks": "Zu Favoriten hinzufügen",
+    "removeFromBookmarks": "Aus Favoriten entfernen",
+    "signInToBookmark": "Anmelden, um zu favorisieren"
   },
   "publish": {
     "wizard": {

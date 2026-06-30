@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "Failed to load comments",
     "tryAgain": "Try again",
     "noComments": "No comments yet. Be the first to comment!",
-    "addToFavorites": "Add to favorites",
-    "removeFromFavorites": "Remove from favorites",
-    "signInToFavorite": "Sign in to favorite"
+    "addToBookmarks": "Add to favorites",
+    "removeFromBookmarks": "Remove from favorites",
+    "signInToBookmark": "Sign in to favorite"
   },
   "publish": {
     "wizard": {

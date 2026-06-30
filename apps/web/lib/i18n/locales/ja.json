@@ -1684,9 +1684,9 @@
     "failedToLoadComments": "コメントの読み込みに失敗しました",
     "tryAgain": "再試行",
     "noComments": "まだコメントはありません。最初のコメントを投稿しましょう！",
-    "addToFavorites": "お気に入りに追加",
-    "removeFromFavorites": "お気に入りから削除",
-    "signInToFavorite": "お気に入りするにはサインインしてください"
+    "addToBookmarks": "お気に入りに追加",
+    "removeFromBookmarks": "お気に入りから削除",
+    "signInToBookmark": "お気に入りするにはサインインしてください"
   },
   "publish": {
     "wizard": {

@@ -2042,9 +2042,9 @@
     "failedToLoadComments": "Failed to load comments",
     "tryAgain": "Try again",
     "noComments": "No comments yet. Be the first to comment!",
-    "addToFavorites": "Add to favorites",
-    "removeFromFavorites": "Remove from favorites",
-    "signInToFavorite": "Sign in to favorite"
+    "addToBookmarks": "Add to favorites",
+    "removeFromBookmarks": "Remove from favorites",
+    "signInToBookmark": "Sign in to favorite"
   },
   "publish": {
     "wizard": {
@@ -2291,6 +2291,7 @@
     "toggleSidebar": "Toggle Sidebar",
     "moreActions": "More Actions",
     "report": "Report",
+    "reportFeatureSoon": "Report feature coming soon",
     "feedback": "Feedback",
     "followers": "Followers",
     "followersCountWithFormat": "{{formattedCount}} followers",
@@ -2362,6 +2363,7 @@
     "save": "Save",
     "loadMore": "Load more",
     "loading": "Loading...",
+    "loadFailed": "Load failed",
     "replyingTo": "Reply to {{name}}",
     "edited": "Edited",
     "read": "Read",
