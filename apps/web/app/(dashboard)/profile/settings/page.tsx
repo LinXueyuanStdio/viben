@@ -26,9 +26,18 @@ export default async function ProfileSettingsPage() {
     <div className="container max-w-2xl py-8">
       <ProfileSettingsHeader />
 
-      <div className="mt-6 rounded-lg border p-6">
-        <ProfileSettingsForm user={user} />
-      </div>
+      <ProfileSettingsForm
+        user={{
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          bio: user.bio,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          websiteUrl: user.websiteUrl,
+          createdAt: user.createdAt,
+        }}
+      />
     </div>
   );
 }

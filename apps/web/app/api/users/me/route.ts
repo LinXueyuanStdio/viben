@@ -57,6 +57,7 @@ export async function PATCH(request: NextRequest) {
     if (data.displayName !== undefined) updateData.displayName = data.displayName;
     if (data.bio !== undefined) updateData.bio = data.bio || null;
     if (data.websiteUrl !== undefined) updateData.websiteUrl = data.websiteUrl || null;
+    if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl || null;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

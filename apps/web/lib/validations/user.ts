@@ -24,6 +24,7 @@ export const updateProfileSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   bio: z.string().max(500).optional(),
   websiteUrl: z.string().url().optional().or(z.literal('')),
+  avatarUrl: z.string().url().optional().or(z.literal('')),
 });
 
 export const createApiKeySchema = z.object({
