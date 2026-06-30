@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,12 +39,6 @@ interface Pagination {
   totalPages: number;
 }
 
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  mcp: 'MCP',
-  skill: '技能',
-  collection: '合集',
-};
-
 function getInitials(name: string) {
   return name
     .split(' ')
@@ -70,6 +65,7 @@ function formatRelativeTime(date: Date | string): string {
 export function CommentModeration() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
 
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -80,6 +76,12 @@ export function CommentModeration() {
 
   const currentEntityType = searchParams.get('entity_type') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
+
+  const entityTypeLabels: Record<string, string> = {
+    mcp: t('dashboard.admin.comments.entityTypes.mcp'),
+    skill: t('dashboard.admin.comments.entityTypes.skill'),
+    collection: t('dashboard.admin.comments.entityTypes.collection'),
+  };
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -96,11 +98,11 @@ export function CommentModeration() {
       setComments(data.comments);
       setPagination(data.pagination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load comments');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.comments.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [currentPage, currentEntityType]);
+  }, [currentPage, currentEntityType, t]);
 
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
@@ -120,7 +122,7 @@ export function CommentModeration() {
       if (!res.ok) throw new Error('Failed to delete comment');
       fetchComments();
     } catch {
-      toast.error('删除评论失败');
+      toast.error(t('dashboard.admin.comments.deleteError'));
     } finally {
       setDeleteId(null);
       setDeleting(false);
@@ -131,8 +133,8 @@ export function CommentModeration() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold">评论管理</h1>
-          <p className="text-muted-foreground">审核和管理用户评论</p>
+          <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.comments.title')}</h1>
+          <p className="text-muted-foreground">{t('dashboard.admin.comments.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           {(['all', 'mcp', 'skill', 'collection'] as const).map((type) => (
@@ -146,7 +148,7 @@ export function CommentModeration() {
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
             >
-              {type === 'all' ? '全部' : ENTITY_TYPE_LABELS[type]}
+              {type === 'all' ? t('dashboard.admin.comments.filterAll') : entityTypeLabels[type]}
             </button>
           ))}
         </div>
@@ -159,22 +161,22 @@ export function CommentModeration() {
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-destructive">{error}</p>
-          <button onClick={fetchComments} className="mt-2 text-sm text-primary hover:underline">重试</button>
+          <button onClick={fetchComments} className="mt-2 text-sm text-primary hover:underline">{t('dashboard.admin.comments.retry')}</button>
         </div>
       ) : comments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg text-muted-foreground">暂无评论</p>
+          <p className="text-lg text-muted-foreground">{t('dashboard.admin.comments.emptyTitle')}</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">用户</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">内容</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">所属实体</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">时间</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.user')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.content')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.entity')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.time')}</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.comments.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -197,7 +199,7 @@ export function CommentModeration() {
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span className="flex items-center gap-1">
-                      <Badge variant="outline">{ENTITY_TYPE_LABELS[c.entityType] || c.entityType}</Badge>
+                      <Badge variant="outline">{entityTypeLabels[c.entityType] || c.entityType}</Badge>
                       <span className="text-muted-foreground">{c.entityName}</span>
                     </span>
                   </td>
@@ -209,7 +211,7 @@ export function CommentModeration() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteId(c.id)}
-                      title="删除评论"
+                      title={t('dashboard.admin.comments.delete')}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -243,22 +245,22 @@ export function CommentModeration() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        显示 {comments.length} / {pagination.total} 条评论
+        {t('dashboard.admin.comments.showing', { count: comments.length, total: pagination.total })}
       </p>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
+            <DialogTitle>{t('dashboard.admin.comments.deleteConfirm')}</DialogTitle>
             <DialogDescription>
-              此操作不可撤销。确定要删除这条评论吗？
+              {t('dashboard.admin.comments.deleteConfirmDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>取消</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              确认删除
+              {t('common.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
