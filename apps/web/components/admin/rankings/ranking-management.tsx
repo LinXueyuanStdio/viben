@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface RankingSnapshot {
   id: string;
@@ -105,11 +106,17 @@ export function RankingManagement() {
   const handleRebuild = async () => {
     setRebuilding(true);
     try {
-      const res = await fetch('/api/admin/rankings/rebuild', { method: 'POST' });
+      const res = await fetch('/api/admin/rankings/rebuild', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityType: 'published_page', timeWindow: '7d' }),
+      });
       if (!res.ok) throw new Error('Failed to trigger rebuild');
+      const data = await res.json();
+      toast.success(data.message || '榜单重建成功');
       fetchSnapshots();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger rebuild');
+      toast.error(err instanceof Error ? err.message : '重建榜单失败');
     } finally {
       setRebuilding(false);
     }
