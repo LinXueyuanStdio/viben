@@ -23,7 +23,7 @@ interface ProfileTabsProps {
   collections: React.ReactNode
   pageCount?: number
   likeCount?: number
-  favoriteCount?: number
+  bookmarkCount?: number
   momentCount?: number
   collectionCount?: number
 }
@@ -39,7 +39,7 @@ export function ProfileTabs({
   collections,
   pageCount,
   likeCount,
-  favoriteCount,
+  bookmarkCount,
   momentCount,
   collectionCount,
 }: ProfileTabsProps) {
@@ -64,7 +64,7 @@ export function ProfileTabs({
   const countMap: Record<string, number | undefined> = {
     "页面": pageCount,
     "喜欢": likeCount,
-    "收藏": favoriteCount,
+    "收藏": bookmarkCount,
     "动态": momentCount,
     "合集": collectionCount,
   }

@@ -56,7 +56,7 @@ export interface PageMetaData {
   recommendations?: Array<{ data: MiniPageCardData; href: string }>
   // Viewer state for action buttons
   viewerHasReacted: boolean
-  viewerHasFavorited: boolean
+  viewerHasBookmarked: boolean
   isAuthenticated: boolean
   communityEntityId: string
   /** 页面在 published_pages 表中的 DB ID，用于 reactions/favorites API */
@@ -79,7 +79,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
 
   // Optimistic state for action buttons
   const [hasReacted, setHasReacted] = useState(data.viewerHasReacted)
-  const [hasBookmarked, setHasBookmarked] = useState(data.viewerHasFavorited)
+  const [hasBookmarked, setHasBookmarked] = useState(data.viewerHasBookmarked)
   const [likeCount, setLikeCount] = useState(actions.likes)
   const [bookmarkCount, setBookmarkCount] = useState(actions.bookmarks)
   const [shareCount, setShareCount] = useState(actions.shares)

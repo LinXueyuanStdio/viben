@@ -12,7 +12,7 @@ interface McpAnalyticsHeaderProps {
   downloadsCount: number;
   weekDownloads: number;
   weekChange: number;
-  favoritesCount: number;
+  bookmarksCount: number;
   ratingAvg: number;
   ratingCount: number;
 }
@@ -23,7 +23,7 @@ export function McpAnalyticsHeader({
   downloadsCount,
   weekDownloads,
   weekChange,
-  favoritesCount,
+  bookmarksCount,
   ratingAvg,
   ratingCount,
 }: McpAnalyticsHeaderProps) {
@@ -87,7 +87,7 @@ export function McpAnalyticsHeader({
             <Heart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{favoritesCount}</div>
+            <div className="text-2xl font-bold">{bookmarksCount}</div>
           </CardContent>
         </Card>
 
