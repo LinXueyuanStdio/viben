@@ -720,6 +720,8 @@ export const publishedPages = pgTable(
     repostCount: integer('repost_count').default(0).notNull(),
     subscriberCount: integer('subscriber_count').default(0).notNull(),
     versionCount: integer('version_count').default(0).notNull(),
+    isPinned: boolean('is_pinned').default(false).notNull(),
+    pinnedAt: timestamp('pinned_at'),
     statsUpdatedAt: timestamp('stats_updated_at'),
     coverUrl: text('cover_url'),
     authorName: text('author_name'),
