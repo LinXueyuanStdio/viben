@@ -48,7 +48,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
 
   const summary = await getCommunitySummary("published_page", ctx.page.id, session)
   const viewerHasReacted = summary?.viewer.has_reacted ?? false
-  const viewerHasFavorited = summary?.viewer.has_bookmarked ?? false
+  const viewerHasBookmarked = summary?.viewer.has_bookmarked ?? false
 
   // Ensure community entity exists for comments
   const communityEntity = await ensureCommunityEntityForPage(ctx)
@@ -133,7 +133,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       pageDescription={ctx.page.description}
       pageUid={ctx.page.uid}
       pageViewCount={ctx.page.viewCount}
-      pageFavoriteCount={ctx.page.favoriteCount}
+      pageBookmarkCount={ctx.page.favoriteCount}
       pageLikeCount={ctx.page.likeCount}
       pageCommentCount={ctx.page.commentCount}
       pageShareCount={ctx.page.shareCount}
@@ -152,7 +152,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       sessionUserSlug={session?.userSlug}
       sessionUserId={session?.userId}
       viewerHasReacted={viewerHasReacted}
-      viewerHasFavorited={viewerHasFavorited}
+      viewerHasBookmarked={viewerHasBookmarked}
       communityEntityId={communityEntity.id}
       pageDbId={ctx.page.id}
       initialComments={initialComments.comments}

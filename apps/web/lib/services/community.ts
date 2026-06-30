@@ -37,6 +37,57 @@ export type CursorParts = {
   id: string;
 };
 
+export interface MomentFeedItem {
+  moment: {
+    id: string
+    uid: string
+    kind: string
+    body: string | null
+    visibility: string
+    like_count: number
+    comment_count: number
+    repost_count: number
+    created_at: string
+    source: string | null
+    quote_text: string | null
+    view_count: number | null
+    bookmark_count: number | null
+  }
+  author: {
+    id: string
+    user_slug: string
+    display_name: string | null
+    avatar_url: string | null
+  }
+  attachments: Array<{
+    attachment_type: string
+    attachment_id: string
+    attachment_uid: string | null
+    title: string
+    description: string | null
+    cover_url: string | null
+    author_name_snapshot: string | null
+    view_count_snapshot: number | null
+    comment_count_snapshot: number | null
+  }>
+  viewer_state: {
+    is_authenticated: boolean
+    can_edit: boolean
+    can_delete: boolean
+    has_liked: boolean
+    has_bookmarked: boolean
+  }
+  topics: unknown[]
+}
+
+export interface ListMomentsResult {
+  items: MomentFeedItem[]
+  next_cursor: string | null
+  has_more: boolean
+  feed_type: string
+  fallback_feed_type: string | null
+}
+
 export function encodeCursor(parts: CursorParts): string {
   return Buffer.from(JSON.stringify(parts), 'utf8').toString('base64url');
 }
@@ -1611,7 +1662,7 @@ export async function listMoments(params: {
   session: Session | null;
   limit: number;
   cursor?: string | null;
-}) {
+}): Promise<ListMomentsResult> {
   let authorIds: string[] | null = null;
   let fallbackFeedType: string | null = null;
 
@@ -1924,7 +1975,7 @@ export async function listRanking(params: {
         view_count: page.viewCount,
         read_count: page.readCount,
         like_count: page.likeCount,
-        favorite_count: page.favoriteCount,
+        bookmark_count: page.favoriteCount,
         comment_count: page.commentCount,
         share_count: page.shareCount,
         repost_count: page.repostCount,
@@ -2004,7 +2055,7 @@ export async function getHomeConfig(surface: string, locale: string) {
             view_count: page.viewCount,
             read_count: page.readCount,
             like_count: page.likeCount,
-            favorite_count: page.favoriteCount,
+            bookmark_count: page.favoriteCount,
             comment_count: page.commentCount,
           },
         })),

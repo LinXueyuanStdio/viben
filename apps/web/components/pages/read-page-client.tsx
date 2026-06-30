@@ -31,7 +31,7 @@ interface ReadPageClientProps {
   pageDescription?: string | null
   pageUid: string
   pageViewCount: number
-  pageFavoriteCount: number
+  pageBookmarkCount: number
   pageLikeCount: number
   pageCommentCount: number
   pageShareCount: number
@@ -53,7 +53,7 @@ interface ReadPageClientProps {
   pageDbId: string
   recommendationEntries: Array<{ data: MiniPageCardData; href: string }>
   viewerHasReacted: boolean
-  viewerHasFavorited: boolean
+  viewerHasBookmarked: boolean
   initialComments: Array<{
     id: string
     content: string
@@ -138,7 +138,7 @@ export function ReadPageClient({
   pageDescription,
   pageUid,
   pageViewCount,
-  pageFavoriteCount,
+  pageBookmarkCount,
   pageLikeCount,
   pageCommentCount,
   pageShareCount,
@@ -160,7 +160,7 @@ export function ReadPageClient({
   pageDbId,
   recommendationEntries,
   viewerHasReacted,
-  viewerHasFavorited,
+  viewerHasBookmarked,
   initialComments,
   initialCommentsNextCursor,
   activeTab,
@@ -198,14 +198,14 @@ export function ReadPageClient({
     tags: pageTags,
     stats: {
       views: pageViewCount,
-      bookmarks: pageFavoriteCount,
+      bookmarks: pageBookmarkCount,
       date: pagePublishedAt
         ? new Date(pagePublishedAt).toISOString().slice(0, 10)
         : "",
     },
     actions: {
       likes: pageLikeCount,
-      bookmarks: pageFavoriteCount,
+      bookmarks: pageBookmarkCount,
       shares: pageShareCount,
     },
     chapters: chapters.length > 0
@@ -226,7 +226,7 @@ export function ReadPageClient({
     recommendations: recommendationEntries.length > 0 ? recommendationEntries : undefined,
     // Viewer and interaction state
     viewerHasReacted,
-    viewerHasFavorited,
+    viewerHasBookmarked,
     isAuthenticated,
     communityEntityId,
     pageDbId,

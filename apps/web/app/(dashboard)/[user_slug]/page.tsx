@@ -55,7 +55,7 @@ interface PageRow {
   viewCount: number
   likeCount: number
   commentCount: number
-  favoriteCount: number
+  bookmarkCount: number
   authorName: string | null
   authorAvatarUrl: string | null
 }
@@ -81,7 +81,7 @@ function mapPageToCard(
         views: p.viewCount,
         likes: p.likeCount,
         comments: p.commentCount,
-        bookmarks: p.favoriteCount,
+        bookmarks: p.bookmarkCount,
       },
     } satisfies PageCardData,
     href: `/${encodeURIComponent(slug)}/${encodeURIComponent(p.uid)}?tab=read`,
@@ -116,7 +116,7 @@ export default async function UserSlugPage({
     viewCount: publishedPages.viewCount,
     likeCount: publishedPages.likeCount,
     commentCount: publishedPages.commentCount,
-    favoriteCount: publishedPages.favoriteCount,
+    bookmarkCount: publishedPages.favoriteCount,
     authorName: publishedPages.authorName,
     authorAvatarUrl: publishedPages.authorAvatarUrl,
   }
@@ -445,7 +445,7 @@ export default async function UserSlugPage({
         }
         pageCount={pageCountResult[0]?.count ?? 0}
         likeCount={likedCards.length}
-        favoriteCount={favoritedCards.length}
+        bookmarkCount={favoritedCards.length}
         momentCount={feedCards.length}
         collectionCount={createdCollectionCards.length}
       />

@@ -46,7 +46,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
-      favoriteCount: publishedPages.favoriteCount,
+      bookmarkCount: publishedPages.favoriteCount,
       userSlug: users.userSlug,
     }).from(publishedPages)
       .innerJoin(users, eq(users.id, publishedPages.userId))
@@ -88,7 +88,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
         views: p.viewCount,
         likes: p.likeCount,
         comments: p.commentCount,
-        bookmarks: p.favoriteCount,
+        bookmarks: p.bookmarkCount,
       },
     },
     href: `/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,

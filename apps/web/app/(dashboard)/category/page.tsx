@@ -42,7 +42,7 @@ interface PageResult {
   viewCount: number
   likeCount: number
   commentCount: number
-  favoriteCount: number
+  bookmarkCount: number
   categoryId: string | null
 }
 
@@ -63,7 +63,7 @@ export default async function CategoryPage() {
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
-      favoriteCount: publishedPages.favoriteCount,
+      bookmarkCount: publishedPages.favoriteCount,
       categoryId: publishedPages.categoryId,
     }).from(publishedPages)
       .innerJoin(users, eq(users.id, publishedPages.userId))
@@ -97,7 +97,7 @@ export default async function CategoryPage() {
           views: row.viewCount,
           likes: row.likeCount,
           comments: row.commentCount,
-          bookmarks: row.favoriteCount,
+          bookmarks: row.bookmarkCount,
         },
       },
       href: `/${encodeURIComponent(row.userSlug)}/${encodeURIComponent(row.pageId)}?tab=read`,
