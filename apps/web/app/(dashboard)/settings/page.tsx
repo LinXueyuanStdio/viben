@@ -24,12 +24,13 @@ export default async function SettingsPage() {
 
   return (
     <div className="container max-w-2xl py-8">
-      <ProfileSettingsHeader />
+      <ProfileSettingsHeader userSlug={user.userSlug} />
 
       <ProfileSettingsForm
         user={{
           id: user.id,
           username: user.username,
+          userSlug: user.userSlug,
           displayName: user.displayName,
           bio: user.bio,
           email: user.email,

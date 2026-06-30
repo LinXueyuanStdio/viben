@@ -271,6 +271,17 @@ export default async function UserSlugPage({
               {user.bio && (
                 <p className="text-sm text-muted-foreground leading-relaxed">{user.bio}</p>
               )}
+              {user.websiteUrl && (
+                <a
+                  href={user.websiteUrl.startsWith("http") ? user.websiteUrl : `https://${user.websiteUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                  {user.websiteUrl.replace(/^https?:\/\//, "")}
+                </a>
+              )}
               <div className="flex items-center gap-4 text-sm">
                 <div>
                   <span className="font-semibold">{user.followersCount}</span>{" "}
