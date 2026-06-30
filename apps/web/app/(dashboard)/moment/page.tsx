@@ -1,5 +1,5 @@
 import { Composer } from "@/components/content/composer"
-import { FeedCard } from "@/components/content/feed-card"
+import { FeedList } from "@/components/content/feed-list"
 import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
@@ -53,8 +53,8 @@ export default async function MomentPage() {
     session ? listMoments({ feedType: "following", session, limit: 10 }) : Promise.resolve(null),
     listMoments({ feedType: "recommended", session, limit: 10 }),
     session?.userId
-      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(1)
-      : db.select().from(users).orderBy(desc(users.followersCount)).limit(1),
+      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(5)
+      : db.select().from(users).orderBy(desc(users.followersCount)).limit(5),
   ])
 
   function mapFeedItems(items: typeof latestResult.items): FeedCardData[] {
@@ -90,6 +90,9 @@ export default async function MomentPage() {
         reposts: item.moment.repost_count,
         bookmarks: item.moment.bookmark_count ?? 0,
         momentId: item.moment.id,
+        shareUrl: `/moment/${item.moment.id}`,
+        hasLiked: item.viewer_state.has_liked,
+        hasBookmarked: item.viewer_state.has_bookmarked,
       },
     }))
   }
@@ -99,6 +102,17 @@ export default async function MomentPage() {
     "关注": followingResult ? mapFeedItems(followingResult.items) : [],
     "推荐": mapFeedItems(recommendedResult.items),
   }
+
+  const tabPagination: Record<string, { hasMore: boolean; cursor: string | null }> = {
+    "最新": { hasMore: latestResult.has_more ?? false, cursor: latestResult.next_cursor },
+    "关注": followingResult ? { hasMore: followingResult.has_more ?? false, cursor: followingResult.next_cursor } : { hasMore: false, cursor: null },
+    "推荐": { hasMore: recommendedResult.has_more ?? false, cursor: recommendedResult.next_cursor },
+  }
+
+  // Show "关注" tab only when user is logged in
+  const visibleTabs = session
+    ? MOMENT_TABS
+    : MOMENT_TABS.filter((tab) => tab.feedType !== "following")
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({
     fallbackText: u.displayName?.[0] ?? "?",
@@ -112,38 +126,38 @@ export default async function MomentPage() {
   }))
 
   return (
-    <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <div className="rounded-[12px] border border-border bg-background shadow-sm p-2.5">
           <Composer userFallbackText={session?.username?.[0] ?? "你"} userAvatarUrl={session?.avatarUrl} />
         </div>
         <VibenTabs defaultValue="最新">
           <VibenTabsList>
-            {MOMENT_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <VibenTabsTrigger key={tab.key} value={tab.key} disabled={tab.feedType === "following" && !session}>
                 {tab.key}
               </VibenTabsTrigger>
             ))}
           </VibenTabsList>
-          {MOMENT_TABS.map((tab) => (
-            <VibenTabsContent key={tab.key} value={tab.key} className="mt-2">
-              {tabFeeds[tab.key]?.length === 0 ? (
-                tab.feedType === "following" ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    <T tKey="community.followMoreAuthorsToSeeMoments" fallback="关注更多作者以查看动态" />
-                  </p>
-                ) : (
-                  <EmptyState tKey="community.noMoments" fallback="暂无动态" />
-                )
-              ) : (
-                <div className="grid gap-2">
-                  {tabFeeds[tab.key]?.map((feed, i) => (
-                    <FeedCard key={i} data={feed} variant="rich" />
-                  ))}
-                </div>
-              )}
-            </VibenTabsContent>
-          ))}
+          {MOMENT_TABS.map((tab) => {
+            const followingEmpty = (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                <T tKey="community.followMoreAuthorsToSeeMoments" fallback="关注更多作者以查看动态" />
+              </p>
+            )
+            const defaultEmpty = <EmptyState tKey="community.noMoments" fallback="暂无动态" />
+            return (
+              <VibenTabsContent key={tab.key} value={tab.key} className="mt-2">
+                <FeedList
+                  initialItems={tabFeeds[tab.key] ?? []}
+                  initialHasMore={tabPagination[tab.key]?.hasMore ?? false}
+                  initialCursor={tabPagination[tab.key]?.cursor ?? null}
+                  feedType={tab.feedType}
+                  emptyMessage={tab.feedType === "following" ? followingEmpty : defaultEmpty}
+                />
+              </VibenTabsContent>
+            )
+          })}
         </VibenTabs>
       </div>
       <aside className="grid gap-2 content-start">

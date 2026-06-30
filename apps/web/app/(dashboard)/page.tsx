@@ -163,6 +163,9 @@ export default async function HomePage() {
       comments: item.moment.comment_count,
       bookmarks: item.moment.bookmark_count ?? 0,
       momentId: item.moment.id,
+      shareUrl: `/moment/${item.moment.id}`,
+      hasLiked: item.viewer_state.has_liked,
+      hasBookmarked: item.viewer_state.has_bookmarked,
     },
   }))
 
@@ -179,7 +182,7 @@ export default async function HomePage() {
   }))
 
   return (
-    <div className="grid gap-[14px]" style={{ gridTemplateColumns: "minmax(0, 1fr) 330px" }}>
+    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
 

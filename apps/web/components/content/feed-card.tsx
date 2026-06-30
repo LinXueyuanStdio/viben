@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Eye, MessageCircle, Bookmark, Heart, Repeat2, Share2 } from "lucide-react"
 import { toast } from "sonner"
@@ -17,6 +17,7 @@ export interface FeedCardData {
   text: string
   quote?: string
   attachment?: AttachmentData
+  attachments?: AttachmentData[]
   actions: {
     views: number
     likes: number
@@ -24,6 +25,9 @@ export interface FeedCardData {
     reposts?: number
     bookmarks: number
     momentId?: string
+    shareUrl?: string
+    hasLiked?: boolean
+    hasBookmarked?: boolean
   }
 }
 
@@ -67,27 +71,32 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
 
   const [optimisticLikes, setOptimisticLikes] = useState(data.actions.likes)
   const [optimisticBookmarks, setOptimisticBookmarks] = useState(data.actions.bookmarks)
-  const [likedActive, setLikedActive] = useState(false)
-  const [bookmarkedActive, setBookmarkedActive] = useState(false)
+  const [likedActive, setLikedActive] = useState(data.actions.hasLiked ?? false)
+  const [bookmarkedActive, setBookmarkedActive] = useState(data.actions.hasBookmarked ?? false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [heartBounce, setHeartBounce] = useState(false)
+
+  // Snapshot refs for safe rollback
+  const snapshotRef = useRef({ likes: data.actions.likes, bookmarks: data.actions.bookmarks })
 
   // Sync state when data prop changes (e.g., after page re-render with fresh data)
   useEffect(() => {
     setOptimisticLikes(data.actions.likes)
     setOptimisticBookmarks(data.actions.bookmarks)
-    setLikedActive(false)
-    setBookmarkedActive(false)
-  }, [data.actions.likes, data.actions.bookmarks])
+    setLikedActive(data.actions.hasLiked ?? false)
+    setBookmarkedActive(data.actions.hasBookmarked ?? false)
+    snapshotRef.current = { likes: data.actions.likes, bookmarks: data.actions.bookmarks }
+  }, [data.actions.likes, data.actions.bookmarks, data.actions.hasLiked, data.actions.hasBookmarked])
 
   const handleShare = useCallback(() => {
     const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
-    const url = window.location.href
+    const url = data.actions.shareUrl ?? window.location.href
     if (navigator.share) {
       navigator.share({ title: text, url }).catch(() => {})
     } else {
       navigator.clipboard.writeText(`${text}\n${url}`).catch(() => {})
     }
-  }, [data.head.name, data.text])
+  }, [data.head.name, data.text, data.actions.shareUrl])
 
   const handleAction = useCallback(async (action: string) => {
     // If parent provides onAction, delegate to it
@@ -108,12 +117,23 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
       return
     }
 
+    // Guard against duplicate clicks
+    if (pendingAction) return
+
+    // Save pre-update values for safe rollback
+    const prevLikes = optimisticLikes
+    const prevBookmarks = optimisticBookmarks
+
     // Optimistic update
     setPendingAction(action)
     if (action === "like") {
       const wasActive = likedActive
       setLikedActive(!wasActive)
       setOptimisticLikes((c) => wasActive ? Math.max(0, c - 1) : c + 1)
+      if (!wasActive) {
+        setHeartBounce(true)
+        setTimeout(() => setHeartBounce(false), 300)
+      }
     } else if (action === "bookmark") {
       const wasActive = bookmarkedActive
       setBookmarkedActive(!wasActive)
@@ -124,7 +144,6 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
       const result = await callCommunityApi(action, momentId)
 
       if (action === "like" && result) {
-        // Sync with actual server state
         setLikedActive(result.has_reacted)
         setOptimisticLikes(result.reactions_count)
       } else if (action === "bookmark" && result) {
@@ -132,13 +151,13 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
         setOptimisticBookmarks(result.favorites_count)
       }
     } catch (err: unknown) {
-      // Revert optimistic update
+      // Revert using snapshot refs (not stale closure data)
       if (action === "like") {
         setLikedActive((prev) => !prev)
-        setOptimisticLikes(data.actions.likes)
+        setOptimisticLikes(snapshotRef.current.likes)
       } else if (action === "bookmark") {
         setBookmarkedActive((prev) => !prev)
-        setOptimisticBookmarks(data.actions.bookmarks)
+        setOptimisticBookmarks(snapshotRef.current.bookmarks)
       }
 
       const msg = err instanceof Error ? err.message : ""
@@ -152,21 +171,67 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     } finally {
       setPendingAction(null)
     }
-  }, [data.actions.momentId, data.actions.likes, data.actions.bookmarks, likedActive, bookmarkedActive, onAction, t])
+  }, [data.actions.momentId, likedActive, bookmarkedActive, optimisticLikes, optimisticBookmarks, pendingAction, onAction, t])
 
-  const { head, text, quote, attachment, actions } = data
+  const { head, text, quote, attachment, attachments, actions } = data
+  const allAttachments = attachments ?? (attachment ? [attachment] : [])
 
   const actionStats: StatProps[] = variant === "rich"
     ? [
-        { icon: Heart, value: optimisticLikes, format: true, dataAction: "like", onClick: handleAction },
-        { icon: MessageCircle, value: actions.comments, format: true, dataAction: "comment", onClick: handleAction },
-        { icon: Repeat2, value: actions.reposts ?? 0, format: true, dataAction: "repost", onClick: handleAction },
-        { icon: Bookmark, value: optimisticBookmarks, format: true, dataAction: "bookmark", onClick: handleAction },
+        {
+          icon: Heart,
+          value: optimisticLikes,
+          format: true,
+          dataAction: "like",
+          onClick: handleAction,
+          disabled: pendingAction !== null,
+          active: likedActive,
+        },
+        {
+          icon: MessageCircle,
+          value: actions.comments,
+          format: true,
+          dataAction: "comment",
+          onClick: handleAction,
+          disabled: true,
+        },
+        {
+          icon: Repeat2,
+          value: actions.reposts ?? 0,
+          format: true,
+          dataAction: "repost",
+          onClick: handleAction,
+          disabled: true,
+        },
+        {
+          icon: Bookmark,
+          value: optimisticBookmarks,
+          format: true,
+          dataAction: "bookmark",
+          onClick: handleAction,
+          disabled: pendingAction !== null,
+          active: bookmarkedActive,
+        },
       ]
     : [
         { icon: Eye, value: actions.views, format: true },
-        { icon: MessageCircle, value: actions.comments, format: true, dataAction: "comment", onClick: handleAction },
-        { icon: Bookmark, value: optimisticBookmarks, format: true, dataAction: "bookmark", onClick: handleAction },
+        {
+          icon: MessageCircle,
+          value: actions.comments,
+          format: true,
+          dataAction: "comment",
+          onClick: handleAction,
+          disabled: true,
+        },
+        {
+          icon: Bookmark,
+          value: optimisticBookmarks,
+          format: true,
+          dataAction: "bookmark",
+          onClick: handleAction,
+          disabled: pendingAction !== null,
+          active: bookmarkedActive,
+        },
       ]
 
   return (
@@ -177,21 +242,34 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     )}>
       <FeedHead data={head} />
       <div className="ml-[42px] space-y-[9px]">
-        <p className="text-[#173f4c] dark:text-foreground leading-relaxed text-sm">
+        <p className="text-foreground leading-relaxed text-sm">
           {text}
         </p>
         {quote && (
-          <blockquote className="border-l-[3px] border-primary/30 rounded-r-md bg-primary/5 px-3 py-2 text-[13px] text-[#173f4c] dark:text-foreground">
+          <blockquote className="border-l-[3px] border-primary/30 rounded-r-md bg-primary/5 px-3 py-2 text-[13px] text-muted-foreground">
             {quote}
           </blockquote>
         )}
-        {attachment && <Attachment data={attachment} />}
+        {allAttachments.length > 0 && (
+          <div className={cn(
+            "gap-2",
+            allAttachments.length === 1 ? "grid" : "grid grid-cols-2",
+          )}>
+            {allAttachments.map((att, i) => (
+              <Attachment key={i} data={att} />
+            ))}
+          </div>
+        )}
         <div className="flex items-center justify-between mt-[5px]">
           <StatsRow stats={actionStats} />
           <button
-            className="inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
+            className={cn(
+              "inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground transition-colors",
+              pendingAction !== null && "opacity-60 pointer-events-none",
+            )}
             aria-label={t("community.share")}
             onClick={handleShare}
+            disabled={pendingAction !== null}
           >
             <Share2 className="size-4" />
           </button>

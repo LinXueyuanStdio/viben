@@ -183,6 +183,9 @@ export default async function ProfilePage() {
       reposts: m.repostCount,
       bookmarks: m.bookmarkCount ?? 0,
       momentId: m.id,
+      shareUrl: `/moment/${m.id}`,
+      hasLiked: false,
+      hasBookmarked: false,
     },
   }))
 

@@ -1510,6 +1510,7 @@ export async function listMoments(params: {
   feedType: 'following' | 'latest' | 'recommended';
   session: Session | null;
   limit: number;
+  cursor?: string | null;
 }) {
   let authorIds: string[] | null = null;
   let fallbackFeedType: string | null = null;
@@ -1528,6 +1529,17 @@ export async function listMoments(params: {
     }
   }
 
+  // Decode cursor
+  let cursorCreatedAt: Date | null = null;
+  let cursorId: string | null = null;
+  if (params.cursor) {
+    try {
+      const parsed = JSON.parse(Buffer.from(params.cursor, 'base64url').toString('utf8'));
+      if (parsed.created_at) cursorCreatedAt = new Date(parsed.created_at);
+      if (parsed.id) cursorId = parsed.id;
+    } catch { /* invalid cursor, start from beginning */ }
+  }
+
   const rows = await db
     .select({
       moment: moments,
@@ -1544,11 +1556,17 @@ export async function listMoments(params: {
       and(
         eq(moments.visibility, 'public'),
         eq(moments.isDeleted, false),
-        authorIds && authorIds.length > 0 ? inArray(moments.authorUserId, authorIds) : undefined
+        authorIds && authorIds.length > 0 ? inArray(moments.authorUserId, authorIds) : undefined,
+        cursorCreatedAt && cursorId
+          ? or(
+              lt(moments.createdAt, cursorCreatedAt),
+              and(eq(moments.createdAt, cursorCreatedAt), lt(moments.id, cursorId))
+            )
+          : undefined,
       )
     )
     .orderBy(desc(moments.createdAt), desc(moments.id))
-    .limit(params.limit);
+    .limit(params.limit + 1); // Fetch one extra to determine has_more
 
   const momentIds = rows.map(({ moment }) => moment.id);
   const attachments =
@@ -1559,8 +1577,65 @@ export async function listMoments(params: {
         })
       : [];
 
+  // Query viewer interaction state (has liked / has bookmarked)
+  const viewerLikedMomentIds = new Set<string>();
+  const viewerBookmarkedMomentIds = new Set<string>();
+  if (params.session && momentIds.length > 0) {
+    const entities = await db.query.communityEntities.findMany({
+      where: and(
+        eq(communityEntities.entityType, 'moment'),
+        inArray(communityEntities.entityId, momentIds),
+        eq(communityEntities.status, 'active'),
+      ),
+      columns: { id: true, entityId: true },
+    });
+    const entityIdToMomentId = new Map(entities.map((e) => [e.id, e.entityId]));
+    const entityIds = entities.map((e) => e.id);
+
+    if (entityIds.length > 0) {
+      const [reactions, favorites] = await Promise.all([
+        db.query.communityReactions.findMany({
+          where: and(
+            inArray(communityReactions.communityEntityId, entityIds),
+            eq(communityReactions.userId, params.session!.userId),
+            eq(communityReactions.reactionType, 'like'),
+          ),
+          columns: { communityEntityId: true },
+        }),
+        db.query.communityFavorites.findMany({
+          where: and(
+            inArray(communityFavorites.communityEntityId, entityIds),
+            eq(communityFavorites.userId, params.session!.userId),
+          ),
+          columns: { communityEntityId: true },
+        }),
+      ]);
+
+      for (const r of reactions) {
+        const mId = entityIdToMomentId.get(r.communityEntityId);
+        if (mId) viewerLikedMomentIds.add(mId);
+      }
+      for (const f of favorites) {
+        const mId = entityIdToMomentId.get(f.communityEntityId);
+        if (mId) viewerBookmarkedMomentIds.add(mId);
+      }
+    }
+  }
+
+  // Compute pagination
+  const hasMore = rows.length > params.limit;
+  const items = rows.slice(0, params.limit);
+  let nextCursor: string | null = null;
+  if (hasMore && items.length > 0) {
+    const lastItem = items[items.length - 1];
+    nextCursor = Buffer.from(
+      JSON.stringify({ created_at: lastItem.moment.createdAt.toISOString(), id: lastItem.moment.id }),
+      'utf8',
+    ).toString('base64url');
+  }
+
   return {
-    items: rows.map(({ moment, author }) => ({
+    items: items.map(({ moment, author }) => ({
       moment: {
         id: moment.id,
         uid: moment.uid,
@@ -1600,9 +1675,12 @@ export async function listMoments(params: {
         is_authenticated: Boolean(params.session),
         can_edit: params.session?.userId === moment.authorUserId,
         can_delete: params.session?.userId === moment.authorUserId,
+        has_liked: viewerLikedMomentIds.has(moment.id),
+        has_bookmarked: viewerBookmarkedMomentIds.has(moment.id),
       },
     })),
-    next_cursor: null,
+    next_cursor: nextCursor,
+    has_more: hasMore,
     feed_type: fallbackFeedType ?? params.feedType,
     fallback_feed_type: fallbackFeedType,
   };
