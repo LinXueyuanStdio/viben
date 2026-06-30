@@ -20,6 +20,10 @@ interface UserMenuProps {
   session: Session
 }
 
+function Spacer() {
+  return <span className="mr-2 h-4 w-4 shrink-0" />
+}
+
 export function UserMenu({ session }: UserMenuProps) {
   const { t } = useTranslation()
   const router = useRouter()
@@ -64,28 +68,28 @@ export function UserMenu({ session }: UserMenuProps) {
 
         <DropdownMenuSeparator />
 
-        {/* Section 1: Space, Pages, Likes, Favorites */}
+        {/* Section 1: Profile, Pages, Likes, Favorites */}
         <DropdownMenuItem asChild>
           <Link href="/profile">
-            <User className="mr-2 h-4 w-4" />
-            {t("nav.space", "空间")}
+            <Spacer />
+            {t("auth.profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={`/page/${session.userSlug}`}>
-            <FileText className="mr-2 h-4 w-4" />
+            <FileText className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.pages", "页面")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/profile/likes">
-            <Heart className="mr-2 h-4 w-4" />
+            <Heart className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.likes", "喜欢")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/profile/favorites">
-            <Star className="mr-2 h-4 w-4" />
+            <Star className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.favorites", "收藏")}
           </Link>
         </DropdownMenuItem>
@@ -95,7 +99,7 @@ export function UserMenu({ session }: UserMenuProps) {
         {/* Section 2: Settings */}
         <DropdownMenuItem asChild>
           <Link href="/profile/settings">
-            <Settings className="mr-2 h-4 w-4" />
+            <Spacer />
             {t("common.settings")}
           </Link>
         </DropdownMenuItem>
@@ -109,7 +113,7 @@ export function UserMenu({ session }: UserMenuProps) {
             handleLogout()
           }}
         >
-          <LogOut className="mr-2 h-4 w-4" />
+          <Spacer />
           {t("auth.signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
