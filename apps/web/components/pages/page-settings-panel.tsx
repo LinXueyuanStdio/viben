@@ -781,18 +781,20 @@ export function PageSettingsPanel({
           variant="default"
           size="sm"
           onClick={handlePublish}
-          disabled={isPublishing}
+          disabled={isPublishing || isLoadingHistory}
         >
-          {isPublishing ? (
+          {isPublishing || isLoadingHistory ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <UploadCloud className="mr-2 h-4 w-4" />
           )}
           {isPublishing
             ? t("page.settings.publishing", "Publishing...")
-            : isPublished
-              ? t("page.settings.updatePublishButton", "Update Publish")
-              : t("page.settings.publishButton", "Publish")}
+            : isLoadingHistory
+              ? t("common.loading", "Loading...")
+              : isPublished
+                ? t("page.settings.updatePublishButton", "Update Publish")
+                : t("page.settings.publishButton", "Publish")}
         </Button>
       </section>
     </div>
