@@ -11,6 +11,7 @@
  */
 
 import { Component, type ReactNode, type ErrorInfo } from "react";
+import i18n from "@/i18n";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { getProvider } from "./factory";
 import { AnalyticsEvents } from "./types";
@@ -103,16 +104,16 @@ export class ErrorBoundary extends Component<
               </div>
             </div>
 
-            <h1 className="text-xl font-bold mb-2">页面出现错误</h1>
+            <h1 className="text-xl font-bold mb-2">{i18n.t("errors.pageError", "页面出现错误")}</h1>
 
             <p className="text-sm text-muted-foreground mb-2">
-              {error?.message || "未知错误"}
+              {error?.message || i18n.t("common.unknownError", "未知错误")}
             </p>
 
             {showDetails && error?.stack && (
               <details className="mb-4 text-left">
                 <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                  查看堆栈
+                  {i18n.t("errors.viewStack", "查看堆栈")}
                 </summary>
                 <pre className="mt-2 p-2 bg-secondary/50 rounded text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap">
                   {error.stack}
@@ -126,14 +127,14 @@ export class ErrorBoundary extends Component<
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 <RefreshCw className="w-4 h-4" />
-                刷新页面
+                {i18n.t("errors.reloadPage", "刷新页面")}
               </button>
               <button
                 onClick={this.handleGoHome}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 <Home className="w-4 h-4" />
-                回到工作区
+                {i18n.t("errors.backToWorkspace", "回到工作区")}
               </button>
             </div>
 
@@ -142,7 +143,7 @@ export class ErrorBoundary extends Component<
                 onClick={this.handleRecover}
                 className="mt-3 text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
               >
-                重试
+                {i18n.t("errors.retry", "重试")}
               </button>
             )}
           </div>

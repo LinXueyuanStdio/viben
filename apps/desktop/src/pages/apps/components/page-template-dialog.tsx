@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ export function PageTemplateDialog({
   onOpenChange,
   onApplyTemplate,
 }: PageTemplateDialogProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const filteredTemplates = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -44,8 +46,8 @@ export function PageTemplateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0">
         <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle>选择模板</DialogTitle>
-          <DialogDescription>从可用模板创建当前空页面。</DialogDescription>
+          <DialogTitle>{t("page.template.chooseTemplate", "选择模板")}</DialogTitle>
+          <DialogDescription>{t("page.template.createFromTemplate", "从可用模板创建当前空页面。")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
@@ -54,16 +56,16 @@ export function PageTemplateDialog({
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索模板"
+              placeholder={t("page.template.searchTemplate", "搜索模板")}
               className="pl-9"
             />
           </label>
 
           <div className="max-h-80 overflow-y-auto rounded-lg border border-border">
             {isLoading ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">正在加载模板</div>
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">{t("page.template.loadingTemplates", "正在加载模板")}</div>
             ) : filteredTemplates.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">没有匹配的模板</div>
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">{t("page.template.noMatchingTemplates", "没有匹配的模板")}</div>
             ) : (
               <div className="divide-y divide-border">
                 {filteredTemplates.map((template) => (
@@ -85,7 +87,7 @@ export function PageTemplateDialog({
                       <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{template.description}</span>
                     </span>
                     <span className="mt-1 rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                      {template.source === "custom" ? "自定义" : "内置"}
+                      {template.source === "custom" ? t("page.template.custom", "自定义") : t("page.template.builtIn", "内置")}
                     </span>
                   </button>
                 ))}
@@ -95,7 +97,7 @@ export function PageTemplateDialog({
 
           <div className="flex justify-end">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              取消
+              {t("page.template.cancel", "取消")}
             </Button>
           </div>
         </div>

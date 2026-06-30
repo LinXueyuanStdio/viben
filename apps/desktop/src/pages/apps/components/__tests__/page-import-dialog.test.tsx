@@ -8,8 +8,12 @@ import { PageImportDialog } from "../page-import-dialog";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string, opts?: Record<string, unknown>) => opts ? (fallback ?? key).replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => String(opts[k] ?? `{{${k}}}`)) : (fallback ?? key),
   }),
+  initReactI18next: {
+    type: "3rdParty" as const,
+    init: () => {},
+  },
 }));
 
 describe("PageImportDialog", () => {

@@ -8,8 +8,12 @@ import { PageAiCreateCompact } from "../page-ai-create-compact";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string, opts?: Record<string, unknown>) => opts ? (fallback ?? key).replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => String(opts[k] ?? `{{${k}}}`)) : (fallback ?? key),
   }),
+  initReactI18next: {
+    type: "3rdParty" as const,
+    init: () => {},
+  },
 }));
 
 vi.mock("@viben/chat", () => ({
@@ -41,7 +45,7 @@ describe("PageAiCreateCompact", () => {
       />
     );
 
-    expect(screen.getByText("使用 AI 助手创建 文档 中...")).toBeTruthy();
+    expect(screen.getByText("使用 AI 助手创建 Document 中...")).toBeTruthy();
     expect(screen.getByDisplayValue("写一份说明")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "停止" }));

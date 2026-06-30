@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "Provider Configuration"
-description: "Configure API providers for Viben CLI - Anthropic, OpenAI, Azure, Google, and more"
+description: "Configure API providers for Viben CLI — Anthropic, OpenAI, Azure, Google, and more"
 ---
 
 # Provider Configuration
@@ -10,144 +10,126 @@ Providers connect Viben to AI services like Anthropic, OpenAI, Google, and other
 
 ## Overview
 
-Provider configuration is stored in `~/.viben/providers.yaml`. Viben supports multiple authentication methods:
+Provider configuration is stored in `~/.viben/models.yaml`. Viben supports multiple authentication methods:
 
 1. **Environment variables** (recommended) - No secrets in config files
-2. **Environment variable references** - Use `env:VAR_NAME` syntax
-3. **Encrypted storage** - Use `encrypted:xxx` for stored secrets
+2. **Command-line** - Use `--api-key` with `viben provider create`
+3. **Config file** - Direct values in YAML config
 
 ## Provider Types
 
-| Type | Description | Auth Methods |
-|------|-------------|--------------|
+### LLM Providers
+
+| Type | Description | Auth |
+|------|-------------|------|
 | `anthropic` | Anthropic Claude API | API Key |
 | `openai` | OpenAI API | API Key |
+| `openai-responses` | OpenAI Responses API | API Key |
 | `azure` | Azure OpenAI | API Key, Azure AD |
 | `google` | Google AI (Gemini) | API Key, OAuth |
 | `openrouter` | OpenRouter | API Key |
 | `ollama` | Ollama (local) | None |
-| `custom` | OpenAI-compatible APIs | API Key |
+| `volcengine` | Volcano Engine (字节跳动) | API Key |
+| `grok` | Grok (xAI) | API Key |
+
+### Media Providers
+
+| Type | Description | Auth |
+|------|-------------|------|
+| `nanobanana` | Nano Banana (image) | API Key |
+| `imagerouter` | Image Router | API Key |
+| `fal` | Fal.ai (image/video) | API Key |
+| `leonardo` | Leonardo AI (image) | API Key |
+| `minimax` | MiniMax (video/music) | API Key |
+| `elevenlabs` | ElevenLabs (speech) | API Key |
+| `fishaudio` | Fish Audio (speech) | API Key |
+| `senseaudio` | SenseAudio (speech) | API Key |
+| `aihubmix` | AIHubMix | API Key |
+| `suno` | Suno (music) | API Key |
+| `udio` | Udio (music) | API Key |
 
 ## Configuration File
 
 ### Basic Structure
 
-```yaml
-# ~/.viben/providers.yaml
-version: 1
+Provider configuration is part of `~/.viben/models.yaml`:
 
-# Default provider to use
-default: anthropic-main
+```yaml
+# ~/.viben/models.yaml
+version: 1
 
 providers:
   anthropic-main:
     type: anthropic
-    # Configuration options...
+    category: llm
+    surfaces: [chat]
+    # API key from ANTHROPIC_API_KEY env var
 
   openai-main:
     type: openai
-    # Configuration options...
+    category: llm
+    surfaces: [chat]
+    # API key from OPENAI_API_KEY env var
+
+  dalle-images:
+    type: nanobanana
+    category: media
+    surfaces: [image]
+
+  local-ollama:
+    type: ollama
+    category: llm
+    surfaces: [chat]
+    OLLAMA_HOST: "http://localhost:11434"
 ```
 
-### API Key Configuration Methods
+### Provider Categories & Surfaces
 
-#### Method 1: Environment Variables (Recommended)
+| Category | Available Surfaces |
+|----------|-------------------|
+| `llm` | `chat` |
+| `media` | `image`, `video`, `music`, `speech`, `sfx` |
 
-Set environment variables in your shell:
+## API Key Configuration Methods
+
+### Method 1: Environment Variables (Recommended)
+
+Set environment variables and create providers:
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-xxx"
 export OPENAI_API_KEY="sk-xxx"
+
+viben provider create -t anthropic
+viben provider create -t openai
 ```
 
-Then create providers that automatically read them:
+### Method 2: Command-Line
 
-```yaml
-providers:
-  anthropic-main:
-    type: anthropic
-    # Automatically reads ANTHROPIC_API_KEY
-
-  openai-main:
-    type: openai
-    # Automatically reads OPENAI_API_KEY
-```
-
-#### Method 2: Environment Variable References
-
-Explicitly reference environment variables in config:
-
-```yaml
-providers:
-  anthropic-main:
-    type: anthropic
-    ANTHROPIC_API_KEY: "env:ANTHROPIC_API_KEY"
-```
-
-#### Method 3: Encrypted Storage
-
-Use the CLI to create providers with encrypted keys:
+Provide the API key directly (will be securely stored):
 
 ```bash
 viben provider create -t anthropic --api-key "sk-ant-xxx"
-```
-
-This stores the key encrypted:
-
-```yaml
-providers:
-  anthropic-main:
-    type: anthropic
-    ANTHROPIC_API_KEY: "encrypted:xxx"
 ```
 
 ## Provider-Specific Configuration
 
 ### Anthropic
 
-```yaml
-anthropic-main:
-  type: anthropic
-  # Environment variables: ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL
-
-  # Optional configuration
-  # ANTHROPIC_BASE_URL: "https://api.anthropic.com"
-  # timeout: 120000
-  # max_retries: 3
-```
-
 | Environment Variable | Description | Required |
 |---------------------|-------------|----------|
-| `ANTHROPIC_API_KEY` | API key from Anthropic Console | Yes |
-| `ANTHROPIC_BASE_URL` | Custom API endpoint | No |
+| `ANTHROPIC_API_KEY` | API key | Yes |
+| `ANTHROPIC_BASE_URL` | Custom endpoint | No |
 
 ### OpenAI
 
-```yaml
-openai-main:
-  type: openai
-  # Environment variables: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_ORG_ID
-
-  # Optional configuration
-  # OPENAI_ORG_ID: "org-xxxxx"
-```
-
 | Environment Variable | Description | Required |
 |---------------------|-------------|----------|
-| `OPENAI_API_KEY` | API key from OpenAI | Yes |
-| `OPENAI_BASE_URL` | Custom API endpoint | No |
+| `OPENAI_API_KEY` | API key | Yes |
+| `OPENAI_BASE_URL` | Custom endpoint | No |
 | `OPENAI_ORG_ID` | Organization ID | No |
 
 ### Azure OpenAI
-
-```yaml
-azure-gpt4:
-  type: azure
-  AZURE_OPENAI_ENDPOINT: "https://my-resource.openai.azure.com"
-  AZURE_OPENAI_API_VERSION: "2024-02-15-preview"
-  AZURE_OPENAI_DEPLOYMENT: "gpt-4-turbo"
-  # AZURE_OPENAI_API_KEY from environment
-```
 
 | Environment Variable | Description | Required |
 |---------------------|-------------|----------|
@@ -158,16 +140,6 @@ azure-gpt4:
 
 ### Google AI (Gemini)
 
-```yaml
-google-gemini:
-  type: google
-  # Environment variables: GOOGLE_API_KEY, GOOGLE_PROJECT_ID, GOOGLE_LOCATION
-
-  # Optional configuration
-  # GOOGLE_PROJECT_ID: "my-project"
-  # GOOGLE_LOCATION: "us-central1"
-```
-
 | Environment Variable | Description | Required |
 |---------------------|-------------|----------|
 | `GOOGLE_API_KEY` | Google AI API key | Yes |
@@ -176,85 +148,21 @@ google-gemini:
 
 ### OpenRouter
 
-```yaml
-openrouter:
-  type: openrouter
-  # Environment variable: OPENROUTER_API_KEY
-
-  # Optional configuration
-  # site_url: "https://myapp.com"
-  # app_name: "My App"
-```
-
 | Environment Variable | Description | Required |
 |---------------------|-------------|----------|
 | `OPENROUTER_API_KEY` | OpenRouter API key | Yes |
 
 ### Ollama (Local)
 
-```yaml
-local-ollama:
-  type: ollama
-  OLLAMA_HOST: "http://localhost:11434"
-  # No API key required
-```
+| Environment Variable | Description | Required |
+|---------------------|-------------|----------|
+| `OLLAMA_HOST` | Ollama server URL | No |
+
+### Grok (xAI)
 
 | Environment Variable | Description | Required |
 |---------------------|-------------|----------|
-| `OLLAMA_HOST` | Ollama server URL | No (default: `http://localhost:11434`) |
-
-### Custom OpenAI-Compatible APIs
-
-For services that implement the OpenAI API format:
-
-```yaml
-custom-api:
-  type: custom
-  OPENAI_BASE_URL: "https://api.example.com/v1"
-  # OPENAI_API_KEY from environment
-
-  # Optional: custom headers
-  # headers:
-  #   X-Custom-Header: "value"
-```
-
-### Popular Custom Providers
-
-#### DeepSeek
-
-```yaml
-deepseek:
-  type: custom
-  OPENAI_BASE_URL: "https://api.deepseek.com/v1"
-  # Uses DEEPSEEK_API_KEY or OPENAI_API_KEY
-```
-
-#### Groq
-
-```yaml
-groq:
-  type: custom
-  OPENAI_BASE_URL: "https://api.groq.com/openai/v1"
-  # Uses GROQ_API_KEY or OPENAI_API_KEY
-```
-
-#### Together AI
-
-```yaml
-together:
-  type: custom
-  OPENAI_BASE_URL: "https://api.together.xyz/v1"
-  # Uses TOGETHER_API_KEY or OPENAI_API_KEY
-```
-
-#### Fireworks AI
-
-```yaml
-fireworks:
-  type: custom
-  OPENAI_BASE_URL: "https://api.fireworks.ai/inference/v1"
-  # Uses FIREWORKS_API_KEY or OPENAI_API_KEY
-```
+| `XAI_API_KEY` | xAI API key | Yes |
 
 ## Environment Variable Priority
 
@@ -263,73 +171,89 @@ When resolving API keys, Viben checks in this order:
 1. **Command-line argument** (`--api-key`)
 2. **Explicit value in config file**
 3. **Provider-specific environment variable** (e.g., `ANTHROPIC_API_KEY`)
-4. **Generic environment variable** (e.g., `OPENAI_API_KEY` for custom type)
+4. **Default base URL** (for each provider type)
 
 ## Provider Commands
 
 ### List Providers
 
 ```bash
+# List all providers
 viben provider list
-```
 
-**Output:**
+# Filter by category
+viben provider list --category media
 
-```
-Providers:
-  anthropic-main*   anthropic   ✓ connected
-  openai-main       openai      ✓ connected
-  azure-gpt4        azure       ✓ connected
-  local-ollama      ollama      ○ not running
-  custom-api        custom      ✓ connected
+# Filter by surface
+viben provider list --surface image
 
-* = default provider
+# JSON output
+viben provider list --json
 ```
 
 ### Create Provider
 
 ```bash
-# Using environment variables (recommended)
+# Basic creation (uses env vars for API key)
 viben provider create -t anthropic
-viben provider create -t openai
 
-# With explicit API key (will be encrypted)
-viben provider create -t anthropic --api-key "sk-ant-xxx"
-
-# With custom name
+# With explicit name and API key
 viben provider create -n my-claude -t anthropic --api-key "sk-ant-xxx"
 
-# Custom API with base URL
-viben provider create -t custom --api-key "xxx" --base-url "https://api.example.com/v1"
+# Media provider
+viben provider create -t nanobanana --category media --surface image --api-key "sk-xxx"
+
+# Set as default
+viben provider create -t openai -d
+```
+
+### Show Provider
+
+```bash
+viben provider show -n anthropic-main
+```
+
+### Update Provider
+
+```bash
+viben provider update -n my-provider --api-key sk-new-key --timeout 60
+```
+
+### Enable / Disable Provider
+
+```bash
+viben provider enable -n my-provider
+viben provider disable -n my-provider
 ```
 
 ### Remove Provider
 
 ```bash
-viben provider remove -n <name>
+viben provider remove -n my-provider
+# or
+viben provider rm -n my-provider
 ```
 
 ### Set Default Provider
 
 ```bash
-viben provider set-default -n anthropic-main
+viben provider set-default -n openai-main
 ```
 
 ### Check Provider Status
 
 ```bash
+# All providers
 viben provider status
+
+# Specific provider
+viben provider status -n anthropic-main
 ```
 
-**Output:**
+### List Supported Types
 
-```
-Provider Status:
-  anthropic-main   anthropic   ✓ connected   latency: 120ms
-  openai-main      openai      ✓ connected   latency: 85ms
-  azure-gpt4       azure       ✓ connected   latency: 150ms
-  local-ollama     ollama      ✗ error       connection refused
-  custom-api       custom      ✓ connected   latency: 200ms
+```bash
+viben provider types
 ```
 
 ## Quick Setup Examples
@@ -337,74 +261,37 @@ Provider Status:
 ### Minimal Setup (Anthropic Only)
 
 ```bash
-# Set environment variable
 export ANTHROPIC_API_KEY="sk-ant-xxx"
-
-# Create provider
 viben provider create -t anthropic
 ```
 
 ### Multi-Provider Setup
 
 ```bash
-# Set all API keys
 export ANTHROPIC_API_KEY="sk-ant-xxx"
 export OPENAI_API_KEY="sk-xxx"
 export GOOGLE_API_KEY="xxx"
 
-# Create providers
 viben provider create -t anthropic
 viben provider create -t openai
 viben provider create -t google
-
-# Set default
-viben provider set-default -n anthropic-main
 ```
 
 ### Local Development (Ollama)
 
 ```bash
-# Start Ollama server
 ollama serve
-
-# Create provider (no API key needed)
 viben provider create -t ollama
-
-# Set as default for local testing
-viben provider set-default -n local-ollama
+viben provider set-default -n ollama-xxx
 ```
 
-## JSON Output
-
-All provider commands support `--json` for structured output:
+### Media Provider Setup
 
 ```bash
-viben provider list --json
-```
+export OPENAI_API_KEY="sk-xxx"
 
-**Output:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "default": "anthropic-main",
-    "providers": [
-      {
-        "name": "anthropic-main",
-        "type": "anthropic",
-        "status": "connected",
-        "latency_ms": 120
-      },
-      {
-        "name": "openai-main",
-        "type": "openai",
-        "status": "connected",
-        "latency_ms": 85
-      }
-    ]
-  }
-}
+viben provider create -t nanobanana --category media --surface image
+viben provider create -t elevenlabs --category media --surface speech
 ```
 
 ## Troubleshooting
@@ -412,14 +299,8 @@ viben provider list --json
 ### Connection Errors
 
 ```bash
-# Check provider status
 viben provider status -n anthropic-main
-
-# Verify API key is set
 echo $ANTHROPIC_API_KEY
-
-# Test with verbose output
-viben provider status -n anthropic-main --verbose
 ```
 
 ### Invalid API Key
@@ -448,5 +329,5 @@ viben provider status -n anthropic-main --verbose
 
 ## Next Steps
 
-- [Model Configuration](./models.md) - Configure models, aliases, and fallbacks
-- [Config Command](./config-command.md) - General configuration management
+- [Model Configuration](./models.md) - Configure models and aliases
+- [Provider Commands](../commands/provider.md) - CLI command reference

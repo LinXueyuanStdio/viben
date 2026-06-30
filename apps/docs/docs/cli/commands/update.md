@@ -84,7 +84,7 @@ docs/idea-types/
 
 ### docs/reward-types/
 
-Reward type templates for `viben filerl reward` command:
+Reward type templates for `viben reward` command:
 
 ```
 docs/reward-types/
@@ -132,7 +132,7 @@ Updated 12 files:
   docs/idea-types/code_improvements.md
   docs/idea-types/code_quality.md
   ...
-  docs/reward-types/code_correctness.md
+  docs/reward-types/security_scan.md
   docs/reward-types/code_quality.md
   ...
 ```

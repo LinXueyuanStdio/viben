@@ -17,8 +17,8 @@ describe("empty markdown page utils", () => {
   });
 
   it("builds a mode-aware AI creation prompt", () => {
-    expect(buildPageCreationPrompt("写一份说明", "document")).toContain("创建文档");
-    expect(buildPageCreationPrompt("做一个页面", "static")).toContain("创建静态网页");
-    expect(buildPageCreationPrompt("做一个应用", "fullstack")).toContain("创建全栈应用");
+    expect(buildPageCreationPrompt("写一份说明", "document")).toContain("create Document");
+    expect(buildPageCreationPrompt("做一个页面", "static")).toContain("create Static Page");
+    expect(buildPageCreationPrompt("做一个应用", "fullstack")).toContain("create Fullstack App");
   });
 });

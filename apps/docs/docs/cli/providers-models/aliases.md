@@ -27,66 +27,76 @@ This means you can use `fast` anywhere you would use `claude-3-5-haiku-latest`.
 View all configured aliases:
 
 ```bash
-viben model aliases list
+viben model alias list
 ```
 
 **Output:**
 ```
 Model Aliases:
-  fast   -> claude-3-5-haiku-latest
-  smart  -> claude-sonnet-4-20250514
-  best   -> claude-opus-4-20250514
-  gpt    -> gpt-4-turbo
+  Alias   Model                      Built-in
+  fast    claude-3-5-haiku-latest    Yes
+  smart   claude-sonnet-4-20250514   Yes
+  best    claude-opus-4-20250514     Yes
+  gpt     gpt-4-turbo
 ```
 
 For JSON output:
 
 ```bash
-viben model aliases list --json
+viben model alias list --json
 ```
 
 ### Create Alias
 
-Create a new alias:
+Create a new alias using `-n` for the alias name and `-m` for the target model:
 
 ```bash
-viben model aliases create -n <alias> -f <model>
+viben model alias create -n <alias> -m <model>
 ```
 
 **Examples:**
 
 ```bash
 # Create speed-focused aliases
-viben model aliases create -n fast -f claude-3-5-haiku-latest
-viben model aliases create -n quick -f gpt-4o-mini
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias create -n quick -m gpt-4o-mini
 
 # Create quality-focused aliases
-viben model aliases create -n smart -f claude-sonnet-4-20250514
-viben model aliases create -n best -f claude-opus-4-20250514
+viben model alias create -n smart -m claude-sonnet-4-20250514
 
 # Create purpose-specific aliases
-viben model aliases create -n code -f claude-sonnet-4-20250514
-viben model aliases create -n chat -f claude-3-5-haiku-latest
-viben model aliases create -n reasoning -f o1-preview
+viben model alias create -n code -m claude-sonnet-4-20250514
+viben model alias create -n chat -m claude-3-5-haiku-latest
 
 # Create provider-specific aliases
-viben model aliases create -n gpt -f gpt-4-turbo
-viben model aliases create -n claude -f claude-sonnet-4-20250514
-viben model aliases create -n gemini -f gemini-1.5-pro
+viben model alias create -n gpt -m gpt-4-turbo
+viben model alias create -n claude -m claude-sonnet-4-20250514
 ```
 
 ### Remove Alias
 
-Remove an existing alias:
-
 ```bash
-viben model aliases remove -n <alias>
+viben model alias remove -n <alias>
+# or
+viben model alias rm -n <alias>
 ```
 
-**Example:**
+### Resolve Alias
+
 ```bash
-viben model aliases remove -n old-alias
+viben model alias resolve -n fast
+# Output: fast -> claude-3-5-haiku-latest
 ```
+
+## Built-in Aliases
+
+Viben comes with several pre-configured aliases:
+
+| Alias | Target |
+|-------|--------|
+| `fast` | claude-3-5-haiku-latest |
+| `smart` | claude-sonnet-4-20250514 |
+| `opus` | claude-opus-4-20250514 |
 
 ## Configuration File
 
@@ -94,65 +104,13 @@ Aliases are stored in `~/.viben/models.yaml`:
 
 ```yaml
 # ~/.viben/models.yaml
-version: 1
-
-default: claude-sonnet-4-20250514
-
 aliases:
-  # Speed-focused
   fast: claude-3-5-haiku-latest
-  quick: gpt-4o-mini
-
-  # Quality-focused
   smart: claude-sonnet-4-20250514
-  balanced: gpt-4o
-
-  # Maximum capability
-  best: claude-opus-4-20250514
-  powerful: gpt-4-turbo
-
-  # Purpose-specific
   code: claude-sonnet-4-20250514
-  chat: claude-3-5-haiku-latest
-  reasoning: o1-preview
-
-  # Provider-specific
-  gpt: gpt-4-turbo
-  claude: claude-sonnet-4-20250514
-  gemini: gemini-1.5-pro
 ```
 
-## Recommended Alias Categories
-
-### By Performance
-
-| Alias | Description | Example Model |
-|-------|-------------|---------------|
-| `fast` | Fastest response time | claude-3-5-haiku-latest |
-| `quick` | Quick responses | gpt-4o-mini |
-| `balanced` | Balanced speed/quality | gpt-4o |
-| `smart` | High quality | claude-sonnet-4-20250514 |
-| `best` | Maximum quality | claude-opus-4-20250514 |
-| `powerful` | Most capable | gpt-4-turbo |
-
-### By Use Case
-
-| Alias | Description | Example Model |
-|-------|-------------|---------------|
-| `code` | Code generation/review | claude-sonnet-4-20250514 |
-| `chat` | Casual conversation | claude-3-5-haiku-latest |
-| `reasoning` | Complex reasoning | o1-preview |
-| `analysis` | Data analysis | claude-opus-4-20250514 |
-| `creative` | Creative writing | claude-opus-4-20250514 |
-
-### By Provider
-
-| Alias | Description | Example Model |
-|-------|-------------|---------------|
-| `claude` | Default Claude model | claude-sonnet-4-20250514 |
-| `gpt` | Default GPT model | gpt-4-turbo |
-| `gemini` | Default Gemini model | gemini-1.5-pro |
-| `local` | Local Ollama model | llama3 |
+> **Note**: Custom alias persistence is managed through the aliases system. The previous standalone alias configuration has been integrated into the models configuration.
 
 ## Using Aliases
 
@@ -162,8 +120,8 @@ Once configured, use aliases anywhere you specify a model:
 # Set default model using alias
 viben model set-default -n fast
 
-# Use in agent configuration
-viben agent config -n my-agent set model smart
+# Use alias with model show
+viben model show -n fast
 ```
 
 ## Updating Aliases
@@ -171,8 +129,7 @@ viben agent config -n my-agent set model smart
 To update an alias to point to a different model, simply create it again:
 
 ```bash
-# Update 'fast' to point to a different model
-viben model aliases create -n fast -f gpt-4o-mini
+viben model alias create -n fast -m gpt-4o-mini
 ```
 
 This will overwrite the existing alias.
@@ -185,70 +142,26 @@ Choose alias names that describe the use case, not the specific model:
 
 ```bash
 # Good - semantic naming
-viben model aliases create -n fast -f claude-3-5-haiku-latest
-viben model aliases create -n best -f claude-opus-4-20250514
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias create -n best -m claude-opus-4-20250514
 
 # Less ideal - model-specific naming
-viben model aliases create -n haiku -f claude-3-5-haiku-latest
-viben model aliases create -n opus -f claude-opus-4-20250514
-```
-
-Semantic names allow you to swap out the underlying model without changing your workflows.
-
-### Standardize Across Team
-
-If working in a team, agree on a standard set of aliases:
-
-```yaml
-aliases:
-  # Team standards
-  fast: claude-3-5-haiku-latest    # For quick operations
-  default: claude-sonnet-4-20250514 # Default for most tasks
-  premium: claude-opus-4-20250514   # When quality matters most
+viben model alias create -n haiku -m claude-3-5-haiku-latest
 ```
 
 ### Keep Aliases Minimal
 
-Too many aliases can be confusing. Stick to a small set of commonly used ones:
+Too many aliases can be confusing. Stick to a small set:
 
 ```yaml
-# Good - focused set
 aliases:
   fast: claude-3-5-haiku-latest
   smart: claude-sonnet-4-20250514
   best: claude-opus-4-20250514
-
-# Less ideal - too many aliases
-aliases:
-  fast: ...
-  quick: ...
-  speedy: ...
-  rapid: ...
-  # etc.
 ```
 
-## JSON Output
+## Related
 
-```bash
-viben model aliases list --json
-```
-
-```json
-{
-  "success": true,
-  "data": {
-    "aliases": {
-      "fast": "claude-3-5-haiku-latest",
-      "smart": "claude-sonnet-4-20250514",
-      "best": "claude-opus-4-20250514",
-      "gpt": "gpt-4-turbo"
-    }
-  }
-}
-```
-
-## Next Steps
-
-- [Model Fallbacks](./fallbacks) - Set up automatic fallback chains
-- [Model Management](./models) - Configure model settings
-- [Provider Management](./providers) - Configure providers for your models
+- [Model Fallbacks](./fallbacks) — ⚠️ Deprecated
+- [Models Configuration](./models) — Model configuration
+- [Providers Configuration](./providers) — Provider management

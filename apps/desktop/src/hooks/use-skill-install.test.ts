@@ -20,6 +20,11 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+
+  initReactI18next: {
+    type: "3rdParty" as const,
+    init: () => {},
+  },
 }));
 
 vi.mock("@/hooks/use-toast", () => ({

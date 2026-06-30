@@ -28,6 +28,11 @@ vi.mock("react-i18next", () => ({
       return value;
     },
   }),
+
+  initReactI18next: {
+    type: "3rdParty" as const,
+    init: () => {},
+  },
 }));
 
 const session: AcpSessionListItem = {

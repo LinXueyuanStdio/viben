@@ -162,12 +162,12 @@ export function ClientMcpPage() {
                 <code className="bg-muted px-1.5 py-0.5 rounded text-foreground">
                   X-Viben-Session-Id
                 </code>{" "}
-                或 query param{" "}
+                {t("mcp.clientMcp.orQueryParam", "或 query param")}{" "}
                 <code className="bg-muted px-1.5 py-0.5 rounded text-foreground">
                   ?session_id=
                 </code>
                 <span className="ml-1 text-destructive font-medium">
-                  (必需)
+                  {t("mcp.clientMcp.required", "(必需)")}
                 </span>
                 {" — "}
                 {t(
@@ -179,7 +179,7 @@ export function ClientMcpPage() {
                 <code className="bg-muted px-1.5 py-0.5 rounded text-foreground">
                   X-Viben-Client-Id
                 </code>
-                <span className="ml-1 text-muted-foreground">(可选)</span>
+                <span className="ml-1 text-muted-foreground">{t("mcp.clientMcp.optional", "(可选)")}</span>
                 {" — "}
                 {t(
                   "mcp.clientMcp.clientIdDesc",
@@ -201,7 +201,7 @@ export function ClientMcpPage() {
               )}
             </p>
             <CodeBlock
-              code={mcpConfigQueryParam ?? "// 请先开始一个 ACP 会话"}
+              code={mcpConfigQueryParam ?? t("mcp.clientMcp.startAcpSessionFirst", "// 请先开始一个 ACP 会话")}
               onCopy={() =>
                 mcpConfigQueryParam &&
                 copyToClipboard(mcpConfigQueryParam, "config1")

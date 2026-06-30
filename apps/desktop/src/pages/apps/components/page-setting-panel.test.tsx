@@ -23,8 +23,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
+    t: (_key: string, fallback?: string, opts?: Record<string, unknown>) => opts ? (fallback ?? _key).replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => String(opts[k] ?? `{{${k}}}`)) : (fallback ?? _key),
   }),
+  initReactI18next: {
+    type: "3rdParty" as const,
+    init: () => {},
+  },
 }));
 
 vi.mock("@/hooks/use-toast", () => ({

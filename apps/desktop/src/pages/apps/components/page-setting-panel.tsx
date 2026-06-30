@@ -585,7 +585,7 @@ export function PageSettingPanel({
                     <div className="space-y-1">
                       <PublishActionRow
                         icon={Search}
-                        label="搜索引擎索引"
+                        label={t("page.settings.searchEngineIndex", "搜索引擎索引")}
                         onClick={() => setPublishSettingsView("seo")}
                       />
                     </div>
@@ -593,12 +593,12 @@ export function PageSettingPanel({
                     <div className="space-y-1">
                       <PublishActionRow
                         icon={Code2}
-                        label="嵌入此页面"
+                        label={t("page.settings.embedThisPage", "嵌入此页面")}
                         onClick={() => setPublishSettingsView("embed")}
                       />
                       <PublishActionRow
                         icon={Share2}
-                        label="分享到社交平台"
+                        label={t("page.settings.shareToSocial", "分享到社交平台")}
                         onClick={() => setPublishSettingsView("share")}
                       />
                     </div>
@@ -606,7 +606,7 @@ export function PageSettingPanel({
                     <div className="space-y-1">
                       <PublishActionRow
                         icon={ExternalLink}
-                        label="在浏览器打开"
+                        label={t("page.settings.openInBrowser", "在浏览器打开")}
                         onClick={handleOpenPublishedPage}
                         trailing={null}
                       />
@@ -623,23 +623,23 @@ export function PageSettingPanel({
                       className="flex items-center gap-2 text-sm font-medium text-foreground"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      搜索引擎索引
+                      {t("page.settings.searchEngineIndex", "搜索引擎索引")}
                     </button>
                     <div className="flex items-center gap-3 rounded-md px-2 py-2">
                       <Globe className="h-4 w-4 text-muted-foreground" />
                       <span className="min-w-0 flex-1 text-sm text-foreground">
-                        可在网络上被发现
+                        {t("page.settings.discoverableOnWeb", "可在网络上被发现")}
                       </span>
                       <Switch
                         checked={seoDiscoverable}
                         onCheckedChange={setSeoDiscoverable}
-                        aria-label="可在网络上被发现"
+                        aria-label={t("page.settings.discoverableOnWeb", "可在网络上被发现")}
                       />
                     </div>
                     <div className="border-t border-border" />
                     <div className="space-y-3">
                       <div className="text-sm font-medium text-foreground">
-                        SEO 预览
+                        {t("page.settings.seoPreview", "SEO 预览")}
                       </div>
                       <div className="rounded-md border border-border bg-background p-3">
                         <div className="truncate text-sm font-medium text-blue-600">
@@ -654,7 +654,7 @@ export function PageSettingPanel({
                       </div>
                       <label className="block space-y-1 text-sm">
                         <span className="font-medium text-foreground">
-                          链接标题
+                          {t("page.settings.linkTitle", "链接标题")}
                         </span>
                         <Input
                           value={seoTitle}
@@ -662,7 +662,7 @@ export function PageSettingPanel({
                         />
                       </label>
                       <label className="block space-y-1 text-sm">
-                        <span className="font-medium text-foreground">描述</span>
+                        <span className="font-medium text-foreground">{t("page.settings.description", "描述")}</span>
                         <Textarea
                           value={seoDescription}
                           onChange={(event) =>
@@ -684,24 +684,24 @@ export function PageSettingPanel({
                       className="flex items-center gap-2 text-sm font-medium text-foreground"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      嵌入此页面
+                      {t("page.settings.embedThisPage", "嵌入此页面")}
                     </button>
                     <div className="flex items-center gap-3 rounded-md px-2 py-2">
                       <Tags className="h-4 w-4 text-muted-foreground" />
                       <span className="min-w-0 flex-1 text-sm text-foreground">
-                        显示页面标题
+                        {t("page.settings.showPageTitle", "显示页面标题")}
                       </span>
                       <Switch
                         checked={showEmbedTitle}
                         onCheckedChange={setShowEmbedTitle}
-                        aria-label="显示页面标题"
+                        aria-label={t("page.settings.showPageTitle", "显示页面标题")}
                       />
                     </div>
                     <div className="border-t border-border" />
                     <label className="block space-y-2 text-sm">
-                      <span className="sr-only">嵌入代码</span>
+                      <span className="sr-only">{t("page.settings.embedCode", "嵌入代码")}</span>
                       <Textarea
-                        aria-label="嵌入代码"
+                        aria-label={t("page.settings.embedCode", "嵌入代码")}
                         value={embedCode}
                         readOnly
                         className="min-h-[108px] font-mono text-xs"
@@ -718,7 +718,7 @@ export function PageSettingPanel({
                       }
                     >
                       <Copy className="mr-2 h-4 w-4" />
-                      复制代码
+                      {t("page.settings.copyCode", "复制代码")}
                     </Button>
                   </div>
                 )}
@@ -732,30 +732,30 @@ export function PageSettingPanel({
                       className="flex items-center gap-2 text-sm font-medium text-foreground"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      分享到社交平台
+                      {t("page.settings.shareToSocial", "分享到社交平台")}
                     </button>
                     <div className="space-y-1">
                       <PublishActionRow
                         icon={Share2}
-                        label="分享到 X"
+                        label={t("page.settings.shareToX", "分享到 X")}
                         onClick={() => handleSocialShare("x")}
                         trailing={null}
                       />
                       <PublishActionRow
                         icon={MessageCircle}
-                        label="分享到 Whatsapp"
+                        label={t("page.settings.shareToWhatsapp", "分享到 Whatsapp")}
                         onClick={() => handleSocialShare("whatsapp")}
                         trailing={null}
                       />
                       <PublishActionRow
                         icon={Globe}
-                        label="分享到 Facebook"
+                        label={t("page.settings.shareToFacebook", "分享到 Facebook")}
                         onClick={() => handleSocialShare("facebook")}
                         trailing={null}
                       />
                       <PublishActionRow
                         icon={Link2}
-                        label="分享到 Linkin"
+                        label={t("page.settings.shareToLinkedin", "分享到 Linkin")}
                         onClick={() => handleSocialShare("linkedin")}
                         trailing={null}
                       />
@@ -763,7 +763,7 @@ export function PageSettingPanel({
                     <div className="border-t border-border" />
                     <PublishActionRow
                       icon={Mail}
-                      label="分享到 电子邮件"
+                      label={t("page.settings.shareToEmail", "分享到 电子邮件")}
                       onClick={() => handleSocialShare("email")}
                       trailing={null}
                     />

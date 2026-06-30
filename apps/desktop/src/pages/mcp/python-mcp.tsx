@@ -28,6 +28,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { useAcpSessionStore } from "@/stores/acp-session-store";
 import { toast } from "@/hooks/use-toast";
@@ -118,7 +119,7 @@ export function PythonMcpPage() {
         <div>
           <h1 className="text-2xl font-bold font-serif">Python MCP</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            通过 Jupyter Server 为 AI Agent 提供 Python 代码执行能力
+            {i18n.t("pythonMcp.description", "通过 Jupyter Server 为 AI Agent 提供 Python 代码执行能力")}
           </p>
         </div>
 
@@ -170,12 +171,12 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
         body: JSON.stringify(config),
       });
       if (res.ok) {
-        toast.success("配置已保存");
+        toast.success(i18n.t("pythonMcp.configSaved", "配置已保存"));
       } else {
-        toast.error("保存失败");
+        toast.error(i18n.t("pythonMcp.saveFailed", "保存失败"));
       }
     } catch {
-      toast.error("保存失败");
+      toast.error(i18n.t("pythonMcp.saveFailed", "保存失败"));
     } finally {
       setSaving(false);
     }
@@ -206,11 +207,11 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
     <section className="rounded-xl border bg-card p-5 space-y-3">
       <div className="flex items-center gap-2">
         <Terminal className="h-4 w-4 text-primary" />
-        <h2 className="font-semibold">Jupyter 连接配置</h2>
+        <h2 className="font-semibold">{i18n.t("pythonMcp.jupyterConfig", "Jupyter 连接配置")}</h2>
       </div>
       {/* Issue 16: show error when config fails to load */}
       {configError && (
-        <p className="text-xs text-destructive">配置加载失败，显示的是默认值</p>
+        <p className="text-xs text-destructive">{i18n.t("pythonMcp.configLoadFailed", "配置加载失败，显示的是默认值")}</p>
       )}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -253,21 +254,21 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={saveConfig} disabled={saving}>
             <Save className="h-3 w-3 mr-1" />
-            保存
+            {i18n.t("pythonMcp.save", "保存")}
           </Button>
           {/* Issue 17: disable button while testing */}
           <Button size="sm" variant="outline" onClick={testConnection} disabled={testing}>
-            {testing ? "测试中..." : "测试连接"}
+            {testing ? i18n.t("pythonMcp.testing", "测试中...") : i18n.t("pythonMcp.testConnection", "测试连接")}
           </Button>
           <span className="text-xs">
             {status === "connected" && (
               <span className="text-green-500 flex items-center gap-1">
-                <Wifi className="h-3 w-3" /> 已连接
+                <Wifi className="h-3 w-3" /> {i18n.t("pythonMcp.connected", "已连接")}
               </span>
             )}
             {status === "disconnected" && (
               <span className="text-destructive flex items-center gap-1">
-                <WifiOff className="h-3 w-3" /> 未连接
+                <WifiOff className="h-3 w-3" /> {i18n.t("pythonMcp.disconnected", "未连接")}
               </span>
             )}
           </span>
@@ -305,12 +306,12 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
       });
       if (res.ok) {
         await refresh();
-        toast.success("临时会话已创建");
+        toast.success(i18n.t("pythonMcp.tempSessionCreated", "临时会话已创建"));
       } else {
-        toast.error("创建失败");
+        toast.error(i18n.t("pythonMcp.createFailed", "创建失败"));
       }
     } catch {
-      toast.error("创建失败");
+      toast.error(i18n.t("pythonMcp.createFailed", "创建失败"));
     }
     setCreatingTemp(false);
   };
@@ -336,11 +337,11 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
   return (
     <section className="rounded-xl border bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">代码会话</h2>
+        <h2 className="font-semibold">{i18n.t("pythonMcp.codeSession", "代码会话")}</h2>
         <div className="flex items-center gap-1">
           <Button size="sm" variant="outline" onClick={createTempSession} disabled={creatingTemp}>
             <Plus className="h-3 w-3 mr-1" />
-            {creatingTemp ? "创建中..." : "新建"}
+            {creatingTemp ? i18n.t("pythonMcp.creating", "创建中...") : i18n.t("pythonMcp.newSession", "新建")}
           </Button>
           <Button size="sm" variant="ghost" onClick={refresh}>
             <RefreshCw className="h-3 w-3" />
@@ -354,7 +355,7 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
             className="w-full rounded-md border bg-muted/50 pl-8 pr-3 py-1.5 text-sm font-mono placeholder:text-muted-foreground/60"
-            placeholder="过滤 Session ID / Kernel ID..."
+            placeholder={i18n.t("pythonMcp.filterSessionKernel", "过滤 Session ID / Kernel ID...")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -363,7 +364,7 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
 
       {sessions.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-4">
-          <p className="text-sm text-muted-foreground">暂无活跃 Session</p>
+          <p className="text-sm text-muted-foreground">{i18n.t("pythonMcp.noActiveSessions", "暂无活跃 Session")}</p>
           <Button
             size="sm"
             variant="outline"
@@ -371,12 +372,12 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
             disabled={creatingTemp}
           >
             <Plus className="h-3 w-3 mr-1" />
-            {creatingTemp ? "创建中..." : "创建临时会话"}
+            {creatingTemp ? i18n.t("pythonMcp.creating", "创建中...") : i18n.t("pythonMcp.createTempSession", "创建临时会话")}
           </Button>
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">
-          无匹配结果
+          {i18n.t("pythonMcp.noMatches", "无匹配结果")}
         </p>
       ) : (
         <>
@@ -390,7 +391,7 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-muted-foreground">
-                {filtered.length} 条会话，第 {currentPage + 1}/{totalPages} 页
+                {i18n.t("pythonMcp.sessionsCount", "{{count}} 条会话，第 {{current}}/{{total}} 页", { count: filtered.length, current: currentPage + 1, total: totalPages })}
               </span>
               <div className="flex items-center gap-1">
                 <Button
@@ -422,10 +423,10 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
 
 function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts;
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
-  return `${Math.floor(diff / 86400000)} 天前`;
+  if (diff < 60000) return i18n.t("pythonMcp.justNow", "刚刚");
+  return i18n.t("pythonMcp.minutesAgo", "{{count}} 分钟前", { count: Math.floor(diff / 60000) });
+  if (diff < 86400000) return i18n.t("pythonMcp.hoursAgo", "{{count}} 小时前", { count: Math.floor(diff / 3600000) });
+  return i18n.t("pythonMcp.daysAgo", "{{count}} 天前", { count: Math.floor(diff / 86400000) });
 }
 
 function SessionRow({
@@ -468,19 +469,19 @@ function SessionRow({
   };
 
   const deleteSession = async () => {
-    if (!window.confirm(`确定删除 Session "${session.acp_session_id}" 吗？此操作不可撤销。`)) return;
+    if (!window.confirm(i18n.t("pythonMcp.confirmDeleteSession", '确定删除 Session "{{id}}" 吗？此操作不可撤销。', { id: session.acp_session_id }))) return;
     try {
       const res = await fetch(`${gatewayUrl}${API_PREFIX}/sessions/${session.acp_session_id}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Session 已删除");
+        toast.success(i18n.t("pythonMcp.sessionDeleted", "Session 已删除"));
         onDelete();
       } else {
-        toast.error("删除失败");
+        toast.error(i18n.t("pythonMcp.deleteFailed", "删除失败"));
       }
     } catch {
-      toast.error("删除失败");
+      toast.error(i18n.t("pythonMcp.deleteFailed", "删除失败"));
     }
   };
 
@@ -518,7 +519,7 @@ function SessionRow({
           variant="ghost"
           size="icon"
           className="h-5 w-5 shrink-0"
-          title="刷新状态"
+          title={i18n.t("pythonMcp.refreshStatus", "刷新状态")}
           onClick={checkKernelStatus}
         >
           <RefreshCw className="h-2.5 w-2.5" />
@@ -549,12 +550,12 @@ function SessionRow({
         <span className="text-[10px] text-muted-foreground">
           {session.kernel_count} kernel(s) ·{" "}
           {kernelAlive === null
-            ? "检测中..."
+            ? i18n.t("pythonMcp.checking", "检测中...")
             : kernelAlive
-              ? "运行中"
-              : "已断开"}
+              ? i18n.t("pythonMcp.running", "运行中")
+              : i18n.t("pythonMcp.disconnected", "已断开")}
           {session.last_used_at > 0 && (
-            <> · 最近使用: {formatRelativeTime(session.last_used_at)}</>
+            <> · {i18n.t("pythonMcp.recentlyUsed", "最近使用")}: {formatRelativeTime(session.last_used_at)}</>
           )}
         </span>
         <div className="flex-1" />
@@ -619,14 +620,14 @@ function HistoryDialog({
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1">
           <History className="h-3 w-3" />
-          历史
+          {i18n.t("pythonMcp.history", "历史")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-4 w-4" />
-            执行历史
+            {i18n.t("pythonMcp.executionHistory", "执行历史")}
             <code className="text-xs font-normal text-muted-foreground ml-2">
               {kernelId.slice(0, 12)}...
             </code>
@@ -645,15 +646,15 @@ function HistoryDialog({
         <div className="flex-1 overflow-auto mt-4 space-y-4">
           {loading ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              加载中...
+              {i18n.t("pythonMcp.loading", "加载中...")}
             </p>
           ) : loadError ? (
             <p className="text-sm text-destructive text-center py-8">
-              加载失败
+              {i18n.t("pythonMcp.loadFailed", "加载失败")}
             </p>
           ) : histories.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              暂无执行记录
+              {i18n.t("pythonMcp.noExecutionRecords", "暂无执行记录")}
             </p>
           ) : (
             // Issue 15: add kernel group headers
@@ -668,7 +669,7 @@ function HistoryDialog({
                     <span>·</span>
                     <span>{new Date(kh.created_at).toLocaleString()}</span>
                     <span>·</span>
-                    <span>{codeEntries.length} 次执行</span>
+                    <span>{i18n.t("pythonMcp.executionCount", "{{count}} 次执行", { count: codeEntries.length })}</span>
                   </div>
                   {codeEntries.map((entry, idx) => {
                     const result = resultEntries.find(
@@ -841,14 +842,14 @@ function DebugDialog({
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1">
           <Play className="h-3 w-3" />
-          调试
+          {i18n.t("pythonMcp.debug", "调试")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Terminal className="h-4 w-4" />
-            调试执行器
+            {i18n.t("pythonMcp.debugExecutor", "调试执行器")}
             <code className="text-xs font-normal text-muted-foreground ml-2">
               kernel: {kernelId.slice(0, 12)}... · session: {sessionId}
             </code>
@@ -885,7 +886,7 @@ function DebugDialog({
             </div>
             <textarea
               className="w-full bg-transparent px-3 py-2 text-sm font-mono min-h-[80px] resize-y text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none"
-              placeholder="# 输入 Python 代码..."
+              placeholder={i18n.t("pythonMcp.enterCode", "# 输入 Python 代码...")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => {
@@ -903,7 +904,7 @@ function DebugDialog({
               disabled={executing || !code.trim()}
             >
               <Play className="h-3 w-3 mr-1" />
-              {executing ? "执行中..." : "执行"}
+              {executing ? i18n.t("pythonMcp.executing", "执行中...") : i18n.t("pythonMcp.execute", "执行")}
               <kbd className="ml-2 text-[10px] opacity-60">⌘↵</kbd>
             </Button>
           </div>
@@ -1170,7 +1171,7 @@ function RichOutput({ result }: { result: LogEntry }) {
         </pre>
       )}
       {outputs.length === 0 && !error && (
-        <span className="text-muted-foreground italic">无输出</span>
+        <span className="text-muted-foreground italic">{i18n.t("pythonMcp.noOutput", "无输出")}</span>
       )}
     </div>
   );
@@ -1218,42 +1219,42 @@ function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
         body: JSON.stringify(editing),
       });
       if (res.ok) {
-        toast.success("Skill 已保存");
+        toast.success(i18n.t("pythonMcp.skillSaved", "Skill 已保存"));
         setEditing(null);
         setIsNew(false);
         refresh();
       } else {
-        toast.error("保存失败");
+        toast.error(i18n.t("pythonMcp.saveFailed", "保存失败"));
       }
     } catch {
-      toast.error("保存失败");
+      toast.error(i18n.t("pythonMcp.saveFailed", "保存失败"));
     }
   };
 
   const deleteSkill = async (name: string) => {
-    if (!window.confirm(`确定删除 Skill "${name}" 吗？此操作不可撤销。`)) return;
+    if (!window.confirm(i18n.t("pythonMcp.confirmDeleteSkill", '确定删除 Skill "{{name}}" 吗？此操作不可撤销。', { name }))) return;
     try {
       const res = await fetch(`${gatewayUrl}${API_PREFIX}/skills/${name}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Skill 已删除");
+        toast.success(i18n.t("pythonMcp.skillDeleted", "Skill 已删除"));
         setEditing(null);
         refresh();
       } else {
-        toast.error("删除失败");
+        toast.error(i18n.t("pythonMcp.deleteFailed", "删除失败"));
       }
     } catch {
-      toast.error("删除失败");
+      toast.error(i18n.t("pythonMcp.deleteFailed", "删除失败"));
     }
   };
 
   return (
     <section className="rounded-xl border bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Skills 管理</h2>
+        <h2 className="font-semibold">{i18n.t("pythonMcp.skillsManagement", "Skills 管理")}</h2>
         <Button size="sm" variant="outline" onClick={startNew}>
-          <Plus className="h-3 w-3 mr-1" /> 新建 Skill
+          <Plus className="h-3 w-3 mr-1" /> {i18n.t("pythonMcp.newSkill", "新建 Skill")}
         </Button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -1332,10 +1333,10 @@ function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={saveSkill}>
-              <Save className="h-3 w-3 mr-1" /> 保存
+              <Save className="h-3 w-3 mr-1" /> {i18n.t("pythonMcp.save", "保存")}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => { setEditing(null); setIsNew(false); }}>
-              取消
+              {i18n.t("pythonMcp.cancel", "取消")}
             </Button>
             {!isNew && (
               <Button
@@ -1343,7 +1344,7 @@ function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
                 variant="destructive"
                 onClick={() => deleteSkill(editing.name)}
               >
-                <Trash2 className="h-3 w-3 mr-1" /> 删除
+                <Trash2 className="h-3 w-3 mr-1" /> {i18n.t("pythonMcp.delete", "删除")}
               </Button>
             )}
           </div>
@@ -1405,38 +1406,38 @@ function McpConfigSection({
     <section className="rounded-xl border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Info className="h-4 w-4 text-primary" />
-        <h2 className="font-semibold">MCP Server 配置</h2>
+        <h2 className="font-semibold">{i18n.t("pythonMcp.mcpServerConfig", "MCP Server 配置")}</h2>
       </div>
 
       <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-        <h3 className="text-sm font-medium">请求头说明</h3>
+        <h3 className="text-sm font-medium">{i18n.t("pythonMcp.headerDescription", "请求头说明")}</h3>
         <div className="text-xs space-y-1 text-muted-foreground">
           <div>
             <code className="bg-muted px-1.5 py-0.5 rounded text-foreground">
               X-Viben-Session-Id
             </code>
-            <span className="ml-1 text-destructive font-medium">(必需)</span> —
+            <span className="ml-1 text-destructive font-medium">{i18n.t("pythonMcp.required", "(必需)")}</span> —
             ACP session id
           </div>
           <div>
             <code className="bg-muted px-1.5 py-0.5 rounded text-foreground">
               X-Jupyter-Url
             </code>
-            <span className="ml-1">(可选)</span> — 覆盖默认 Jupyter URL
+            <span className="ml-1">{i18n.t("pythonMcp.optional", "(可选)")}</span> — {i18n.t("pythonMcp.overrideJupyterUrl", "覆盖默认 Jupyter URL")}
           </div>
           <div>
             <code className="bg-muted px-1.5 py-0.5 rounded text-foreground">
               X-Jupyter-Token
             </code>
-            <span className="ml-1">(可选)</span> — 覆盖默认 Jupyter Token
+            <span className="ml-1">{i18n.t("pythonMcp.optional", "(可选)")}</span> — {i18n.t("pythonMcp.overrideJupyterToken", "覆盖默认 Jupyter Token")}
           </div>
         </div>
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">方式 1 — Query Parameter</h3>
+        <h3 className="text-sm font-medium">{i18n.t("pythonMcp.method1", "方式 1 — Query Parameter")}</h3>
         <ConfigCodeBlock
-          code={mcpConfigQueryParam ?? "// 请先开始一个 ACP 会话"}
+          code={mcpConfigQueryParam ?? i18n.t("pythonMcp.startAcpSessionFirst", "// 请先开始一个 ACP 会话")}
           onCopy={() =>
             mcpConfigQueryParam &&
             copyToClipboard(mcpConfigQueryParam, "pyConfig1")
@@ -1447,7 +1448,7 @@ function McpConfigSection({
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">方式 2 — Header</h3>
+        <h3 className="text-sm font-medium">{i18n.t("pythonMcp.method2", "方式 2 — Header")}</h3>
         <ConfigCodeBlock
           code={mcpConfigHeader}
           onCopy={() => copyToClipboard(mcpConfigHeader, "pyConfig2")}
@@ -1456,7 +1457,7 @@ function McpConfigSection({
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">端点信息</h3>
+        <h3 className="text-sm font-medium">{i18n.t("pythonMcp.endpointInfo", "端点信息")}</h3>
         <InfoRow
           label="URL"
           value={mcpServerUrl}

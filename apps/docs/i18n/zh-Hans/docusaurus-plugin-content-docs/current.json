@@ -14,5 +14,69 @@
   "sidebar.tutorialSidebar.category.Tools": {
     "message": "工具",
     "description": "The label for category 'Tools' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.frontendSidebar.category.Kanban": {
+    "message": "看板",
+    "description": "The label for category 'Kanban' in sidebar 'frontendSidebar'"
+  },
+  "sidebar.frontendSidebar.category.Social Chat": {
+    "message": "社交聊天",
+    "description": "The label for category 'Social Chat' in sidebar 'frontendSidebar'"
+  },
+  "sidebar.frontendSidebar.category.UI Modules": {
+    "message": "UI 模块",
+    "description": "The label for category 'UI Modules' in sidebar 'frontendSidebar'"
+  },
+  "sidebar.backendSidebar.category.Gateway": {
+    "message": "Gateway",
+    "description": "The label for category 'Gateway' in sidebar 'backendSidebar'"
+  },
+  "sidebar.backendSidebar.category.Kanban": {
+    "message": "看板",
+    "description": "The label for category 'Kanban' in sidebar 'backendSidebar'"
+  },
+  "sidebar.backendSidebar.category.API": {
+    "message": "API",
+    "description": "The label for category 'API' in sidebar 'backendSidebar'"
+  },
+  "sidebar.backendSidebar.category.Deployment": {
+    "message": "部署",
+    "description": "The label for category 'Deployment' in sidebar 'backendSidebar'"
+  },
+  "sidebar.backendSidebar.category.Modules": {
+    "message": "模块",
+    "description": "The label for category 'Modules' in sidebar 'backendSidebar'"
+  },
+  "sidebar.sharedSidebar.category.Architecture": {
+    "message": "架构",
+    "description": "The label for category 'Architecture' in sidebar 'sharedSidebar'"
+  },
+  "sidebar.sharedSidebar.category.Guides": {
+    "message": "指南",
+    "description": "The label for category 'Guides' in sidebar 'sharedSidebar'"
+  },
+  "sidebar.sharedSidebar.category.Data Models": {
+    "message": "数据模型",
+    "description": "The label for category 'Data Models' in sidebar 'sharedSidebar'"
+  },
+  "sidebar.userSidebar.category.Desktop": {
+    "message": "桌面端",
+    "description": "The label for category 'Desktop' in sidebar 'userSidebar'"
+  },
+  "sidebar.cliSidebar.category.Commands": {
+    "message": "命令",
+    "description": "The label for category 'Commands' in sidebar 'cliSidebar'"
+  },
+  "sidebar.cliSidebar.category.Configuration": {
+    "message": "配置",
+    "description": "The label for category 'Configuration' in sidebar 'cliSidebar'"
+  },
+  "sidebar.cliSidebar.category.Providers & Models": {
+    "message": "Provider 与模型",
+    "description": "The label for category 'Providers & Models' in sidebar 'cliSidebar'"
+  },
+  "sidebar.agentSidebar.category.Templates": {
+    "message": "模板",
+    "description": "The label for category 'Templates' in sidebar 'agentSidebar'"
   }
 }

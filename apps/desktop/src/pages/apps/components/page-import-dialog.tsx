@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileCode2, FileText, Globe2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ export function PageImportDialog({
   onImportUrl,
   onImportFile,
 }: PageImportDialogProps) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState("");
   const markdownInputRef = useRef<HTMLInputElement>(null);
   const htmlInputRef = useRef<HTMLInputElement>(null);
@@ -51,15 +53,15 @@ export function PageImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0">
         <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle>选择导入方式</DialogTitle>
-          <DialogDescription>从网络连接或本地文件导入当前页面。</DialogDescription>
+          <DialogTitle>{t("page.import.chooseImportMethod", "选择导入方式")}</DialogTitle>
+          <DialogDescription>{t("page.import.importFromUrlOrFile", "从网络连接或本地文件导入当前页面。")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
           <section className="space-y-3 rounded-lg border border-border p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Globe2 className="size-4 text-muted-foreground" />
-              <span>从网络连接导入</span>
+              <span>{t("page.import.importFromUrl", "从网络连接导入")}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -74,7 +76,7 @@ export function PageImportDialog({
                 disabled={isImporting || !url.trim()}
               >
                 {isImporting && <Loader2 className="size-4 animate-spin" />}
-                开始导入
+                {t("page.import.startImport", "开始导入")}
               </Button>
             </div>
           </section>
@@ -87,7 +89,7 @@ export function PageImportDialog({
               disabled={isImporting || !onImportFile}
             >
               <FileText className="size-4 text-muted-foreground" />
-              <span>导入 Markdown 文件</span>
+              <span>{t("page.import.importMarkdown", "导入 Markdown 文件")}</span>
             </button>
             <button
               type="button"
@@ -96,7 +98,7 @@ export function PageImportDialog({
               disabled={isImporting || !onImportFile}
             >
               <FileCode2 className="size-4 text-muted-foreground" />
-              <span>导入 HTML 文件</span>
+              <span>{t("page.import.importHtml", "导入 HTML 文件")}</span>
             </button>
           </section>
 
@@ -117,7 +119,7 @@ export function PageImportDialog({
 
           <div className="flex justify-end">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              取消
+              {t("page.import.cancel", "取消")}
             </Button>
           </div>
         </div>

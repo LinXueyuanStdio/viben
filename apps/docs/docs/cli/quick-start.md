@@ -70,7 +70,7 @@ viben provider create -t anthropic --api-key "sk-ant-xxx"
 ```
 
 :::tip
-When providing an API key directly, it will be encrypted and securely stored in `~/.viben/providers.yaml`.
+When providing an API key directly, it will be encrypted and securely stored in `~/.viben/models.yaml`.
 :::
 
 ### Verify Provider
@@ -230,7 +230,7 @@ viben agent config -n my-agent --set model=smart
 Configure backup models in case the primary model is unavailable:
 
 ```bash
-viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
+viben model set-default -n your-preferred-model
 ```
 
 ### Workspace-Specific Configuration

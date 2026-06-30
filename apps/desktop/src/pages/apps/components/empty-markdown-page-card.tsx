@@ -1,4 +1,5 @@
 import { ChevronDown, Import, LayoutTemplate } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PageCreationMode } from "./empty-markdown-page-utils";
@@ -21,6 +22,7 @@ export function EmptyMarkdownPageCard({
   onImportPage,
   onAiCreate,
 }: EmptyMarkdownPageCardProps) {
+  const { t } = useTranslation();
   return (
     <section
       className={cn(
@@ -34,18 +36,18 @@ export function EmptyMarkdownPageCard({
         }
         onStartEditing?.();
       }}
-      aria-label="空页面操作"
+      aria-label={t("page.emptyPage.ariaLabel", "空页面操作")}
     >
       <button
         type="button"
         className="flex w-full items-center justify-center border-b border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={onStartEditing}
       >
-        开始
+        {t("page.emptyPage.start", "开始")}
       </button>
 
       <div className="space-y-3 border-b border-border px-4 py-4">
-        <p className="text-sm text-muted-foreground">按 Enter 键开始编辑内容</p>
+        <p className="text-sm text-muted-foreground">{t("page.emptyPage.pressEnterToEdit", "按 Enter 键开始编辑内容")}</p>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -59,7 +61,7 @@ export function EmptyMarkdownPageCard({
             disabled={isCreating}
           >
             <LayoutTemplate className="size-4" />
-            从模板创建
+            {t("page.emptyPage.createFromTemplate", "从模板创建")}
           </Button>
           <Button
             type="button"
@@ -73,7 +75,7 @@ export function EmptyMarkdownPageCard({
             disabled={isCreating}
           >
             <Import className="size-4" />
-            导入新页面
+            {t("page.emptyPage.importNewPage", "导入新页面")}
             <ChevronDown className="size-3.5" />
           </Button>
         </div>

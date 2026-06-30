@@ -314,7 +314,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
         setLiveAnnouncement(t("settings.tradingAccounts.connectSuccess", { latency: data.latency_ms }));
         toast.success(t("settings.tradingAccounts.connectSuccess", { latency: data.latency_ms }));
       } else {
-        const errMsg = data.error ?? "未知错误";
+        const errMsg = data.error ?? t("common.unknownError", "未知错误");
         setTestResults((prev) =>
           new Map(prev).set(id, { success: false, error: errMsg })
         );
@@ -357,7 +357,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[calc(100vh-4rem)] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b">
-            <DialogTitle>导入交易账户</DialogTitle>
+            <DialogTitle>{t("settings.tradingAccounts.title", "导入交易账户")}</DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-1 overflow-hidden">
@@ -367,7 +367,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                 ref={exchangeListRef}
                 className="p-2 space-y-1"
                 role="listbox"
-                aria-label="交易所列表"
+                aria-label={t("settings.tradingAccounts.exchange-list", "交易所列表")}
                 aria-activedescendant={selectedExchange ? `exchange-${selectedExchange}` : undefined}
               >
                 {exchanges.map((ex) => {
@@ -412,7 +412,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                           key={count}
                           variant="secondary"
                           className="text-[10px] h-5 min-w-5 justify-center px-1.5 animate-pulse"
-                          aria-label={`${count} 个账户`}
+                          aria-label={t("settings.tradingAccounts.accountCountBadge", "{{count}} 个账户", { count })}
                         >
                           {count}
                         </Badge>
@@ -455,8 +455,8 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {exchangeAccounts.length === 0
-                            ? "尚未配置账户"
-                            : `${exchangeAccounts.length} 个已配置账户`}
+                            ? t("settings.tradingAccounts.notConfigured", "尚未配置账户")
+                            : t("settings.tradingAccounts.configuredCount", "{{count}} 个已配置账户", { count: exchangeAccounts.length })}
                         </p>
                       </div>
                     </div>
@@ -468,7 +468,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            注册(手续费折扣)
+                            {t("settings.tradingAccounts.registerDiscount", "注册(手续费折扣)")}
                             <ExternalLink className="ml-1 h-3 w-3" />
                           </a>
                         </Button>
@@ -480,7 +480,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            创建API
+                            {t("settings.tradingAccounts.createApi", "创建API")}
                             <ExternalLink className="ml-1 h-3 w-3" />
                           </a>
                         </Button>
@@ -493,10 +493,10 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                     <div className="p-3 rounded-lg border border-l-[3px] border-l-yellow-500 bg-muted/50 flex items-center justify-between">
                       <span className="text-sm flex items-center gap-2">
                         <Shield className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0" />
-                        白名单IP:{" "}
+                        {t("settings.tradingAccounts.whitelistIp", "白名单IP:")}{" "}
                         {publicIpLoading ? (
                           <span className="text-muted-foreground">
-                            获取中...
+                            {t("settings.tradingAccounts.fetching", "获取中...")}
                           </span>
                         ) : publicIp ? (
                           <code className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">
@@ -504,7 +504,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                           </code>
                         ) : (
                           <span className="text-muted-foreground">
-                            无法获取，请运行 curl https://api.ipify.org
+                            {t("settings.tradingAccounts.cannotFetchIp", "无法获取，请运行 curl https://api.ipify.org")}
                           </span>
                         )}
                       </span>
@@ -512,7 +512,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="复制IP地址"
+                          aria-label={t("settings.tradingAccounts.copyIpAddress", "复制IP地址")}
                           onClick={() => {
                             navigator.clipboard.writeText(publicIp);
                             toast.success(t("settings.tradingAccounts.ipCopied"));
@@ -530,7 +530,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                   {!showForm && (
                     <>
                       {exchangeAccounts.length > 0 ? (
-                        <div className="space-y-2" role="list" aria-label={`${currentExchange.name} 账户列表`}>
+                        <div className="space-y-2" role="list" aria-label={t("settings.tradingAccounts.accountList", "{{name}} 账户列表", { name: currentExchange.name })}>
                           {/* 3. Staggered scale+fade on account cards */}
                           {exchangeAccounts.map((acc, index) => {
                             const isTesting = testingAccounts.has(acc.id);
@@ -613,7 +613,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                                     className="h-8 w-8"
                                     onClick={() => handleTest(acc.id)}
                                     disabled={isTesting}
-                                    aria-label={`测试连接 ${acc.name}`}
+                                    aria-label={t("settings.tradingAccounts.testConnectionLabel", "测试连接 {{name}}", { name: acc.name })}
                                   >
                                     {isTesting ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -631,7 +631,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                                         name: acc.name,
                                       })
                                     }
-                                    aria-label={`删除账户 ${acc.name}`}
+                                    aria-label={t("settings.tradingAccounts.deleteAccountLabel", "删除账户 {{name}}", { name: acc.name })}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
@@ -647,11 +647,10 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                             <KeyRound className="h-6 w-6 text-muted-foreground" />
                           </div>
                           <p className="text-sm font-medium text-foreground mb-1">
-                            暂无 {currentExchange.name} 账户
+                            {t("settings.tradingAccounts.noExchangeAccounts", "暂无 {{name}} 账户", { name: currentExchange.name })}
                           </p>
                           <p className="text-xs text-muted-foreground max-w-[280px] mb-5">
-                            添加 API
-                            密钥以开始使用自动化交易和实时数据获取功能
+                            {t("settings.tradingAccounts.addApiKeysDesc", "添加 API 密钥以开始使用自动化交易和实时数据获取功能")}
                           </p>
                           <Button
                             variant="outline"
@@ -659,7 +658,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                             onClick={handleAddNew}
                           >
                             <Plus className="h-3.5 w-3.5 mr-1.5" />
-                            添加第一个账户
+                            {t("settings.tradingAccounts.addFirstAccount", "添加第一个账户")}
                           </Button>
                         </div>
                       )}
@@ -668,7 +667,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                       {exchangeAccounts.length > 0 && (
                         <Button variant="outline" onClick={handleAddNew}>
                           <Plus className="h-4 w-4 mr-1.5" />
-                          添加新账户
+                          {t("settings.tradingAccounts.addNewAccount", "添加新账户")}
                         </Button>
                       )}
                     </>
@@ -686,22 +685,22 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                     >
                     <div className="space-y-4 rounded-lg border bg-card p-4 transition-shadow focus-within:ring-1 focus-within:ring-ring">
                       <div>
-                        <label htmlFor={`${formId}-name`} className="text-sm font-medium">账户名称</label>
+                        <label htmlFor={`${formId}-name`} className="text-sm font-medium">{t("settings.tradingAccounts.accountName", "账户名称")}</label>
                         <Input
                           ref={formNameInputRef}
                           id={`${formId}-name`}
                           value={formName}
                           onChange={(e) => setFormName(e.target.value)}
-                          placeholder="例如 Main Trading"
+                          placeholder={t("settings.tradingAccounts.accountNamePlaceholder", "例如 Main Trading")}
                           className="mt-1"
                         />
                       </div>
 
                       <div>
                         <label htmlFor={`${formId}-apikey`} className="text-sm font-medium">
-                          API密钥{" "}
+                          {t("settings.tradingAccounts.apiKey", "API密钥")}{" "}
                           <span className="text-red-500" aria-hidden="true">*</span>
-                          <span className="sr-only">(必填)</span>
+                          <span className="sr-only">{t("settings.tradingAccounts.required", "(必填)")}</span>
                         </label>
                         <div className="relative mt-1">
                           <Input
@@ -709,14 +708,14 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                             type={showApiKey ? "text" : "password"}
                             value={formApiKey}
                             onChange={(e) => setFormApiKey(e.target.value)}
-                            placeholder="请输入API密钥"
+                            placeholder={t("settings.tradingAccounts.enterApiKey", "请输入API密钥")}
                             aria-required="true"
                             aria-describedby={`${formId}-apikey-hint`}
                             className="pr-10"
                           />
                           <button
                             type="button"
-                            aria-label={showApiKey ? "隐藏API密钥" : "显示API密钥"}
+                            aria-label={showApiKey ? t("settings.tradingAccounts.hideApiKey", "隐藏API密钥") : t("settings.tradingAccounts.showApiKey", "显示API密钥")}
                             className={cn(
                               "absolute right-0 top-0 h-full px-3",
                               "flex items-center justify-center",
@@ -733,15 +732,15 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                           </button>
                         </div>
                         <p id={`${formId}-apikey-hint`} className="text-xs text-muted-foreground mt-1">
-                          API Key 将被加密存储，请确保其有效
+                          {t("settings.tradingAccounts.apiKeyEncrypted", "API Key 将被加密存储，请确保其有效")}
                         </p>
                       </div>
 
                       <div>
                         <label htmlFor={`${formId}-secret`} className="text-sm font-medium">
-                          密钥{" "}
+                          {t("settings.tradingAccounts.secret", "密钥")}{" "}
                           <span className="text-red-500" aria-hidden="true">*</span>
-                          <span className="sr-only">(必填)</span>
+                          <span className="sr-only">{t("settings.tradingAccounts.required", "(必填)")}</span>
                         </label>
                         <div className="relative mt-1">
                           <Input
@@ -749,13 +748,13 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                             type={showSecret ? "text" : "password"}
                             value={formSecret}
                             onChange={(e) => setFormSecret(e.target.value)}
-                            placeholder="输入密钥"
+                            placeholder={t("settings.tradingAccounts.enterSecret", "输入密钥")}
                             aria-required="true"
                             className="pr-10"
                           />
                           <button
                             type="button"
-                            aria-label={showSecret ? "隐藏密钥" : "显示密钥"}
+                            aria-label={showSecret ? t("settings.tradingAccounts.hideSecret", "显示密钥") : t("settings.tradingAccounts.showSecret", "显示密钥")}
                             className={cn(
                               "absolute right-0 top-0 h-full px-3",
                               "flex items-center justify-center",
@@ -776,16 +775,16 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                       {currentExchange.fields.includes("passphrase") && (
                         <div>
                           <label htmlFor={`${formId}-passphrase`} className="text-sm font-medium">
-                            密码(Passphrase){" "}
+                            {t("settings.tradingAccounts.passphrase", "密码(Passphrase)")}{" "}
                             <span className="text-red-500" aria-hidden="true">*</span>
-                            <span className="sr-only">(必填)</span>
+                            <span className="sr-only">{t("settings.tradingAccounts.required", "(必填)")}</span>
                           </label>
                           <Input
                             id={`${formId}-passphrase`}
                             type="password"
                             value={formPassphrase}
                             onChange={(e) => setFormPassphrase(e.target.value)}
-                            placeholder="输入密码(Passphrase)"
+                            placeholder={t("settings.tradingAccounts.enterPassphrase", "输入密码(Passphrase)")}
                             aria-required="true"
                             className="mt-1"
                           />
@@ -798,7 +797,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                           onClick={() => setShowForm(false)}
                           disabled={saving}
                         >
-                          取消
+                          {t("settings.tradingAccounts.cancel", "取消")}
                         </Button>
                         <Button
                           onClick={handleSave}
@@ -807,7 +806,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                           {saving && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
-                          {saving ? "保存中..." : "保存配置"}
+                          {saving ? t("settings.tradingAccounts.saving", "保存中...") : t("settings.tradingAccounts.saveConfig", "保存配置")}
                         </Button>
                       </div>
                     </div>
@@ -841,14 +840,13 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除账户</AlertDialogTitle>
+            <AlertDialogTitle>{t("settings.tradingAccounts.confirmDeleteTitle", "确认删除账户")}</AlertDialogTitle>
             <AlertDialogDescription>
-              即将删除账户「{deleteTarget?.name}
-              」，此操作不可撤销。删除后该账户的 API 密钥将被永久移除。
+              {t("settings.tradingAccounts.confirmDeleteDesc", "即将删除账户「{{name}}」，此操作不可撤销。删除后该账户的 API 密钥将被永久移除。", { name: deleteTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t("settings.tradingAccounts.cancel", "取消")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -858,7 +856,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                 }
               }}
             >
-              删除
+              {t("settings.tradingAccounts.delete", "删除")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -8,8 +8,12 @@ import { EmptyMarkdownPageCard } from "../empty-markdown-page-card";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string, opts?: Record<string, unknown>) => opts ? (fallback ?? key).replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => String(opts[k] ?? `{{${k}}}`)) : (fallback ?? key),
   }),
+  initReactI18next: {
+    type: "3rdParty" as const,
+    init: () => {},
+  },
 }));
 
 vi.mock("@viben/chat", () => ({
@@ -81,7 +85,7 @@ describe("EmptyMarkdownPageCard", () => {
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
 
     expect(onAiCreate).toHaveBeenCalledWith(
-      expect.stringContaining("创建静态网页"),
+      expect.stringContaining("create Static Page"),
       "static"
     );
   });

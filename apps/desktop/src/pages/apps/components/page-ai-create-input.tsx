@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Bot, FileText, Globe2 } from "lucide-react";
 import { ChatInput } from "@viben/chat";
 import { cn } from "@/lib/utils";
@@ -27,10 +28,11 @@ export function PageAiCreateInput({
   defaultMode = "document",
   onSubmit,
 }: PageAiCreateInputProps) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<PageCreationMode>(defaultMode);
   const [value, setValue] = useState("");
   const placeholder = useMemo(
-    () => `描述你想创建的${getPageCreationModeLabel(mode)}`,
+    () => t("page.emptyPage.describeWhatToCreate", "描述你想创建的{{mode}}", { mode: getPageCreationModeLabel(mode) }),
     [mode]
   );
 
@@ -46,7 +48,7 @@ export function PageAiCreateInput({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Bot className="size-4 text-muted-foreground" />
-          <span>使用 AI 助手创建</span>
+          <span>{t("page.emptyPage.aiCreateLabel", "使用 AI 助手创建")}</span>
         </div>
         <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
           {modeItems.map((item) => (
@@ -62,7 +64,7 @@ export function PageAiCreateInput({
               disabled={disabled}
             >
               {item.icon}
-              {item.label}
+              {t(item.value === "document" ? "page.emptyPage.document" : item.value === "static" ? "page.emptyPage.staticPage" : "page.emptyPage.fullstackApp", item.label)}
             </button>
           ))}
         </div>
