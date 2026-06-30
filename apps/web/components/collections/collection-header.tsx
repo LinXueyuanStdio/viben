@@ -18,7 +18,7 @@ import {
   Lock,
   Globe,
   GitFork,
-  Heart,
+  Bookmark,
   Package,
   MoreVertical,
   Pencil,
@@ -215,7 +215,7 @@ export function CollectionHeader({
           {t('forksCount', { count: collection.forksCount })}
         </span>
         <span className="flex items-center gap-1">
-          <Heart className="h-4 w-4" />
+          <Bookmark className="h-4 w-4" />
           {t('bookmarksCount', { count: collection.bookmarksCount })}
         </span>
       </div>

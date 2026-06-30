@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Download, Star, Zap } from 'lucide-react';
+import { Bookmark, Download, Star, Zap } from 'lucide-react';
 
 /**
  * Format large numbers with K/M suffix
@@ -105,7 +105,7 @@ export function SkillCard({ package: pkg }: SkillCardProps) {
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Heart className="h-3 w-3" />
+              <Bookmark className="h-3 w-3" />
               {formatNumber(pkg.bookmarksCount)}
             </span>
             <span className="flex items-center gap-1">

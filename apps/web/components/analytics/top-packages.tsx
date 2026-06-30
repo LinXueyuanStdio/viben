@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Server, Zap, Download, Heart } from 'lucide-react';
+import { Server, Zap, Download, Bookmark } from 'lucide-react';
 
 interface Package {
   id: string;
@@ -55,7 +55,7 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
                       {pkg.downloadsCount.toLocaleString()}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Heart className="h-3 w-3" />
+                      <Bookmark className="h-3 w-3" />
                       {pkg.bookmarksCount}
                     </span>
                   </div>
@@ -99,7 +99,7 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
                       {pkg.downloadsCount.toLocaleString()}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Heart className="h-3 w-3" />
+                      <Bookmark className="h-3 w-3" />
                       {pkg.bookmarksCount}
                     </span>
                   </div>

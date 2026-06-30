@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
-import { ArrowLeft, Download, Heart, Star, Calendar } from 'lucide-react';
+import { ArrowLeft, Download, Bookmark, Star, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -84,7 +84,7 @@ export function McpAnalyticsHeader({
             <CardTitle className="text-sm font-medium">
               {t('marketplace.favorites')}
             </CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
+            <Bookmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{bookmarksCount}</div>

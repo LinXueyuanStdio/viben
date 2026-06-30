@@ -20,7 +20,7 @@ import {
   User,
   Calendar,
   Download,
-  Heart,
+  Bookmark,
   MessageSquare,
   History,
   FileDigit,
@@ -176,7 +176,7 @@ export function PackageDetailModal({
                   {t('dashboard.admin.packages.detail.downloads', { count: pkg.downloadsCount })}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
-                  <Heart className="h-4 w-4" />
+                  <Bookmark className="h-4 w-4" />
                   {t('dashboard.admin.packages.detail.favorites', { count: pkg.bookmarksCount })}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">

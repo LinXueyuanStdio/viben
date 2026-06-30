@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { Heart, Zap, Server } from 'lucide-react';
+import { Bookmark, Zap, Server } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/utils';
@@ -93,7 +93,7 @@ export function ProfileFavorites() {
   if (favorites.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Heart className="h-12 w-12 text-muted-foreground/30" />
+        <Bookmark className="h-12 w-12 text-muted-foreground/30" />
         <p className="mt-4 text-lg text-muted-foreground">
           {t('profile.favorites.noFavorites')}
         </p>
@@ -158,7 +158,7 @@ function FavoriteCard({ package: pkg }: { package: FavoritePackage }) {
               </div>
             )}
             <span className="flex items-center gap-1">
-              <Heart className="h-3 w-3" />
+              <Bookmark className="h-3 w-3" />
               {pkg.bookmarksCount}
             </span>
             <span className="text-muted-foreground/60">

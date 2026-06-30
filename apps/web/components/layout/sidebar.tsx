@@ -23,7 +23,7 @@ import {
   Upload,
   PackageSearch,
   LogIn,
-  Heart,
+  Bookmark,
   Key,
   Users,
   Flag,
@@ -47,7 +47,7 @@ const navigation = [
 
 // "我的" section - personal account related
 const myNavigation = [
-  { nameKey: 'nav.favorites', href: '/settings/favorites', icon: Heart },
+  { nameKey: 'nav.favorites', href: '/settings/favorites', icon: Bookmark },
   { nameKey: 'nav.apiKeys', href: '/settings/tokens', icon: Key },
   { nameKey: 'nav.myPackages', href: '/settings/packages', icon: PackageSearch },
 ];
@@ -148,7 +148,7 @@ export function Sidebar({
         { name: t('adminNav.collections'), href: '/admin/collections', icon: Layers, permission: 'content.moderate' },
         { name: t('adminNav.moments'), href: '/admin/moments', icon: Clock, permission: 'moments.moderate' },
         { name: t('adminNav.reports'), href: '/admin/reports', icon: Flag, permission: 'reports.view' },
-        { name: t('adminNav.feedbacks'), href: '/admin/feedbacks', icon: Heart, permission: 'feedbacks.view' },
+        { name: t('adminNav.feedbacks'), href: '/admin/feedbacks', icon: MessageSquare, permission: 'feedbacks.view' },
         { name: t('adminNav.ratings'), href: '/admin/ratings', icon: Star, permission: 'content.moderate' },
       ],
     },

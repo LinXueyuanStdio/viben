@@ -4,7 +4,7 @@ import { db, skillPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalyticsCharts } from '@/components/analytics/analytics-charts';
-import { Download, Heart, Star, Calendar, ArrowLeft } from 'lucide-react';
+import { Download, Bookmark, Star, Calendar, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -118,7 +118,7 @@ export default async function SkillAnalyticsPage({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">收藏</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
+            <Bookmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{skill.bookmarksCount}</div>

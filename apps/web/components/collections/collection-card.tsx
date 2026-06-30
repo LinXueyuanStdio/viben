@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Layers, Lock, Heart, GitFork, Package } from 'lucide-react';
+import { Layers, Lock, Bookmark, GitFork, Package } from 'lucide-react';
 
 interface CollectionCardProps {
   collection: {
@@ -79,7 +79,7 @@ export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
               {collection.forksCount}
             </span>
             <span className="flex items-center gap-1">
-              <Heart className="h-3 w-3" />
+              <Bookmark className="h-3 w-3" />
               {collection.bookmarksCount}
             </span>
           </div>

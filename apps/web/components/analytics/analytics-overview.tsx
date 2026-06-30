@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Download, Heart, TrendingUp } from 'lucide-react';
+import { Package, Download, Bookmark, TrendingUp } from 'lucide-react';
 
 interface AnalyticsOverviewProps {
   totalPackages: number;
@@ -33,7 +33,7 @@ export function AnalyticsOverview({
     {
       titleKey: 'dashboard.analytics.totalFavorites',
       value: totalFavorites.toLocaleString(),
-      icon: Heart,
+      icon: Bookmark,
       descriptionKey: 'dashboard.analytics.totalFavoritesDesc',
     },
     {
