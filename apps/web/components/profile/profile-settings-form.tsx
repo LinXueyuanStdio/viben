@@ -128,16 +128,17 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      // Validate file size (2MB max for avatar)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('File too large. Maximum size is 2MB.');
+      // Validate file extension (more reliable than MIME type)
+      const validExtensions = ['png', 'jpg', 'jpeg', 'webp'];
+      const extension = file.name.split('.').pop()?.toLowerCase() || '';
+      if (!validExtensions.includes(extension)) {
+        toast.error(t('profile.toast.avatarUploadFailed') + ': ' + 'Unsupported format. Use PNG, JPEG, or WebP.');
         return;
       }
 
-      // Validate file type
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error('Unsupported format. Use PNG, JPEG, or WebP.');
+      // Validate file size (2MB max for avatar)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error(t('profile.toast.avatarUploadFailed') + ': ' + 'File too large. Maximum size is 2MB.');
         return;
       }
 
@@ -145,14 +146,23 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
       try {
         const formData = new FormData();
         formData.append('file', file);
+        // Include kind so the media asset is tagged correctly
+        formData.append('kind', 'avatar');
 
         const uploadRes = await fetch('/api/media/upload', {
           method: 'POST',
           body: formData,
         });
 
-        if (!uploadRes.ok) throw new Error('Upload failed');
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || `Upload failed (${uploadRes.status})`);
+        }
         const uploadData = await uploadRes.json();
+
+        if (!uploadData.url) {
+          throw new Error('Upload succeeded but no URL returned');
+        }
 
         // Update user avatarUrl via PATCH
         const updateRes = await fetch('/api/users/me', {
@@ -161,12 +171,16 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
           body: JSON.stringify({ avatarUrl: uploadData.url }),
         });
 
-        if (!updateRes.ok) throw new Error('Failed to update profile');
+        if (!updateRes.ok) {
+          const errData = await updateRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to update profile');
+        }
         setAvatarUrl(uploadData.url);
         toast.success(t('profile.toast.avatarUpdated'));
         router.refresh();
-      } catch {
-        toast.error(t('profile.toast.avatarUploadFailed'));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : t('profile.toast.avatarUploadFailed');
+        toast.error(message);
       } finally {
         setAvatarUploading(false);
         // Reset file input

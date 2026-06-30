@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = file.type.split('/')[1] || 'png';
-    const key = `media/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const ext = file.name.split('.').pop()?.toLowerCase() || file.type.split('/')[1] || 'png';
+    const kind = (formData.get('kind') as string) || 'page_cover';
+    const folder = kind === 'avatar' ? 'avatars' : 'media';
+    const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 
     const result = await getStorage().upload(key, buffer, { contentType: file.type });
 
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
       .insert(mediaAssets)
       .values({
         ownerUserId: session.userId,
-        kind: 'page_cover',
+        kind,
         source: 'object_storage',
         url: result.url,
         mimeType: file.type,
