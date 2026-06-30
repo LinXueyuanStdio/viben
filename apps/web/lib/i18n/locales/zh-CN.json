@@ -330,10 +330,23 @@
         "actionError": "更新页面状态失败",
         "retry": "重试",
         "loadError": "加载页面失败",
+        "filterAll": "全部",
         "statusLabels": { "pending": "待审核", "approved": "已通过", "rejected": "已拒绝", "hidden": "已隐藏" },
-        "columns": { "title": "标题", "author": "作者", "status": "状态", "views": "浏览", "publishedAt": "发布时间", "actions": "操作" },
+        "visibilityLabels": { "public": "公开", "unlisted": "不公开", "private": "私密" },
+        "columns": { "title": "标题", "author": "作者", "visibility": "可见性", "moderationStatus": "审核状态", "stats": "数据", "publishedAt": "发布时间", "actions": "操作" },
         "showing": "显示 {{count}} / {{total}} 个页面",
-        "closeDetail": "关闭"
+        "totalCount": "共 {{count}} 个页面",
+        "closeDetail": "关闭",
+        "unknown": "未知",
+        "allDone": "所有页面已审核完毕",
+        "noMatching": "没有符合条件的页面",
+        "detailLabels": { "author": "作者：", "visibility": "可见性：", "moderationStatus": "审核状态：", "publishedAt": "发布时间：", "description": "描述", "cover": "封面", "stats": "数据统计", "preview": "内容预览" },
+        "rejectTitle": "拒绝页面",
+        "rejectDescription": "请填写拒绝原因（可选），该原因将对作者可见。",
+        "rejectReasonLabel": "拒绝原因",
+        "rejectReasonPlaceholder": "如：内容不完整、违反社区规范等",
+        "confirmReject": "确认拒绝",
+        "loadDetailError": "加载失败"
       },
       "categories": {
         "title": "分类管理",
@@ -413,7 +426,7 @@
         "loadError": "加载反馈失败",
         "filterAll": "全部",
         "categories": { "bug": "Bug", "suggestion": "建议", "other": "其他" },
-        "columns": { "reporter": "反馈者", "content": "内容", "category": "类别", "rating": "评分", "time": "时间", "actions": "操作" },
+        "columns": { "reporter": "反馈者", "pageId": "页面ID", "content": "内容", "category": "类别", "rating": "评分", "time": "时间", "actions": "操作" },
         "showing": "显示 {{count}} / {{total}} 条反馈"
       },
       "rankings": {
@@ -434,7 +447,10 @@
         "buildStatus": { "building": "构建中", "ready": "就绪", "failed": "失败", "expired": "已过期" },
         "columns": { "key": "榜单 Key", "entity": "实体类型", "window": "时间窗口", "scope": "范围", "status": "状态", "items": "条目数", "generated": "生成时间", "actions": "操作" },
         "detailColumns": { "rank": "排名", "title": "标题", "type": "类型", "author": "作者", "score": "评分", "data": "数据", "delta": "变化" },
-        "showingSnapshots": "共 {{count}} 个快照"
+        "showingSnapshots": "共 {{count}} 个快照",
+        "viewItems": "查看条目",
+        "retry": "重试",
+        "loadError": "加载榜单失败"
       },
       "operations": {
         "title": "运营位管理",

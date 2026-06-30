@@ -330,10 +330,23 @@
         "actionError": "Failed to update page status",
         "retry": "Retry",
         "loadError": "Failed to load pages",
+        "filterAll": "All",
         "statusLabels": { "pending": "Pending", "approved": "Approved", "rejected": "Rejected", "hidden": "Hidden" },
-        "columns": { "title": "Title", "author": "Author", "status": "Status", "views": "Views", "publishedAt": "Published", "actions": "Actions" },
+        "visibilityLabels": { "public": "Public", "unlisted": "Unlisted", "private": "Private" },
+        "columns": { "title": "Title", "author": "Author", "visibility": "Visibility", "moderationStatus": "Status", "stats": "Stats", "publishedAt": "Published", "actions": "Actions" },
         "showing": "Showing {{count}} / {{total}} pages",
-        "closeDetail": "Close"
+        "totalCount": "{{count}} pages total",
+        "closeDetail": "Close",
+        "unknown": "Unknown",
+        "allDone": "All pages reviewed",
+        "noMatching": "No matching pages",
+        "detailLabels": { "author": "Author:", "visibility": "Visibility:", "moderationStatus": "Status:", "publishedAt": "Published:", "description": "Description", "cover": "Cover", "stats": "Stats", "preview": "Content Preview" },
+        "rejectTitle": "Reject Page",
+        "rejectDescription": "Please provide a rejection reason (optional). This reason will be visible to the author.",
+        "rejectReasonLabel": "Rejection Reason",
+        "rejectReasonPlaceholder": "e.g., Incomplete content, violates community guidelines",
+        "confirmReject": "Confirm Reject",
+        "loadDetailError": "Failed to load"
       },
       "categories": {
         "title": "Category Management",
@@ -413,7 +426,7 @@
         "loadError": "Failed to load feedback",
         "filterAll": "All",
         "categories": { "bug": "Bug", "suggestion": "Suggestion", "other": "Other" },
-        "columns": { "reporter": "Reporter", "content": "Content", "category": "Category", "rating": "Rating", "time": "Time", "actions": "Actions" },
+        "columns": { "reporter": "Reporter", "pageId": "Page ID", "content": "Content", "category": "Category", "rating": "Rating", "time": "Time", "actions": "Actions" },
         "showing": "Showing {{count}} / {{total}} feedback"
       },
       "rankings": {
@@ -434,7 +447,10 @@
         "buildStatus": { "building": "Building", "ready": "Ready", "failed": "Failed", "expired": "Expired" },
         "columns": { "key": "Key", "entity": "Entity Type", "window": "Time Window", "scope": "Scope", "status": "Status", "items": "Items", "generated": "Generated", "actions": "Actions" },
         "detailColumns": { "rank": "Rank", "title": "Title", "type": "Type", "author": "Author", "score": "Score", "data": "Stats", "delta": "Change" },
-        "showingSnapshots": "{{count}} snapshots"
+        "showingSnapshots": "{{count}} snapshots",
+        "viewItems": "View Items",
+        "retry": "Retry",
+        "loadError": "Failed to load rankings"
       },
       "operations": {
         "title": "Operation Slot Management",
