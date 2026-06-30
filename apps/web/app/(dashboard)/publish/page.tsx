@@ -1,16 +1,25 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { PublishWizard } from '@/components/publish/publish-wizard';
+import type { PackageType } from '@/components/publish/publish-wizard';
 import { T } from '@/components/content/i18n-text';
 
 export const dynamic = 'force-dynamic';
 
-export default async function PublishPage() {
+export default async function PublishPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>
+}) {
   const session = await getSession();
 
   if (!session?.userId) {
     redirect('/login');
   }
+
+  const params = await searchParams;
+  const initialType: PackageType | undefined =
+    params.type === 'mcp' || params.type === 'skill' ? params.type : undefined;
 
   return (
     <div className="container max-w-4xl py-8">
@@ -23,7 +32,7 @@ export default async function PublishPage() {
         </p>
       </div>
 
-      <PublishWizard />
+      <PublishWizard initialType={initialType} />
     </div>
   );
 }

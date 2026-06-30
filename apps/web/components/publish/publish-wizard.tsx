@@ -55,12 +55,16 @@ const initialMetadata: PackageMetadata = {
   content: '',
 };
 
-export function PublishWizard() {
+interface PublishWizardProps {
+  initialType?: PackageType
+}
+
+export function PublishWizard({ initialType }: PublishWizardProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const [state, setState] = useState<PublishWizardState>({
-    step: 0,
-    packageType: null,
+    step: initialType ? 1 : 0,
+    packageType: initialType ?? null,
     metadata: initialMetadata,
     file: null,
   });
