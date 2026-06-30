@@ -21,10 +21,13 @@ export interface ToggleReactionResult {
   reactions_count: number
 }
 
-export async function toggleReaction(momentId: string): Promise<ToggleReactionResult> {
+export async function toggleReaction(params: {
+  entityType: "moment" | "published_page" | "comment"
+  entityId: string
+}): Promise<ToggleReactionResult> {
   return postCommunityApi("/api/community/reactions/toggle", {
-    entity_type: "moment",
-    entity_id: momentId,
+    entity_type: params.entityType,
+    entity_id: params.entityId,
     reaction_type: "like",
   }) as Promise<ToggleReactionResult>
 }
@@ -34,10 +37,13 @@ export interface ToggleBookmarkResult {
   bookmarks_count: number
 }
 
-export async function toggleBookmark(momentId: string): Promise<ToggleBookmarkResult> {
+export async function toggleBookmark(params: {
+  entityType: "moment" | "published_page"
+  entityId: string
+}): Promise<ToggleBookmarkResult> {
   return postCommunityApi("/api/community/bookmarks/toggle", {
-    entity_type: "moment",
-    entity_id: momentId,
+    entity_type: params.entityType,
+    entity_id: params.entityId,
   }) as Promise<ToggleBookmarkResult>
 }
 

@@ -14,6 +14,8 @@ import { MiniPageCard } from "./mini-page-card"
 import type { MiniPageCardData } from "./mini-page-card"
 import { cn } from "@/lib/utils"
 import { formatCount } from "@/lib/utils/format"
+import { useToggleLike } from "@/hooks/use-toggle-like"
+import { useToggleBookmark } from "@/hooks/use-toggle-bookmark"
 
 export interface PageMetaData {
   author: {
@@ -77,89 +79,31 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { author, title, uid, sidePageUid, description, tags, stats, actions, chapters, chapterProgress, collectionName, collectionSlug, recommendations } = data
 
-  // Optimistic state for action buttons
-  const [hasReacted, setHasReacted] = useState(data.viewerHasReacted)
-  const [hasBookmarked, setHasBookmarked] = useState(data.viewerHasBookmarked)
-  const [likeCount, setLikeCount] = useState(actions.likes)
-  const [bookmarkCount, setBookmarkCount] = useState(actions.bookmarks)
+  // Optimistic hooks for like and bookmark
+  const like = useToggleLike({
+    entityType: "published_page",
+    entityId: data.pageDbId,
+    initialLiked: data.viewerHasReacted,
+    initialCount: actions.likes,
+  })
+  const bookmark = useToggleBookmark({
+    entityType: "published_page",
+    entityId: data.pageDbId,
+    initialBookmarked: data.viewerHasBookmarked,
+    initialCount: actions.bookmarks,
+  })
+
   const [shareCount, setShareCount] = useState(actions.shares)
-  const [likePending, setLikePending] = useState(false)
-  const [bookmarkPending, setBookmarkPending] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const handleLike = async () => {
-    if (!data.isAuthenticated) {
-      toast.error(t("community.loginRequired"))
-      return
-    }
-    if (likePending) return
-    setLikePending(true)
-    const wasReacted = hasReacted
-    setHasReacted(!wasReacted)
-    setLikeCount(c => c + (wasReacted ? -1 : 1))
-    try {
-      const res = await fetch("/api/community/reactions/toggle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entity_type: "published_page",
-          entity_id: data.pageDbId,
-          reaction_type: "like",
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        console.error("Like failed:", res.status, err)
-        throw new Error(err?.error?.message ?? "failed")
-      }
-      const result = await res.json()
-      setHasReacted(result.has_reacted)
-      setLikeCount(result.reactions_count)
-    } catch (e) {
-      console.error("Like error:", e)
-      setHasReacted(wasReacted)
-      setLikeCount(c => c + (wasReacted ? 1 : -1))
-      toast.error(t("community.likeFailed"))
-    } finally {
-      setLikePending(false)
-    }
+  const handleLike = () => {
+    if (!data.isAuthenticated) { toast.error(t("community.loginRequired")); return }
+    like.toggle().catch(() => toast.error(t("community.likeFailed")))
   }
 
-  const handleBookmark = async () => {
-    if (!data.isAuthenticated) {
-      toast.error(t("community.loginRequired"))
-      return
-    }
-    if (bookmarkPending) return
-    setBookmarkPending(true)
-    const wasBookmarked = hasBookmarked
-    setHasBookmarked(!wasBookmarked)
-    setBookmarkCount(c => c + (wasBookmarked ? -1 : 1))
-    try {
-      const res = await fetch("/api/community/bookmarks/toggle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entity_type: "published_page",
-          entity_id: data.pageDbId,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        console.error("Bookmark failed:", res.status, err)
-        throw new Error(err?.error?.message ?? "failed")
-      }
-      const result = await res.json()
-      setHasBookmarked(result.has_bookmarked)
-      setBookmarkCount(result.bookmarks_count)
-    } catch (e) {
-      console.error("Bookmark error:", e)
-      setHasBookmarked(wasBookmarked)
-      setBookmarkCount(c => c + (wasBookmarked ? 1 : -1))
-      toast.error(t("community.bookmarkFailed"))
-    } finally {
-      setBookmarkPending(false)
-    }
+  const handleBookmark = () => {
+    if (!data.isAuthenticated) { toast.error(t("community.loginRequired")); return }
+    bookmark.toggle().catch(() => toast.error(t("community.bookmarkFailed")))
   }
 
   const handleShare = async () => {
@@ -260,37 +204,39 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       <div className="grid grid-cols-3 gap-[7px]">
         <button
           onClick={handleLike}
-          disabled={likePending}
+          disabled={like.pending}
           className={cn(
             "flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] transition-colors",
-            hasReacted
+            like.bounce && "animate-bounce-in",
+            like.liked
               ? "bg-red-50 dark:bg-red-950/20 text-red-500"
               : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
           )}
         >
-          {likePending ? (
+          {like.pending ? (
             <Loader2 className="size-5 animate-spin" />
           ) : (
-            <ThumbsUp className={cn("size-5 transition-transform duration-200 hover:scale-110", hasReacted && "fill-current")} />
+            <ThumbsUp className={cn("size-5 transition-transform duration-200", like.liked && "fill-current")} />
           )}
-          <span className="text-[13px] font-bold">{formatCount(likeCount)}</span>
+          <span className="text-[13px] font-bold">{formatCount(like.count)}</span>
         </button>
         <button
           onClick={handleBookmark}
-          disabled={bookmarkPending}
+          disabled={bookmark.pending}
           className={cn(
             "flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] transition-colors",
-            hasBookmarked
+            bookmark.bounce && "animate-bounce-in",
+            bookmark.bookmarked
               ? "bg-amber-50 dark:bg-amber-950/20 text-amber-500"
               : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
           )}
         >
-          {bookmarkPending ? (
+          {bookmark.pending ? (
             <Loader2 className="size-5 animate-spin" />
           ) : (
-            <Bookmark className={cn("size-5", hasBookmarked && "fill-current")} />
+            <Bookmark className={cn("size-5", bookmark.bookmarked && "fill-current")} />
           )}
-          <span className="text-[13px] font-bold">{formatCount(bookmarkCount)}</span>
+          <span className="text-[13px] font-bold">{formatCount(bookmark.count)}</span>
         </button>
         <button
           onClick={handleShare}

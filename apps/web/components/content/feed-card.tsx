@@ -11,7 +11,8 @@ import type { AttachmentData } from "./attachment"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
 import { cn } from "@/lib/utils"
-import { toggleReaction, createComment } from "@/lib/api/community"
+import { createComment } from "@/lib/api/community"
+import { useToggleLike } from "@/hooks/use-toggle-like"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export interface FeedCardData {
@@ -47,10 +48,13 @@ interface FeedCardProps {
 export function FeedCard({ data, variant = "preloaded", className, session, onAction }: FeedCardProps) {
   const { t } = useTranslation()
 
-  const [optimisticLikes, setOptimisticLikes] = useState(data.actions.likes)
-  const [likedActive, setLikedActive] = useState(data.actions.hasLiked ?? false)
-  const [pendingLike, setPendingLike] = useState(false)
-  const [bounceLike, setBounceLike] = useState(false)
+  const like = useToggleLike({
+    entityType: "moment",
+    entityId: data.actions.momentId ?? "",
+    initialLiked: data.actions.hasLiked ?? false,
+    initialCount: data.actions.likes,
+  })
+
   const [optimisticComments, setOptimisticComments] = useState(data.actions.comments)
 
   // Inline comment composer
@@ -59,20 +63,10 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
 
-  // Ref-based guard so useEffect doesn't overwrite in-flight mutations
-  const pendingRef = useRef({ like: false })
-  // Snapshot refs for safe rollback
-  const snapshotRef = useRef({ likes: data.actions.likes })
-
-  // Sync state when data prop changes (e.g., after page re-render with fresh data),
-  // but skip if a mutation is in-flight to avoid overwriting optimistic updates.
+  // Sync comment count when data prop changes
   useEffect(() => {
-    if (pendingRef.current.like) return
-    setOptimisticLikes(data.actions.likes)
     setOptimisticComments(data.actions.comments)
-    setLikedActive(data.actions.hasLiked ?? false)
-    snapshotRef.current = { likes: data.actions.likes }
-  }, [data.actions.likes, data.actions.comments, data.actions.hasLiked])
+  }, [data.actions.comments])
 
   const handleShare = useCallback(() => {
     const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
@@ -84,51 +78,11 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
     }
   }, [data.head.name, data.text, data.actions.shareUrl])
 
-  const handleLike = useCallback(async () => {
-    if (onAction) {
-      onAction("like")
-      return
-    }
-
-    const momentId = data.actions.momentId
-    if (!momentId) {
-      toast.info(t("community.interactSoon"))
-      return
-    }
-
-    if (pendingRef.current.like) return
-
-    pendingRef.current.like = true
-    setPendingLike(true)
-    const wasActive = likedActive
-    setLikedActive(!wasActive)
-    setOptimisticLikes((c) => (wasActive ? Math.max(0, c - 1) : c + 1))
-    if (!wasActive) {
-      setBounceLike(true)
-      setTimeout(() => setBounceLike(false), 600)
-    }
-
-    try {
-      const result = await toggleReaction(momentId)
-      setLikedActive(result.has_reacted)
-      setOptimisticLikes(result.reactions_count)
-      snapshotRef.current.likes = result.reactions_count
-    } catch (err: unknown) {
-      // Revert optimistic update
-      setLikedActive(wasActive)
-      setOptimisticLikes(snapshotRef.current.likes)
-
-      const msg = err instanceof Error ? err.message : ""
-      if (msg === "login_required") {
-        toast.error(t("community.loginToInteract"))
-      } else {
-        toast.error(t("community.likeFailed"))
-      }
-    } finally {
-      pendingRef.current.like = false
-      setPendingLike(false)
-    }
-  }, [data.actions.momentId, likedActive, onAction, t])
+  const handleLikeWrap = useCallback(() => {
+    if (onAction) { onAction("like"); return }
+    if (!data.actions.momentId) { toast.info(t("community.interactSoon")); return }
+    like.toggle().catch(() => {})
+  }, [onAction, data.actions.momentId, like, t])
 
   const handleToggleComment = useCallback(() => {
     if (onAction) { onAction("comment"); return }
@@ -176,15 +130,15 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
         { icon: Eye, value: actions.views, format: true },
         {
           icon: ThumbsUp,
-          value: optimisticLikes,
+          value: like.count,
           format: true,
           dataAction: "like",
-          onClick: handleLike,
-          disabled: pendingLike,
-          loading: pendingLike,
-          active: likedActive,
+          onClick: handleLikeWrap,
+          disabled: like.pending,
+          loading: like.pending,
+          active: like.liked,
           activeColor: "text-red-500",
-          bounce: bounceLike,
+          bounce: like.bounce,
         },
         {
           icon: MessageCircle,
@@ -208,15 +162,15 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
         { icon: Eye, value: actions.views, format: true },
         {
           icon: ThumbsUp,
-          value: optimisticLikes,
+          value: like.count,
           format: true,
           dataAction: "like",
-          onClick: handleLike,
-          disabled: pendingLike,
-          loading: pendingLike,
-          active: likedActive,
+          onClick: handleLikeWrap,
+          disabled: like.pending,
+          loading: like.pending,
+          active: like.liked,
           activeColor: "text-red-500",
-          bounce: bounceLike,
+          bounce: like.bounce,
         },
         {
           icon: MessageCircle,
