@@ -14,6 +14,7 @@ import { NavPopover } from "./nav-popover"
 import { IconButton } from "@/components/ui/icon-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
+import { CreateDropdown } from "./create-dropdown"
 import { ReportDialog } from "@/components/content/report-dialog"
 import { FeedbackDialog } from "@/components/content/feedback-dialog"
 import { HeaderAuthButtons } from "./header-auth-buttons"
@@ -185,6 +186,7 @@ export function Topbar({
           ) : (
             <>
               {/* 默认模式操作 */}
+              {session && <CreateDropdown />}
               <LanguageSwitcher />
               <ThemeToggle />
               {session ? (
