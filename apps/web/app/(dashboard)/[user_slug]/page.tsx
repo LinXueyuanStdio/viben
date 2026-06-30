@@ -15,6 +15,7 @@ import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
+import type { Metadata } from "next"
 import { mapMomentRowToFeedCard, gradientCover, timeAgo } from "@/lib/services/moment-mapper"
 
 /** Minimal shared shape between full publishedPages row and joined query results */
@@ -57,6 +58,47 @@ function mapPageToCard(
       },
     } satisfies PageCardData,
     href: `/${encodeURIComponent(slug)}/${encodeURIComponent(p.uid)}?tab=read`,
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ user_slug: string }>
+}): Promise<Metadata> {
+  const { user_slug: slug } = await params
+  const user = await db.query.users.findFirst({
+    where: eq(users.userSlug, slug),
+    columns: {
+      displayName: true,
+      userSlug: true,
+      bio: true,
+      avatarUrl: true,
+    },
+  })
+
+  if (!user) return { title: "未找到" }
+
+  const displayName = user.displayName ?? user.userSlug
+  const description = user.bio ?? `${displayName} 在 Viben 上的个人主页`
+
+  return {
+    title: `${displayName} (@${user.userSlug})`,
+    description,
+    openGraph: {
+      title: `${displayName} (@${user.userSlug})`,
+      description,
+      type: "profile" as const,
+      ...(user.avatarUrl
+        ? { images: [{ url: user.avatarUrl, width: 256, height: 256 }] }
+        : {}),
+    },
+    twitter: {
+      card: "summary" as const,
+      title: `${displayName} (@${user.userSlug})`,
+      description,
+      ...(user.avatarUrl ? { images: [user.avatarUrl] } : {}),
+    },
   }
 }
 

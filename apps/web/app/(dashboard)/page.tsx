@@ -12,6 +12,22 @@ import { db, publishedPages, users } from "@/lib/db"
 import { desc, eq, and } from "drizzle-orm"
 import type { HeroSlideData } from "@/components/content/hero-carousel"
 import type { PageCardData } from "@/components/content/page-card"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Viben - 创作 · 分享 · 连接",
+  description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
+  openGraph: {
+    title: "Viben - 创作 · 分享 · 连接",
+    description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Viben - 创作 · 分享 · 连接",
+    description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
+  },
+}
 
 function gradientCover(title: string): string {
   const hue = title.charCodeAt(0) % 360

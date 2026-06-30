@@ -18,9 +18,28 @@ export const dynamic = "force-dynamic"
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { user_slug, page_id } = await params
   const ctx = await getPublishedPageContext(user_slug, page_id)
+
+  if (!ctx) return { title: "页面未找到" }
+
+  const title = `${ctx.page.title} - Viben`
+  const description = ctx.page.description ?? `${ctx.author.displayName ?? ctx.author.userSlug} 分享的页面`
+  const ogImage = ctx.page.coverUrl ?? ctx.author.avatarUrl
+
   return {
-    title: ctx ? `${ctx.page.title} - Viben` : "页面未找到",
-    description: ctx?.page.description ?? "",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article" as const,
+      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),
+    },
+    twitter: {
+      card: ctx.page.coverUrl ? "summary_large_image" as const : "summary" as const,
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   }
 }
 

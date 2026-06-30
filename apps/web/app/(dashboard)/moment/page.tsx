@@ -10,7 +10,23 @@ import { desc, ne } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { AuthorCardData } from "@/components/content/author-card"
+import type { Metadata } from "next"
 import { mapRichMomentToFeedCard } from "@/lib/services/moment-mapper"
+
+export const metadata: Metadata = {
+  title: "动态 - Viben",
+  description: "发现来自 Viben 社区的创作、动态与分享。",
+  openGraph: {
+    title: "动态 - Viben",
+    description: "发现来自 Viben 社区的创作、动态与分享。",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "动态 - Viben",
+    description: "发现来自 Viben 社区的创作、动态与分享。",
+  },
+}
 
 const MOMENT_TABS = [
   { key: "最新", feedType: "latest" as const },
