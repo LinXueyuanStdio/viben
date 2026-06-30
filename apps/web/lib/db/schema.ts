@@ -568,6 +568,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   feedbacks: many(feedbacks),
   moderationLogs: many(moderationLogs),
   drafts: many(drafts),
+  notes: many(notes),
   githubConnection: one(githubConnections, {
     fields: [users.id],
     references: [githubConnections.userId],
@@ -1743,3 +1744,38 @@ export const searchQueries = pgTable(
     index("search_queries_user_id_idx").on(table.userId),
   ]
 );
+
+// ============================================
+// Notes Table
+// ============================================
+
+export const notes = pgTable(
+  'notes',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull(),
+    pageId: text('page_id').notNull(),
+    authorUserId: text('author_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    contentFormat: text('content_format').default('markdown').notNull(),
+    isPinned: boolean('is_pinned').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('notes_uid_idx').on(table.uid),
+    index('notes_page_author_idx').on(table.pageId, table.authorUserId, table.createdAt.desc()),
+  ]
+);
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  author: one(users, {
+    fields: [notes.authorUserId],
+    references: [users.id],
+  }),
+}));
