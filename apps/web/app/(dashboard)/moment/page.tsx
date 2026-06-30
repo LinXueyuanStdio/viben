@@ -126,7 +126,7 @@ export default async function MomentPage() {
   }))
 
   return (
-    <div className="grid gap-[14px] lg:grid-cols-[1fr_330px]">
+    <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <div className="rounded-[12px] border border-border bg-background shadow-sm p-2.5">
           <Composer userFallbackText={session?.username?.[0] ?? "你"} userAvatarUrl={session?.avatarUrl} />
