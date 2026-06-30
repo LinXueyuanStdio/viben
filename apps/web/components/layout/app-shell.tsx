@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider } from "./drawer-context"
+import { getTopbarMode } from "./topbar-mode"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
@@ -49,8 +50,7 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const tab = searchParams.get("tab")
-  const isRead = tab === "read" || tab === "settings"
+  const isRead = getTopbarMode(pathname, searchParams) === "read"
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false

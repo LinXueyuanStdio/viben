@@ -51,7 +51,11 @@ function gradientCover(title: string): string {
 export default async function PagePage({ params, searchParams }: PageProps) {
   const { user_slug, page_id } = await params
   const { tab } = await searchParams
-  const activeTab = tab ?? "read"
+  // 确保 URL 中始终有 tab 参数，以便 topbar 正确识别阅读模式
+  if (!tab) {
+    redirect(`/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}?tab=read`)
+  }
+  const activeTab = tab
   const session = await getSession()
 
   const ctx = await getPublishedPageContext(user_slug, page_id)
