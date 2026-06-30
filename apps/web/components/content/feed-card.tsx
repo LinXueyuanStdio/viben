@@ -47,6 +47,8 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
   const [bookmarkedActive, setBookmarkedActive] = useState(data.actions.hasBookmarked ?? false)
   const [pendingLike, setPendingLike] = useState(false)
   const [pendingBookmark, setPendingBookmark] = useState(false)
+  const [bounceLike, setBounceLike] = useState(false)
+  const [bounceBookmark, setBounceBookmark] = useState(false)
 
   // Ref-based guard so useEffect doesn't overwrite in-flight mutations
   const pendingRef = useRef({ like: false, bookmark: false })
@@ -93,6 +95,10 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     const wasActive = likedActive
     setLikedActive(!wasActive)
     setOptimisticLikes((c) => (wasActive ? Math.max(0, c - 1) : c + 1))
+    if (!wasActive) {
+      setBounceLike(true)
+      setTimeout(() => setBounceLike(false), 600)
+    }
 
     try {
       const result = await toggleReaction(momentId)
@@ -135,6 +141,10 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     const wasActive = bookmarkedActive
     setBookmarkedActive(!wasActive)
     setOptimisticBookmarks((c) => (wasActive ? Math.max(0, c - 1) : c + 1))
+    if (!wasActive) {
+      setBounceBookmark(true)
+      setTimeout(() => setBounceBookmark(false), 600)
+    }
 
     try {
       const result = await toggleBookmark(momentId)
@@ -168,8 +178,6 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
 
   const { head, text, quote, attachment, actions } = data
   const allAttachments = attachment ? [attachment] : []
-
-  const anyActionPending = pendingLike || pendingBookmark
 
   const actionStats: StatProps[] = variant === "rich"
     ? [
@@ -234,17 +242,17 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
 
   return (
     <article className={cn(
-      "border border-border rounded-[12px] bg-background shadow-sm p-2.5",
+      "border-b border-border/60 last:border-b-0 bg-background px-3 py-2.5 hover:bg-surface-secondary/50 transition-colors duration-150",
       variant === "rich" && "grid gap-[9px]",
       className
     )}>
       <FeedHead data={head} />
       <div className="ml-[42px] space-y-[9px]">
-        <p className="text-foreground leading-relaxed text-sm">
+        <p className="text-foreground leading-relaxed text-[15px]">
           {text}
         </p>
         {quote && (
-          <blockquote className="border-l-[3px] border-primary/30 rounded-r-md bg-primary/5 px-3 py-2 text-[13px] text-muted-foreground">
+          <blockquote className="border-l-[2px] border-primary/20 rounded-r-md px-3 py-1.5 text-[13px] text-muted-foreground italic">
             {quote}
           </blockquote>
         )}
@@ -261,13 +269,9 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
         <div className="flex items-center justify-between mt-[5px]">
           <StatsRow stats={actionStats} />
           <button
-            className={cn(
-              "inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground transition-colors",
-              anyActionPending && "opacity-60 pointer-events-none",
-            )}
+            className="inline-flex items-center justify-center size-[28px] rounded-[8px] hover:bg-surface-secondary text-muted-foreground transition-colors"
             aria-label={t("community.share")}
             onClick={handleShare}
-            disabled={anyActionPending}
           >
             <Share2 className="size-4" />
           </button>

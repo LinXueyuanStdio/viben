@@ -12,10 +12,12 @@ export interface StatProps {
   onClick?: (action: string) => void
   disabled?: boolean
   active?: boolean
+  activeColor?: string
+  bounce?: boolean
   loading?: boolean
 }
 
-export function Stat({ icon: Icon, value, format = false, className, dataAction, onClick, disabled, active, loading }: StatProps) {
+export function Stat({ icon: Icon, value, format = false, className, dataAction, onClick, disabled, active, activeColor, bounce, loading }: StatProps) {
   const displayValue = format && typeof value === "number" ? formatCount(value) : value
 
   if (onClick && dataAction) {
@@ -31,14 +33,15 @@ export function Stat({ icon: Icon, value, format = false, className, dataAction,
           !disabled && "hover:text-foreground",
           disabled && loading && "opacity-100 cursor-default",
           disabled && !loading && "opacity-60 cursor-default",
-          active && "text-red-500",
+          active && activeColor,
+          bounce && "animate-bounce-in",
           className
         )}
       >
         {loading ? (
           <Loader2 className="size-[14px] shrink-0 animate-spin" />
         ) : (
-          <Icon className={cn("size-[14px] shrink-0 transition-transform duration-200", active && "scale-110")} />
+          <Icon className={cn("size-[14px] shrink-0 transition-transform duration-200", active && "scale-110 fill-current")} />
         )}
         <span>{displayValue}</span>
       </button>

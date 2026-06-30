@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { IconButton } from "@/components/ui/icon-button"
 import { MoreHorizontal, Flag, Share2 } from "lucide-react"
-import { Pill } from "./pill"
 import { cn } from "@/lib/utils"
 
 export type FeedKind = "更新" | "发布" | "转发" | "评论" | "收藏" | "模板" | "数据" | "合集" | "论文" | "笔记"
@@ -33,7 +32,7 @@ export function FeedHead({ data, className }: FeedHeadProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const { fallbackText, avatarUrl, name, handle, userSlug, kind, timeAgo, source } = data
+  const { fallbackText, avatarUrl, name, handle, userSlug, timeAgo, source } = data
   const authorHref = `/${encodeURIComponent(userSlug)}`
 
   // Close menu on outside click
@@ -80,7 +79,6 @@ export function FeedHead({ data, className }: FeedHeadProps) {
           <Link href={authorHref} className="font-bold text-sm truncate hover:underline">
             {name}
           </Link>
-          <Pill variant="kind">{kind}</Pill>
         </div>
         <div className="text-[13px] text-muted-foreground truncate">
           {handle}
