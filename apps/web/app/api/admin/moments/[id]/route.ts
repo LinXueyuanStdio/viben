@@ -9,9 +9,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
-import { getSession } from '@/lib/auth';
 import { db, moments, users, momentAttachments, reposts } from '@/lib/db';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
 import { z } from 'zod';
 
