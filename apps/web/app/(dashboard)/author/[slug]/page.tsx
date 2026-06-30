@@ -3,11 +3,12 @@ import { PageCard } from "@/components/content/page-card"
 import { FeedCard } from "@/components/content/feed-card"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments } from "@/lib/db"
+import { db, publishedPages, users, moments, collections, favorites } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { EmptyState, T } from "@/components/content/i18n-text"
+import { CollectionCard } from "@/components/collections/collection-card"
 import type { PageCardData } from "@/components/content/page-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { FeedCardData } from "@/components/content/feed-card"
@@ -53,7 +54,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
   if (!user) notFound()
 
-  const [authorPages, authorMoments, pageCountResult] = await Promise.all([
+  const [authorPages, authorMoments, pageCountResult, createdCollections, favoritedCollections] = await Promise.all([
     db.select().from(publishedPages)
       .where(and(
         eq(publishedPages.userId, user.id),
@@ -76,6 +77,42 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
         eq(publishedPages.visibility, "public"),
         eq(publishedPages.moderationStatus, "approved")
       )),
+    db.select().from(collections)
+      .where(and(
+        eq(collections.ownerId, user.id),
+        eq(collections.isPublic, true)
+      ))
+      .orderBy(desc(collections.updatedAt))
+      .limit(20),
+    db
+      .select({
+        id: collections.id,
+        name: collections.name,
+        slug: collections.slug,
+        description: collections.description,
+        isPublic: collections.isPublic,
+        itemCount: collections.itemCount,
+        forksCount: collections.forksCount,
+        favoritesCount: collections.favoritesCount,
+        owner: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          avatarUrl: users.avatarUrl,
+        },
+      })
+      .from(favorites)
+      .innerJoin(collections, and(
+        eq(collections.id, favorites.entityId),
+        eq(collections.isPublic, true)
+      ))
+      .innerJoin(users, eq(users.id, collections.ownerId))
+      .where(and(
+        eq(favorites.userId, user.id),
+        eq(favorites.entityType, "collection")
+      ))
+      .orderBy(desc(favorites.createdAt))
+      .limit(20),
   ])
 
   const profile: ProfileHeroData = {
@@ -135,6 +172,44 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     },
   }))
 
+  const createdCollectionCards = createdCollections.map((c) => ({
+    collection: {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description ?? null,
+      isPublic: c.isPublic,
+      itemCount: c.itemCount,
+      forksCount: c.forksCount,
+      favoritesCount: c.favoritesCount,
+      owner: {
+        id: user.id,
+        username: user.username ?? user.userSlug,
+        displayName: user.displayName ?? user.userSlug,
+        avatarUrl: user.avatarUrl,
+      },
+    },
+  }))
+
+  const favoritedCollectionCards = favoritedCollections.map((row) => ({
+    collection: {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description ?? null,
+      isPublic: row.isPublic,
+      itemCount: row.itemCount,
+      forksCount: row.forksCount,
+      favoritesCount: row.favoritesCount,
+      owner: {
+        id: row.owner.id,
+        username: row.owner.username,
+        displayName: row.owner.displayName ?? row.owner.username,
+        avatarUrl: row.owner.avatarUrl,
+      },
+    },
+  }))
+
   const unusedSession = session // 预备后续交互功能使用
 
   return (
@@ -173,8 +248,26 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
         </VibenTabsContent>
 
         <VibenTabsContent value="合集" className="mt-3">
-          <SectionHead title="合集" />
-          <EmptyState tKey="community.collectionsSoon" fallback="更多合集开发中..." />
+          <SectionHead title="创建的合集" />
+          {createdCollectionCards.length === 0 ? (
+            <EmptyState tKey="community.noCollections" fallback="暂无创建的合集" />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {createdCollectionCards.map((item, i) => (
+                <CollectionCard key={i} collection={item.collection} isOwner />
+              ))}
+            </div>
+          )}
+          <SectionHead title="收藏的合集" className="mt-6" />
+          {favoritedCollectionCards.length === 0 ? (
+            <EmptyState tKey="community.noFavoritedCollections" fallback="暂无收藏的合集" />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {favoritedCollectionCards.map((item, i) => (
+                <CollectionCard key={i} collection={item.collection} />
+              ))}
+            </div>
+          )}
         </VibenTabsContent>
 
         <VibenTabsContent value="关于" className="mt-3">
