@@ -2420,6 +2420,8 @@
     "viewReplies": "View all {{count}} replies →",
     "collapseReplies": "Collapse replies",
     "loadMoreReplies": "Load more replies",
+    "prevPage": "Prev",
+    "nextPage": "Next",
     "commentPlaceholder": "Post your reply...",
     "tags": {
       "title": "Tags",

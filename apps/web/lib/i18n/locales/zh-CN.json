@@ -2419,6 +2419,8 @@
     "viewReplies": "查看全部 {{count}} 条回复 →",
     "collapseReplies": "收起回复",
     "loadMoreReplies": "加载更多回复",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
     "commentPlaceholder": "发表评论...",
     "tags": {
       "title": "标签",

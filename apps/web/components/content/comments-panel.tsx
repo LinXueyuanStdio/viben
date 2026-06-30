@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react"
 import { Send, ThumbsUp, MessageCircle, ChevronDown, Trash2, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -170,63 +171,57 @@ function CommentCard({
 }) {
   const { t } = useTranslation()
   const isOwnComment = sessionUserId ? comment.author.id === sessionUserId : false
-  const [replies, setReplies] = useState<CommunityComment[]>([])
+  const queryClient = useQueryClient()
   const [threadOpen, setThreadOpen] = useState(false)
-  const [allReplies, setAllReplies] = useState<CommunityComment[]>([])
-  const [replyCursor, setReplyCursor] = useState<string | null>(null)
-  const [replyHasMore, setReplyHasMore] = useState(false)
-  const [loadingReplies, setLoadingReplies] = useState(false)
+  const [replyPage, setReplyPage] = useState(0)
   const [threadText, setThreadText] = useState("")
   const [threadSubmitting, setThreadSubmitting] = useState(false)
   const [optimisticRepliesCount, setOptimisticRepliesCount] = useState(comment.replies_count)
 
-  // Sync replies_count from props
   useEffect(() => { setOptimisticRepliesCount(comment.replies_count) }, [comment.replies_count])
 
-  // Fetch initial replies (max 2) on mount
-  useEffect(() => {
-    if (comment.replies_count > 0 && pageDbId) {
-      fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=2`)
-        .then(r => r.json()).then(d => setReplies(d.comments ?? []))
-    }
-  }, [comment.id, comment.replies_count, pageDbId, entityType])
+  // Preload replies (max 2) — cached by react-query
+  const preloadQuery = useQuery({
+    queryKey: ["replies", entityType, pageDbId, comment.id, "preload"],
+    queryFn: async () => {
+      const r = await fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=2`)
+      const d = await r.json()
+      return (d.comments ?? []) as CommunityComment[]
+    },
+    enabled: comment.replies_count > 0 && !!pageDbId,
+    staleTime: 60_000,
+  })
 
-  // Fetch first page of replies when thread opens (10 per page)
-  useEffect(() => {
-    if (threadOpen && pageDbId) {
-      setLoadingReplies(true)
-      fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=10`)
-        .then(r => r.json()).then(d => {
-          setAllReplies(d.comments ?? [])
-          setReplyCursor(d.next_cursor ?? null)
-          setReplyHasMore(d.has_more ?? false)
-          setLoadingReplies(false)
-        })
-    }
-  }, [threadOpen, comment.id, pageDbId, entityType])
-
-  const loadMoreReplies = async () => {
-    if (!replyCursor || loadingReplies) return
-    setLoadingReplies(true)
-    try {
-      const params = new URLSearchParams({
-        entity_type: entityType!,
-        entity_id: pageDbId!,
-        parent_comment_id: comment.id,
-        limit: "10",
-        cursor: replyCursor,
-      })
-      const res = await fetch(`/api/community/comments?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setAllReplies((prev) => [...prev, ...(data.comments ?? [])])
-        setReplyCursor(data.next_cursor ?? null)
-        setReplyHasMore(data.has_more ?? false)
+  // Thread current page — cached by react-query
+  const threadQuery = useQuery({
+    queryKey: ["replies", entityType, pageDbId, comment.id, "thread", replyPage],
+    queryFn: async () => {
+      // For page 0, fetch first page directly
+      if (replyPage === 0) {
+        const r = await fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=10`)
+        const d = await r.json()
+        // Store cursor for next page in cache metadata
+        queryClient.setQueryData(["replies-cursor", entityType, pageDbId, comment.id, replyPage], d.next_cursor ?? null)
+        return d as { comments: CommunityComment[]; has_more: boolean }
       }
-    } finally {
-      setLoadingReplies(false)
-    }
-  }
+      // For subsequent pages, use cursor from previous page
+      const cursor = queryClient.getQueryData(["replies-cursor", entityType, pageDbId, comment.id, replyPage - 1]) as string | null | undefined
+      if (!cursor) return { comments: [], has_more: false }
+      const params = new URLSearchParams({ entity_type: entityType!, entity_id: pageDbId!, parent_comment_id: comment.id, limit: "10", cursor })
+      const r = await fetch(`/api/community/comments?${params}`)
+      const d = await r.json()
+      queryClient.setQueryData(["replies-cursor", entityType, pageDbId, comment.id, replyPage], d.next_cursor ?? null)
+      return d as { comments: CommunityComment[]; has_more: boolean }
+    },
+    enabled: threadOpen && !!pageDbId,
+    staleTime: 60_000,
+  })
+
+  const replies = preloadQuery.data ?? []
+  const threadData = threadQuery.data
+  const threadComments = threadData?.comments ?? []
+  const threadHasMore = threadData?.has_more ?? false
+  const threadLoading = threadQuery.isFetching
 
   const handleThreadSubmit = async () => {
     if (!threadText.trim() || threadSubmitting) return
@@ -240,14 +235,9 @@ function CommentCard({
       })
       setThreadText("")
       setOptimisticRepliesCount((c) => c + 1)
-      // Refetch first page of replies
-      const fetchRes = await fetch(`/api/community/comments?entity_type=${entityType}&entity_id=${pageDbId}&parent_comment_id=${comment.id}&limit=10`)
-      if (fetchRes.ok) {
-        const data = await fetchRes.json()
-        setAllReplies(data.comments ?? [])
-        setReplyCursor(data.next_cursor ?? null)
-        setReplyHasMore(data.has_more ?? false)
-      }
+      // Invalidate and refetch cached replies
+      queryClient.invalidateQueries({ queryKey: ["replies", entityType, pageDbId, comment.id] })
+      setReplyPage(0)
     } catch {
       toast.error(t("community.commentFailed"))
     } finally {
@@ -344,10 +334,10 @@ function CommentCard({
         {/* Thread sub-panel */}
         {threadOpen && (
           <div className="mt-2 space-y-2">
-            {loadingReplies && allReplies.length === 0 ? (
+            {threadLoading && threadComments.length === 0 ? (
               <p className="text-[13px] text-muted-foreground py-2">{t("community.commentsLoading")}</p>
             ) : (
-              allReplies.map((r) => (
+              threadComments.map((r) => (
                 <div key={r.id} className="grid gap-2 text-[13px] py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
                   <Avatar className="size-[20px] shrink-0">
                     <AvatarImage src={r.author.avatar_url ?? undefined} alt={r.author.display_name} />
@@ -363,14 +353,24 @@ function CommentCard({
                 </div>
               ))
             )}
-            {replyHasMore && (
-              <button
-                onClick={loadMoreReplies}
-                disabled={loadingReplies}
-                className="text-[13px] text-primary hover:underline font-bold"
-              >
-                {loadingReplies ? t("community.loading") : t("community.loadMoreReplies")}
-              </button>
+            {threadHasMore && (
+              <div className="flex items-center justify-between pt-1 text-[13px]">
+                <button
+                  onClick={() => setReplyPage((p) => Math.max(0, p - 1))}
+                  disabled={replyPage === 0 || threadLoading}
+                  className="text-primary hover:underline disabled:opacity-40 disabled:no-underline"
+                >
+                  {t("community.prevPage")}
+                </button>
+                <span className="text-muted-foreground">{replyPage + 1}</span>
+                <button
+                  onClick={() => setReplyPage((p) => p + 1)}
+                  disabled={threadLoading}
+                  className="text-primary hover:underline disabled:opacity-40 disabled:no-underline"
+                >
+                  {t("community.nextPage")}
+                </button>
+              </div>
             )}
             {/* Mini composer */}
             {isAuthenticated ? (
