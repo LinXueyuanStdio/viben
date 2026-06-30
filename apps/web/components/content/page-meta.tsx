@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { ChevronRight, Eye, Bookmark, Share2, ThumbsUp, Check, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -95,6 +95,10 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
 
   const [shareCount, setShareCount] = useState(actions.shares)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setShareCount(actions.shares)
+  }, [actions.shares])
 
   const handleLike = () => {
     if (!data.isAuthenticated) { toast.error(t("community.loginRequired")); return }

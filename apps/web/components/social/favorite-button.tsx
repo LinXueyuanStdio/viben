@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bookmark } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -31,6 +31,16 @@ export function BookmarkButton({
   const [count, setCount] = useState(initialCount);
   const [isLoading, setIsLoading] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+  const snapshotRef = useRef(initialCount);
+  const loadingRef = useRef(false);
+
+  // Sync from props when data changes externally, skip during in-flight mutations
+  useEffect(() => {
+    if (loadingRef.current) return
+    setIsBookmarked(initialBookmarked)
+    setCount(initialCount)
+    snapshotRef.current = initialCount
+  }, [initialBookmarked, initialCount])
 
   const apiPath = entityType === 'mcp' ? 'mcp' : 'skills';
 
@@ -54,9 +64,11 @@ export function BookmarkButton({
   }, [apiPath, entityId, isAuthenticated]);
 
   async function handleToggle() {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || loadingRef.current) {
       return;
     }
+
+    loadingRef.current = true
 
     // Optimistic update
     const wasBookmarked = isBookmarked;
@@ -73,18 +85,20 @@ export function BookmarkButton({
         const data = await response.json();
         setIsBookmarked(data.isBookmarked);
         setCount(data.count);
+        snapshotRef.current = data.count;
       } else {
-        // Revert on error
+        // Revert to last known server value
         setIsBookmarked(wasBookmarked);
-        setCount((prev) => (wasBookmarked ? prev + 1 : prev - 1));
+        setCount(snapshotRef.current);
       }
     } catch (error) {
-      // Revert on error
+      // Revert to last known server value
       setIsBookmarked(wasBookmarked);
-      setCount((prev) => (wasBookmarked ? prev + 1 : prev - 1));
+      setCount(snapshotRef.current);
       console.error('Failed to toggle bookmark:', error);
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
   }
 

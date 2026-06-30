@@ -63,10 +63,11 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
 
-  // Sync comment count when data prop changes
+  // Sync comment count when data prop changes, skip if submitting
   useEffect(() => {
+    if (commentSubmitting) return
     setOptimisticComments(data.actions.comments)
-  }, [data.actions.comments])
+  }, [data.actions.comments, commentSubmitting])
 
   const handleShare = useCallback(() => {
     const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
