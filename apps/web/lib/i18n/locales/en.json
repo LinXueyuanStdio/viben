@@ -2009,6 +2009,9 @@
     "feedbackSubmit": "Submit feedback",
     "feedbackSuccess": "Thank you for your feedback!",
     "feedbackFailed": "Failed to submit feedback, please try again later",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "noteEdit": "Edit",
+    "noteDelete": "Delete",
+    "noteDeleteConfirm": "Confirm delete?"
   }
 }

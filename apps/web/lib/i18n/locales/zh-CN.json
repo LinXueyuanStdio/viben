@@ -2035,6 +2035,9 @@
     "feedbackSubmit": "提交反馈",
     "feedbackSuccess": "感谢你的反馈！",
     "feedbackFailed": "反馈提交失败，请稍后重试",
-    "submitting": "提交中..."
+    "submitting": "提交中...",
+    "noteEdit": "编辑",
+    "noteDelete": "删除",
+    "noteDeleteConfirm": "确认删除？"
   }
 }
