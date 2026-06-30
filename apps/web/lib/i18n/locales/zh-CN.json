@@ -2085,5 +2085,31 @@
       "time": "时间",
       "actions": "操作"
     }
+  },
+  "pageEditor": {
+    "title": "创建页面",
+    "titleLabel": "标题",
+    "titlePlaceholder": "输入页面标题",
+    "uidLabel": "页面 ID",
+    "uidPlaceholder": "my-awesome-page",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "简要描述页面内容",
+    "visibilityLabel": "可见性",
+    "public": "公开",
+    "unlisted": "不公开列出",
+    "private": "私密",
+    "tagsLabel": "标签",
+    "tagsPlaceholder": "输入标签，回车添加",
+    "coverLabel": "封面图片（可选）",
+    "coverHint": "点击或拖拽上传封面",
+    "markdownLabel": "Markdown 内容",
+    "previewLabel": "预览",
+    "publish": "发布页面",
+    "publishing": "发布中...",
+    "publishSuccess": "页面发布成功！",
+    "publishFailed": "发布失败",
+    "titleRequired": "请输入标题",
+    "uidRequired": "请输入页面 ID",
+    "contentRequired": "请输入页面内容"
   }
 }

@@ -2085,5 +2085,31 @@
       "time": "Time",
       "actions": "Actions"
     }
+  },
+  "pageEditor": {
+    "title": "Create Page",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Enter page title",
+    "uidLabel": "Page ID",
+    "uidPlaceholder": "my-awesome-page",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Briefly describe the page content",
+    "visibilityLabel": "Visibility",
+    "public": "Public",
+    "unlisted": "Unlisted",
+    "private": "Private",
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "Enter tags, press Enter to add",
+    "coverLabel": "Cover Image (optional)",
+    "coverHint": "Click or drag to upload a cover",
+    "markdownLabel": "Markdown Content",
+    "previewLabel": "Preview",
+    "publish": "Publish Page",
+    "publishing": "Publishing...",
+    "publishSuccess": "Page published successfully!",
+    "publishFailed": "Publish failed",
+    "titleRequired": "Title is required",
+    "uidRequired": "Page ID is required",
+    "contentRequired": "Page content is required"
   }
 }
