@@ -189,7 +189,7 @@ export async function countTotalDownloads(): Promise<number> {
     db.select({ total: sum(skillPackages.downloadsCount) }).from(skillPackages),
   ]);
 
-  return (mcpResult[0]?.total ?? 0) + (skillResult[0]?.total ?? 0);
+  return Number(mcpResult[0]?.total ?? 0) + Number(skillResult[0]?.total ?? 0);
 }
 
 /**
