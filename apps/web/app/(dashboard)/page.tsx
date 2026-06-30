@@ -162,6 +162,7 @@ export default async function HomePage() {
       likes: item.moment.like_count,
       comments: item.moment.comment_count,
       bookmarks: item.moment.bookmark_count ?? 0,
+      momentId: item.moment.id,
     },
   }))
 

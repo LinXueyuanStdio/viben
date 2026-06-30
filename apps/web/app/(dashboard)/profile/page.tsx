@@ -7,6 +7,7 @@ import { db, publishedPages, users, moments, collections } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { EmptyState, T } from "@/components/content/i18n-text"
+import { CollectionCard } from "@/components/collections/collection-card"
 import Link from "next/link"
 import { LogIn } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
@@ -181,6 +182,7 @@ export default async function ProfilePage() {
       comments: m.commentCount,
       reposts: m.repostCount,
       bookmarks: m.bookmarkCount ?? 0,
+      momentId: m.id,
     },
   }))
 
@@ -220,16 +222,32 @@ export default async function ProfilePage() {
         </VibenTabsContent>
 
         <VibenTabsContent value="合集" className="mt-3">
-          <SectionHead title="合集" />
+          <SectionHead title="创建的合集" />
           {userCollections.length === 0 ? (
-            <EmptyState tKey="community.collectionsSoon" fallback="暂无合集" />
+            <EmptyState tKey="community.noCollections" fallback="暂无创建的合集" />
           ) : (
-            <div className="grid gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {userCollections.map((c) => (
-                <div key={c.id} className="flex items-center gap-3 rounded-[10px] border border-border p-3">
-                  <div className="font-bold text-sm flex-1">{c.name}</div>
-                  <div className="text-[13px] text-muted-foreground">{c.itemCount} 项</div>
-                </div>
+                <CollectionCard
+                  key={c.id}
+                  collection={{
+                    id: c.id,
+                    name: c.name,
+                    slug: c.slug,
+                    description: c.description ?? null,
+                    isPublic: c.isPublic,
+                    itemCount: c.itemCount,
+                    forksCount: c.forksCount,
+                    favoritesCount: c.favoritesCount,
+                    owner: {
+                      id: user.id,
+                      username: user.username ?? user.userSlug,
+                      displayName: user.displayName ?? user.userSlug,
+                      avatarUrl: user.avatarUrl,
+                    },
+                  }}
+                  isOwner
+                />
               ))}
             </div>
           )}

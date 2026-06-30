@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Send, Heart, MessageCircle, ChevronDown, User } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { PageMeta } from "@/components/content/page-meta"
@@ -91,17 +91,33 @@ function CommentComposer({
   isAuthenticated,
   sessionUsername,
   sessionAvatarUrl,
+  replyTo,
   onCommentPosted,
 }: {
   communityEntityId: string
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
+  replyTo?: string | null
   onCommentPosted: () => void
 }) {
   const { t } = useTranslation()
   const [text, setText] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Focus and pre-fill when replyTo changes
+  useEffect(() => {
+    if (replyTo) {
+      setText(`@${replyTo} `)
+      // Focus after state update
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+        const len = textareaRef.current?.value.length ?? 0
+        textareaRef.current?.setSelectionRange(len, len)
+      })
+    }
+  }, [replyTo])
 
   const handleSubmit = async () => {
     if (!text.trim() || submitting) return
@@ -143,6 +159,7 @@ function CommentComposer({
       </Avatar>
       <div>
         <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={t('community.writeComment')}
@@ -161,7 +178,7 @@ function CommentComposer({
 
 // --- Comment Card ---
 
-function CommentCard({ comment, onReaction }: { comment: CommunityComment; onReaction: (id: string) => void }) {
+function CommentCard({ comment, onReaction, onReply }: { comment: CommunityComment; onReaction: (id: string) => void; onReply?: (username: string) => void }) {
   return (
     <div className="grid gap-2 py-1.5 border-t border-border first:border-t-0" style={{ gridTemplateColumns: "auto 1fr" }}>
       <Avatar className="size-[28px] shrink-0">
@@ -186,7 +203,10 @@ function CommentCard({ comment, onReaction }: { comment: CommunityComment; onRea
             <Heart className={cn("size-3.5", comment.viewer_has_reacted && "fill-current")} />
             {comment.reactions_count > 0 && <span>{comment.reactions_count}</span>}
           </button>
-          <button className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => onReply?.(comment.author.display_name)}
+            className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"
+          >
             <MessageCircle className="size-3.5" />
           </button>
         </div>
@@ -212,6 +232,7 @@ function CommentsPanel({
   const [comments, setComments] = useState<CommunityComment[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<"latest" | "oldest">("latest")
+  const [replyTo, setReplyTo] = useState<string | null>(null)
 
   const fetchComments = useCallback(async () => {
     setLoading(true)
@@ -279,7 +300,8 @@ function CommentsPanel({
         isAuthenticated={isAuthenticated}
         sessionUsername={sessionUsername}
         sessionAvatarUrl={sessionAvatarUrl}
-        onCommentPosted={fetchComments}
+        replyTo={replyTo}
+        onCommentPosted={() => { setReplyTo(null); fetchComments() }}
       />
       {loading ? (
         <p className="py-4 text-center text-[13px] text-muted-foreground">{t('community.commentsLoading')}</p>
@@ -288,7 +310,7 @@ function CommentsPanel({
       ) : (
         <div className="grid">
           {sortedComments.map((comment) => (
-            <CommentCard key={comment.id} comment={comment} onReaction={handleReaction} />
+            <CommentCard key={comment.id} comment={comment} onReaction={handleReaction} onReply={setReplyTo} />
           ))}
         </div>
       )}

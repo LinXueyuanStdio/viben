@@ -74,11 +74,12 @@ export default async function NotificationsPage() {
       author: item.actor_name ?? undefined,
       detail: item.body ?? undefined,
       timeAgo: timeAgo(item.created_at),
+      notificationId: item.id,
       action: item.read_at
-        ? { label: "已读", variant: "read" as const }
+        ? undefined
         : readUrl
           ? { label: "查看", variant: "arrow" as const, href: readUrl }
-          : { label: "查看", variant: "arrow" as const },
+          : { label: "标记已读", variant: "read" as const },
     }
   })
 

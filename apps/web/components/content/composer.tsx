@@ -87,8 +87,8 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
             onBlur={handleBlur}
             placeholder={t('community.postPlaceholder')}
             className={cn(
-              "w-full rounded-[10px] border border-border bg-background p-3 text-sm resize-y focus:outline-none focus:border-primary placeholder:text-muted-foreground",
-              focused ? "min-h-[78px]" : "min-h-[38px] h-[38px] overflow-hidden",
+              "w-full rounded-[10px] border border-border bg-background px-3 text-sm resize-y focus:outline-none focus:border-primary placeholder:text-muted-foreground",
+              focused ? "min-h-[78px] py-3" : "min-h-[38px] h-[38px] py-1.5 overflow-hidden",
             )}
           />
         </div>

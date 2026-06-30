@@ -1,6 +1,8 @@
+import { useState, useCallback } from "react"
 import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
 import { ArrowRight, Check, Bell, UserPlus } from "lucide-react"
+import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -14,6 +16,7 @@ export interface NotificationItemData {
   author?: string
   detail?: string
   timeAgo: string
+  notificationId?: string
   action?: {
     label: string
     href?: string
@@ -35,7 +38,47 @@ function MiniIcon({ icon: Icon }: { icon: LucideIcon }) {
   )
 }
 
-function renderAction(action: NotificationItemData["action"]) {
+function ReadAction({ notificationId, label, onClick }: { notificationId: string; label: string; onClick?: () => void }) {
+  const [marked, setMarked] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const handleClick = useCallback(async () => {
+    if (onClick) { onClick(); return }
+    if (loading || marked) return
+    setLoading(true)
+    try {
+      const res = await fetch("/api/notifications/" + encodeURIComponent(notificationId) + "/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) throw new Error("mark_read_failed")
+      setMarked(true)
+      toast.success("Marked as read")
+    } catch {
+      toast.error("Failed to mark as read")
+    } finally {
+      setLoading(false)
+    }
+  }, [notificationId, onClick, loading, marked])
+
+  if (marked) {
+    return (
+      <span className="flex items-center gap-1 text-[13px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+        <Check className="size-3.5" />
+        {label}
+      </span>
+    )
+  }
+
+  return (
+    <button onClick={handleClick} disabled={loading} className="flex items-center gap-1 text-[13px] font-bold text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-50">
+      <Check className="size-3.5" />
+      {loading ? "..." : label}
+    </button>
+  )
+}
+
+function renderAction(action: NotificationItemData["action"], notificationId?: string) {
   if (!action) return null
   const { label, href, onClick, variant = "arrow" } = action
 
@@ -55,11 +98,22 @@ function renderAction(action: NotificationItemData["action"]) {
         </Button>
       )
     case "read":
+      if (onClick) {
+        return (
+          <button onClick={onClick} className="flex items-center gap-1 text-[13px] font-bold text-muted-foreground hover:text-foreground shrink-0">
+            <Check className="size-3.5" />
+            {label}
+          </button>
+        )
+      }
+      if (notificationId) {
+        return <ReadAction notificationId={notificationId} label={label} />
+      }
       return (
-        <button onClick={onClick} className="flex items-center gap-1 text-[13px] font-bold text-muted-foreground hover:text-foreground shrink-0">
+        <span className="flex items-center gap-1 text-[13px] font-bold text-muted-foreground shrink-0">
           <Check className="size-3.5" />
           {label}
-        </button>
+        </span>
       )
     case "subscribed":
       return (
@@ -74,7 +128,7 @@ function renderAction(action: NotificationItemData["action"]) {
 }
 
 export function NotificationItem({ data, className }: NotificationItemProps) {
-  const { type, icon, title, author, detail, timeAgo, action } = data
+  const { type, icon, title, author, detail, timeAgo, action, notificationId } = data
 
   return (
     <div className={cn(
@@ -98,7 +152,7 @@ export function NotificationItem({ data, className }: NotificationItemProps) {
           {timeAgo}
         </div>
       </div>
-      {renderAction(action)}
+      {renderAction(action, notificationId)}
     </div>
   )
 }

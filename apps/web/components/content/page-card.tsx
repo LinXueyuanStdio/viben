@@ -3,13 +3,13 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
-import Link from "next/link"
 import { Eye, MessageCircle, Bookmark, Heart, MoreHorizontal, Flag, MessageSquare } from "lucide-react"
 import { Cover } from "./cover"
 import { MetaRow } from "./meta-row"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
+import { ReportDialog } from "./report-dialog"
+import { FeedbackDialog } from "./feedback-dialog"
 import { cn } from "@/lib/utils"
 
 export interface PageCardData {
@@ -38,46 +38,71 @@ interface PageCardProps {
   hideAuthor?: boolean
 }
 
-function MoreMenu() {
+function extractPageUid(href: string): string | undefined {
+  const segments = href.split("/")
+  const last = segments[segments.length - 1]
+  return last ? decodeURIComponent(last) : undefined
+}
+
+function MoreMenu({ pageId }: { pageId?: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
+  const [reportOpen, setReportOpen] = React.useState(false)
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
 
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <button
-        className="inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
-        aria-label={t("community.moreActions")}
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <div
+        className="relative"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
       >
-        <MoreHorizontal className="size-4" />
-      </button>
-      {open && (
-        <div className="absolute bottom-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              toast.info(t("community.reportFeatureSoon"))
-            }}
-            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
-          >
-            <Flag className="h-4 w-4" /> {t("community.report")}
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              toast.info(t("community.feedbackFeatureSoon"))
-            }}
-            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
-          >
-            <MessageSquare className="h-4 w-4" /> {t("community.feedback")}
-          </button>
-        </div>
+        <button
+          className="inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
+          aria-label={t("community.moreActions")}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+        {open && (
+          <div className="absolute bottom-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setReportOpen(true)
+              }}
+              className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+            >
+              <Flag className="h-4 w-4" /> {t("community.report")}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setFeedbackOpen(true)
+              }}
+              className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+            >
+              <MessageSquare className="h-4 w-4" /> {t("community.feedback")}
+            </button>
+          </div>
+        )}
+      </div>
+      {pageId && (
+        <>
+          <ReportDialog
+            open={reportOpen}
+            onOpenChange={setReportOpen}
+            entityType="published_page"
+            entityId={pageId}
+          />
+          <FeedbackDialog
+            open={feedbackOpen}
+            onOpenChange={setFeedbackOpen}
+            pageId={pageId}
+          />
+        </>
       )}
-    </div>
+    </>
   )
 }
 
@@ -96,6 +121,8 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
     ...(stats.bookmarks != null ? [{ icon: Bookmark, value: stats.bookmarks, format: true }] : []),
     ...(stats.comments != null ? [{ icon: MessageCircle, value: stats.comments, format: true }] : []),
   ]
+
+  const pageId = extractPageUid(href)
 
   const handleClick = () => {
     router.push(href)
@@ -138,7 +165,7 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
         {variant === "default" && (
           <div className="flex items-end justify-between">
             <StatsRow stats={detailStats} />
-            <MoreMenu />
+            <MoreMenu pageId={pageId} />
           </div>
         )}
       </div>

@@ -1562,6 +1562,7 @@ export async function listMoments(params: {
   return {
     items: rows.map(({ moment, author }) => ({
       moment: {
+        id: moment.id,
         uid: moment.uid,
         kind: moment.kind,
         body: moment.body,

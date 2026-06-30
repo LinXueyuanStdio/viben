@@ -89,6 +89,7 @@ export default async function MomentPage() {
         comments: item.moment.comment_count,
         reposts: item.moment.repost_count,
         bookmarks: item.moment.bookmark_count ?? 0,
+        momentId: item.moment.id,
       },
     }))
   }

@@ -153,7 +153,7 @@ export function InsertImageDialog({ open, onOpenChange, textareaRef }: InsertIma
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 {t("community.cancel")}
               </Button>
-              <Button disabled={uploading}>
+              <Button disabled={uploading} onClick={() => fileInputRef.current?.click()}>
                 {uploading ? t("community.uploading") : t("community.upload")}
               </Button>
             </DialogFooter>
