@@ -2045,6 +2045,9 @@
     "saving": "保存中...",
     "noteEdit": "编辑",
     "noteDelete": "删除",
-    "noteDeleteConfirm": "确认删除？"
+    "noteDeleteConfirm": "确认删除？",
+    "loading": "加载中...",
+    "noNotes": "暂无笔记",
+    "noNotesHint": "添加笔记记录你的想法"
   }
 }

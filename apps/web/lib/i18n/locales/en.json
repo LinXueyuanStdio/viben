@@ -2019,6 +2019,9 @@
     "saving": "Saving...",
     "noteEdit": "Edit",
     "noteDelete": "Delete",
-    "noteDeleteConfirm": "Confirm delete?"
+    "noteDeleteConfirm": "Confirm delete?",
+    "loading": "Loading...",
+    "noNotes": "No notes",
+    "noNotesHint": "Add notes to capture your thoughts"
   }
 }
