@@ -48,7 +48,7 @@ export default async function McpPage({ searchParams }: McpPageProps) {
         </Suspense>
       ) : (
         <Suspense fallback={<McpGridSkeleton />}>
-          <McpGrid searchParams={params} />
+          <McpGrid searchParams={params} isAuthenticated={!!session} />
         </Suspense>
       )}
     </div>

@@ -11,5 +11,5 @@ export default async function PackagesPage() {
     redirect('/login');
   }
 
-  return <ProfilePackages userId={session.userId} />;
+  return <ProfilePackages userId={session.userId} isAuthenticated={true} />;
 }

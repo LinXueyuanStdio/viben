@@ -77,7 +77,7 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
         </Suspense>
       ) : (
         <Suspense key={`community-${params.q ?? ''}`} fallback={<SkillsGridSkeleton />}>
-          <SkillsGrid searchParams={params} />
+          <SkillsGrid searchParams={params} isAuthenticated={!!session} />
         </Suspense>
       )}
     </div>

@@ -1,6 +1,6 @@
-import { db, collections, users } from '@/lib/db';
+import { db, collections, users, bookmarks } from '@/lib/db';
 import { getSession } from '@/lib/auth/cookies';
-import { eq, desc, ilike, or, and, count } from 'drizzle-orm';
+import { eq, desc, ilike, or, and, count, inArray } from 'drizzle-orm';
 import { CollectionCard } from './collection-card';
 import { CollectionsEmpty } from './collections-empty';
 import { Pagination } from '@/components/shared/pagination';
@@ -103,6 +103,24 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
       c.owner !== null
   );
 
+  // Query user's bookmarks for displayed collections
+  const bookmarkedIds = new Set<string>();
+  if (session?.userId && validResults.length > 0) {
+    const userBookmarks = await db
+      .select({ entityId: bookmarks.entityId })
+      .from(bookmarks)
+      .where(
+        and(
+          eq(bookmarks.userId, session.userId),
+          eq(bookmarks.entityType, 'collection'),
+          inArray(bookmarks.entityId, validResults.map((c) => c.id))
+        )
+      );
+    for (const b of userBookmarks) {
+      bookmarkedIds.add(b.entityId);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -121,6 +139,8 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
               owner: collection.owner,
             }}
             isOwner={session?.userId === collection.ownerId}
+            isAuthenticated={!!session}
+            hasBookmarked={bookmarkedIds.has(collection.id)}
           />
         ))}
       </div>
