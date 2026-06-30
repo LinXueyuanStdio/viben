@@ -49,6 +49,10 @@ export interface PageMetaData {
     current: number
     total: number
   }
+  /** 合集名称 */
+  collectionName?: string
+  /** 合集 slug（用于订阅等操作） */
+  collectionSlug?: string
   recommendations?: Array<{ data: MiniPageCardData; href: string }>
   // Viewer state for action buttons
   viewerHasReacted: boolean
@@ -69,7 +73,7 @@ interface PageMetaProps {
 export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = false, className, currentUserSlug }: PageMetaProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
-  const { author, title, uid, sidePageUid, description, tags, stats, actions, chapters, chapterProgress, recommendations } = data
+  const { author, title, uid, sidePageUid, description, tags, stats, actions, chapters, chapterProgress, collectionName, collectionSlug, recommendations } = data
 
   // Optimistic state for action buttons
   const [hasReacted, setHasReacted] = useState(data.viewerHasReacted)
@@ -165,6 +169,34 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       setTimeout(() => setCopied(false), 2000)
     } catch {
       toast.error(t("community.copyFailed"))
+    }
+  }
+
+  // Collection subscribe state
+  const [subscribed, setSubscribed] = useState(false)
+  const [subscribePending, setSubscribePending] = useState(false)
+
+  const handleSubscribeCollection = async () => {
+    if (!data.isAuthenticated) {
+      toast.error(t("community.loginRequired"))
+      return
+    }
+    if (subscribePending) return
+    setSubscribePending(true)
+    try {
+      // Subscribe via the current page's subscription endpoint
+      const res = await fetch(`/api/read/${encodeURIComponent(data.userSlug)}/${encodeURIComponent(data.pageId)}/subscription`, {
+        method: subscribed ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notify_level: "major" }),
+      })
+      if (res.ok) {
+        setSubscribed(!subscribed)
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setSubscribePending(false)
     }
   }
 
@@ -277,10 +309,24 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       {chapters && chapters.length > 0 && (
         <div className="grid gap-2 pt-0.5">
           <SectionHead
-            title={t("community.collections")}
+            title={collectionName ?? t("community.collections")}
             actionLabel={chapterProgress ? `${chapterProgress.current} / ${chapterProgress.total}` : undefined}
             actionHref={undefined}
           />
+          {collectionSlug && (
+            <button
+              onClick={handleSubscribeCollection}
+              disabled={subscribePending}
+              className={cn(
+                "inline-flex items-center justify-center gap-1.5 h-[34px] px-3 rounded-[9px] text-[13px] font-bold transition-colors",
+                subscribed
+                  ? "bg-primary/10 text-primary"
+                  : "bg-surface-secondary text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {subscribed ? t("community.subscribedCollection") : t("community.subscribeCollection")}
+            </button>
+          )}
           <div className="grid gap-1.5">
             {chapters.map((ch) => {
               const content = (

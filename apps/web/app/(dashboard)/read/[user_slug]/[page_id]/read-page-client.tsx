@@ -72,14 +72,43 @@ interface ReadPageClientProps {
 
 // --- Parse chapters from JSON ---
 
-function parseChapters(raw: unknown): ChapterEntry[] {
-  if (!Array.isArray(raw) || raw.length === 0) return []
-  return raw.filter(
-    (ch): ch is ChapterEntry =>
-      typeof ch === "object" && ch !== null &&
-      typeof (ch as Record<string, unknown>).number === "number" &&
-      typeof (ch as Record<string, unknown>).title === "string"
-  )
+interface ParsedChapters {
+  chapters: ChapterEntry[]
+  collectionSlug?: string
+  collectionName?: string
+}
+
+function parseChapters(raw: unknown): ParsedChapters {
+  if (!raw || typeof raw !== "object") return { chapters: [] }
+
+  // New format: { collection_slug, collection_name, chapters: [...] }
+  const obj = raw as Record<string, unknown>
+  if (obj.collection_slug && Array.isArray(obj.chapters)) {
+    const chapters = (obj.chapters as Array<Record<string, unknown>>).filter(
+      (ch): ch is ChapterEntry =>
+        typeof ch === "object" && ch !== null &&
+        typeof (ch as Record<string, unknown>).number === "number" &&
+        typeof (ch as Record<string, unknown>).title === "string"
+    )
+    return {
+      chapters,
+      collectionSlug: typeof obj.collection_slug === "string" ? obj.collection_slug : undefined,
+      collectionName: typeof obj.collection_name === "string" ? obj.collection_name : undefined,
+    }
+  }
+
+  // Old format: [{ number, title, page_slug }]
+  if (Array.isArray(raw)) {
+    const chapters = (raw as Array<Record<string, unknown>>).filter(
+      (ch): ch is ChapterEntry =>
+        typeof ch === "object" && ch !== null &&
+        typeof (ch as Record<string, unknown>).number === "number" &&
+        typeof (ch as Record<string, unknown>).title === "string"
+    )
+    return { chapters }
+  }
+
+  return { chapters: [] }
 }
 
 // --- Main Component ---
@@ -127,7 +156,7 @@ export function ReadPageClient({
   }, [pageSidePageUid])
 
   // 合集章节数据：仅来自 pageChaptersJson，不从 HTML H2 提取
-  const chapters = parseChapters(pageChaptersJson)
+  const { chapters, collectionSlug, collectionName } = parseChapters(pageChaptersJson)
 
   // 找出当前页面在合集中的位置（通过 pageId 匹配 page_slug）
   const currentChapterIndex = chapters.findIndex((ch) => ch.page_slug === pageId)
@@ -170,6 +199,9 @@ export function ReadPageClient({
       chapters.length > 0
         ? { current: currentChapter, total: chapters.length }
         : undefined,
+    // Collection metadata
+    collectionName,
+    collectionSlug,
     recommendations: recommendationEntries.length > 0 ? recommendationEntries : undefined,
     // Viewer and interaction state
     viewerHasReacted,
