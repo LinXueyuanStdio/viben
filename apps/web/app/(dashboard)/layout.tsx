@@ -3,7 +3,6 @@ import type { Session } from "@/lib/auth/types"
 import { AppShell } from "@/components/layout/app-shell"
 import { ErrorBoundary } from "@/components/layout/error-boundary"
 import { listNotifications, getBrowseHistory } from "@/lib/services/community"
-import { getHotSearches, getRecentSearches } from "@/lib/services/search"
 
 export default async function DashboardLayout({
   children,
@@ -17,18 +16,7 @@ export default async function DashboardLayout({
     console.error("[Dashboard] Failed to get session:", error)
   }
 
-  let hotSearches: Awaited<ReturnType<typeof getHotSearches>> = []
-  let recentSearches: Awaited<ReturnType<typeof getRecentSearches>> = []
-  try {
-    ;[hotSearches, recentSearches] = await Promise.all([
-      getHotSearches(8),
-      getRecentSearches(session?.userId ?? null, 5),
-    ])
-  } catch (error) {
-    console.error("[Dashboard] Failed to fetch search data:", error)
-  }
-
-  // Build notification preview items (only if session exists)
+  // 通知和浏览历史仅在已登录时获取，失败不影响页面渲染
   let notificationItems: Array<{ title: string; subtitle: string; href: string; thumb: string }> = []
   let historyItems: Array<{ title: string; subtitle: string; href: string; thumb: string }> = []
 
@@ -58,7 +46,7 @@ export default async function DashboardLayout({
         thumb: item.cover_url ?? "",
       }))
     } catch {
-      // If community services fail, leave notificationItems and historyItems empty
+      // 社区服务失败时保持空列表，不影响页面渲染
     }
   }
 
@@ -67,8 +55,6 @@ export default async function DashboardLayout({
       session={session}
       notificationItems={notificationItems}
       historyItems={historyItems}
-      hotSearches={hotSearches}
-      recentSearches={recentSearches}
     >
       <ErrorBoundary>
         {children}
