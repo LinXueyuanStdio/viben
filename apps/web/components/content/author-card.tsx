@@ -32,7 +32,7 @@ export function AuthorCard({ data, className, currentUserSlug }: AuthorCardProps
 
   return (
     <Link
-      href={`/author/${encodeURIComponent(userSlug)}`}
+      href={`/${encodeURIComponent(userSlug)}`}
       className={cn(
         "block grid grid-cols-[auto_1fr_auto] gap-[9px] rounded-[10px] border border-border p-2.5",
         "hover:border-primary transition-colors duration-150",

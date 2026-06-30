@@ -91,7 +91,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
         bookmarks: p.favoriteCount,
       },
     },
-    href: `/read/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}`,
+    href: `/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }))
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({

@@ -74,7 +74,7 @@ export async function ProfilePages({ userId, userSlug, displayName, avatarUrl }:
         bookmarks: p.favoriteCount,
       },
     } satisfies PageCardData,
-    href: `/read/${encodeURIComponent(userSlug)}/${encodeURIComponent(p.uid)}`,
+    href: `/${encodeURIComponent(userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }))
 
   return (

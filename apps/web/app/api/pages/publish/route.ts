@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
       success: true,
       page_uid: uid,
       url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
-      read_url: `/read/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
+      read_url: `/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}?tab=read`,
       updated: true,
     });
   } catch (error) {

@@ -39,7 +39,7 @@ async function SearchContent({ searchParams }: SearchPageProps) {
       likes: p.likeCount,
       comments: p.commentCount,
     },
-    url: `/read/${p.userId ? encodeURIComponent(p.authorName ?? "") : ""}/${p.uid}`,
+    url: `/${p.userId ? encodeURIComponent(p.authorName ?? "") : ""}/${p.uid}?tab=read`,
     coverUrl: p.coverUrl ?? undefined,
   }))
 

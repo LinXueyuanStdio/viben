@@ -94,7 +94,7 @@ function mapPageToCard(
         bookmarks: p.favoriteCount,
       },
     } satisfies PageCardData,
-    href: `/read/${encodeURIComponent(slug)}/${encodeURIComponent(p.uid)}`,
+    href: `/${encodeURIComponent(slug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }
 }
 

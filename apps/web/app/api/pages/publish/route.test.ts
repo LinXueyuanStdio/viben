@@ -187,7 +187,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/alice/demo',
-      read_url: '/read/alice/demo',
+      read_url: '/alice/demo?tab=read',
       updated: true,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -311,7 +311,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/alice/demo',
-      read_url: '/read/alice/demo',
+      read_url: '/alice/demo?tab=read',
       updated: true,
     });
     expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
@@ -388,7 +388,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/bob_builder/demo',
-      read_url: '/read/bob_builder/demo',
+      read_url: '/bob_builder/demo?tab=read',
       updated: true,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({

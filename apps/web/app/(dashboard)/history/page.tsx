@@ -125,8 +125,8 @@ export default async function HistoryPage() {
                       data={item}
                       href={
                         rawItems[i]
-                          ? `/read/${encodeURIComponent(rawItems[i].author_slug)}/${encodeURIComponent(rawItems[i].page_id)}`
-                          : `/read/unknown/${i}`
+                          ? `/${encodeURIComponent(rawItems[i].author_slug)}/${encodeURIComponent(rawItems[i].page_id)}?tab=read`
+                          : `/unknown/${i}?tab=read`
                       }
                     />
                   ))

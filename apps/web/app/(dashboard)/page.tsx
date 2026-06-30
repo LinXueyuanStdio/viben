@@ -116,7 +116,7 @@ export default async function HomePage() {
 
     recommendedEntries = latestPages.map((p, i) => ({
       data: recommendedPages[i],
-      href: `/read/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}`,
+      href: `/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
     }))
   } catch (error) {
     console.error("[Home] Failed to fetch page data:", error)
@@ -136,7 +136,7 @@ export default async function HomePage() {
                   key={i}
                   data={page}
                   variant="home"
-                  href={`/read/${encodeURIComponent(rankingItemsReadUrls[i]?.user_slug ?? "")}/${encodeURIComponent(rankingItemsReadUrls[i]?.page_id ?? "")}`}
+                  href={`/${encodeURIComponent(rankingItemsReadUrls[i]?.user_slug ?? "")}/${encodeURIComponent(rankingItemsReadUrls[i]?.page_id ?? "")}?tab=read`}
                 />
               ))}
             </div>

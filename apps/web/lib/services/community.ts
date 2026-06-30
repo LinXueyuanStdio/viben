@@ -99,7 +99,7 @@ function canUseCommunityEntity(entity: typeof communityEntities.$inferSelect): b
 }
 
 export async function ensureCommunityEntityForPage(context: PublicPageContext) {
-  const canonicalPath = `/read/${encodeURIComponent(context.author.userSlug)}/${encodeURIComponent(context.page.uid)}`;
+  const canonicalPath = `/${encodeURIComponent(context.author.userSlug)}/${encodeURIComponent(context.page.uid)}?tab=read`;
   const status = isPublicPage(context.page) ? 'active' : 'hidden';
 
   await db
@@ -820,7 +820,7 @@ export async function getBrowseHistory(session: Session, limit: number) {
       description: page.description,
       user_slug: author.userSlug,
       page_id: page.uid,
-      url: `/read/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}`,
+      url: `/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}?tab=read`,
       last_viewed_at: history.lastViewedAt.toISOString(),
       view_count: history.viewCount,
       last_source: history.lastSource,
@@ -842,7 +842,7 @@ export async function createShareLink(params: {
     throw new Error('permission_denied');
   }
 
-  const targetUrl = `/read/${encodeURIComponent(params.context.author.userSlug)}/${encodeURIComponent(params.context.page.uid)}`;
+  const targetUrl = `/${encodeURIComponent(params.context.author.userSlug)}/${encodeURIComponent(params.context.page.uid)}?tab=read`;
   const htmlDirectUrl = `/page/${encodeURIComponent(params.context.author.userSlug)}/${encodeURIComponent(params.context.page.uid)}`;
   const uid = crypto.randomUUID().replaceAll('-', '');
 
@@ -1302,7 +1302,7 @@ export async function listSubscriptionFeed(
       is_seen:
         (subscriptions.find((subscription) => subscription.publishedPageId === event.publishedPageId)
           ?.lastSeenVersion ?? -1) >= event.version || readEventIds.has(event.id),
-      url: `/read/${encodeURIComponent(event.userSlug)}/${encodeURIComponent(event.pageId)}`,
+      url: `/${encodeURIComponent(event.userSlug)}/${encodeURIComponent(event.pageId)}?tab=read`,
     })),
     next_cursor:
       filteredRows.length > limit
@@ -1807,7 +1807,7 @@ export async function listRanking(params: {
       description: page.description,
       user_slug: author.userSlug,
       page_id: page.uid,
-      read_url: `/read/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}`,
+      read_url: `/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}?tab=read`,
       category_id: page.categoryId,
       cover_url: null,
       tags: page.tags,
@@ -1895,7 +1895,7 @@ export async function getHomeConfig(surface: string, locale: string) {
           item_type: 'published_page',
           title: page.title,
           description: page.description,
-          target_url: `/read/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}`,
+          target_url: `/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}?tab=read`,
           entity_type: 'published_page',
           entity_id: page.uid,
           user_slug: author.userSlug,

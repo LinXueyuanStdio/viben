@@ -34,7 +34,7 @@ export function FeedHead({ data, className }: FeedHeadProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const { fallbackText, avatarUrl, name, handle, userSlug, kind, timeAgo, source } = data
-  const authorHref = `/author/${encodeURIComponent(userSlug)}`
+  const authorHref = `/${encodeURIComponent(userSlug)}`
 
   // Close menu on outside click
   useEffect(() => {
@@ -58,7 +58,7 @@ export function FeedHead({ data, className }: FeedHeadProps) {
 
   const handleCopyLink = () => {
     setMenuOpen(false)
-    const url = `${window.location.origin}/author/${encodeURIComponent(userSlug)}`
+    const url = `${window.location.origin}/${encodeURIComponent(userSlug)}`
     navigator.clipboard.writeText(url).then(
       () => toast.success(t("common.copied")),
       () => toast.error(t("community.copyLinkFailed"))

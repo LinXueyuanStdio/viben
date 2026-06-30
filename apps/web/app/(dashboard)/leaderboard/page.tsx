@@ -46,7 +46,7 @@ export default async function LeaderboardPage() {
         score: Math.round(item.score),
         scoreLabel: item.score_label ?? "热度",
       } satisfies RankItemData,
-      href: `/read/${encodeURIComponent(item.user_slug)}/${encodeURIComponent(item.page_id)}`,
+      href: `/${encodeURIComponent(item.user_slug)}/${encodeURIComponent(item.page_id)}?tab=read`,
     }))
     return acc
   }, {} as Record<string, { card: RankItemData; href: string }[]>)

@@ -104,7 +104,7 @@ export function CommunityInteractions({
   const readPath = useMemo(
     () =>
       initialSummary.entity.canonical_path ??
-      `/read/${encodeURIComponent(userSlug)}/${encodeURIComponent(pageId)}`,
+      `/${encodeURIComponent(userSlug)}/${encodeURIComponent(pageId)}?tab=read`,
     [initialSummary.entity.canonical_path, pageId, userSlug]
   );
 

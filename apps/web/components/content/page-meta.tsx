@@ -206,13 +206,13 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
     <div className={cn("grid gap-[11px]", className)}>
       {/* Author */}
       <div className="grid grid-cols-[auto_1fr_auto] gap-[9px] items-center">
-        <Link href={`/author/${encodeURIComponent(author.userSlug)}`} className="shrink-0">
+        <Link href={`/${encodeURIComponent(author.userSlug)}`} className="shrink-0">
           <Avatar className="size-[34px]">
             <AvatarImage src={author.avatarUrl} alt={author.name} />
             <AvatarFallback>{author.fallbackText}</AvatarFallback>
           </Avatar>
         </Link>
-        <Link href={`/author/${encodeURIComponent(author.userSlug)}`} className="grid gap-[3px] min-w-0 hover:opacity-80 transition-opacity">
+        <Link href={`/${encodeURIComponent(author.userSlug)}`} className="grid gap-[3px] min-w-0 hover:opacity-80 transition-opacity">
           <div className="font-bold text-sm truncate">{author.name}</div>
           <div className="text-[12.5px] text-muted-foreground">
             {t("community.followersCountUnit", { formattedCount: formatCount(author.followerCount) })}

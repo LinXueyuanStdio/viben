@@ -257,12 +257,12 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
 
   const pinnedCards = pinnedPagesRaw.map((p) => ({
     card: mapPageCard(p, user.displayName),
-    href: `/read/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(p.uid)}`,
+    href: `/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }))
 
   const pageCards = nonPinnedPages.map((p) => ({
     card: mapPageCard(p, user.displayName),
-    href: `/read/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(p.uid)}`,
+    href: `/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }))
 
   const feedCards: FeedCardData[] = authorMoments.map((m) => ({
@@ -278,7 +278,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
     },
     text: m.body ?? "",
     quote: m.quoteText ?? undefined,
-    shareUrl: `/author/${encodeURIComponent(user.userSlug)}`,
+    shareUrl: `/${encodeURIComponent(user.userSlug)}`,
     actions: {
       views: m.viewCount ?? 0,
       likes: m.likeCount,
@@ -324,7 +324,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
           <SectionHead
             title={profileReadme.title}
             actionLabel="View full page"
-            actionHref={`/read/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(profileReadme.uid)}`}
+            actionHref={`/${encodeURIComponent(user.userSlug)}/${encodeURIComponent(profileReadme.uid)}?tab=read`}
           />
           <div
             className="prose prose-sm dark:prose-invert max-w-none mt-3"

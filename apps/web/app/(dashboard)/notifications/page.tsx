@@ -64,7 +64,7 @@ export default async function NotificationsPage() {
 
     const readUrl =
       item.page_author_slug && item.page_uid
-        ? `/read/${item.page_author_slug}/${item.page_uid}`
+        ? `/${item.page_author_slug}/${item.page_uid}?tab=read`
         : undefined
 
     return {

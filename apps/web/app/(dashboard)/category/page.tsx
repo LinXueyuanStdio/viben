@@ -100,7 +100,7 @@ export default async function CategoryPage() {
           bookmarks: row.favoriteCount,
         },
       },
-      href: `/read/${encodeURIComponent(row.userSlug)}/${encodeURIComponent(row.pageId)}`,
+      href: `/${encodeURIComponent(row.userSlug)}/${encodeURIComponent(row.pageId)}?tab=read`,
     })
   }
 

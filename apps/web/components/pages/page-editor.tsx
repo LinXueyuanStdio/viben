@@ -157,7 +157,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
       toast.success(t("pageEditor.publishSuccess"))
       router.push(
         data.read_url ||
-          `/read/${encodeURIComponent(userSlug)}/${encodeURIComponent(uid.trim())}`,
+          `/${encodeURIComponent(userSlug)}/${encodeURIComponent(uid.trim())}?tab=read`,
       )
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("pageEditor.publishFailed"))
