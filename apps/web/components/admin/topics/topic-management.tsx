@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ interface Topic {
 }
 
 export function TopicManagement() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -55,6 +57,12 @@ export function TopicManagement() {
   const [formDescription, setFormDescription] = useState('');
   const [formIsFeatured, setFormIsFeatured] = useState(false);
 
+  const filterLabels: Record<string, string> = {
+    all: t('dashboard.admin.comments.filterAll'),
+    featured: t('dashboard.admin.topics.featured'),
+    blocked: t('dashboard.admin.topics.blocked'),
+  };
+
   const fetchTopics = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -64,11 +72,11 @@ export function TopicManagement() {
       const data = await res.json();
       setTopics(data.topics);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load topics');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [currentFilter]);
+  }, [currentFilter, t]);
 
   useEffect(() => { fetchTopics(); }, [fetchTopics]);
 
@@ -120,7 +128,7 @@ export function TopicManagement() {
       setDialogOpen(false);
       fetchTopics();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save topic');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.actionError'));
     } finally {
       setSaving(false);
     }
@@ -138,7 +146,7 @@ export function TopicManagement() {
       if (!res.ok) throw new Error('Failed to update topic');
       fetchTopics();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update topic');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.actionError'));
     } finally {
       setTogglingId(null);
     }
@@ -153,7 +161,7 @@ export function TopicManagement() {
       setDeleteId(null);
       fetchTopics();
     } catch {
-      setError('删除话题失败');
+      setError(t('dashboard.admin.topics.actionError'));
     } finally {
       setDeleting(false);
     }
@@ -163,8 +171,8 @@ export function TopicManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold">话题管理</h1>
-          <p className="text-muted-foreground">管理动态话题/标签，控制精选和屏蔽</p>
+          <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.topics.title')}</h1>
+          <p className="text-muted-foreground">{t('dashboard.admin.topics.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           {(['all', 'featured', 'blocked'] as const).map((f) => (
@@ -176,10 +184,10 @@ export function TopicManagement() {
                 currentFilter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
             >
-              {f === 'all' ? '全部' : f === 'featured' ? '精选' : '已屏蔽'}
+              {filterLabels[f]}
             </button>
           ))}
-          <Button onClick={openCreateDialog}>新建话题</Button>
+          <Button onClick={openCreateDialog}>{t('dashboard.admin.topics.create')}</Button>
         </div>
       </div>
 
@@ -188,24 +196,24 @@ export function TopicManagement() {
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-destructive">{error}</p>
-          <button onClick={fetchTopics} className="mt-2 text-sm text-primary hover:underline">重试</button>
+          <button onClick={fetchTopics} className="mt-2 text-sm text-primary hover:underline">{t('dashboard.admin.topics.retry')}</button>
         </div>
       ) : topics.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg text-muted-foreground">暂无话题</p>
-          <p className="mt-2 text-sm text-muted-foreground">点击「新建话题」创建第一个话题</p>
+          <p className="text-lg text-muted-foreground">{t('dashboard.admin.topics.emptyTitle')}</p>
+          <p className="mt-2 text-sm text-muted-foreground">点击「{t('dashboard.admin.topics.create')}」创建第一个话题</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">名称</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Slug</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">描述</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">动态数</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.topics.columns.name')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.topics.columns.slug')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.topics.columns.description')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.topics.columns.momentCount')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.topics.columns.status')}</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.topics.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -217,17 +225,17 @@ export function TopicManagement() {
                   <td className="px-4 py-3 text-sm">{topic.momentCount}</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex gap-1">
-                      {topic.isFeatured && <Badge variant="default">精选</Badge>}
-                      {topic.isBlocked && <Badge variant="destructive">已屏蔽</Badge>}
+                      {topic.isFeatured && <Badge variant="default">{t('dashboard.admin.topics.featured')}</Badge>}
+                      {topic.isBlocked && <Badge variant="destructive">{t('dashboard.admin.topics.blocked')}</Badge>}
                       {!topic.isFeatured && !topic.isBlocked && <Badge variant="secondary">普通</Badge>}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => toggleTopic(topic, 'isFeatured')} disabled={togglingId === topic.id} title={topic.isFeatured ? '取消精选' : '设为精选'}>
+                      <Button variant="ghost" size="sm" onClick={() => toggleTopic(topic, 'isFeatured')} disabled={togglingId === topic.id} title={topic.isFeatured ? t('dashboard.admin.topics.unfeature') : t('dashboard.admin.topics.feature')}>
                         <Star className={`h-4 w-4 ${topic.isFeatured ? 'fill-yellow-400 text-yellow-400' : ''}`} />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => toggleTopic(topic, 'isBlocked')} disabled={togglingId === topic.id} title={topic.isBlocked ? '取消屏蔽' : '屏蔽'}>
+                      <Button variant="ghost" size="sm" onClick={() => toggleTopic(topic, 'isBlocked')} disabled={togglingId === topic.id} title={topic.isBlocked ? t('dashboard.admin.topics.unblock') : t('dashboard.admin.topics.block')}>
                         <ShieldOff className={`h-4 w-4 ${topic.isBlocked ? 'text-destructive' : ''}`} />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEditDialog(topic)}><Pencil className="h-4 w-4" /></Button>
@@ -248,16 +256,16 @@ export function TopicManagement() {
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editingTopic ? '编辑话题' : '新建话题'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingTopic ? t('dashboard.admin.topics.form.editTitle') : t('dashboard.admin.topics.form.createTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label htmlFor="displayName">名称</Label><Input id="displayName" value={formDisplayName} onChange={(e) => setFormDisplayName(e.target.value)} placeholder="话题名称" /></div>
-            <div className="space-y-2"><Label htmlFor="slug">Slug</Label><Input id="slug" value={formSlug} onChange={(e) => setFormSlug(e.target.value)} placeholder="url-friendly-slug" /></div>
-            <div className="space-y-2"><Label htmlFor="description">描述</Label><Textarea id="description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="话题描述（可选）" rows={3} /></div>
-            <div className="flex items-center justify-between"><Label htmlFor="isFeatured">设为精选</Label><Switch id="isFeatured" checked={formIsFeatured} onCheckedChange={setFormIsFeatured} /></div>
+            <div className="space-y-2"><Label htmlFor="displayName">{t('dashboard.admin.topics.form.name')}</Label><Input id="displayName" value={formDisplayName} onChange={(e) => setFormDisplayName(e.target.value)} placeholder={t('dashboard.admin.topics.form.name')} /></div>
+            <div className="space-y-2"><Label htmlFor="slug">{t('dashboard.admin.topics.form.slug')}</Label><Input id="slug" value={formSlug} onChange={(e) => setFormSlug(e.target.value)} placeholder="url-friendly-slug" /></div>
+            <div className="space-y-2"><Label htmlFor="description">{t('dashboard.admin.topics.form.description')}</Label><Textarea id="description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('dashboard.admin.topics.form.description') + '（可选）'} rows={3} /></div>
+            <div className="flex items-center justify-between"><Label htmlFor="isFeatured">{t('dashboard.admin.topics.feature')}</Label><Switch id="isFeatured" checked={formIsFeatured} onCheckedChange={setFormIsFeatured} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={saving || !formDisplayName || !formSlug}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSave} disabled={saving || !formDisplayName || !formSlug}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -265,10 +273,10 @@ export function TopicManagement() {
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>确认删除</DialogTitle><DialogDescription>此操作不可撤销。确定要删除这个话题吗？</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('dashboard.admin.topics.deleteConfirm')}</DialogTitle><DialogDescription>{t('dashboard.admin.topics.deleteConfirmDesc')}</DialogDescription></DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>取消</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}确认删除</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

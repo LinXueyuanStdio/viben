@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ interface Category {
 }
 
 export function CategoryManagement() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -54,6 +56,12 @@ export function CategoryManagement() {
   const [formSortOrder, setFormSortOrder] = useState(0);
   const [formIsActive, setFormIsActive] = useState(true);
 
+  const filterLabels: Record<string, string> = {
+    all: t('dashboard.admin.comments.filterAll'),
+    active: t('dashboard.admin.categories.enabled'),
+    inactive: t('dashboard.admin.categories.disabled'),
+  };
+
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -63,11 +71,11 @@ export function CategoryManagement() {
       const data = await res.json();
       setCategories(data.categories);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load categories');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.categories.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [currentStatus]);
+  }, [currentStatus, t]);
 
   useEffect(() => {
     fetchCategories();
@@ -134,7 +142,7 @@ export function CategoryManagement() {
       setDialogOpen(false);
       fetchCategories();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save category');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.categories.actionError'));
     } finally {
       setSaving(false);
     }
@@ -149,7 +157,7 @@ export function CategoryManagement() {
       setDeleteId(null);
       fetchCategories();
     } catch {
-      setError('删除分类失败');
+      setError(t('dashboard.admin.categories.actionError'));
     } finally {
       setDeleting(false);
     }
@@ -160,8 +168,8 @@ export function CategoryManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold">分类管理</h1>
-          <p className="text-muted-foreground">管理页面分类，控制首页分类展示</p>
+          <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.categories.title')}</h1>
+          <p className="text-muted-foreground">{t('dashboard.admin.categories.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           {(['all', 'active', 'inactive'] as const).map((s) => (
@@ -175,10 +183,10 @@ export function CategoryManagement() {
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
             >
-              {s === 'all' ? '全部' : s === 'active' ? '启用' : '禁用'}
+              {filterLabels[s]}
             </button>
           ))}
-          <Button onClick={openCreateDialog}>新建分类</Button>
+          <Button onClick={openCreateDialog}>{t('dashboard.admin.categories.create')}</Button>
         </div>
       </div>
 
@@ -191,25 +199,25 @@ export function CategoryManagement() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-destructive">{error}</p>
           <button onClick={fetchCategories} className="mt-2 text-sm text-primary hover:underline">
-            重试
+            {t('dashboard.admin.categories.retry')}
           </button>
         </div>
       ) : categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg text-muted-foreground">暂无分类</p>
-          <p className="mt-2 text-sm text-muted-foreground">点击「新建分类」创建第一个分类</p>
+          <p className="text-lg text-muted-foreground">{t('dashboard.admin.categories.emptyTitle')}</p>
+          <p className="mt-2 text-sm text-muted-foreground">点击「{t('dashboard.admin.categories.create')}」创建第一个分类</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">名称</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Slug</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">描述</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">排序</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.categories.columns.name')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.categories.columns.slug')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.categories.columns.description')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.categories.columns.sortOrder')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.categories.columns.status')}</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.categories.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -223,7 +231,7 @@ export function CategoryManagement() {
                   <td className="px-4 py-3 text-sm">{cat.sortOrder}</td>
                   <td className="px-4 py-3 text-sm">
                     <Badge variant={cat.isActive ? 'default' : 'secondary'}>
-                      {cat.isActive ? '启用' : '禁用'}
+                      {cat.isActive ? t('dashboard.admin.categories.enabled') : t('dashboard.admin.categories.disabled')}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -252,21 +260,21 @@ export function CategoryManagement() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingCategory ? '编辑分类' : '新建分类'}
+              {editingCategory ? t('dashboard.admin.categories.form.editTitle') : t('dashboard.admin.categories.form.createTitle')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">名称</Label>
+              <Label htmlFor="name">{t('dashboard.admin.categories.form.name')}</Label>
               <Input
                 id="name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="分类名称"
+                placeholder={t('dashboard.admin.categories.form.name')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="slug">Slug</Label>
+              <Label htmlFor="slug">{t('dashboard.admin.categories.form.slug')}</Label>
               <Input
                 id="slug"
                 value={formSlug}
@@ -275,17 +283,17 @@ export function CategoryManagement() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">描述</Label>
+              <Label htmlFor="description">{t('dashboard.admin.categories.form.description')}</Label>
               <Textarea
                 id="description"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="分类描述（可选）"
+                placeholder={t('dashboard.admin.categories.form.description') + '（可选）'}
                 rows={3}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sortOrder">排序</Label>
+              <Label htmlFor="sortOrder">{t('dashboard.admin.categories.form.sortOrder')}</Label>
               <Input
                 id="sortOrder"
                 type="number"
@@ -294,7 +302,7 @@ export function CategoryManagement() {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="isActive">启用状态</Label>
+              <Label htmlFor="isActive">{t('dashboard.admin.categories.columns.status')}</Label>
               <Switch
                 id="isActive"
                 checked={formIsActive}
@@ -304,10 +312,10 @@ export function CategoryManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={saving || !formName || !formSlug}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -317,16 +325,16 @@ export function CategoryManagement() {
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
+            <DialogTitle>{t('dashboard.admin.categories.deleteConfirm')}</DialogTitle>
             <DialogDescription>
-              此操作不可撤销。确定要删除这个分类吗？
+              {t('dashboard.admin.categories.deleteConfirmDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>取消</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              确认删除
+              {t('common.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
