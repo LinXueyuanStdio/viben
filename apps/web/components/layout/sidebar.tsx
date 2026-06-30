@@ -149,6 +149,18 @@ export function Sidebar({
       permission: 'content.moderate',
     },
     {
+      name: t('nav.media', '媒体管理'),
+      href: '/admin/media',
+      icon: Image,
+      permission: 'content.moderate',
+    },
+    {
+      name: t('nav.shares', '分享管理'),
+      href: '/admin/shares',
+      icon: Share2,
+      permission: 'content.moderate',
+    },
+    {
       name: t('nav.collections', '合集管理'),
       href: '/admin/collections',
       icon: Layers,
@@ -197,6 +209,12 @@ export function Sidebar({
       permission: 'reports.view',
     },
     {
+      name: t('nav.notifications', '通知管理'),
+      href: '/admin/notifications',
+      icon: Bell,
+      permission: 'admin.access',
+    },
+    {
       name: t('nav.activity', '活动流'),
       href: '/admin/activity',
       icon: Activity,
@@ -213,6 +231,30 @@ export function Sidebar({
       href: '/admin/drafts',
       icon: FileEdit,
       permission: 'content.delete',
+    },
+    {
+      name: t('nav.analytics', '内容分析'),
+      href: '/admin/analytics',
+      icon: BarChart3,
+      permission: 'admin.access',
+    },
+    {
+      name: t('nav.searchAnalytics', '搜索分析'),
+      href: '/admin/search-analytics',
+      icon: Search,
+      permission: 'admin.access',
+    },
+    {
+      name: t('nav.downloads', '下载统计'),
+      href: '/admin/downloads',
+      icon: Download,
+      permission: 'admin.access',
+    },
+    {
+      name: t('nav.apiKeys', 'API 密钥'),
+      href: '/admin/api-keys',
+      icon: Key,
+      permission: 'admin.access',
     },
     {
       name: t('nav.logs'),
