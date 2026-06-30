@@ -285,10 +285,10 @@ export function ReadPageClient({
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
       <ReadDrawer
         tabs={[
-          { value: "details", label: "阅读", content: detailsTab },
+          { value: "details", label: t("community.read"), content: detailsTab },
           { value: "comments", label: t("community.comments"), badge: pageCommentCount, content: commentsTab },
           { value: "notes", label: t("community.notes"), content: notesTab },
-          ...(isAuthor ? [{ value: "settings", label: "设置", content: settingsTab }] : []),
+          ...(isAuthor ? [{ value: "settings", label: t("community.settings"), content: settingsTab }] : []),
         ]}
         defaultTab={activeTab === "settings" && isAuthor ? "settings" : "details"}
       />

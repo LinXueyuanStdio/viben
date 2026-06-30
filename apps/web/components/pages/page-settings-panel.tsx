@@ -105,7 +105,7 @@ export function PageSettingsPanel({
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(publishedUrl)
-      toast.success(t("common.copied"))
+      toast.success(t("community.copied"))
     } catch {
       toast.error(t("community.copyFailed"))
     }
@@ -121,7 +121,7 @@ export function PageSettingsPanel({
       <section className="rounded-lg border border-border bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <ExternalLink className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">已发布链接</h2>
+          <h2 className="text-sm font-semibold">{t("pageEditor.settingsPublishedUrl")}</h2>
         </div>
         <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-3">
           <div className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
@@ -129,7 +129,7 @@ export function PageSettingsPanel({
           </div>
           <button
             type="button"
-            aria-label="Copy published URL"
+            aria-label={t("pageEditor.settingsCopyUrl")}
             onClick={handleCopyUrl}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
@@ -137,7 +137,7 @@ export function PageSettingsPanel({
           </button>
           <button
             type="button"
-            aria-label="Open published page"
+            aria-label={t("pageEditor.settingsOpenUrl")}
             onClick={handleOpenUrl}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
@@ -150,23 +150,23 @@ export function PageSettingsPanel({
       <section className="rounded-lg border border-border bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <Info className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">页面信息</h2>
+          <h2 className="text-sm font-semibold">{t("pageEditor.settingsPageInfo")}</h2>
         </div>
         <dl className="space-y-2 text-sm">
           <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">UID</dt>
+            <dt className="text-muted-foreground">{t("pageEditor.uidLabel")}</dt>
             <dd className="font-mono text-xs text-foreground">{pageUid}</dd>
           </div>
           {pagePublishedAt && (
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">发布日期</dt>
+              <dt className="text-muted-foreground">{t("pageEditor.settingsPublishedDate")}</dt>
               <dd className="text-xs text-foreground">
                 {new Date(pagePublishedAt).toLocaleDateString("zh-CN")}
               </dd>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">可见性</dt>
+            <dt className="text-muted-foreground">{t("pageEditor.settingsVisibilityLabel")}</dt>
             <dd className="text-xs text-foreground capitalize">{visibility}</dd>
           </div>
         </dl>
@@ -176,51 +176,51 @@ export function PageSettingsPanel({
       <section className="rounded-lg border border-border bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <Save className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">编辑页面</h2>
+          <h2 className="text-sm font-semibold">{t("pageEditor.settingsEditPage")}</h2>
         </div>
 
         <div className="space-y-4">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="settings-title">标题</Label>
+            <Label htmlFor="settings-title">{t("pageEditor.titleLabel")}</Label>
             <Input
               id="settings-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="页面标题"
+              placeholder={t("pageEditor.titlePlaceholder")}
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="settings-description">描述</Label>
+            <Label htmlFor="settings-description">{t("pageEditor.descriptionLabel")}</Label>
             <Textarea
               id="settings-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="页面描述"
+              placeholder={t("pageEditor.descriptionPlaceholder")}
               rows={3}
             />
           </div>
 
           {/* Visibility */}
           <div className="space-y-2">
-            <Label htmlFor="settings-visibility">可见性</Label>
+            <Label htmlFor="settings-visibility">{t("pageEditor.settingsVisibilityLabel")}</Label>
             <select
               id="settings-visibility"
               value={visibility}
               onChange={(e) => setVisibility(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <option value="public">公开</option>
-              <option value="unlisted">不公开列出</option>
-              <option value="private">私有</option>
+              <option value="public">{t("pageEditor.public")}</option>
+              <option value="unlisted">{t("pageEditor.unlisted")}</option>
+              <option value="private">{t("pageEditor.private")}</option>
             </select>
           </div>
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label>标签</Label>
+            <Label>{t("pageEditor.tagsLabel")}</Label>
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-3 py-2 focus-within:ring-1 focus-within:ring-ring">
               {tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="gap-1">
@@ -229,7 +229,7 @@ export function PageSettingsPanel({
                     type="button"
                     onClick={() => removeTag(tag)}
                     className="ml-0.5 rounded-full outline-none hover:bg-secondary-foreground/20"
-                    aria-label={`Remove tag ${tag}`}
+                    aria-label={t("pageEditor.removeTag", { tag })}
                   >
                     <X className="size-3" />
                   </button>
@@ -239,7 +239,7 @@ export function PageSettingsPanel({
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
-                placeholder="添加标签后按回车"
+                placeholder={t("pageEditor.tagsPlaceholder")}
                 className="min-w-[120px] flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -249,7 +249,7 @@ export function PageSettingsPanel({
           <div className="flex justify-end pt-2">
             <Button onClick={handleSave} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin mr-2" />}
-              {isSubmitting ? "保存中..." : "保存设置"}
+              {isSubmitting ? t("pageEditor.settingsSaving") : t("pageEditor.settingsSave")}
             </Button>
           </div>
         </div>
