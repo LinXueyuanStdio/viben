@@ -1918,6 +1918,8 @@
     "noHistory": "暂无浏览记录",
     "noPages": "暂无公开页面",
     "noMoments": "暂无动态",
+    "noCollections": "暂无创建的合集",
+    "noFavoritedCollections": "暂无收藏的合集",
     "noDescription": "暂无简介",
     "markAllRead": "全部已读",
     "marked": "已标记",
@@ -2046,6 +2048,37 @@
     "noteDeleteConfirm": "确认删除？",
     "loading": "加载中...",
     "noNotes": "暂无笔记",
-    "noNotesHint": "添加笔记记录你的想法"
+    "noNotesHint": "添加笔记记录你的想法",
+    "loginToInteract": "登录后可互动",
+    "interactSoon": "互动功能即将上线",
+    "copyLink": "复制链接",
+    "copyLinkFailed": "复制链接失败",
+    "likeFailed": "点赞失败",
+    "bookmarkFailed": "收藏失败",
+    "tags": {
+      "title": "标签",
+      "empty": "暂无标签"
+    },
+    "adminReports": {
+      "title": "举报管理",
+      "subtitle": "查看和处理用户举报",
+      "statusPending": "待处理",
+      "statusResolved": "已处理",
+      "statusDismissed": "已驳回",
+      "statusAll": "全部",
+      "empty": "暂无举报",
+      "emptyPending": "没有待处理的举报",
+      "emptyFilter": "没有符合条件的举报",
+      "resolve": "处理",
+      "dismiss": "驳回",
+      "reporter": "举报人",
+      "entityType": "类型",
+      "entityId": "实体ID",
+      "reason": "原因",
+      "description": "描述",
+      "status": "状态",
+      "time": "时间",
+      "actions": "操作"
+    }
   }
 }
