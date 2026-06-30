@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
@@ -42,7 +42,8 @@ export function Topbar({
 }: TopbarProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const mode = getTopbarMode(pathname)
+  const searchParams = useSearchParams()
+  const mode = getTopbarMode(pathname, searchParams)
   const isRead = mode === "read"
   const { toggle: toggleDrawer } = useDrawer()
 
@@ -253,12 +254,16 @@ function ReadMoreMenu() {
   const [reportOpen, setReportOpen] = React.useState(false)
   const [feedbackOpen, setFeedbackOpen] = React.useState(false)
 
-  // 从 pathname 解析 pageId：/read/[user_slug]/[page_id]
+  // 从 pathname 解析 pageId：/[user_slug]/[page_id] (新路由) 或 /read/[user_slug]/[page_id] (旧路由)
   const pageId = React.useMemo(() => {
     const parts = pathname.split("/")
-    // 例如 pathname = "/read/alice/my-article"
+    // 新路由: /[user_slug]/[page_id]，例如 /alice/my-article
+    // 旧路由: /read/[user_slug]/[page_id]，例如 /read/alice/my-article
     if (parts[1] === "read" && parts.length >= 4) {
       return parts[3]
+    }
+    if (parts.length >= 3 && parts[1] !== "" && parts[1] !== "landing" && parts[2] !== "") {
+      return parts[2]
     }
     return ""
   }, [pathname])

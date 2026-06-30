@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { createContext, useContext } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider } from "./drawer-context"
@@ -48,7 +48,8 @@ export function AppShell({
   recentSearches = [],
 }: AppShellProps) {
   const pathname = usePathname()
-  const isRead = pathname.startsWith("/read/")
+  const searchParams = useSearchParams()
+  const isRead = pathname.startsWith("/read/") || searchParams.get("tab") === "read"
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false
