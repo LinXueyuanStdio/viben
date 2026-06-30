@@ -3,9 +3,12 @@
 import { useState, useCallback, useTransition } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { FeedCard } from "./feed-card"
 import type { FeedCardData } from "./feed-card"
 import { Button } from "@/components/ui/button"
+import { mapRichMomentToFeedCard } from "@/lib/services/moment-mapper"
+import type { MomentFeedItem } from "@/lib/services/community"
 
 interface FeedListProps {
   initialItems: FeedCardData[]
@@ -26,55 +29,9 @@ async function fetchMore(feedType: string, cursor: string | null): Promise<{
   if (!res.ok) throw new Error("fetch_failed")
   const data = await res.json()
 
-  // Map API response to FeedCardData (simplified — reuses server mapping)
-  const items: FeedCardData[] = (data.items ?? []).map((item: Record<string, unknown>) => {
-    const moment = (item.moment ?? {}) as Record<string, unknown>
-    const author = (item.author ?? {}) as Record<string, unknown>
-    const attachments = (item.attachments ?? []) as Array<Record<string, unknown>>
-    const viewerState = (item.viewer_state ?? {}) as Record<string, boolean>
-
-    const FEED_KIND_MAP: Record<string, "发布" | "更新" | "转发"> = {
-      post: "发布", page_update: "更新", repost: "转发", system: "更新",
-    }
-
-    return {
-      head: {
-        fallbackText: (author.display_name as string)?.[0] ?? "?",
-        avatarUrl: author.avatar_url as string | undefined,
-        name: author.display_name as string,
-        handle: `@${author.user_slug as string}`,
-        userSlug: author.user_slug as string,
-        kind: FEED_KIND_MAP[moment.kind as string] ?? "发布",
-        timeAgo: "",
-        source: moment.source as string | undefined,
-      },
-      text: (moment.body as string) ?? "",
-      quote: moment.quote_text as string | undefined,
-      attachment: attachments[0] ? {
-        cover: (attachments[0].cover_url as string)
-          ? `url(${attachments[0].cover_url})`
-          : undefined,
-        title: (attachments[0].title as string) ?? "",
-        authorName: (attachments[0].author_name_snapshot as string) ?? "",
-        timeAgo: "",
-        stats: {
-          views: (attachments[0].view_count_snapshot as number) ?? 0,
-          comments: (attachments[0].comment_count_snapshot as number) ?? 0,
-        },
-      } : undefined,
-      actions: {
-        views: (moment.view_count as number) ?? 0,
-        likes: (moment.like_count as number) ?? 0,
-        comments: (moment.comment_count as number) ?? 0,
-        reposts: (moment.repost_count as number) ?? 0,
-        bookmarks: (moment.bookmark_count as number) ?? 0,
-        momentId: moment.id as string,
-        shareUrl: `/moment/${moment.id}`,
-        hasLiked: viewerState.has_liked as boolean,
-        hasBookmarked: viewerState.has_bookmarked as boolean,
-      },
-    }
-  })
+  const items: FeedCardData[] = (data.items ?? []).map((item: unknown) =>
+    mapRichMomentToFeedCard(item as MomentFeedItem),
+  )
 
   return {
     items,
@@ -99,7 +56,7 @@ export function FeedList({ initialItems, initialHasMore, initialCursor, feedType
         setCursor(result.next_cursor)
         setHasMore(result.has_more)
       } catch {
-        // silently fail — user can retry
+        toast.error(t("community.loadFailed"))
       }
     })
   }, [feedType, cursor, hasMore, loading])
@@ -110,8 +67,8 @@ export function FeedList({ initialItems, initialHasMore, initialCursor, feedType
 
   return (
     <div className="grid gap-2">
-      {items.map((feed) => (
-        <FeedCard key={feed.actions.momentId ?? crypto.randomUUID()} data={feed} variant="rich" />
+      {items.map((feed, i) => (
+        <FeedCard key={feed.actions.momentId ?? `feed-${i}`} data={feed} variant="rich" />
       ))}
       {hasMore && (
         <Button
