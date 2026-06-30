@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -29,16 +31,21 @@ interface Category {
 }
 
 export function CategoryManagement() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const currentStatus = searchParams.get('status') || 'all';
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [formSlug, setFormSlug] = useState('');
@@ -51,7 +58,7 @@ export function CategoryManagement() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/categories?status=${statusFilter}`);
+      const res = await fetch(`/api/admin/categories?status=${currentStatus}`);
       if (!res.ok) throw new Error('Failed to fetch categories');
       const data = await res.json();
       setCategories(data.categories);
@@ -60,11 +67,18 @@ export function CategoryManagement() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [currentStatus]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  const updateFilter = (status: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (status && status !== 'all') params.set('status', status);
+    else params.delete('status');
+    router.push(`/admin/categories?${params.toString()}`);
+  };
 
   const openCreateDialog = () => {
     setEditingCategory(null);
@@ -126,17 +140,18 @@ export function CategoryManagement() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('确定删除此分类？')) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/categories/${deleteId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete category');
+      setDeleteId(null);
       fetchCategories();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete category');
+    } catch {
+      setError('删除分类失败');
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
   };
 
@@ -153,9 +168,9 @@ export function CategoryManagement() {
             <button
               key={s}
               type="button"
-              onClick={() => setStatusFilter(s)}
+              onClick={() => updateFilter(s)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                statusFilter === s
+                currentStatus === s
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
@@ -213,24 +228,11 @@ export function CategoryManagement() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(cat)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(cat)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(cat.id)}
-                        disabled={deletingId === cat.id}
-                      >
-                        {deletingId === cat.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        )}
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteId(cat.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </td>
@@ -306,6 +308,25 @@ export function CategoryManagement() {
             </Button>
             <Button onClick={handleSave} disabled={saving || !formName || !formSlug}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              此操作不可撤销。确定要删除这个分类吗？
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>取消</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              确认删除
             </Button>
           </DialogFooter>
         </DialogContent>

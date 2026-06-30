@@ -24,18 +24,22 @@ interface User {
   role: string;
   createdAt: string;
   lastLoginAt: string | null;
+  bannedAt: string | null;
+  warnedAt: string | null;
 }
 
 interface UserManagementProps {
   initialSearch?: string;
   initialRole?: string;
   initialSort?: string;
+  currentUserRole?: string;
 }
 
 export function UserManagement({
   initialSearch,
   initialRole,
   initialSort,
+  currentUserRole = '',
 }: UserManagementProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -131,7 +135,7 @@ export function UserManagement({
     updateSearchParams('sort', value);
   };
 
-  const handleRoleUpdate = async (userId: string, newRole: 'user' | 'developer') => {
+  const handleRoleUpdate = async (userId: string, newRole: string) => {
     try {
       const res = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'PATCH',
@@ -144,7 +148,66 @@ export function UserManagement({
         throw new Error(data.error || 'Failed to update role');
       }
 
-      // Refresh the list
+      fetchUsers();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleBan = async (userId: string, reason: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ban', reason }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to ban user');
+      }
+
+      fetchUsers();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleUnban = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unban' }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to unban user');
+      }
+
+      fetchUsers();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleWarn = async (userId: string, reason: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/warn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to warn user');
+      }
+
       fetchUsers();
       return true;
     } catch {
@@ -215,7 +278,14 @@ export function UserManagement({
         </div>
       ) : (
         <>
-          <UserTable users={users} onRoleUpdate={handleRoleUpdate} />
+          <UserTable
+            users={users}
+            currentUserRole={currentUserRole}
+            onRoleUpdate={handleRoleUpdate}
+            onBan={handleBan}
+            onUnban={handleUnban}
+            onWarn={handleWarn}
+          />
 
           {pagination.totalPages > 1 && (
             <div className="mt-6">

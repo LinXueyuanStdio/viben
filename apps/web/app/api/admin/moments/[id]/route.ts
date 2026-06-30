@@ -1,0 +1,101 @@
+/**
+ * Admin Moments [id] API
+ *
+ * DELETE /api/admin/moments/[id] - Soft-delete a moment
+ * PATCH /api/admin/moments/[id] - Hide/unhide a moment
+ */
+
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { requirePermission, AuthError } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { db, moments } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { createModerationLog } from '@/lib/admin/logs';
+import { z } from 'zod';
+
+const updateMomentSchema = z.object({
+  action: z.enum(['hide', 'unhide', 'delete']),
+});
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await requirePermission(request, 'content.moderate');
+    const { id } = await params;
+    const body = await request.json();
+    const { action } = updateMomentSchema.parse(body);
+
+    if (action === 'delete') {
+      await db
+        .update(moments)
+        .set({ isDeleted: true, deletedAt: new Date() })
+        .where(eq(moments.id, id));
+    } else if (action === 'hide') {
+      await db
+        .update(moments)
+        .set({ visibility: 'private' })
+        .where(eq(moments.id, id));
+    } else if (action === 'unhide') {
+      await db
+        .update(moments)
+        .set({ visibility: 'public' })
+        .where(eq(moments.id, id));
+    }
+
+    await createModerationLog({
+      adminId: session.userId,
+      entityType: 'comment', // using existing enum
+      entityId: id,
+      action: action === 'delete' ? 'delete' : 'warn',
+      reason: `Moment ${action}d`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request body', details: error.issues },
+        { status: 400 }
+      );
+    }
+    console.error('Update moment error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await requirePermission(request, 'content.delete');
+    const { id } = await params;
+
+    await db
+      .update(moments)
+      .set({ isDeleted: true, deletedAt: new Date() })
+      .where(eq(moments.id, id));
+
+    await createModerationLog({
+      adminId: session.userId,
+      entityType: 'comment',
+      entityId: id,
+      action: 'delete',
+      reason: 'Moment deleted by admin',
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('Delete moment error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

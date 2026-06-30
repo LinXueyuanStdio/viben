@@ -1,3 +1,4 @@
+import { getSession } from '@/lib/auth';
 import { UserManagement } from '@/components/admin/users/user-management';
 
 export const metadata = {
@@ -15,10 +16,10 @@ interface UsersPageProps {
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
   const params = await searchParams;
+  const session = await getSession();
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="font-serif text-2xl font-bold">用户管理</h1>
         <p className="text-muted-foreground">
@@ -26,11 +27,11 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         </p>
       </div>
 
-      {/* User Management Component */}
       <UserManagement
         initialSearch={params.search}
         initialRole={params.role}
         initialSort={params.sort}
+        currentUserRole={session?.role ?? ''}
       />
     </div>
   );

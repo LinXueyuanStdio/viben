@@ -140,6 +140,18 @@ export const routeRegistry: Record<string, RouteConfig> = {
     parent: "/admin",
     dropdownCategory: "管理",
   },
+  "/admin/moments": {
+    label: "动态管理",
+    icon: Clock,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/feedbacks": {
+    label: "反馈管理",
+    icon: Heart,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
 
   // 阅读面包屑（模式=read 时使用）
   "/read": { label: "页面", icon: FileText, mode: "read" },
