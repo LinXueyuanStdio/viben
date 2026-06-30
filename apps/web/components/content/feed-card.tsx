@@ -190,6 +190,8 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           disabled: pendingLike,
           loading: pendingLike,
           active: likedActive,
+          activeColor: "text-red-500",
+          bounce: bounceLike,
         },
         {
           icon: MessageCircle,
@@ -216,6 +218,8 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           disabled: pendingBookmark,
           loading: pendingBookmark,
           active: bookmarkedActive,
+          activeColor: "text-amber-500",
+          bounce: bounceBookmark,
         },
       ]
     : [
@@ -237,6 +241,8 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           disabled: pendingBookmark,
           loading: pendingBookmark,
           active: bookmarkedActive,
+          activeColor: "text-amber-500",
+          bounce: bounceBookmark,
         },
       ]
 
