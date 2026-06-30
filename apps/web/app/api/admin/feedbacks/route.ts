@@ -19,7 +19,7 @@ const listFeedbacksQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await requirePermission(request, 'reports.view');
+    await requirePermission(request, 'feedbacks.view');
 
     const searchParams = request.nextUrl.searchParams;
     const query = listFeedbacksQuerySchema.parse(

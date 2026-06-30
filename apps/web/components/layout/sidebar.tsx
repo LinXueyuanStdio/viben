@@ -28,6 +28,7 @@ import {
   Users,
   Flag,
   ScrollText,
+  FileText,
 } from 'lucide-react';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
@@ -146,6 +147,48 @@ export function Sidebar({
       href: '/admin/collections',
       icon: Layers,
       permission: 'content.moderate',
+    },
+    {
+      name: t('nav.pages', '页面审核'),
+      href: '/admin/pages',
+      icon: FileText,
+      permission: 'pages.review',
+    },
+    {
+      name: t('nav.categories', '分类管理'),
+      href: '/admin/categories',
+      icon: Grid3X3,
+      permission: 'categories.manage',
+    },
+    {
+      name: t('nav.topics', '话题管理'),
+      href: '/admin/topics',
+      icon: MessageSquare,
+      permission: 'topics.manage',
+    },
+    {
+      name: t('nav.rankings', '榜单管理'),
+      href: '/admin/rankings',
+      icon: TrendingUp,
+      permission: 'rankings.view',
+    },
+    {
+      name: t('nav.operations', '运营位管理'),
+      href: '/admin/operations',
+      icon: Layers,
+      permission: 'operations.manage',
+    },
+    {
+      name: t('nav.moments', '动态管理'),
+      href: '/admin/moments',
+      icon: Clock,
+      permission: 'content.moderate',
+    },
+    {
+      name: t('nav.feedbacks', '反馈管理'),
+      href: '/admin/feedbacks',
+      icon: Heart,
+      permission: 'reports.view',
     },
     {
       name: t('nav.logs'),

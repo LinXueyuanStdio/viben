@@ -20,7 +20,7 @@ const listMomentsQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await requirePermission(request, 'content.moderate');
+    await requirePermission(request, 'moments.moderate');
 
     const searchParams = request.nextUrl.searchParams;
     const query = listMomentsQuerySchema.parse(

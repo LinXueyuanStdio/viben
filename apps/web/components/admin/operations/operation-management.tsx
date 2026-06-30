@@ -232,7 +232,13 @@ export function OperationManagement() {
 
   // Items sub-view
   if (slotIdParam || selectedSlot) {
-    if (!selectedSlot && slotIdParam) return null; // Still loading
+    if (!selectedSlot && slotIdParam) {
+      return (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
     const slot = selectedSlot!;
     return (
       <div className="space-y-6">

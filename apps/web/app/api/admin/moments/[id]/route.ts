@@ -1,18 +1,65 @@
 /**
  * Admin Moments [id] API
  *
- * DELETE /api/admin/moments/[id] - Soft-delete a moment
+ * GET /api/admin/moments/[id] - Get moment detail
  * PATCH /api/admin/moments/[id] - Hide/unhide a moment
+ * DELETE /api/admin/moments/[id] - Soft-delete a moment
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { getSession } from '@/lib/auth';
-import { db, moments } from '@/lib/db';
+import { db, moments, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
 import { z } from 'zod';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requirePermission(request, 'moments.moderate');
+    const { id } = await params;
+
+    const [moment] = await db
+      .select({
+        id: moments.id,
+        uid: moments.uid,
+        kind: moments.kind,
+        body: moments.body,
+        bodyFormat: moments.bodyFormat,
+        visibility: moments.visibility,
+        likeCount: moments.likeCount,
+        commentCount: moments.commentCount,
+        repostCount: moments.repostCount,
+        viewCount: moments.viewCount,
+        isPinned: moments.isPinned,
+        isDeleted: moments.isDeleted,
+        createdAt: moments.createdAt,
+        updatedAt: moments.updatedAt,
+        authorId: moments.authorUserId,
+        authorName: users.displayName,
+        authorUsername: users.username,
+      })
+      .from(moments)
+      .leftJoin(users, eq(users.id, moments.authorUserId))
+      .where(eq(moments.id, id));
+
+    if (!moment) {
+      return NextResponse.json({ error: 'Moment not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ moment });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('Get moment detail error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 const updateMomentSchema = z.object({
   action: z.enum(['hide', 'unhide', 'delete']),
@@ -23,7 +70,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requirePermission(request, 'content.moderate');
+    const session = await requirePermission(request, 'moments.moderate');
     const { id } = await params;
     const body = await request.json();
     const { action } = updateMomentSchema.parse(body);

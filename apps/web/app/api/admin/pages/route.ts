@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, publishedPages, users } from '@/lib/db';
-import { eq, desc, and, type SQL } from 'drizzle-orm';
+import { eq, desc, count, and, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listPagesQuerySchema = z.object({
@@ -33,6 +33,12 @@ export async function GET(request: NextRequest) {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const offset = (query.page - 1) * query.limit;
+
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(publishedPages)
+      .where(whereClause);
+    const total = totalResult?.count ?? 0;
 
     const pages = await db
       .select({
@@ -60,7 +66,15 @@ export async function GET(request: NextRequest) {
       .limit(query.limit)
       .offset(offset);
 
-    return NextResponse.json({ pages });
+    return NextResponse.json({
+      pages,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

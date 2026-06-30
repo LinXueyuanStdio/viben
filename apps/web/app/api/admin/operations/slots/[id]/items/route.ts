@@ -69,6 +69,18 @@ export async function POST(
     const body = await request.json();
     const data = createItemSchema.parse(body);
 
+    // Check for duplicate UID
+    const [existingItem] = await db
+      .select({ id: operationItems.id })
+      .from(operationItems)
+      .where(eq(operationItems.uid, data.uid));
+    if (existingItem) {
+      return NextResponse.json(
+        { error: '条目 UID 已存在' },
+        { status: 409 }
+      );
+    }
+
     const [item] = await db
       .insert(operationItems)
       .values({

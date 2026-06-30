@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -77,7 +78,7 @@ export function CommentModeration() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const currentEntityType = searchParams.get('entityType') || 'all';
+  const currentEntityType = searchParams.get('entity_type') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
 
   const fetchComments = useCallback(async () => {
@@ -117,11 +118,11 @@ export function CommentModeration() {
     try {
       const res = await fetch(`/api/admin/comments/${deleteId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete comment');
-      setDeleteId(null);
       fetchComments();
     } catch {
-      setError('删除评论失败');
+      toast.error('删除评论失败');
     } finally {
+      setDeleteId(null);
       setDeleting(false);
     }
   };
@@ -138,7 +139,7 @@ export function CommentModeration() {
             <button
               key={type}
               type="button"
-              onClick={() => updateFilter('entityType', type)}
+              onClick={() => updateFilter('entity_type', type)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 currentEntityType === type
                   ? 'bg-primary text-primary-foreground'

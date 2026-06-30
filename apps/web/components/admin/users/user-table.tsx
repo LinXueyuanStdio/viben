@@ -48,10 +48,10 @@ interface User {
 interface UserTableProps {
   users: User[];
   currentUserRole: string;
-  onRoleUpdate: (userId: string, newRole: string) => Promise<boolean>;
-  onBan: (userId: string, reason: string) => Promise<boolean>;
-  onUnban: (userId: string) => Promise<boolean>;
-  onWarn: (userId: string, reason: string) => Promise<boolean>;
+  onRoleUpdate: (userId: string, newRole: string) => Promise<{ success: boolean; error?: string }>;
+  onBan: (userId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
+  onUnban: (userId: string) => Promise<{ success: boolean; error?: string }>;
+  onWarn: (userId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -124,11 +124,11 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
   const handleRoleChange = async (userId: string, newRole: string) => {
     setUpdatingUserId(userId);
     try {
-      const success = await onRoleUpdate(userId, newRole);
-      if (success) {
+      const result = await onRoleUpdate(userId, newRole);
+      if (result.success) {
         toast.success(`角色已更新为 ${ROLE_LABELS[newRole] || newRole}`);
       } else {
-        toast.error('更新角色失败');
+        toast.error(result.error || '更新角色失败');
       }
     } catch {
       toast.error('更新角色失败');
@@ -141,13 +141,13 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
     if (!banDialog || !reason.trim()) return;
     setActing(true);
     try {
-      const success = await onBan(banDialog.userId, reason.trim());
-      if (success) {
+      const result = await onBan(banDialog.userId, reason.trim());
+      if (result.success) {
         toast.success(`已封禁 ${banDialog.username}`);
         setBanDialog(null);
         setReason('');
       } else {
-        toast.error('封禁失败');
+        toast.error(result.error || '封禁失败');
       }
     } catch {
       toast.error('封禁失败');
@@ -159,11 +159,11 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
   const handleUnban = async (userId: string) => {
     setActing(true);
     try {
-      const success = await onUnban(userId);
-      if (success) {
+      const result = await onUnban(userId);
+      if (result.success) {
         toast.success('已解封');
       } else {
-        toast.error('解封失败');
+        toast.error(result.error || '解封失败');
       }
     } catch {
       toast.error('解封失败');
@@ -176,13 +176,13 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
     if (!warnDialog || !reason.trim()) return;
     setActing(true);
     try {
-      const success = await onWarn(warnDialog.userId, reason.trim());
-      if (success) {
+      const result = await onWarn(warnDialog.userId, reason.trim());
+      if (result.success) {
         toast.success(`已警告 ${warnDialog.username}`);
         setWarnDialog(null);
         setReason('');
       } else {
-        toast.error('警告失败');
+        toast.error(result.error || '警告失败');
       }
     } catch {
       toast.error('警告失败');

@@ -42,7 +42,7 @@ export async function POST(
       );
     }
 
-    if (targetUser.role === 'super_admin') {
+    if (targetUser.role === 'super_admin' || targetUser.role === 'admin') {
       return NextResponse.json(
         { error: 'Cannot ban a super admin' },
         { status: 403 }

@@ -135,7 +135,7 @@ export function UserManagement({
     updateSearchParams('sort', value);
   };
 
-  const handleRoleUpdate = async (userId: string, newRole: string) => {
+  const handleRoleUpdate = async (userId: string, newRole: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'PATCH',
@@ -145,17 +145,17 @@ export function UserManagement({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to update role');
+        return { success: false, error: data.error || 'Failed to update role' };
       }
 
       fetchUsers();
-      return true;
+      return { success: true };
     } catch {
-      return false;
+      return { success: false, error: 'Network error' };
     }
   };
 
-  const handleBan = async (userId: string, reason: string) => {
+  const handleBan = async (userId: string, reason: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch(`/api/admin/users/${userId}/ban`, {
         method: 'POST',
@@ -165,17 +165,17 @@ export function UserManagement({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to ban user');
+        return { success: false, error: data.error || 'Failed to ban user' };
       }
 
       fetchUsers();
-      return true;
+      return { success: true };
     } catch {
-      return false;
+      return { success: false, error: 'Network error' };
     }
   };
 
-  const handleUnban = async (userId: string) => {
+  const handleUnban = async (userId: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch(`/api/admin/users/${userId}/ban`, {
         method: 'POST',
@@ -185,17 +185,17 @@ export function UserManagement({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to unban user');
+        return { success: false, error: data.error || 'Failed to unban user' };
       }
 
       fetchUsers();
-      return true;
+      return { success: true };
     } catch {
-      return false;
+      return { success: false, error: 'Network error' };
     }
   };
 
-  const handleWarn = async (userId: string, reason: string) => {
+  const handleWarn = async (userId: string, reason: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch(`/api/admin/users/${userId}/warn`, {
         method: 'POST',
@@ -205,13 +205,13 @@ export function UserManagement({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to warn user');
+        return { success: false, error: data.error || 'Failed to warn user' };
       }
 
       fetchUsers();
-      return true;
+      return { success: true };
     } catch {
-      return false;
+      return { success: false, error: 'Network error' };
     }
   };
 

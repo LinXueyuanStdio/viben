@@ -74,7 +74,10 @@ export type AdminPermission =
   | 'rankings.view' // View ranking snapshots and items
   | 'rankings.manage' // Rebuild and configure rankings
   | 'operations.manage' // Manage operation slots and items
-  | 'pages.review'; // Review and moderate published pages
+  | 'pages.review' // Review and moderate published pages
+  | 'moments.moderate' // Moderate moments/dynamics
+  | 'feedbacks.view' // View user feedbacks
+  | 'feedbacks.resolve'; // Delete/resolve feedbacks
 
 /**
  * All available admin permissions.
@@ -98,6 +101,9 @@ export const ALL_PERMISSIONS: AdminPermission[] = [
   'rankings.manage',
   'operations.manage',
   'pages.review',
+  'moments.moderate',
+  'feedbacks.view',
+  'feedbacks.resolve',
 ];
 
 /**
@@ -112,6 +118,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AdminPermission[]> = {
     'reports.view',
     'reports.resolve',
     'rankings.view',
+    'feedbacks.view',
   ],
   moderator: [
     'admin.access',
@@ -128,6 +135,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, AdminPermission[]> = {
     'topics.manage',
     'rankings.view',
     'pages.review',
+    'moments.moderate',
+    'feedbacks.view',
+    'feedbacks.resolve',
   ],
   // Legacy admin role - full permissions
   admin: ALL_PERMISSIONS,

@@ -72,6 +72,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createCategorySchema.parse(body);
 
+    // Check for duplicate slug
+    const [existing] = await db
+      .select({ id: pageCategories.id })
+      .from(pageCategories)
+      .where(eq(pageCategories.slug, data.slug));
+    if (existing) {
+      return NextResponse.json(
+        { error: '分类 slug 已存在' },
+        { status: 409 }
+      );
+    }
+
     const [category] = await db
       .insert(pageCategories)
       .values({

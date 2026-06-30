@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, operationSlots } from '@/lib/db';
-import { asc } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import { z } from 'zod';
 
 const createSlotSchema = z.object({
@@ -52,6 +52,18 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = createSlotSchema.parse(body);
+
+    // Check for duplicate UID
+    const [existingSlot] = await db
+      .select({ id: operationSlots.id })
+      .from(operationSlots)
+      .where(eq(operationSlots.uid, data.uid));
+    if (existingSlot) {
+      return NextResponse.json(
+        { error: '运营位 UID 已存在' },
+        { status: 409 }
+      );
+    }
 
     const [slot] = await db
       .insert(operationSlots)

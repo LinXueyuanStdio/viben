@@ -42,6 +42,14 @@ export async function POST(
       );
     }
 
+    // Prevent warning super_admin and admin (legacy equivalent)
+    if (targetUser.role === 'super_admin' || targetUser.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Cannot warn a super admin' },
+        { status: 403 }
+      );
+    }
+
     await db
       .update(users)
       .set({

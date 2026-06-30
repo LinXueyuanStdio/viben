@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, rankingSnapshots } from '@/lib/db';
-import { desc, eq, and, type SQL } from 'drizzle-orm';
+import { desc, eq, count, and, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listRankingsQuerySchema = z.object({
@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const offset = (query.page - 1) * query.limit;
 
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(rankingSnapshots)
+      .where(whereClause);
+    const total = totalResult?.count ?? 0;
+
     const snapshots = await db
       .select()
       .from(rankingSnapshots)
@@ -42,7 +48,15 @@ export async function GET(request: NextRequest) {
       .limit(query.limit)
       .offset(offset);
 
-    return NextResponse.json({ snapshots });
+    return NextResponse.json({
+      snapshots,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

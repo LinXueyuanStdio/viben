@@ -89,6 +89,8 @@ export async function GET(request: NextRequest) {
         role: users.role,
         createdAt: users.createdAt,
         lastLoginAt: users.lastLoginAt,
+        bannedAt: users.bannedAt,
+        warnedAt: users.warnedAt,
       })
       .from(users)
       .where(whereClause)

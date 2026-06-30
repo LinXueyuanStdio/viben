@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Trash2, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ export function CollectionModeration() {
 
   const currentVisibility = searchParams.get('visibility') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
+  const currentSearch = searchParams.get('search') || '';
 
   const fetchCollections = useCallback(async () => {
     setLoading(true);
@@ -70,8 +72,7 @@ export function CollectionModeration() {
         limit: '20',
         visibility: currentVisibility,
       });
-      const search = searchParams.get('search');
-      if (search) params.set('search', search);
+      if (currentSearch) params.set('search', currentSearch);
       const res = await fetch(`/api/admin/collections?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch collections');
       const data = await res.json();
@@ -82,7 +83,7 @@ export function CollectionModeration() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, currentVisibility, searchParams]);
+  }, [currentPage, currentVisibility, currentSearch]);
 
   useEffect(() => { fetchCollections(); }, [fetchCollections]);
 
@@ -110,11 +111,11 @@ export function CollectionModeration() {
     try {
       const res = await fetch(`/api/admin/collections/${deleteId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete collection');
-      setDeleteId(null);
       fetchCollections();
     } catch {
-      setError('删除合集失败');
+      toast.error('删除合集失败');
     } finally {
+      setDeleteId(null);
       setDeleting(false);
     }
   };

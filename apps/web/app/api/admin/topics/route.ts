@@ -70,6 +70,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createTopicSchema.parse(body);
 
+    // Check for duplicate slug
+    const [existing] = await db
+      .select({ id: momentTopics.id })
+      .from(momentTopics)
+      .where(eq(momentTopics.slug, data.slug));
+    if (existing) {
+      return NextResponse.json(
+        { error: '话题 slug 已存在' },
+        { status: 409 }
+      );
+    }
+
     const [topic] = await db
       .insert(momentTopics)
       .values({

@@ -14,7 +14,7 @@ import { z } from 'zod';
 const listCommentsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
-  entityType: z.enum(['mcp', 'skill', 'collection', 'all']).default('all'),
+  entity_type: z.enum(['mcp', 'skill', 'collection', 'all']).default('all'),
   search: z.string().optional(),
 });
 
@@ -27,12 +27,12 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams.entries())
     );
 
-    const { page, limit, entityType, search } = query;
+    const { page, limit, entity_type, search } = query;
     const offset = (page - 1) * limit;
 
     const conditions: SQL[] = [];
-    if (entityType !== 'all') {
-      conditions.push(eq(comments.entityType, entityType));
+    if (entity_type !== 'all') {
+      conditions.push(eq(comments.entityType, entity_type));
     }
     if (search) {
       conditions.push(like(comments.content, `%${search}%`));
