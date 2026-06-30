@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { Package, Flag, Activity, Users } from 'lucide-react';
+import { Package, Flag, Activity, Users, FileText, MessageSquare, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatsCard } from '@/components/admin/stats-card';
 import { RecentActivityList } from '@/components/admin/recent-activity';
