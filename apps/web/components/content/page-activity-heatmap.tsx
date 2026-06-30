@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
-import { useInView } from '@/app/components/animated-cards/use-in-view';
+import { useMemo } from 'react';
 
 export interface PageActivityDay {
   date: string;  // YYYY-MM-DD
@@ -29,10 +28,7 @@ const WEEKDAYS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref);
-
-  const { weeks, monthLabels, totalPages, maxCount } = useMemo(() => {
+  const { weeks, monthLabels, maxCount } = useMemo(() => {
     const dateMap = new Map(data?.map((d) => [d.date, d.count]) ?? []);
     const today = new Date();
     const startDate = new Date(today);
@@ -42,7 +38,6 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
     const startDayOfWeek = startDate.getDay();
     const weeks: { date: string; count: number }[][] = [];
     let currentWeek: { date: string; count: number }[] = [];
-    let total = 0;
     let max = 0;
 
     for (let i = 0; i < 365 + startDayOfWeek; i++) {
@@ -52,7 +47,6 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
       const count = i >= startDayOfWeek ? (dateMap.get(dateStr) || 0) : -1;
 
       if (i >= startDayOfWeek) {
-        total += count;
         max = Math.max(max, count);
       }
 
@@ -79,87 +73,78 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
       }
     });
 
-    return { weeks, monthLabels: labels, totalPages: total, maxCount: max };
+    return { weeks, monthLabels: labels, maxCount: max };
   }, [data]);
 
   const cellSize = 11;
   const cellGap = 3;
-  const leftPad = 32;
-  const topPad = 16;
+  const leftPad = 28;
+  const topPad = 14;
 
   return (
-    <div
-      ref={ref}
-      className={`rounded-xl border bg-card transition-all duration-300 ${
-        isInView ? 'animate-fade-in-up' : 'opacity-0'
-      }`}
-    >
+    <div className="overflow-x-auto">
+      <svg
+        width={leftPad + weeks.length * (cellSize + cellGap)}
+        height={topPad + 7 * (cellSize + cellGap) + 24}
+      >
+        {/* Month labels */}
+        {monthLabels.map(({ weekIndex, label }) => (
+          <text
+            key={`month-${weekIndex}`}
+            x={leftPad + weekIndex * (cellSize + cellGap)}
+            y={10}
+            fill="#8b949e"
+            fontSize={10}
+          >
+            {label}
+          </text>
+        ))}
 
-      <div className="overflow-x-auto">
-        <svg
-          width={leftPad + weeks.length * (cellSize + cellGap)}
-          height={topPad + 7 * (cellSize + cellGap) + 24}
-        >
-          {/* Month labels */}
-          {monthLabels.map(({ weekIndex, label }) => (
+        {/* Weekday labels */}
+        {WEEKDAYS.map((day, i) =>
+          day ? (
             <text
-              key={`month-${weekIndex}`}
-              x={leftPad + weekIndex * (cellSize + cellGap)}
-              y={10}
+              key={`wd-${i}`}
+              x={4}
+              y={topPad + i * (cellSize + cellGap) + cellSize - 1}
               fill="#8b949e"
               fontSize={10}
+              textAnchor="start"
             >
-              {label}
+              {day}
             </text>
-          ))}
+          ) : null
+        )}
 
-          {/* Weekday labels */}
-          {WEEKDAYS.map((day, i) =>
-            day ? (
-              <text
-                key={`wd-${i}`}
-                x={4}
-                y={topPad + i * (cellSize + cellGap) + cellSize - 1}
-                fill="#8b949e"
-                fontSize={10}
-                textAnchor="start"
+        {/* Cells */}
+        {weeks.map((week, wi) =>
+          week.map((day, di) => {
+            if (day.count < 0) return null;
+            return (
+              <rect
+                key={`${wi}-${di}`}
+                x={leftPad + wi * (cellSize + cellGap)}
+                y={topPad + di * (cellSize + cellGap)}
+                width={cellSize}
+                height={cellSize}
+                rx={2}
+                fill={getColor(day.count, maxCount)}
               >
-                {day}
-              </text>
-            ) : null
-          )}
+                <title>{`${day.date}: ${day.count} pages`}</title>
+              </rect>
+            );
+          })
+        )}
 
-          {/* Cells */}
-          {weeks.map((week, wi) =>
-            week.map((day, di) => {
-              if (day.count < 0) return null;
-              return (
-                <rect
-                  key={`${wi}-${di}`}
-                  x={leftPad + wi * (cellSize + cellGap)}
-                  y={topPad + di * (cellSize + cellGap)}
-                  width={cellSize}
-                  height={cellSize}
-                  rx={2}
-                  fill={getColor(day.count, maxCount)}
-                  className="transition-colors duration-200"
-                >
-                  <title>{`${day.date}: ${day.count} pages`}</title>
-                </rect>
-              );
-            })
-          )}
-
-          {/* Legend */}
-          <g transform={`translate(${leftPad + weeks.length * (cellSize + cellGap) - 200}, ${topPad + 7 * (cellSize + cellGap) + 4})`}>
-            <text x={0} y={10} fill="#8b949e" fontSize={10}>Less</text>
-            {COLORS.map((color, i) => (
-              <rect key={i} x={32 + i * 14} y={0} width={11} height={11} rx={2} fill={color} />
-            ))}
-            <text x={107} y={10} fill="#8b949e" fontSize={10}>More</text>
-          </g>
-        </svg>
-      </div>
+        {/* Legend */}
+        <g transform={`translate(${leftPad + weeks.length * (cellSize + cellGap) - 200}, ${topPad + 7 * (cellSize + cellGap) + 4})`}>
+          <text x={0} y={10} fill="#8b949e" fontSize={10}>Less</text>
+          {COLORS.map((color, i) => (
+            <rect key={i} x={32 + i * 14} y={0} width={11} height={11} rx={2} fill={color} />
+          ))}
+          <text x={107} y={10} fill="#8b949e" fontSize={10}>More</text>
+        </g>
+      </svg>
     </div>
   );
 }
