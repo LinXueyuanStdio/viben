@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,16 +41,17 @@ interface OperationItem {
   sortOrder: number; isActive: boolean; visibility: 'draft' | 'scheduled' | 'published' | 'archived';
 }
 
-const VISIBILITY_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  draft: { label: '草稿', variant: 'secondary' },
-  scheduled: { label: '已排期', variant: 'default' },
-  published: { label: '已发布', variant: 'default' },
-  archived: { label: '已归档', variant: 'outline' },
-};
-
 export function OperationManagement() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const VISIBILITY_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    draft: { label: t('dashboard.admin.operations.visibility.draft'), variant: 'secondary' },
+    scheduled: { label: t('dashboard.admin.operations.visibility.scheduled'), variant: 'default' },
+    published: { label: t('dashboard.admin.operations.visibility.published'), variant: 'default' },
+    archived: { label: t('dashboard.admin.operations.visibility.archived'), variant: 'outline' },
+  };
 
   // Slot list
   const [slots, setSlots] = useState<OperationSlot[]>([]);
@@ -108,9 +110,9 @@ export function OperationManagement() {
       const data = await res.json();
       setSlots(data.slots);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load slots');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.operations.loadError'));
     } finally { setLoading(false); }
-  }, []);
+  }, [t]);
 
   useEffect(() => { fetchSlots(); }, [fetchSlots]);
 
@@ -146,7 +148,7 @@ export function OperationManagement() {
       setSlotDialogOpen(false);
       fetchSlots();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save slot');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.operations.actionError'));
     } finally { setSaving(false); }
   };
 
@@ -163,7 +165,7 @@ export function OperationManagement() {
       }
       setDeleteTarget(null);
     } catch {
-      setError(`删除${deleteTarget.type === 'slot' ? '运营位' : '条目'}失败`);
+      setError(deleteTarget.type === 'slot' ? t('dashboard.admin.operations.actionError') : t('dashboard.admin.operations.deleteItemError'));
     } finally { setDeleting(false); }
   };
 
@@ -175,7 +177,7 @@ export function OperationManagement() {
       if (!res.ok) throw new Error('Failed to fetch items');
       setItems((await res.json()).items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load items');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.operations.loadError'));
     } finally { setItemsLoading(false); }
   };
 
@@ -226,7 +228,7 @@ export function OperationManagement() {
       setItemDialogOpen(false);
       if (selectedSlot) fetchItems(selectedSlot);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save item');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.operations.itemActionError'));
     } finally { setSaving(false); }
   };
 
@@ -244,28 +246,28 @@ export function OperationManagement() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={backToSlots}><ArrowLeft className="h-4 w-4 mr-1" />返回</Button>
+            <Button variant="ghost" size="sm" onClick={backToSlots}><ArrowLeft className="h-4 w-4 mr-1" />{t('dashboard.admin.operations.backToList')}</Button>
             <div>
-              <h1 className="font-serif text-2xl font-bold">运营位条目 — {slot.name}</h1>
-              <p className="text-muted-foreground">Surface: {slot.surface} · Slot: {slot.slotKey} · 布局: {slot.layoutType}</p>
+              <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.operations.itemDetail', { name: slot.name })}</h1>
+              <p className="text-muted-foreground">{t('dashboard.admin.operations.form.surface')}: {slot.surface} &middot; {t('dashboard.admin.operations.form.slotKey')}: {slot.slotKey} &middot; {t('dashboard.admin.operations.form.layoutType')}: {slot.layoutType}</p>
             </div>
           </div>
-          <Button onClick={openItemCreate}><Plus className="h-4 w-4 mr-1" />新建条目</Button>
+          <Button onClick={openItemCreate}><Plus className="h-4 w-4 mr-1" />{t('dashboard.admin.operations.addItem')}</Button>
         </div>
         {itemsLoading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center"><p className="text-lg text-muted-foreground">暂无条目</p></div>
+          <div className="flex flex-col items-center justify-center py-16 text-center"><p className="text-lg text-muted-foreground">{t('dashboard.admin.operations.emptyItems')}</p></div>
         ) : (
           <div className="overflow-hidden rounded-xl border">
             <table className="w-full">
               <thead><tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 text-left text-sm font-medium w-12">#</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">标题</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">类型</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">目标</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.itemColumns.title')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.itemColumns.type')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.itemColumns.target')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.itemColumns.status')}</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.operations.itemColumns.actions')}</th>
               </tr></thead>
               <tbody>
                 {items.map((item) => {
@@ -275,7 +277,7 @@ export function OperationManagement() {
                     <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">{item.title}{item.badgeLabel && <Badge variant="secondary" className="ml-2">{item.badgeLabel}</Badge>}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.itemType}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground max-w-[150px] truncate">{item.targetUrl || item.targetEntityId || '-'}</td>
-                    <td className="px-4 py-3 text-sm"><div className="flex gap-1"><Badge variant={visConf.variant}>{visConf.label}</Badge>{!item.isActive && <Badge variant="secondary">禁用</Badge>}</div></td>
+                    <td className="px-4 py-3 text-sm"><div className="flex gap-1"><Badge variant={visConf.variant}>{visConf.label}</Badge>{!item.isActive && <Badge variant="secondary">{t('dashboard.admin.operations.inactive')}</Badge>}</div></td>
                     <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openItemEdit(item)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ type: 'item', id: item.id, label: item.title })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -289,40 +291,40 @@ export function OperationManagement() {
         {/* Item Dialog */}
         <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>{editingItem ? '编辑条目' : '新建条目'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingItem ? t('dashboard.admin.operations.editItem') : t('dashboard.admin.operations.addItem')}</DialogTitle></DialogHeader>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label htmlFor="itemUid">UID</Label><Input id="itemUid" value={itemUid} onChange={(e) => setItemUid(e.target.value)} placeholder="唯一标识" /></div>
-                <div className="space-y-2"><Label htmlFor="itemType">条目类型</Label><Input id="itemType" value={itemType} onChange={(e) => setItemType(e.target.value)} placeholder="如 banner, card" /></div>
+                <div className="space-y-2"><Label htmlFor="itemUid">{t('dashboard.admin.operations.form.uid')}</Label><Input id="itemUid" value={itemUid} onChange={(e) => setItemUid(e.target.value)} placeholder={t('dashboard.admin.operations.form.uid')} /></div>
+                <div className="space-y-2"><Label htmlFor="itemType">{t('dashboard.admin.operations.form.contentType')}</Label><Input id="itemType" value={itemType} onChange={(e) => setItemType(e.target.value)} placeholder="banner, card" /></div>
               </div>
-              <div className="space-y-2"><Label htmlFor="itemTitle">标题</Label><Input id="itemTitle" value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} placeholder="条目标题" /></div>
-              <div className="space-y-2"><Label htmlFor="itemSubtitle">副标题</Label><Input id="itemSubtitle" value={itemSubtitle} onChange={(e) => setItemSubtitle(e.target.value)} placeholder="（可选）" /></div>
+              <div className="space-y-2"><Label htmlFor="itemTitle">{t('dashboard.admin.operations.form.title')}</Label><Input id="itemTitle" value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} placeholder={t('dashboard.admin.operations.form.title')} /></div>
+              <div className="space-y-2"><Label htmlFor="itemSubtitle">{t('dashboard.admin.operations.form.subtitle')}</Label><Input id="itemSubtitle" value={itemSubtitle} onChange={(e) => setItemSubtitle(e.target.value)} placeholder={t('common.optional')} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label htmlFor="itemTargetUrl">目标链接</Label><Input id="itemTargetUrl" value={itemTargetUrl} onChange={(e) => setItemTargetUrl(e.target.value)} placeholder="（可选）" /></div>
-                <div className="space-y-2"><Label htmlFor="itemImageUrl">图片 URL</Label><Input id="itemImageUrl" value={itemImageUrl} onChange={(e) => setItemImageUrl(e.target.value)} placeholder="（可选）" /></div>
+                <div className="space-y-2"><Label htmlFor="itemTargetUrl">{t('dashboard.admin.operations.form.linkUrl')}</Label><Input id="itemTargetUrl" value={itemTargetUrl} onChange={(e) => setItemTargetUrl(e.target.value)} placeholder={t('common.optional')} /></div>
+                <div className="space-y-2"><Label htmlFor="itemImageUrl">{t('dashboard.admin.operations.form.imageUrl')}</Label><Input id="itemImageUrl" value={itemImageUrl} onChange={(e) => setItemImageUrl(e.target.value)} placeholder={t('common.optional')} /></div>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2"><Label htmlFor="itemCtaLabel">按钮文案</Label><Input id="itemCtaLabel" value={itemCtaLabel} onChange={(e) => setItemCtaLabel(e.target.value)} placeholder="（可选）" /></div>
-                <div className="space-y-2"><Label htmlFor="itemBadgeLabel">角标</Label><Input id="itemBadgeLabel" value={itemBadgeLabel} onChange={(e) => setItemBadgeLabel(e.target.value)} placeholder="（可选）" /></div>
-                <div className="space-y-2"><Label htmlFor="itemSortOrder">排序</Label><Input id="itemSortOrder" type="number" value={itemSortOrder} onChange={(e) => setItemSortOrder(Number(e.target.value))} /></div>
+                <div className="space-y-2"><Label htmlFor="itemCtaLabel">{t('dashboard.admin.operations.form.ctaLabel')}</Label><Input id="itemCtaLabel" value={itemCtaLabel} onChange={(e) => setItemCtaLabel(e.target.value)} placeholder={t('common.optional')} /></div>
+                <div className="space-y-2"><Label htmlFor="itemBadgeLabel">{t('dashboard.admin.operations.form.badgeLabel')}</Label><Input id="itemBadgeLabel" value={itemBadgeLabel} onChange={(e) => setItemBadgeLabel(e.target.value)} placeholder={t('common.optional')} /></div>
+                <div className="space-y-2"><Label htmlFor="itemSortOrder">{t('dashboard.admin.operations.form.sortOrder')}</Label><Input id="itemSortOrder" type="number" value={itemSortOrder} onChange={(e) => setItemSortOrder(Number(e.target.value))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>可见性</Label>
+                  <Label>{t('dashboard.admin.operations.form.visibility')}</Label>
                   <Select value={itemVisibility} onValueChange={(v) => setItemVisibility(v as typeof itemVisibility)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">草稿</SelectItem><SelectItem value="scheduled">已排期</SelectItem>
-                      <SelectItem value="published">已发布</SelectItem><SelectItem value="archived">已归档</SelectItem>
+                      <SelectItem value="draft">{t('dashboard.admin.operations.visibility.draft')}</SelectItem><SelectItem value="scheduled">{t('dashboard.admin.operations.visibility.scheduled')}</SelectItem>
+                      <SelectItem value="published">{t('dashboard.admin.operations.visibility.published')}</SelectItem><SelectItem value="archived">{t('dashboard.admin.operations.visibility.archived')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center justify-between pt-6"><Label htmlFor="itemIsActive">启用</Label><Switch id="itemIsActive" checked={itemIsActive} onCheckedChange={setItemIsActive} /></div>
+                <div className="flex items-center justify-between pt-6"><Label htmlFor="itemIsActive">{t('dashboard.admin.operations.active')}</Label><Switch id="itemIsActive" checked={itemIsActive} onCheckedChange={setItemIsActive} /></div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setItemDialogOpen(false)}>取消</Button>
-              <Button onClick={handleItemSave} disabled={saving || !itemUid || !itemType || !itemTitle}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}</Button>
+              <Button variant="outline" onClick={() => setItemDialogOpen(false)}>{t('common.cancel')}</Button>
+              <Button onClick={handleItemSave} disabled={saving || !itemUid || !itemType || !itemTitle}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -334,23 +336,23 @@ export function OperationManagement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="font-serif text-2xl font-bold">运营位管理</h1><p className="text-muted-foreground">管理首页推荐位、Banner等运营内容位</p></div>
-        <Button onClick={openSlotCreate}><Plus className="h-4 w-4 mr-1" />新建运营位</Button>
+        <div><h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.operations.title')}</h1><p className="text-muted-foreground">{t('dashboard.admin.operations.subtitle')}</p></div>
+        <Button onClick={openSlotCreate}><Plus className="h-4 w-4 mr-1" />{t('dashboard.admin.operations.create')}</Button>
       </div>
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center"><p className="text-destructive">{error}</p><button onClick={fetchSlots} className="mt-2 text-sm text-primary hover:underline">重试</button></div>
+        <div className="flex flex-col items-center justify-center py-12 text-center"><p className="text-destructive">{error}</p><button onClick={fetchSlots} className="mt-2 text-sm text-primary hover:underline">{t('dashboard.admin.operations.retry')}</button></div>
       ) : slots.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center"><p className="text-lg text-muted-foreground">暂无运营位</p></div>
+        <div className="flex flex-col items-center justify-center py-16 text-center"><p className="text-lg text-muted-foreground">{t('dashboard.admin.operations.emptySlots')}</p></div>
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead><tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left text-sm font-medium">名称</th><th className="px-4 py-3 text-left text-sm font-medium">Surface</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">Slot Key</th><th className="px-4 py-3 text-left text-sm font-medium">布局</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">区域</th><th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">条目限制</th><th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.name')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.surface')}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.slotKey')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.layoutType')}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.locale')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.status')}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.columns.minMax')}</th><th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.operations.columns.actions')}</th>
             </tr></thead>
             <tbody>
               {slots.map((slot) => (
@@ -360,10 +362,10 @@ export function OperationManagement() {
                   <td className="px-4 py-3 text-sm font-mono text-xs">{slot.slotKey}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{slot.layoutType}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{slot.locale}</td>
-                  <td className="px-4 py-3 text-sm"><Badge variant={slot.isActive ? 'default' : 'secondary'}>{slot.isActive ? '启用' : '禁用'}</Badge></td>
+                  <td className="px-4 py-3 text-sm"><Badge variant={slot.isActive ? 'default' : 'secondary'}>{slot.isActive ? t('dashboard.admin.operations.active') : t('dashboard.admin.operations.inactive')}</Badge></td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{slot.minItems} - {slot.maxItems}</td>
                   <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
-                    <Button variant="outline" size="sm" onClick={() => openSlotItems(slot)}>管理条目</Button>
+                    <Button variant="outline" size="sm" onClick={() => openSlotItems(slot)}>{t('dashboard.admin.operations.manageItems')}</Button>
                     <Button variant="ghost" size="sm" onClick={() => openSlotEdit(slot)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ type: 'slot', id: slot.id, label: slot.name })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </div></td>
@@ -373,39 +375,39 @@ export function OperationManagement() {
           </table>
         </div>
       )}
-      <p className="text-sm text-muted-foreground">共 {slots.length} 个运营位</p>
+      <p className="text-sm text-muted-foreground">{t('dashboard.admin.operations.showing', { count: slots.length })}</p>
 
       {/* Slot Dialog */}
       <Dialog open={slotDialogOpen} onOpenChange={setSlotDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editingSlot ? '编辑运营位' : '新建运营位'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingSlot ? t('dashboard.admin.operations.edit') : t('dashboard.admin.operations.create')}</DialogTitle></DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label htmlFor="slotUid">UID</Label><Input id="slotUid" value={formUid} onChange={(e) => setFormUid(e.target.value)} placeholder="唯一标识" /></div>
-              <div className="space-y-2"><Label htmlFor="slotName">名称</Label><Input id="slotName" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="运营位名称" /></div>
+              <div className="space-y-2"><Label htmlFor="slotUid">{t('dashboard.admin.operations.form.uid')}</Label><Input id="slotUid" value={formUid} onChange={(e) => setFormUid(e.target.value)} placeholder={t('dashboard.admin.operations.form.uid')} /></div>
+              <div className="space-y-2"><Label htmlFor="slotName">{t('dashboard.admin.operations.form.name')}</Label><Input id="slotName" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder={t('dashboard.admin.operations.form.name')} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label htmlFor="surface">Surface</Label><Input id="surface" value={formSurface} onChange={(e) => setFormSurface(e.target.value)} placeholder="如 home_page" /></div>
-              <div className="space-y-2"><Label htmlFor="slotKey">Slot Key</Label><Input id="slotKey" value={formSlotKey} onChange={(e) => setFormSlotKey(e.target.value)} placeholder="如 hero_banner" /></div>
+              <div className="space-y-2"><Label htmlFor="surface">{t('dashboard.admin.operations.form.surface')}</Label><Input id="surface" value={formSurface} onChange={(e) => setFormSurface(e.target.value)} placeholder="home_page" /></div>
+              <div className="space-y-2"><Label htmlFor="slotKey">{t('dashboard.admin.operations.form.slotKey')}</Label><Input id="slotKey" value={formSlotKey} onChange={(e) => setFormSlotKey(e.target.value)} placeholder="hero_banner" /></div>
             </div>
-            <div className="space-y-2"><Label htmlFor="slotDescription">描述</Label><Textarea id="slotDescription" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="（可选）" rows={2} /></div>
+            <div className="space-y-2"><Label htmlFor="slotDescription">{t('dashboard.admin.operations.form.description')}</Label><Textarea id="slotDescription" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('common.optional')} rows={2} /></div>
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2"><Label htmlFor="layoutType">布局类型</Label>
+              <div className="space-y-2"><Label htmlFor="layoutType">{t('dashboard.admin.operations.form.layoutType')}</Label>
                 <Select value={formLayoutType} onValueChange={setFormLayoutType}><SelectTrigger id="layoutType"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="list">列表</SelectItem><SelectItem value="grid">网格</SelectItem><SelectItem value="carousel">轮播</SelectItem><SelectItem value="hero">Hero</SelectItem><SelectItem value="sidebar">侧边栏</SelectItem></SelectContent></Select>
+                  <SelectContent><SelectItem value="list">{t('dashboard.admin.operations.layoutTypes.list')}</SelectItem><SelectItem value="grid">{t('dashboard.admin.operations.layoutTypes.grid')}</SelectItem><SelectItem value="carousel">{t('dashboard.admin.operations.layoutTypes.carousel')}</SelectItem><SelectItem value="hero">{t('dashboard.admin.operations.layoutTypes.hero')}</SelectItem><SelectItem value="sidebar">{t('dashboard.admin.operations.layoutTypes.sidebar')}</SelectItem></SelectContent></Select>
               </div>
-              <div className="space-y-2"><Label htmlFor="locale">区域</Label><Input id="locale" value={formLocale} onChange={(e) => setFormLocale(e.target.value)} placeholder="default" /></div>
-              <div className="space-y-2"><Label htmlFor="sortOrder">排序</Label><Input id="sortOrder" type="number" value={formSortOrder} onChange={(e) => setFormSortOrder(Number(e.target.value))} /></div>
+              <div className="space-y-2"><Label htmlFor="locale">{t('dashboard.admin.operations.form.locale')}</Label><Input id="locale" value={formLocale} onChange={(e) => setFormLocale(e.target.value)} placeholder="default" /></div>
+              <div className="space-y-2"><Label htmlFor="sortOrder">{t('dashboard.admin.operations.form.sortOrder')}</Label><Input id="sortOrder" type="number" value={formSortOrder} onChange={(e) => setFormSortOrder(Number(e.target.value))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label htmlFor="minItems">最小条目</Label><Input id="minItems" type="number" value={formMinItems} onChange={(e) => setFormMinItems(Number(e.target.value))} /></div>
-              <div className="space-y-2"><Label htmlFor="maxItems">最大条目</Label><Input id="maxItems" type="number" value={formMaxItems} onChange={(e) => setFormMaxItems(Number(e.target.value))} /></div>
+              <div className="space-y-2"><Label htmlFor="minItems">{t('dashboard.admin.operations.form.minItems')}</Label><Input id="minItems" type="number" value={formMinItems} onChange={(e) => setFormMinItems(Number(e.target.value))} /></div>
+              <div className="space-y-2"><Label htmlFor="maxItems">{t('dashboard.admin.operations.form.maxItems')}</Label><Input id="maxItems" type="number" value={formMaxItems} onChange={(e) => setFormMaxItems(Number(e.target.value))} /></div>
             </div>
-            <div className="flex items-center justify-between"><Label htmlFor="slotIsActive">启用状态</Label><Switch id="slotIsActive" checked={formIsActive} onCheckedChange={setFormIsActive} /></div>
+            <div className="flex items-center justify-between"><Label htmlFor="slotIsActive">{t('dashboard.admin.operations.form.isActive')}</Label><Switch id="slotIsActive" checked={formIsActive} onCheckedChange={setFormIsActive} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSlotDialogOpen(false)}>取消</Button>
-            <Button onClick={handleSlotSave} disabled={saving || !formUid || !formSurface || !formSlotKey || !formName}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : '保存'}</Button>
+            <Button variant="outline" onClick={() => setSlotDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSlotSave} disabled={saving || !formUid || !formSurface || !formSlotKey || !formName}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -413,10 +415,17 @@ export function OperationManagement() {
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>确认删除</DialogTitle><DialogDescription>此操作不可撤销。确定要删除「{deleteTarget?.label}」吗？</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.admin.operations.deleteConfirm')}</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.type === 'slot'
+                ? t('dashboard.admin.operations.deleteConfirmDesc')
+                : t('dashboard.admin.operations.deleteItemConfirm')}
+            </DialogDescription>
+          </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>取消</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}确认删除</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
