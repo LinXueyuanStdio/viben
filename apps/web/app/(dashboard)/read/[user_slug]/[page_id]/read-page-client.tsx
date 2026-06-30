@@ -9,6 +9,7 @@ import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import { ReadDrawer } from "@/components/layout/read-drawer"
 import { NotesPanel } from "@/components/content/notes-panel"
 import { CommentsPanel } from "@/components/content/comments-panel"
+import { PageSettingsPanel } from "@/components/pages/page-settings-panel"
 import { BreadcrumbDynamicContext } from "@/components/layout/breadcrumb"
 import type { BreadcrumbContextValue } from "@/components/layout/breadcrumb"
 
@@ -39,6 +40,7 @@ interface ReadPageClientProps {
   pageCoverUrl?: string
   pageChaptersJson?: unknown
   pageSidePageUid?: string
+  pageVisibility?: string
   authorName: string
   authorAvatarUrl?: string | null
   authorFollowersCount: number
@@ -69,6 +71,10 @@ interface ReadPageClientProps {
     }
   }>
   initialCommentsNextCursor: string | null
+  /** Active tab (from URL search params) */
+  activeTab?: string
+  /** Whether the current viewer is the page author */
+  isAuthor?: boolean
 }
 
 // --- Parse chapters from JSON ---
@@ -141,6 +147,7 @@ export function ReadPageClient({
   pageCoverUrl,
   pageChaptersJson,
   pageSidePageUid,
+  pageVisibility = "public",
   authorName,
   authorAvatarUrl,
   authorFollowersCount,
@@ -156,6 +163,8 @@ export function ReadPageClient({
   viewerHasFavorited,
   initialComments,
   initialCommentsNextCursor,
+  activeTab,
+  isAuthor = false,
 }: ReadPageClientProps) {
   const { t } = useTranslation()
 
@@ -204,7 +213,7 @@ export function ReadPageClient({
           number: ch.number,
           title: ch.title,
           status: ch.status,
-          href: ch.page_slug ? `/read/${encodeURIComponent(userSlug)}/${encodeURIComponent(ch.page_slug)}` : undefined,
+          href: ch.page_slug ? `/${encodeURIComponent(userSlug)}/${encodeURIComponent(ch.page_slug)}?tab=read` : undefined,
         }))
       : undefined,
     chapterProgress:
@@ -247,10 +256,28 @@ export function ReadPageClient({
 
   const notesTab = useMemo(() => <NotesPanel pageId={pageUid} />, [pageUid])
 
+  const settingsTab = useMemo(() => (
+    <PageSettingsPanel
+      userSlug={userSlug}
+      pageId={pageId}
+      pageTitle={pageTitle}
+      pageDescription={pageDescription ?? ""}
+      pageUid={pageUid}
+      pageTags={pageTags}
+      pageVisibility={pageVisibility}
+      pagePublishedAt={pagePublishedAt}
+      pageHtml={pageHtml}
+    />
+  ), [userSlug, pageId, pageTitle, pageDescription, pageUid, pageTags, pageVisibility, pagePublishedAt, pageHtml])
+
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
-      [`/read/${userSlug}`]: { label: authorName, icon: User, href: `/author/${userSlug}` },
+      // Old route pattern (for backward compatibility)
+      [`/read/${userSlug}`]: { label: authorName, icon: User, href: `/${userSlug}` },
       [`/read/${userSlug}/${pageId}`]: { label: pageTitle },
+      // New route pattern
+      [`/${userSlug}`]: { label: authorName, icon: User, href: `/${userSlug}` },
+      [`/${userSlug}/${pageId}`]: { label: pageTitle },
     },
   }
 
@@ -258,11 +285,12 @@ export function ReadPageClient({
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
       <ReadDrawer
         tabs={[
-          { value: "details", label: t("community.details"), content: detailsTab },
+          { value: "details", label: "阅读", content: detailsTab },
           { value: "comments", label: t("community.comments"), badge: pageCommentCount, content: commentsTab },
           { value: "notes", label: t("community.notes"), content: notesTab },
+          ...(isAuthor ? [{ value: "settings", label: "设置", content: settingsTab }] : []),
         ]}
-        defaultTab="details"
+        defaultTab={activeTab === "settings" && isAuthor ? "settings" : "details"}
       />
 
       {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
