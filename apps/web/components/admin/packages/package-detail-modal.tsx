@@ -22,9 +22,23 @@ import {
   Download,
   Heart,
   MessageSquare,
+  History,
+  FileDigit,
+  ShieldCheck,
+  Link,
 } from 'lucide-react';
 import { formatRelativeTime, formatDate } from '@/lib/utils';
 import type { PackageDetails } from '@/lib/admin/packages';
+
+interface ReleaseEntry {
+  id: string;
+  version: string;
+  releaseNotes: string | null;
+  downloadUrl: string | null;
+  checksum: string | null;
+  fileSize: number | null;
+  createdAt: string;
+}
 
 interface PackageDetailModalProps {
   packageId: string | null;
@@ -45,8 +59,28 @@ export function PackageDetailModal({
 }: PackageDetailModalProps) {
   const { t } = useTranslation();
   const [pkg, setPkg] = useState<PackageDetails | null>(null);
+  const [releases, setReleases] = useState<ReleaseEntry[]>([]);
+  const [releasesLoading, setReleasesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchReleases = useCallback(async (entityType: string, entityId: string) => {
+    setReleasesLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/packages/releases?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`
+      );
+      if (!res.ok) {
+        throw new Error('Failed to fetch releases');
+      }
+      const data = await res.json();
+      setReleases(data.releases || []);
+    } catch {
+      setReleases([]);
+    } finally {
+      setReleasesLoading(false);
+    }
+  }, []);
 
   const fetchPackageDetails = useCallback(async (id: string) => {
     setLoading(true);
@@ -57,19 +91,23 @@ export function PackageDetailModal({
         throw new Error(t('dashboard.admin.packages.detail.fetchError'));
       }
       const data = await res.json();
-      setPkg(data.package);
+      const pkgData = data.package as PackageDetails;
+      setPkg(pkgData);
+      // Fetch releases after getting package details
+      fetchReleases(pkgData.type, pkgData.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.packages.detail.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, fetchReleases]);
 
   useEffect(() => {
     if (isOpen && packageId) {
       fetchPackageDetails(packageId);
     } else {
       setPkg(null);
+      setReleases([]);
       setError(null);
     }
   }, [isOpen, packageId, fetchPackageDetails]);
@@ -255,6 +293,73 @@ export function PackageDetailModal({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Release History */}
+              {releases.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    {t('dashboard.admin.packages.detail.releaseHistory', { defaultValue: '版本历史' })}
+                  </h4>
+                  <div className="space-y-3">
+                    {releases.map((release, i) => (
+                      <div
+                        key={release.id}
+                        className="flex items-start gap-3 text-sm border-l-2 border-muted pl-3"
+                      >
+                        <div className="flex-1 space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              v{release.version}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              {formatDate(release.createdAt)}
+                            </span>
+                          </div>
+                          {release.releaseNotes && (
+                            <p className="text-muted-foreground whitespace-pre-wrap">
+                              {release.releaseNotes}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+                            {release.fileSize != null && (
+                              <span className="flex items-center gap-1 text-xs">
+                                <FileDigit className="h-3 w-3" />
+                                {release.fileSize >= 1048576
+                                  ? `${(release.fileSize / 1048576).toFixed(1)} MB`
+                                  : `${(release.fileSize / 1024).toFixed(1)} KB`}
+                              </span>
+                            )}
+                            {release.checksum && (
+                              <span className="flex items-center gap-1 text-xs font-mono">
+                                <ShieldCheck className="h-3 w-3" />
+                                {release.checksum.slice(0, 12)}...
+                              </span>
+                            )}
+                            {release.downloadUrl && (
+                              <a
+                                href={release.downloadUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <Link className="h-3 w-3" />
+                                {t('dashboard.admin.packages.detail.download', { defaultValue: '下载' })}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {releasesLoading && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               )}
 

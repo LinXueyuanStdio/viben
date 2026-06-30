@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Pencil, Trash2, ArrowLeft, Plus } from 'lucide-react';
+import { Loader2, Pencil, Trash2, ArrowLeft, Plus, Clock } from 'lucide-react';
 
 interface OperationSlot {
   id: string; uid: string; surface: string; slotKey: string; name: string;
@@ -102,6 +102,17 @@ export function OperationManagement() {
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'slot' | 'item'; id: string; label: string } | null>(null);
 
+  // Revisions
+  const [revisionsDialogOpen, setRevisionsDialogOpen] = useState(false);
+  const [revisionsSurface, setRevisionsSurface] = useState('');
+  const [revisionsLocale, setRevisionsLocale] = useState('');
+  const [revisions, setRevisions] = useState<{
+    id: string; uid: string; revisionNumber: number;
+    status: string; publishedAt: string | null; publishedBy: string | null;
+    createdBy: string | null; createdAt: string;
+  }[]>([]);
+  const [revisionsLoading, setRevisionsLoading] = useState(false);
+
   const fetchSlots = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -167,6 +178,20 @@ export function OperationManagement() {
     } catch {
       setError(deleteTarget.type === 'slot' ? t('dashboard.admin.operations.actionError') : t('dashboard.admin.operations.deleteItemError'));
     } finally { setDeleting(false); }
+  };
+
+  const fetchRevisions = async (surface: string, locale: string) => {
+    setRevisionsSurface(surface);
+    setRevisionsLocale(locale);
+    setRevisionsDialogOpen(true);
+    setRevisionsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/operations/revisions?surface=${encodeURIComponent(surface)}&locale=${encodeURIComponent(locale)}`);
+      if (!res.ok) throw new Error('Failed to fetch revisions');
+      setRevisions((await res.json()).revisions);
+    } catch {
+      setRevisions([]);
+    } finally { setRevisionsLoading(false); }
   };
 
   // Items
@@ -365,6 +390,7 @@ export function OperationManagement() {
                   <td className="px-4 py-3 text-sm"><Badge variant={slot.isActive ? 'default' : 'secondary'}>{slot.isActive ? t('dashboard.admin.operations.active') : t('dashboard.admin.operations.inactive')}</Badge></td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{slot.minItems} - {slot.maxItems}</td>
                   <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => fetchRevisions(slot.surface, slot.locale)} title={t('dashboard.admin.operations.revisions.button')}><Clock className="h-4 w-4" /></Button>
                     <Button variant="outline" size="sm" onClick={() => openSlotItems(slot)}>{t('dashboard.admin.operations.manageItems')}</Button>
                     <Button variant="ghost" size="sm" onClick={() => openSlotEdit(slot)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ type: 'slot', id: slot.id, label: slot.name })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -426,6 +452,63 @@ export function OperationManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.confirm')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revisions Dialog */}
+      <Dialog open={revisionsDialogOpen} onOpenChange={setRevisionsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.admin.operations.revisions.title')}</DialogTitle>
+            <DialogDescription>
+              {revisionsSurface} &middot; {revisionsLocale}
+            </DialogDescription>
+          </DialogHeader>
+          {revisionsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : revisions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground">{t('dashboard.admin.operations.revisions.noRevisions')}</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.revisions.revisionNumber')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.revisions.status')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.revisions.publishedAt')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.revisions.publishedBy')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.revisions.createdBy')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.operations.revisions.createdAt')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {revisions.map((rev) => (
+                    <tr key={rev.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-3 text-sm font-mono">#{rev.revisionNumber}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <Badge variant={
+                          rev.status === 'published' ? 'default' :
+                          rev.status === 'draft' ? 'secondary' :
+                          rev.status === 'rolled_back' ? 'destructive' : 'outline'
+                        }>{rev.status}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{rev.publishedAt ? new Date(rev.publishedAt).toLocaleString() : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{rev.publishedBy || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{rev.createdBy || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(rev.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevisionsDialogOpen(false)}>{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
