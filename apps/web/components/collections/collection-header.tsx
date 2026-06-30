@@ -37,7 +37,7 @@ interface CollectionHeaderProps {
     itemCount: number;
     forksCount: number;
     forkedFromId: string | null;
-    favoritesCount: number;
+    bookmarksCount: number;
     owner: {
       id: string;
       username: string;
@@ -216,7 +216,7 @@ export function CollectionHeader({
         </span>
         <span className="flex items-center gap-1">
           <Heart className="h-4 w-4" />
-          {t('favoritesCount', { count: collection.favoritesCount })}
+          {t('bookmarksCount', { count: collection.bookmarksCount })}
         </span>
       </div>
     </div>

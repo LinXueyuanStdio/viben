@@ -46,7 +46,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
-      bookmarkCount: publishedPages.favoriteCount,
+      bookmarkCount: publishedPages.bookmarkCount,
       userSlug: users.userSlug,
     }).from(publishedPages)
       .innerJoin(users, eq(users.id, publishedPages.userId))

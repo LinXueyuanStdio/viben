@@ -16,7 +16,7 @@ type HomeItem = {
     view_count?: number;
     read_count?: number;
     like_count?: number;
-    favorite_count?: number;
+    bookmark_count?: number;
     comment_count?: number;
   };
 };
@@ -113,7 +113,7 @@ export async function CommunityHome({ session }: CommunityHomeProps) {
                   <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
                     <span>{item.stats?.view_count ?? 0} 次浏览</span>
                     <span>{item.stats?.comment_count ?? 0} 条评论</span>
-                    <span>{item.stats?.favorite_count ?? 0} 次收藏</span>
+                    <span>{item.stats?.bookmark_count ?? 0} 次收藏</span>
                   </div>
                 </Link>
               ))}

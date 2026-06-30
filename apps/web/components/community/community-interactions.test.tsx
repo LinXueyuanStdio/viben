@@ -20,7 +20,7 @@ const baseSummary = {
     visibility: 'public',
     status: 'active',
     reactions_count: 2,
-    favorites_count: 1,
+    bookmarks_count: 1,
     comments_count: 3,
     canonical_path: '/alice/demo?tab=read',
   },
@@ -100,7 +100,7 @@ describe('CommunityInteractions', () => {
           new Response(
             JSON.stringify({
               has_favorited: true,
-              favorites_count: 2,
+              bookmarks_count: 2,
             }),
             { status: 200 }
           )

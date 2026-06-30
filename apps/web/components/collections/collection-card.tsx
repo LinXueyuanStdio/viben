@@ -15,7 +15,7 @@ interface CollectionCardProps {
     isPublic: boolean;
     itemCount: number;
     forksCount: number;
-    favoritesCount: number;
+    bookmarksCount: number;
     owner: {
       id: string;
       username: string;
@@ -80,7 +80,7 @@ export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
             </span>
             <span className="flex items-center gap-1">
               <Heart className="h-3 w-3" />
-              {collection.favoritesCount}
+              {collection.bookmarksCount}
             </span>
           </div>
         </div>

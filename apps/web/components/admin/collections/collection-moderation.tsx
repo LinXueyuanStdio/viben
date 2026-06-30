@@ -26,7 +26,7 @@ interface CollectionItem {
   isPublic: boolean;
   itemCount: number;
   forksCount: number;
-  favoritesCount: number;
+  bookmarksCount: number;
   createdAt: string;
   ownerId: string;
   ownerName: string;
@@ -196,7 +196,7 @@ export function CollectionModeration() {
                     @{c.ownerName}
                   </td>
                   <td className="px-4 py-3 text-sm">{c.itemCount}</td>
-                  <td className="px-4 py-3 text-sm">{c.favoritesCount}</td>
+                  <td className="px-4 py-3 text-sm">{c.bookmarksCount}</td>
                   <td className="px-4 py-3 text-sm">
                     <Badge variant={c.isPublic ? 'default' : 'secondary'}>
                       {c.isPublic ? t('dashboard.admin.collections.filterPublic') : t('dashboard.admin.collections.filterPrivate')}

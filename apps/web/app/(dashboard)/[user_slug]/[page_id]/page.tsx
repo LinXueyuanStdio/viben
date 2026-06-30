@@ -133,7 +133,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       pageDescription={ctx.page.description}
       pageUid={ctx.page.uid}
       pageViewCount={ctx.page.viewCount}
-      pageBookmarkCount={ctx.page.favoriteCount}
+      pageBookmarkCount={ctx.page.bookmarkCount}
       pageLikeCount={ctx.page.likeCount}
       pageCommentCount={ctx.page.commentCount}
       pageShareCount={ctx.page.shareCount}

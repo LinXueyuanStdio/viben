@@ -88,7 +88,7 @@ export default async function UserSlugPage({
     viewCount: publishedPages.viewCount,
     likeCount: publishedPages.likeCount,
     commentCount: publishedPages.commentCount,
-    bookmarkCount: publishedPages.favoriteCount,
+    bookmarkCount: publishedPages.bookmarkCount,
     authorName: publishedPages.authorName,
     authorAvatarUrl: publishedPages.authorAvatarUrl,
   }
@@ -199,7 +199,7 @@ export default async function UserSlugPage({
       isPublic: c.isPublic,
       itemCount: c.itemCount,
       forksCount: c.forksCount,
-      favoritesCount: c.favoritesCount,
+      bookmarksCount: c.bookmarksCount,
       owner: {
         id: user.id,
         username: user.username ?? user.userSlug,

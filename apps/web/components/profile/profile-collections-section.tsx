@@ -40,7 +40,7 @@ export async function ProfileCollections({ userId, username, userSlug, displayNa
             isPublic: c.isPublic,
             itemCount: c.itemCount,
             forksCount: c.forksCount,
-            favoritesCount: c.favoritesCount,
+            bookmarksCount: c.bookmarksCount,
             owner: {
               id: userId,
               username: username ?? userSlug,

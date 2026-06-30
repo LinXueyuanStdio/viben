@@ -54,7 +54,7 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
       case 'forks':
         return [desc(collections.forksCount), desc(collections.createdAt)];
       default: // 'default' or undefined = most popular
-        return [desc(collections.favoritesCount), desc(collections.createdAt)];
+        return [desc(collections.bookmarksCount), desc(collections.createdAt)];
     }
   }
 
@@ -68,7 +68,7 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
       isPublic: collections.isPublic,
       itemCount: collections.itemCount,
       forksCount: collections.forksCount,
-      favoritesCount: collections.favoritesCount,
+      bookmarksCount: collections.bookmarksCount,
       createdAt: collections.createdAt,
       ownerId: collections.ownerId,
       owner: {
@@ -117,7 +117,7 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
               isPublic: collection.isPublic,
               itemCount: collection.itemCount,
               forksCount: collection.forksCount,
-              favoritesCount: collection.favoritesCount,
+              bookmarksCount: collection.bookmarksCount,
               owner: collection.owner,
             }}
             isOwner={session?.userId === collection.ownerId}

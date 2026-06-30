@@ -63,7 +63,7 @@ export default async function CategoryPage() {
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
-      bookmarkCount: publishedPages.favoriteCount,
+      bookmarkCount: publishedPages.bookmarkCount,
       categoryId: publishedPages.categoryId,
     }).from(publishedPages)
       .innerJoin(users, eq(users.id, publishedPages.userId))
