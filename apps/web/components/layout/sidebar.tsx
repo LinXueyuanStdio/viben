@@ -121,146 +121,177 @@ export function Sidebar({
   const isLoggedIn = Boolean(userRole);
   const showAdmin = userRole && isAdminRole(userRole);
 
-  const adminNavigation: AdminNavItem[] = [
-    { name: t('nav.dashboard'), href: '/admin', icon: LayoutDashboard },
+  // Admin navigation organized by functional groups
+  const adminGroups: { label: string; items: AdminNavItem[] }[] = [
     {
-      name: t('nav.packages'),
-      href: '/admin/packages',
-      icon: Package,
-      permission: 'packages.review',
-      badgeCount: pendingPackagesCount,
+      label: t('nav.adminOverview', '总览'),
+      items: [
+        { name: t('nav.dashboard'), href: '/admin', icon: LayoutDashboard },
+        {
+          name: t('nav.logs'),
+          href: '/admin/logs',
+          icon: ScrollText,
+          permission: 'admin.access',
+        },
+        {
+          name: t('nav.activity', '活动流'),
+          href: '/admin/activity',
+          icon: Activity,
+          permission: 'rankings.view',
+        },
+      ],
     },
     {
-      name: t('nav.users'),
-      href: '/admin/users',
-      icon: Users,
-      permission: 'users.view',
+      label: t('nav.adminModeration', '审核'),
+      items: [
+        {
+          name: t('nav.packages'),
+          href: '/admin/packages',
+          icon: Package,
+          permission: 'packages.review',
+          badgeCount: pendingPackagesCount,
+        },
+        {
+          name: t('nav.pages', '页面审核'),
+          href: '/admin/pages',
+          icon: FileText,
+          permission: 'pages.review',
+        },
+        {
+          name: t('nav.comments', '评论管理'),
+          href: '/admin/comments',
+          icon: MessageSquare,
+          permission: 'content.moderate',
+        },
+        {
+          name: t('nav.collections', '合集管理'),
+          href: '/admin/collections',
+          icon: Layers,
+          permission: 'content.moderate',
+        },
+        {
+          name: t('nav.reports'),
+          href: '/admin/reports',
+          icon: Flag,
+          permission: 'reports.view',
+        },
+      ],
     },
     {
-      name: t('nav.reports'),
-      href: '/admin/reports',
-      icon: Flag,
-      permission: 'reports.view',
+      label: t('nav.adminContentOps', '内容运营'),
+      items: [
+        {
+          name: t('nav.categories', '分类管理'),
+          href: '/admin/categories',
+          icon: Grid3X3,
+          permission: 'categories.manage',
+        },
+        {
+          name: t('nav.topics', '话题管理'),
+          href: '/admin/topics',
+          icon: MessageSquare,
+          permission: 'topics.manage',
+        },
+        {
+          name: t('nav.rankings', '榜单管理'),
+          href: '/admin/rankings',
+          icon: TrendingUp,
+          permission: 'rankings.view',
+        },
+        {
+          name: t('nav.operations', '运营位管理'),
+          href: '/admin/operations',
+          icon: Layers,
+          permission: 'operations.manage',
+        },
+        {
+          name: t('nav.moments', '动态管理'),
+          href: '/admin/moments',
+          icon: Clock,
+          permission: 'moments.moderate',
+        },
+      ],
     },
     {
-      name: t('nav.comments', '评论管理'),
-      href: '/admin/comments',
-      icon: MessageSquare,
-      permission: 'content.moderate',
+      label: t('nav.adminUsers', '用户与反馈'),
+      items: [
+        {
+          name: t('nav.users'),
+          href: '/admin/users',
+          icon: Users,
+          permission: 'users.view',
+        },
+        {
+          name: t('nav.feedbacks', '反馈管理'),
+          href: '/admin/feedbacks',
+          icon: Heart,
+          permission: 'feedbacks.view',
+        },
+        {
+          name: t('nav.ratings', '评分管理'),
+          href: '/admin/ratings',
+          icon: Star,
+          permission: 'content.moderate',
+        },
+      ],
     },
     {
-      name: t('nav.media', '媒体管理'),
-      href: '/admin/media',
-      icon: Image,
-      permission: 'content.moderate',
+      label: t('nav.adminAnalytics', '数据分析'),
+      items: [
+        {
+          name: t('nav.analytics', '内容分析'),
+          href: '/admin/analytics',
+          icon: BarChart3,
+          permission: 'rankings.view',
+        },
+        {
+          name: t('nav.searchAnalytics', '搜索分析'),
+          href: '/admin/search-analytics',
+          icon: Search,
+          permission: 'rankings.view',
+        },
+        {
+          name: t('nav.downloads', '下载统计'),
+          href: '/admin/downloads',
+          icon: Download,
+          permission: 'rankings.view',
+        },
+      ],
     },
     {
-      name: t('nav.shares', '分享管理'),
-      href: '/admin/shares',
-      icon: Share2,
-      permission: 'content.moderate',
-    },
-    {
-      name: t('nav.collections', '合集管理'),
-      href: '/admin/collections',
-      icon: Layers,
-      permission: 'content.moderate',
-    },
-    {
-      name: t('nav.pages', '页面审核'),
-      href: '/admin/pages',
-      icon: FileText,
-      permission: 'pages.review',
-    },
-    {
-      name: t('nav.categories', '分类管理'),
-      href: '/admin/categories',
-      icon: Grid3X3,
-      permission: 'categories.manage',
-    },
-    {
-      name: t('nav.topics', '话题管理'),
-      href: '/admin/topics',
-      icon: MessageSquare,
-      permission: 'topics.manage',
-    },
-    {
-      name: t('nav.rankings', '榜单管理'),
-      href: '/admin/rankings',
-      icon: TrendingUp,
-      permission: 'rankings.view',
-    },
-    {
-      name: t('nav.operations', '运营位管理'),
-      href: '/admin/operations',
-      icon: Layers,
-      permission: 'operations.manage',
-    },
-    {
-      name: t('nav.moments', '动态管理'),
-      href: '/admin/moments',
-      icon: Clock,
-      permission: 'content.moderate',
-    },
-    {
-      name: t('nav.feedbacks', '反馈管理'),
-      href: '/admin/feedbacks',
-      icon: Heart,
-      permission: 'reports.view',
-    },
-    {
-      name: t('nav.notifications', '通知管理'),
-      href: '/admin/notifications',
-      icon: Bell,
-      permission: 'admin.access',
-    },
-    {
-      name: t('nav.activity', '活动流'),
-      href: '/admin/activity',
-      icon: Activity,
-      permission: 'rankings.view',
-    },
-    {
-      name: t('nav.ratings', '评分管理'),
-      href: '/admin/ratings',
-      icon: Star,
-      permission: 'content.moderate',
-    },
-    {
-      name: t('nav.drafts', '草稿管理'),
-      href: '/admin/drafts',
-      icon: FileEdit,
-      permission: 'content.delete',
-    },
-    {
-      name: t('nav.analytics', '内容分析'),
-      href: '/admin/analytics',
-      icon: BarChart3,
-      permission: 'admin.access',
-    },
-    {
-      name: t('nav.searchAnalytics', '搜索分析'),
-      href: '/admin/search-analytics',
-      icon: Search,
-      permission: 'admin.access',
-    },
-    {
-      name: t('nav.downloads', '下载统计'),
-      href: '/admin/downloads',
-      icon: Download,
-      permission: 'admin.access',
-    },
-    {
-      name: t('nav.apiKeys', 'API 密钥'),
-      href: '/admin/api-keys',
-      icon: Key,
-      permission: 'admin.access',
-    },
-    {
-      name: t('nav.logs'),
-      href: '/admin/logs',
-      icon: ScrollText,
-      permission: 'admin.access',
+      label: t('nav.adminSystem', '系统管理'),
+      items: [
+        {
+          name: t('nav.media', '媒体管理'),
+          href: '/admin/media',
+          icon: Image,
+          permission: 'content.moderate',
+        },
+        {
+          name: t('nav.shares', '分享管理'),
+          href: '/admin/shares',
+          icon: Share2,
+          permission: 'content.moderate',
+        },
+        {
+          name: t('nav.notifications', '通知管理'),
+          href: '/admin/notifications',
+          icon: Bell,
+          permission: 'admin.access',
+        },
+        {
+          name: t('nav.drafts', '草稿管理'),
+          href: '/admin/drafts',
+          icon: FileEdit,
+          permission: 'content.delete',
+        },
+        {
+          name: t('nav.apiKeys', 'API 密钥'),
+          href: '/admin/api-keys',
+          icon: Key,
+          permission: 'users.view',
+        },
+      ],
     },
   ];
 
@@ -410,7 +441,7 @@ export function Sidebar({
           </>
         )}
 
-        {/* Admin Section */}
+        {/* Admin Section — grouped by function */}
         {showAdmin && (
           <>
             <div className="my-4 border-t" />
@@ -419,36 +450,48 @@ export function Sidebar({
                 {t('nav.admin')}
               </span>
             </div>
-            {adminNavigation.map((item) => {
-              // Skip items requiring permission the user doesn't have
-              if (item.permission && !hasPermission(userRole, item.permission)) {
-                return null;
-              }
-
-              const isActive =
-                item.href === '/admin'
-                  ? pathname === '/admin'
-                  : pathname.startsWith(item.href);
+            {adminGroups.map((group) => {
+              // Filter items by permission
+              const visibleItems = group.items.filter(
+                (item) => !item.permission || hasPermission(userRole, item.permission)
+              );
+              if (visibleItems.length === 0) return null;
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.name}
-                  {item.badgeCount !== undefined && item.badgeCount > 0 && (
-                    <Badge variant="destructive" className="ml-auto">
-                      {item.badgeCount}
-                    </Badge>
-                  )}
-                </Link>
+                <div key={group.label} className="mb-1">
+                  <div className="px-3 py-1.5">
+                    <span className="text-[11px] font-medium text-muted-foreground/60">
+                      {group.label}
+                    </span>
+                  </div>
+                  {visibleItems.map((item) => {
+                    const isActive =
+                      item.href === '/admin'
+                        ? pathname === '/admin'
+                        : pathname.startsWith(item.href);
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                          isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.name}
+                        {item.badgeCount !== undefined && item.badgeCount > 0 && (
+                          <Badge variant="destructive" className="ml-auto">
+                            {item.badgeCount}
+                          </Badge>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </>
