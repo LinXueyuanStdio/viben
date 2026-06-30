@@ -58,6 +58,8 @@ const browseNavigation = [
   { nameKey: 'nav.category', href: '/category', icon: Grid3X3 },
   { nameKey: 'nav.leaderboard', href: '/leaderboard', icon: TrendingUp },
   { nameKey: 'nav.moment', href: '/moment', icon: MessageSquare },
+  { nameKey: 'nav.tags', href: '/tags', icon: Grid3X3 },
+  { nameKey: 'nav.author', href: '/author', icon: Users },
   { nameKey: 'nav.search', href: '/search', icon: Search },
 ];
 
