@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
-import { Send, Heart, MessageCircle, ChevronDown, Trash2 } from "lucide-react"
+import { Send, ThumbsUp, MessageCircle, ChevronDown, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -207,7 +207,7 @@ function CommentCard({
               comment.viewer_has_reacted ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Heart className={cn("size-3.5", comment.viewer_has_reacted && "fill-current")} />
+            <ThumbsUp className={cn("size-3.5", comment.viewer_has_reacted && "fill-current")} />
             {comment.reactions_count > 0 && <span>{comment.reactions_count}</span>}
           </button>
           <button
