@@ -8,15 +8,16 @@ export async function POST(request: NextRequest) {
     const session = await requireAuth(request);
     const body = await request.json();
 
+    // Validate
     if (
       (body.entity_type !== 'published_page' &&
         body.entity_type !== 'moment' &&
         body.entity_type !== 'comment') ||
       typeof body.entity_id !== 'string' ||
-      (body.reaction_type !== undefined && body.reaction_type !== 'like')
+      !body.entity_id
     ) {
       return NextResponse.json(
-        { error: { code: 'invalid_input', message: 'Invalid reaction payload' } },
+        { error: { code: 'invalid_input', message: `Invalid payload: entity_type=${body.entity_type}, entity_id=${body.entity_id}` } },
         { status: 400 }
       );
     }
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     const result = await toggleReaction({
       entityType: body.entity_type,
       entityId: body.entity_id,
-      reactionType: 'like',
+      reactionType: body.reaction_type || 'like',
       session,
     });
 
@@ -37,7 +38,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.error('[reactions/toggle] Error:', error instanceof Error ? error.message : error);
+
     const code = error instanceof Error ? error.message : 'internal_error';
-    return NextResponse.json({ error: { code, message: code } }, { status: 400 });
+    // Return meaningful HTTP status instead of always 400
+    if (code === 'community_entity_not_found') {
+      return NextResponse.json(
+        { error: { code, message: 'Entity not found in community system. It may need to be published first.' } },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ error: { code, message: code } }, { status: 500 });
   }
 }
