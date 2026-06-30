@@ -31,22 +31,26 @@ interface PageRow {
   bookmarkCount: number
   authorName: string | null
   authorAvatarUrl: string | null
+  /** Author's userSlug, available when the query joins with users table */
+  authorUserSlug?: string | null
 }
 
 function mapPageToCard(
   p: PageRow,
-  slug: string,
+  fallbackSlug: string,
   fallbackDisplayName: string,
   fallbackAvatarUrl: string | null | undefined,
 ): { card: PageCardData; href: string } {
+  const authorSlug = p.authorUserSlug ?? fallbackSlug
+  const authorName = p.authorName ?? fallbackDisplayName
   return {
     card: {
       cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
       title: p.title,
       description: p.description ?? undefined,
       author: {
-        name: p.authorName ?? fallbackDisplayName,
-        fallbackText: p.authorName?.[0] ?? fallbackDisplayName[0] ?? "?",
+        name: authorName,
+        fallbackText: authorName[0] ?? fallbackDisplayName[0] ?? "?",
         avatarUrl: p.authorAvatarUrl ?? fallbackAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),
@@ -57,7 +61,7 @@ function mapPageToCard(
         bookmarks: p.bookmarkCount,
       },
     } satisfies PageCardData,
-    href: `/${encodeURIComponent(slug)}/${encodeURIComponent(p.uid)}?tab=read`,
+    href: `/${encodeURIComponent(authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }
 }
 
@@ -171,10 +175,11 @@ export default async function UserSlugPage({
       .where(eq(collections.ownerId, user.id))
       .orderBy(desc(collections.updatedAt))
       .limit(20),
-    db.select(pageColumns)
+    db.select({ ...pageColumns, authorUserSlug: users.userSlug })
       .from(communityReactions)
       .innerJoin(communityEntities, eq(communityEntities.id, communityReactions.communityEntityId))
       .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
+      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(communityReactions.userId, user.id),
         eq(communityReactions.reactionType, "like"),
@@ -185,10 +190,11 @@ export default async function UserSlugPage({
       ))
       .orderBy(desc(communityReactions.createdAt))
       .limit(20),
-    db.select(pageColumns)
+    db.select({ ...pageColumns, authorUserSlug: users.userSlug })
       .from(communityBookmarks)
       .innerJoin(communityEntities, eq(communityEntities.id, communityBookmarks.communityEntityId))
       .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
+      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(communityBookmarks.userId, user.id),
         eq(communityEntities.entityType, "published_page"),
