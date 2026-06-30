@@ -31,8 +31,8 @@ export interface FeedCardData {
 }
 
 export interface FeedCardSession {
-  userId: string
   username: string
+  userSlug: string
   avatarUrl?: string
 }
 
@@ -51,6 +51,13 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
   const [likedActive, setLikedActive] = useState(data.actions.hasLiked ?? false)
   const [pendingLike, setPendingLike] = useState(false)
   const [bounceLike, setBounceLike] = useState(false)
+  const [optimisticComments, setOptimisticComments] = useState(data.actions.comments)
+
+  // Inline comment composer
+  const [commentOpen, setCommentOpen] = useState(false)
+  const [commentText, setCommentText] = useState("")
+  const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const commentInputRef = useRef<HTMLInputElement>(null)
 
   // Ref-based guard so useEffect doesn't overwrite in-flight mutations
   const pendingRef = useRef({ like: false })
@@ -62,9 +69,10 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
   useEffect(() => {
     if (pendingRef.current.like) return
     setOptimisticLikes(data.actions.likes)
+    setOptimisticComments(data.actions.comments)
     setLikedActive(data.actions.hasLiked ?? false)
     snapshotRef.current = { likes: data.actions.likes }
-  }, [data.actions.likes, data.actions.hasLiked])
+  }, [data.actions.likes, data.actions.comments, data.actions.hasLiked])
 
   const handleShare = useCallback(() => {
     const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
@@ -122,11 +130,41 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
     }
   }, [data.actions.momentId, likedActive, onAction, t])
 
-  const handleCommentOrRepost = useCallback((action: string) => {
-    if (onAction) {
-      onAction(action)
-      return
+  const handleToggleComment = useCallback(() => {
+    if (onAction) { onAction("comment"); return }
+    if (!session) { toast.info(t("community.loginToInteract")); return }
+    setCommentOpen((prev) => {
+      if (!prev) setTimeout(() => commentInputRef.current?.focus(), 100)
+      return !prev
+    })
+  }, [onAction, session, t])
+
+  const handleSubmitComment = useCallback(async () => {
+    const text = commentText.trim()
+    if (!text || commentSubmitting) return
+    const momentId = data.actions.momentId
+    if (!momentId) return
+
+    setCommentSubmitting(true)
+    try {
+      await createComment({ entityType: "moment", entityId: momentId, content: text })
+      setOptimisticComments((c) => c + 1)
+      setCommentText("")
+      setCommentOpen(false)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : ""
+      if (msg === "login_required") {
+        toast.error(t("community.loginToInteract"))
+      } else {
+        toast.error(t("community.commentFailed"))
+      }
+    } finally {
+      setCommentSubmitting(false)
     }
+  }, [commentText, commentSubmitting, data.actions.momentId, t])
+
+  const handleRepostPlaceholder = useCallback(() => {
+    if (onAction) { onAction("repost"); return }
     toast.info(t("community.interactSoon"))
   }, [onAction, t])
 
@@ -149,18 +187,19 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
         },
         {
           icon: MessageCircle,
-          value: actions.comments,
+          value: optimisticComments,
           format: true,
           dataAction: "comment",
-          onClick: () => handleCommentOrRepost("comment"),
-          disabled: true,
+          onClick: handleToggleComment,
+          active: commentOpen,
+          activeColor: "text-sky-500",
         },
         {
           icon: Repeat2,
           value: actions.reposts ?? 0,
           format: true,
           dataAction: "repost",
-          onClick: () => handleCommentOrRepost("repost"),
+          onClick: handleRepostPlaceholder,
           disabled: true,
         },
       ]
@@ -168,11 +207,12 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
         { icon: Eye, value: actions.views, format: true },
         {
           icon: MessageCircle,
-          value: actions.comments,
+          value: optimisticComments,
           format: true,
           dataAction: "comment",
-          onClick: () => handleCommentOrRepost("comment"),
-          disabled: true,
+          onClick: handleToggleComment,
+          active: commentOpen,
+          activeColor: "text-sky-500",
         },
       ]
 
@@ -212,6 +252,40 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
             <Share2 className="size-4" />
           </button>
         </div>
+        {commentOpen && session && (
+          <div className="flex items-center gap-2.5 pt-1">
+            <Avatar className="size-[28px] shrink-0">
+              <AvatarImage src={session.avatarUrl} alt={session.username} />
+              <AvatarFallback>{session.username[0] ?? "?"}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 flex items-center gap-2">
+              <input
+                ref={commentInputRef}
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment() } }}
+                placeholder={t("community.commentPlaceholder")}
+                maxLength={500}
+                disabled={commentSubmitting}
+                className="flex-1 min-w-0 h-[34px] px-3 rounded-full border border-border bg-surface-secondary text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handleSubmitComment}
+                disabled={!commentText.trim() || commentSubmitting}
+                className="inline-flex items-center justify-center size-[30px] shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary/85 disabled:opacity-40 transition-colors"
+                aria-label={t("community.send")}
+              >
+                {commentSubmitting ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Send className="size-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </article>
   )

@@ -103,6 +103,7 @@ export default async function MomentPage() {
                   initialCursor={tabPagination[tab.key]?.cursor ?? null}
                   feedType={tab.feedType}
                   emptyMessage={tab.feedType === "following" ? followingEmpty : defaultEmpty}
+                  session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null}
                 />
               </VibenTabsContent>
             )

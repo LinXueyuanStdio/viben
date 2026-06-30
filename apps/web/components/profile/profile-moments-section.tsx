@@ -4,15 +4,17 @@ import { FeedCard } from "@/components/content/feed-card"
 import { EmptyState } from "@/components/content/i18n-text"
 import type { FeedCardData } from "@/components/content/feed-card"
 import { mapMomentRowToFeedCard } from "@/lib/services/moment-mapper"
+import type { FeedCardSession } from "@/components/content/feed-card"
 
 interface ProfileMomentsProps {
   userId: string
   userSlug: string
   displayName: string | null
   avatarUrl: string | null
+  session?: FeedCardSession | null
 }
 
-export async function ProfileMoments({ userId, userSlug, displayName, avatarUrl }: ProfileMomentsProps) {
+export async function ProfileMoments({ userId, userSlug, displayName, avatarUrl, session }: ProfileMomentsProps) {
   let authorMoments: typeof moments.$inferSelect[] = []
 
   try {
@@ -39,7 +41,7 @@ export async function ProfileMoments({ userId, userSlug, displayName, avatarUrl 
   return (
     <div className="grid gap-2">
       {feedCards.map((feed, i) => (
-        <FeedCard key={i} data={feed} variant="rich" />
+        <FeedCard key={i} data={feed} variant="rich" session={session} />
       ))}
     </div>
   )

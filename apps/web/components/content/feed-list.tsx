@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { FeedCard } from "./feed-card"
-import type { FeedCardData } from "./feed-card"
+import type { FeedCardData, FeedCardSession } from "./feed-card"
 import { Button } from "@/components/ui/button"
 import { mapRichMomentToFeedCard } from "@/lib/services/moment-mapper"
 import type { MomentFeedItem } from "@/lib/services/community"
@@ -16,6 +16,7 @@ interface FeedListProps {
   initialCursor: string | null
   feedType: "latest" | "following" | "recommended"
   emptyMessage: React.ReactNode
+  session?: FeedCardSession | null
 }
 
 async function fetchMore(feedType: string, cursor: string | null): Promise<{
@@ -40,7 +41,7 @@ async function fetchMore(feedType: string, cursor: string | null): Promise<{
   }
 }
 
-export function FeedList({ initialItems, initialHasMore, initialCursor, feedType, emptyMessage }: FeedListProps) {
+export function FeedList({ initialItems, initialHasMore, initialCursor, feedType, emptyMessage, session }: FeedListProps) {
   const { t } = useTranslation()
   const [items, setItems] = useState<FeedCardData[]>(initialItems)
   const [cursor, setCursor] = useState<string | null>(initialCursor)
@@ -68,7 +69,7 @@ export function FeedList({ initialItems, initialHasMore, initialCursor, feedType
   return (
     <div className="grid gap-0">
       {items.map((feed, i) => (
-        <FeedCard key={feed.actions.momentId ?? `feed-${i}`} data={feed} variant="rich" />
+        <FeedCard key={feed.actions.momentId ?? `feed-${i}`} data={feed} variant="rich" session={session} />
       ))}
       {hasMore && (
         <Button

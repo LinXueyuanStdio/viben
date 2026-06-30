@@ -20,7 +20,7 @@ export async function HomeFeedSection() {
   return (
     <div className="grid gap-2">
       {feedItems.map((feed, i) => (
-        <FeedCard key={i} data={feed} variant="preloaded" />
+        <FeedCard key={i} data={feed} variant="preloaded" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
       ))}
     </div>
   )

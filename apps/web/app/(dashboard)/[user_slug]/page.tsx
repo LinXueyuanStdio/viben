@@ -364,7 +364,7 @@ export default async function UserSlugPage({
                   <SectionHead title="最近动态" />
                   <div className="grid gap-2">
                     {feedCards.slice(0, 5).map((feed, i) => (
-                      <FeedCard key={i} data={feed} variant="rich" />
+                      <FeedCard key={i} data={feed} variant="rich" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
                     ))}
                   </div>
                 </section>
@@ -426,7 +426,7 @@ export default async function UserSlugPage({
           ) : (
             <div className="grid gap-2">
               {feedCards.map((feed, i) => (
-                <FeedCard key={i} data={feed} variant="rich" />
+                <FeedCard key={i} data={feed} variant="rich" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
               ))}
             </div>
           )
