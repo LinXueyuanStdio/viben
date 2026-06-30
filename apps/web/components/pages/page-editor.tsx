@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
 import { marked } from "marked"
+import DOMPurify from "dompurify"
 import { toast } from "sonner"
 import { X, Loader2, Upload } from "lucide-react"
 
@@ -58,9 +59,14 @@ export function PageEditor({ userSlug }: PageEditorProps) {
   }, [])
 
   const handleCoverUpload = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) return
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large (max 10MB)")
+    const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+    const MAX_SIZE = 10 * 1024 * 1024
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error(t("pageEditor.invalidFileType"))
+      return
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error(t("pageEditor.fileTooLarge"))
       return
     }
 
@@ -81,30 +87,37 @@ export function PageEditor({ userSlug }: PageEditorProps) {
     } finally {
       setIsUploading(false)
     }
-  }, [])
+  }, [t])
 
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && tagInput.trim()) {
+    if (e.key === "Enter") {
       e.preventDefault()
       const newTag = tagInput.trim()
-      if (!tags.includes(newTag) && tags.length < 12) {
+      if (!newTag) return
+      if (tags.length >= 12) {
+        toast.warning(t("pageEditor.tagLimitReached"))
+        return
+      }
+      if (!tags.some((t) => t.toLowerCase() === newTag.toLowerCase())) {
         setTags((prev) => [...prev, newTag])
       }
       setTagInput("")
     }
-  }, [tagInput, tags])
+  }, [tagInput, tags, t])
 
   const removeTag = useCallback((tag: string) => {
     setTags((prev) => prev.filter((t) => t !== tag))
   }, [])
 
   const previewHtml = useMemo(() => {
+    if (!markdown.trim()) return ""
     try {
-      return marked.parse(markdown) as string
+      const raw = marked.parse(markdown) as string
+      return DOMPurify.sanitize(raw)
     } catch {
-      return ""
+      return `<div style="color:red;padding:1rem;">${t("pageEditor.parseError")}</div>`
     }
-  }, [markdown])
+  }, [markdown, t])
 
   const handlePublish = useCallback(async () => {
     if (!title.trim()) {
@@ -122,7 +135,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
 
     setIsSubmitting(true)
     try {
-      const html = await marked.parse(markdown)
+      const html = DOMPurify.sanitize(await marked.parse(markdown) as string)
       const res = await fetch("/api/pages/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -167,7 +180,10 @@ export function PageEditor({ userSlug }: PageEditorProps) {
             e.preventDefault()
             setIsDragging(true)
           }}
-          onDragLeave={() => setIsDragging(false)}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return
+            setIsDragging(false)
+          }}
           onDrop={(e) => {
             e.preventDefault()
             setIsDragging(false)
@@ -282,7 +298,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
                 type="button"
                 onClick={() => removeTag(tag)}
                 className="ml-0.5 rounded-full outline-none hover:bg-secondary-foreground/20"
-                aria-label={`Remove tag ${tag}`}
+                aria-label={t("pageEditor.removeTag", { tag })}
               >
                 <X className="size-3" />
               </button>

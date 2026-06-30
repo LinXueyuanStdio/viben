@@ -182,7 +182,9 @@
         "delete": "删除",
         "warn": "警告",
         "ban": "封禁",
-        "unban": "解封"
+        "unban": "解封",
+        "hide": "隐藏",
+        "unhide": "取消隐藏"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -190,7 +192,9 @@
         "comment": "评论",
         "collection": "收藏夹",
         "user": "用户",
-        "report": "举报"
+        "report": "举报",
+        "moment": "动态",
+        "published_page": "页面"
       },
       "packages": {
         "status": {
@@ -2110,6 +2114,11 @@
     "publishFailed": "发布失败",
     "titleRequired": "请输入标题",
     "uidRequired": "请输入页面 ID",
-    "contentRequired": "请输入页面内容"
+    "contentRequired": "请输入页面内容",
+    "removeTag": "移除标签 {{tag}}",
+    "invalidFileType": "不支持的图片类型，仅支持 PNG、JPEG、WebP 和 GIF 格式。",
+    "fileTooLarge": "图片大小不能超过 10MB。",
+    "tagLimitReached": "最多添加 12 个标签",
+    "parseError": "Markdown 解析失败，请检查语法"
   }
 }

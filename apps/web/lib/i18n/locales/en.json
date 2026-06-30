@@ -182,7 +182,9 @@
         "delete": "delete",
         "warn": "warn",
         "ban": "ban",
-        "unban": "unban"
+        "unban": "unban",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -190,7 +192,9 @@
         "comment": "Comment",
         "collection": "Collection",
         "user": "User",
-        "report": "Report"
+        "report": "Report",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {
@@ -2110,6 +2114,11 @@
     "publishFailed": "Publish failed",
     "titleRequired": "Title is required",
     "uidRequired": "Page ID is required",
-    "contentRequired": "Page content is required"
+    "contentRequired": "Page content is required",
+    "removeTag": "Remove tag {{tag}}",
+    "invalidFileType": "Invalid file type. Only PNG, JPEG, WebP and GIF are supported.",
+    "fileTooLarge": "File size must not exceed 10MB.",
+    "tagLimitReached": "Maximum 12 tags allowed",
+    "parseError": "Markdown parse error, please check syntax"
   }
 }
