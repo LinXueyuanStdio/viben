@@ -176,6 +176,16 @@ export function ReadPageClient({
     }
   }, [pageSidePageUid])
 
+  // 通知 Topbar 当前阅读页是否有设置 tab（仅作者可见）
+  React.useEffect(() => {
+    if (isAuthor) {
+      document.documentElement.setAttribute("data-read-has-settings", "1")
+    }
+    return () => {
+      document.documentElement.removeAttribute("data-read-has-settings")
+    }
+  }, [isAuthor])
+
   // 合集章节数据：仅来自 pageChaptersJson，不从 HTML H2 提取
   const { chapters, collectionSlug, collectionName } = parseChapters(pageChaptersJson)
 
@@ -267,8 +277,11 @@ export function ReadPageClient({
       pageVisibility={pageVisibility}
       pagePublishedAt={pagePublishedAt}
       pageHtml={pageHtml}
+      pageViewCount={pageViewCount}
+      pageLikeCount={pageLikeCount}
+      pageCommentCount={pageCommentCount}
     />
-  ), [userSlug, pageId, pageTitle, pageDescription, pageUid, pageTags, pageVisibility, pagePublishedAt, pageHtml])
+  ), [userSlug, pageId, pageTitle, pageDescription, pageUid, pageTags, pageVisibility, pagePublishedAt, pageHtml, pageViewCount, pageLikeCount, pageCommentCount])
 
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
@@ -284,36 +297,50 @@ export function ReadPageClient({
           { value: "details", label: t("community.read"), content: detailsTab },
           { value: "comments", label: t("community.comments"), badge: pageCommentCount, content: commentsTab },
           { value: "notes", label: t("community.notes"), content: notesTab },
-          ...(isAuthor ? [{ value: "settings", label: t("community.settings"), content: settingsTab }] : []),
         ]}
-        defaultTab={activeTab === "settings" && isAuthor ? "settings" : "details"}
+        defaultTab={activeTab === "settings" && isAuthor ? "details" : "details"}
       />
 
       {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
-      <div
-        className="w-full bg-white dark:bg-[#0a0a0a] overflow-x-hidden"
-        style={{
-          height: "100vh",
-          paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
-          transition: "padding-top 180ms ease",
-        }}
-      >
-        <iframe
-          title={pageTitle}
-          srcDoc={pageHtml}
-          onLoad={() => {
-            // iframe 加载后触发 topbar 重测 --reader-header-safe
-            window.dispatchEvent(new Event("resize"))
-          }}
-          sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-          className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
+      {activeTab === "settings" && isAuthor ? (
+        <div
+          className="w-full overflow-auto"
           style={{
-            height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
-            minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
-            transition: "height 180ms ease, min-height 180ms ease",
+            height: "100vh",
+            paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
+            transition: "padding-top 180ms ease",
           }}
-        />
-      </div>
+        >
+          <div className="max-w-2xl mx-auto px-4 py-8">
+            {settingsTab}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="w-full bg-white dark:bg-[#0a0a0a] overflow-x-hidden"
+          style={{
+            height: "100vh",
+            paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
+            transition: "padding-top 180ms ease",
+          }}
+        >
+          <iframe
+            title={pageTitle}
+            srcDoc={pageHtml}
+            onLoad={() => {
+              // iframe 加载后触发 topbar 重测 --reader-header-safe
+              window.dispatchEvent(new Event("resize"))
+            }}
+            sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+            className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
+            style={{
+              height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+              minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+              transition: "height 180ms ease, min-height 180ms ease",
+            }}
+          />
+        </div>
+      )}
     </BreadcrumbDynamicContext.Provider>
   )
 }
