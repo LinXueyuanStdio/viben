@@ -136,6 +136,18 @@ export function Sidebar({
       permission: 'reports.view',
     },
     {
+      name: t('nav.comments', '评论管理'),
+      href: '/admin/comments',
+      icon: MessageSquare,
+      permission: 'content.moderate',
+    },
+    {
+      name: t('nav.collections', '合集管理'),
+      href: '/admin/collections',
+      icon: Layers,
+      permission: 'content.moderate',
+    },
+    {
       name: t('nav.logs'),
       href: '/admin/logs',
       icon: ScrollText,

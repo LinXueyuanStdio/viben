@@ -51,6 +51,12 @@ export const users = pgTable(
       .notNull()
       .$onUpdate(() => new Date()),
     lastLoginAt: timestamp('last_login_at'),
+
+    // Moderation
+    bannedAt: timestamp('banned_at'),
+    bannedReason: text('banned_reason'),
+    warnedAt: timestamp('warned_at'),
+    warnedReason: text('warned_reason'),
   },
   (table) => [
     index('users_username_idx').on(table.username),

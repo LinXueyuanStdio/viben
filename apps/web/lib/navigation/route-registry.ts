@@ -98,6 +98,18 @@ export const routeRegistry: Record<string, RouteConfig> = {
     parent: "/admin",
     dropdownCategory: "管理",
   },
+  "/admin/comments": {
+    label: "评论管理",
+    icon: MessageSquare,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/collections": {
+    label: "合集管理",
+    icon: Layers,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
   "/admin/categories": {
     label: "分类管理",
     icon: Grid3X3,

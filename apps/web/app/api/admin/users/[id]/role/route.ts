@@ -16,7 +16,7 @@ interface RouteParams {
 }
 
 const updateRoleSchema = z.object({
-  role: z.enum(['user', 'developer']),
+  role: z.enum(['user', 'developer', 'support', 'moderator', 'admin']),
   reason: z.string().optional(),
 });
 
@@ -55,11 +55,29 @@ export async function PATCH(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Prevent changing admin roles
+    // Only super_admin/admin can manage admin roles
     const adminRoles = ['admin', 'super_admin', 'moderator', 'support'];
-    if (adminRoles.includes(targetUser.role)) {
+    const isSuperAdmin = session.role === 'super_admin' || session.role === 'admin';
+
+    if (adminRoles.includes(targetUser.role) && !isSuperAdmin) {
       return NextResponse.json(
-        { error: 'Cannot change role of admin users through this endpoint' },
+        { error: 'Only super admin can change admin roles' },
+        { status: 403 }
+      );
+    }
+
+    // Prevent changing super_admin role (highest protection)
+    if (targetUser.role === 'super_admin') {
+      return NextResponse.json(
+        { error: 'Cannot change super admin role' },
+        { status: 403 }
+      );
+    }
+
+    // Non-super-admin can only set user/developer
+    if (!isSuperAdmin && adminRoles.includes(role)) {
+      return NextResponse.json(
+        { error: 'Cannot assign admin roles' },
         { status: 403 }
       );
     }
@@ -79,11 +97,12 @@ export async function PATCH(
       .where(eq(users.id, id));
 
     // Log the action
+    const isAdminAssign = adminRoles.includes(role);
     await db.insert(moderationLogs).values({
       adminId: session.userId,
       entityType: 'user',
       entityId: id,
-      action: role === 'user' ? 'ban' : 'unban', // Using 'ban' for downgrade, 'unban' for upgrade
+      action: isAdminAssign ? 'unban' : 'ban',
       reason: reason || `Role changed from ${targetUser.role} to ${role}`,
       metadata: {
         previousRole: targetUser.role,
