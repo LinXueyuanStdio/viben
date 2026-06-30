@@ -2460,6 +2460,15 @@
     "newCollection": "New Collection",
     "collectionName": "Collection name",
     "createCollection": "Create Collection",
-    "noCollections": "No collections yet"
+    "noCollections": "No collections yet",
+    "settingsPublishedUrl": "Published URL",
+    "settingsPageInfo": "Page Info",
+    "settingsEditPage": "Edit Page",
+    "settingsSave": "Save Settings",
+    "settingsSaving": "Saving...",
+    "settingsVisibilityLabel": "Visibility",
+    "settingsPublishedDate": "Published Date",
+    "settingsCopyUrl": "Copy URL",
+    "settingsOpenUrl": "Open Page"
   }
 }

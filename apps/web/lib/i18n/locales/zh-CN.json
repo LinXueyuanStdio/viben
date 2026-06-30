@@ -2460,6 +2460,15 @@
     "newCollection": "新建合集",
     "collectionName": "合集名称",
     "createCollection": "创建合集",
-    "noCollections": "暂无合集"
+    "noCollections": "暂无合集",
+    "settingsPublishedUrl": "已发布链接",
+    "settingsPageInfo": "页面信息",
+    "settingsEditPage": "编辑页面",
+    "settingsSave": "保存设置",
+    "settingsSaving": "保存中...",
+    "settingsVisibilityLabel": "可见性",
+    "settingsPublishedDate": "发布日期",
+    "settingsCopyUrl": "复制链接",
+    "settingsOpenUrl": "打开页面"
   }
 }
