@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, shareLinks, users } from '@/lib/db';
-import { eq, desc, count, and, isNull, isNotNull, or, lt } from 'drizzle-orm';
+import { eq, desc, count, and, isNull, isNotNull, or, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listSharesQuerySchema = z.object({
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         isNull(shareLinks.revokedAt),
         or(
           isNull(shareLinks.expiresAt),
-          lt(new Date(), shareLinks.expiresAt!)
+          sql`${shareLinks.expiresAt} > NOW()`
         )
       );
     } else if (status === 'expired') {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       statusCondition = and(
         isNull(shareLinks.revokedAt),
         isNotNull(shareLinks.expiresAt),
-        lt(shareLinks.expiresAt!, new Date())
+        sql`${shareLinks.expiresAt} <= NOW()`
       );
     } else if (status === 'revoked') {
       statusCondition = isNotNull(shareLinks.revokedAt);
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     const [totalResult] = await db
       .select({ count: count() })
       .from(shareLinks)
-      .where(statusCondition ?? and());
+      .where(statusCondition ?? sql`TRUE`);
 
     const total = totalResult?.count ?? 0;
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       })
       .from(shareLinks)
       .leftJoin(users, eq(shareLinks.createdByUserId, users.id))
-      .where(statusCondition ?? and())
+      .where(statusCondition ?? sql`TRUE`)
       .orderBy(desc(shareLinks.createdAt))
       .limit(limit)
       .offset(offset);

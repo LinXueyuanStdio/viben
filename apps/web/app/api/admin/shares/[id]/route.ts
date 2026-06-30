@@ -7,17 +7,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
-import { getSession } from '@/lib/auth';
 import { db, shareLinks } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { createModerationLog } from '@/lib/admin/logs';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requirePermission(request, 'content.moderate');
+    await requirePermission(request, 'content.moderate');
     const { id } = await params;
 
     const shareLink = await db.query.shareLinks.findFirst({
@@ -37,14 +35,6 @@ export async function PATCH(
       .update(shareLinks)
       .set({ revokedAt: now, updatedAt: now })
       .where(eq(shareLinks.id, id));
-
-    await createModerationLog({
-      adminId: session.userId,
-      entityType: 'share_link',
-      entityId: id,
-      action: 'revoke',
-      reason: 'Administrative revocation',
-    });
 
     return NextResponse.json({
       success: true,

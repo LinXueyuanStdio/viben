@@ -195,7 +195,7 @@ export function RankingManagement() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      <span title={`浏览${item.viewCount ?? 0} 点赞${item.likeCount ?? 0} 评论${item.commentCount ?? 0}`}>
+                      <span title={`${item.viewCount ?? 0} views · ${item.likeCount ?? 0} likes · ${item.commentCount ?? 0} comments`}>
                         👁 {item.viewCount ?? 0} · ❤ {item.likeCount ?? 0} · 💬 {item.commentCount ?? 0}
                       </span>
                     </td>
