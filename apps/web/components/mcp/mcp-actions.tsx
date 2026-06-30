@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next';
 import { Download, ExternalLink, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FavoriteButton } from '@/components/social';
+import { BookmarkButton } from '@/components/social';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -40,7 +40,7 @@ export function McpActions({
 
   return (
     <div className="flex items-center gap-2">
-      <FavoriteButton
+      <BookmarkButton
         entityType="mcp"
         entityId={packageId}
         initialCount={favoritesCount}

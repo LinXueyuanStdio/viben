@@ -2,32 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Heart } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type EntityType = 'mcp' | 'skill';
 
-interface FavoriteButtonProps {
+interface BookmarkButtonProps {
   entityType: EntityType;
   entityId: string;
-  initialFavorited?: boolean;
+  initialBookmarked?: boolean;
   initialCount?: number;
   isAuthenticated?: boolean;
   className?: string;
 }
 
-export function FavoriteButton({
+export function BookmarkButton({
   entityType,
   entityId,
-  initialFavorited = false,
+  initialBookmarked = false,
   initialCount = 0,
   isAuthenticated = false,
   className,
-}: FavoriteButtonProps) {
+}: BookmarkButtonProps) {
   const { t } = useTranslation();
-  const [isBookmarked, setIsFavorited] = useState(initialFavorited);
+  const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [count, setCount] = useState(initialCount);
   const [isLoading, setIsLoading] = useState(false);
   const prefersReducedMotion = useReducedMotion();
@@ -38,19 +38,19 @@ export function FavoriteButton({
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    async function fetchFavoriteStatus() {
+    async function fetchBookmarkStatus() {
       try {
-        const response = await fetch(`/api/${apiPath}/${entityId}/favorite`);
+        const response = await fetch(`/api/${apiPath}/${entityId}/bookmark`);
         if (response.ok) {
           const data = await response.json();
-          setIsFavorited(data.isBookmarked);
+          setIsBookmarked(data.isBookmarked);
         }
       } catch (error) {
-        console.error('Failed to fetch favorite status:', error);
+        console.error('Failed to fetch bookmark status:', error);
       }
     }
 
-    fetchFavoriteStatus();
+    fetchBookmarkStatus();
   }, [apiPath, entityId, isAuthenticated]);
 
   async function handleToggle() {
@@ -59,30 +59,30 @@ export function FavoriteButton({
     }
 
     // Optimistic update
-    const wasAFavorite = isBookmarked;
-    setIsFavorited(!isBookmarked);
+    const wasBookmarked = isBookmarked;
+    setIsBookmarked(!isBookmarked);
     setCount((prev) => (isBookmarked ? prev - 1 : prev + 1));
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/${apiPath}/${entityId}/favorite`, {
+      const response = await fetch(`/api/${apiPath}/${entityId}/bookmark`, {
         method: 'POST',
       });
 
       if (response.ok) {
         const data = await response.json();
-        setIsFavorited(data.isBookmarked);
+        setIsBookmarked(data.isBookmarked);
         setCount(data.count);
       } else {
         // Revert on error
-        setIsFavorited(wasAFavorite);
-        setCount((prev) => (wasAFavorite ? prev + 1 : prev - 1));
+        setIsBookmarked(wasBookmarked);
+        setCount((prev) => (wasBookmarked ? prev + 1 : prev - 1));
       }
     } catch (error) {
       // Revert on error
-      setIsFavorited(wasAFavorite);
-      setCount((prev) => (wasAFavorite ? prev + 1 : prev - 1));
-      console.error('Failed to toggle favorite:', error);
+      setIsBookmarked(wasBookmarked);
+      setCount((prev) => (wasBookmarked ? prev + 1 : prev - 1));
+      console.error('Failed to toggle bookmark:', error);
     } finally {
       setIsLoading(false);
     }
@@ -95,14 +95,14 @@ export function FavoriteButton({
       onClick={handleToggle}
       disabled={isLoading || !isAuthenticated}
       className={cn('gap-2', className)}
-      title={isAuthenticated ? (isBookmarked ? t('social.removeFromFavorites') : t('social.addToFavorites')) : t('social.signInToFavorite')}
+      title={isAuthenticated ? (isBookmarked ? t('social.removeFromBookmarks') : t('social.addToBookmarks')) : t('social.signInToBookmark')}
     >
       <motion.div
         initial={false}
         animate={isBookmarked ? { scale: prefersReducedMotion ? 1 : [1, 1.3, 1] } : { scale: 1 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeOut' }}
       >
-        <Heart
+        <Bookmark
           className={cn(
             'h-5 w-5 transition-colors',
             isBookmarked
@@ -116,4 +116,4 @@ export function FavoriteButton({
   );
 }
 
-FavoriteButton.displayName = 'FavoriteButton';
+BookmarkButton.displayName = 'BookmarkButton';
