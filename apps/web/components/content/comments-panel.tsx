@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { createComment } from "@/lib/api/community"
+import { useToggleLike } from "@/hooks/use-toggle-like"
 import { timeAgo } from "@/lib/services/moment-mapper"
 
 // --- Types ---
@@ -148,24 +149,27 @@ function CommentComposer({
 
 function CommentCard({
   comment,
-  onReaction,
   onReply,
   onDelete,
   sessionUserId,
-  bounce,
 }: {
   comment: CommunityComment
-  onReaction: (id: string) => void
   onReply?: (username: string, commentId: string) => void
   onDelete?: (id: string) => void
   sessionUserId?: string
-  bounce?: boolean
 }) {
   const { t } = useTranslation()
   const isOwnComment = sessionUserId ? comment.author.id === sessionUserId : false
 
+  const like = useToggleLike({
+    entityType: "comment",
+    entityId: comment.id,
+    initialLiked: comment.viewer_has_reacted,
+    initialCount: comment.reactions_count,
+  })
+
   return (
-    <div className={cn("grid gap-2 py-1.5 border-t border-border first:border-t-0", bounce && "animate-bounce-in")} style={{ gridTemplateColumns: "auto 1fr" }}>
+    <div className={cn("grid gap-2 py-1.5 border-t border-border first:border-t-0", like.bounce && "animate-bounce-in")} style={{ gridTemplateColumns: "auto 1fr" }}>
       <Avatar className="size-[28px] shrink-0">
         <AvatarImage src={comment.author.avatar_url ?? undefined} alt={comment.author.display_name} />
         <AvatarFallback>{comment.author.display_name?.[0] ?? "?"}</AvatarFallback>
@@ -179,14 +183,19 @@ function CommentCard({
         <p className="text-[#173f4c] dark:text-foreground leading-relaxed text-sm mt-1">{comment.content}</p>
         <div className="flex items-center gap-4 mt-2">
           <button
-            onClick={() => onReaction(comment.id)}
+            onClick={() => like.toggle().catch(() => {})}
+            disabled={like.pending}
             className={cn(
               "inline-flex items-center gap-1 text-[13px] transition-colors",
-              comment.viewer_has_reacted ? "text-red-500 font-bold" : "text-muted-foreground hover:text-foreground"
+              like.liked ? "text-red-500 font-bold" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <ThumbsUp className={cn("size-3.5 transition-transform duration-200", comment.viewer_has_reacted && "fill-current scale-110")} />
-            {comment.reactions_count > 0 && <span>{comment.reactions_count}</span>}
+            {like.pending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <ThumbsUp className={cn("size-3.5 transition-transform duration-200", like.liked && "fill-current scale-110")} />
+            )}
+            {like.count > 0 && <span>{like.count}</span>}
           </button>
           <button
             onClick={() => onReply?.(comment.author.display_name, comment.id)}
@@ -228,7 +237,6 @@ export function CommentsPanel({
   const [replyTo, setReplyTo] = useState<{ username: string; commentId: string } | null>(null)
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [bounceIds, setBounceIds] = useState<Set<string>>(new Set())
 
   const fetchComments = useCallback(async (cursor?: string | null) => {
     if (cursor) {
@@ -270,42 +278,6 @@ export function CommentsPanel({
     const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     return sort === "latest" ? diff : -diff
   })
-
-  const handleReaction = async (commentId: string) => {
-    if (!isAuthenticated) return
-    try {
-      const res = await fetch(`/api/community/comments/${commentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reaction: true }),
-      })
-      if (res.ok) {
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === commentId
-              ? {
-                  ...c,
-                  viewer_has_reacted: !c.viewer_has_reacted,
-                  reactions_count: c.reactions_count + (c.viewer_has_reacted ? -1 : 1),
-                }
-              : c
-          )
-        )
-        // Trigger bounce if newly liked
-        setBounceIds((prev) => {
-          const next = new Set(prev)
-          const comment = comments.find((c) => c.id === commentId)
-          if (comment && !comment.viewer_has_reacted) {
-            next.add(commentId)
-            setTimeout(() => setBounceIds((cur) => { const s = new Set(cur); s.delete(commentId); return s }), 600)
-          }
-          return next
-        })
-      }
-    } catch (err) {
-      console.error("Failed to toggle reaction:", err)
-    }
-  }
 
   const handleDelete = async (commentId: string) => {
     if (!window.confirm(t("community.deleteConfirm"))) return
@@ -357,11 +329,9 @@ export function CommentsPanel({
               <CommentCard
                 key={comment.id}
                 comment={comment}
-                onReaction={handleReaction}
                 onReply={(username, commentId) => setReplyTo({ username, commentId })}
                 onDelete={handleDelete}
                 sessionUserId={sessionUserId}
-                bounce={bounceIds.has(comment.id)}
               />
             ))}
           </div>
