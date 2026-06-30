@@ -1,4 +1,5 @@
 import { getSession } from "@/lib/auth/cookies"
+import type { Session } from "@/lib/auth/types"
 import { AppShell } from "@/components/layout/app-shell"
 import { ErrorBoundary } from "@/components/layout/error-boundary"
 import { listNotifications, getBrowseHistory } from "@/lib/services/community"
@@ -9,12 +10,23 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getSession()
+  let session: Session | null = null
+  try {
+    session = await getSession()
+  } catch (error) {
+    console.error("[Dashboard] Failed to get session:", error)
+  }
 
-  const [hotSearches, recentSearches] = await Promise.all([
-    getHotSearches(8),
-    getRecentSearches(session?.userId ?? null, 5),
-  ])
+  let hotSearches: Awaited<ReturnType<typeof getHotSearches>> = []
+  let recentSearches: Awaited<ReturnType<typeof getRecentSearches>> = []
+  try {
+    ;[hotSearches, recentSearches] = await Promise.all([
+      getHotSearches(8),
+      getRecentSearches(session?.userId ?? null, 5),
+    ])
+  } catch (error) {
+    console.error("[Dashboard] Failed to fetch search data:", error)
+  }
 
   // Build notification preview items (only if session exists)
   let notificationItems: Array<{ title: string; subtitle: string; href: string; thumb: string }> = []
