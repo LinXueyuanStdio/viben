@@ -254,14 +254,9 @@ function ReadMoreMenu() {
   const [reportOpen, setReportOpen] = React.useState(false)
   const [feedbackOpen, setFeedbackOpen] = React.useState(false)
 
-  // 从 pathname 解析 pageId：/[user_slug]/[page_id] (新路由) 或 /read/[user_slug]/[page_id] (旧路由)
+  // 从 pathname 解析 pageId：/[user_slug]/[page_id]
   const pageId = React.useMemo(() => {
     const parts = pathname.split("/")
-    // 新路由: /[user_slug]/[page_id]，例如 /alice/my-article
-    // 旧路由: /read/[user_slug]/[page_id]，例如 /read/alice/my-article
-    if (parts[1] === "read" && parts.length >= 4) {
-      return parts[3]
-    }
     if (parts.length >= 3 && parts[1] !== "" && parts[1] !== "landing" && parts[2] !== "") {
       return parts[2]
     }

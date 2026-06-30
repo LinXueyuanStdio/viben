@@ -272,10 +272,6 @@ export function ReadPageClient({
 
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
-      // Old route pattern (for backward compatibility)
-      [`/read/${userSlug}`]: { label: authorName, icon: User, href: `/${userSlug}` },
-      [`/read/${userSlug}/${pageId}`]: { label: pageTitle },
-      // New route pattern
       [`/${userSlug}`]: { label: authorName, icon: User, href: `/${userSlug}` },
       [`/${userSlug}/${pageId}`]: { label: pageTitle },
     },
