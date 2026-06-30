@@ -19,7 +19,7 @@ export class VercelBlobStorage implements StorageProvider {
     const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
 
     const result = await put(filePath, buffer, {
-      access: 'public',
+      access: 'private',
       contentType: options?.contentType,
     });
 
