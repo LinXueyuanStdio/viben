@@ -80,11 +80,9 @@ export function mapRichMomentToFeedCard(
       likes: item.moment.like_count,
       comments: item.moment.comment_count,
       reposts: item.moment.repost_count,
-      bookmarks: item.moment.bookmark_count ?? 0,
       momentId: item.moment.id,
       shareUrl: `/moment/${item.moment.id}`,
       hasLiked: item.viewer_state.has_liked,
-      hasBookmarked: item.viewer_state.has_bookmarked,
     },
   }
 }
@@ -128,11 +126,9 @@ export function mapMomentRowToFeedCard(
       likes: row.likeCount,
       comments: row.commentCount,
       reposts: row.repostCount,
-      bookmarks: row.bookmarkCount ?? 0,
       momentId: row.id,
       shareUrl: `/moment/${row.id}`,
       hasLiked: false,
-      hasBookmarked: false,
     },
   }
 }

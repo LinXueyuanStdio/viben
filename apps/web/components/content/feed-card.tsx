@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, Bookmark, ThumbsUp, Repeat2, Share2 } from "lucide-react"
+import { Eye, MessageCircle, ThumbsUp, Repeat2, Share2 } from "lucide-react"
 import { toast } from "sonner"
 import { FeedHead } from "./feed-head"
 import type { FeedHeadData } from "./feed-head"
@@ -11,7 +11,7 @@ import type { AttachmentData } from "./attachment"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
 import { cn } from "@/lib/utils"
-import { toggleReaction, toggleBookmark } from "@/lib/api/community"
+import { toggleReaction } from "@/lib/api/community"
 
 export interface FeedCardData {
   head: FeedHeadData
@@ -23,11 +23,9 @@ export interface FeedCardData {
     likes: number
     comments: number
     reposts?: number
-    bookmarks: number
     momentId?: string
     shareUrl?: string
     hasLiked?: boolean
-    hasBookmarked?: boolean
   }
 }
 
@@ -42,29 +40,23 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
   const { t } = useTranslation()
 
   const [optimisticLikes, setOptimisticLikes] = useState(data.actions.likes)
-  const [optimisticBookmarks, setOptimisticBookmarks] = useState(data.actions.bookmarks)
   const [likedActive, setLikedActive] = useState(data.actions.hasLiked ?? false)
-  const [bookmarkedActive, setBookmarkedActive] = useState(data.actions.hasBookmarked ?? false)
   const [pendingLike, setPendingLike] = useState(false)
-  const [pendingBookmark, setPendingBookmark] = useState(false)
   const [bounceLike, setBounceLike] = useState(false)
-  const [bounceBookmark, setBounceBookmark] = useState(false)
 
   // Ref-based guard so useEffect doesn't overwrite in-flight mutations
-  const pendingRef = useRef({ like: false, bookmark: false })
+  const pendingRef = useRef({ like: false })
   // Snapshot refs for safe rollback
-  const snapshotRef = useRef({ likes: data.actions.likes, bookmarks: data.actions.bookmarks })
+  const snapshotRef = useRef({ likes: data.actions.likes })
 
   // Sync state when data prop changes (e.g., after page re-render with fresh data),
   // but skip if a mutation is in-flight to avoid overwriting optimistic updates.
   useEffect(() => {
-    if (pendingRef.current.like || pendingRef.current.bookmark) return
+    if (pendingRef.current.like) return
     setOptimisticLikes(data.actions.likes)
-    setOptimisticBookmarks(data.actions.bookmarks)
     setLikedActive(data.actions.hasLiked ?? false)
-    setBookmarkedActive(data.actions.hasBookmarked ?? false)
-    snapshotRef.current = { likes: data.actions.likes, bookmarks: data.actions.bookmarks }
-  }, [data.actions.likes, data.actions.bookmarks, data.actions.hasLiked, data.actions.hasBookmarked])
+    snapshotRef.current = { likes: data.actions.likes }
+  }, [data.actions.likes, data.actions.hasLiked])
 
   const handleShare = useCallback(() => {
     const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
@@ -122,52 +114,6 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     }
   }, [data.actions.momentId, likedActive, onAction, t])
 
-  const handleBookmark = useCallback(async () => {
-    if (onAction) {
-      onAction("bookmark")
-      return
-    }
-
-    const momentId = data.actions.momentId
-    if (!momentId) {
-      toast.info(t("community.interactSoon"))
-      return
-    }
-
-    if (pendingRef.current.bookmark) return
-
-    pendingRef.current.bookmark = true
-    setPendingBookmark(true)
-    const wasActive = bookmarkedActive
-    setBookmarkedActive(!wasActive)
-    setOptimisticBookmarks((c) => (wasActive ? Math.max(0, c - 1) : c + 1))
-    if (!wasActive) {
-      setBounceBookmark(true)
-      setTimeout(() => setBounceBookmark(false), 600)
-    }
-
-    try {
-      const result = await toggleBookmark(momentId)
-      setBookmarkedActive(result.has_bookmarked)
-      setOptimisticBookmarks(result.bookmarks_count)
-      snapshotRef.current.bookmarks = result.bookmarks_count
-    } catch (err: unknown) {
-      // Revert optimistic update
-      setBookmarkedActive(wasActive)
-      setOptimisticBookmarks(snapshotRef.current.bookmarks)
-
-      const msg = err instanceof Error ? err.message : ""
-      if (msg === "login_required") {
-        toast.error(t("community.loginToInteract"))
-      } else {
-        toast.error(t("community.bookmarkFailed"))
-      }
-    } finally {
-      pendingRef.current.bookmark = false
-      setPendingBookmark(false)
-    }
-  }, [data.actions.momentId, bookmarkedActive, onAction, t])
-
   const handleCommentOrRepost = useCallback((action: string) => {
     if (onAction) {
       onAction(action)
@@ -209,18 +155,6 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           onClick: () => handleCommentOrRepost("repost"),
           disabled: true,
         },
-        {
-          icon: Bookmark,
-          value: optimisticBookmarks,
-          format: true,
-          dataAction: "bookmark",
-          onClick: handleBookmark,
-          disabled: pendingBookmark,
-          loading: pendingBookmark,
-          active: bookmarkedActive,
-          activeColor: "text-amber-500",
-          bounce: bounceBookmark,
-        },
       ]
     : [
         { icon: Eye, value: actions.views, format: true },
@@ -231,18 +165,6 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           dataAction: "comment",
           onClick: () => handleCommentOrRepost("comment"),
           disabled: true,
-        },
-        {
-          icon: Bookmark,
-          value: optimisticBookmarks,
-          format: true,
-          dataAction: "bookmark",
-          onClick: handleBookmark,
-          disabled: pendingBookmark,
-          loading: pendingBookmark,
-          active: bookmarkedActive,
-          activeColor: "text-amber-500",
-          bounce: bounceBookmark,
         },
       ]
 
