@@ -257,45 +257,68 @@ export default async function UserSlugPage({
         overview={
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
             {/* Left sidebar */}
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Avatar + identity */}
               <div className="flex flex-col items-center lg:items-start gap-3">
-                <Avatar className="size-20 lg:size-24 rounded-full ring-2 ring-border/60">
+                <Avatar className="size-24 lg:size-28 rounded-full ring-2 ring-border/40 ring-offset-2 ring-offset-background">
                   <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
-                  <AvatarFallback className="text-2xl">{displayName[0] ?? "?"}</AvatarFallback>
+                  <AvatarFallback className="text-3xl font-semibold text-muted-foreground">
+                    {displayName[0] ?? "?"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="text-center lg:text-left">
-                  <h2 className="text-xl font-bold">{user.displayName}</h2>
-                  <p className="text-sm text-muted-foreground">@{user.userSlug}</p>
+                  <h1 className="text-2xl font-bold tracking-tight leading-tight">
+                    {user.displayName}
+                  </h1>
+                  <p className="text-[15px] text-muted-foreground font-light">
+                    @{user.userSlug}
+                  </p>
                 </div>
               </div>
-              {user.bio && (
+
+              {/* Bio */}
+              {user.bio ? (
                 <p className="text-sm text-muted-foreground leading-relaxed">{user.bio}</p>
-              )}
+              ) : isOwnProfile ? (
+                <p className="text-sm text-muted-foreground/60 italic leading-relaxed">
+                  <T tKey="profile.addBio" fallback="添加简介，向大家介绍自己…" />
+                </p>
+              ) : null}
+
+              {/* Website */}
               {user.websiteUrl && (
                 <a
                   href={user.websiteUrl.startsWith("http") ? user.websiteUrl : `https://${user.websiteUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-1.5 w-fit text-[13px] text-muted-foreground hover:text-foreground transition-colors font-medium"
                 >
-                  <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
-                  {user.websiteUrl.replace(/^https?:\/\//, "")}
+                  <svg className="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  {user.websiteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                 </a>
               )}
-              <div className="flex items-center gap-4 text-sm">
-                <div>
-                  <span className="font-semibold">{user.followersCount}</span>{" "}
-                  <span className="text-muted-foreground">关注者</span>
+
+              {/* Stats */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-bold tabular-nums">{user.followersCount}</span>
+                  <span className="text-[13px] text-muted-foreground">关注者</span>
                 </div>
-                <div>
-                  <span className="font-semibold">{pageCountResult[0]?.count ?? 0}</span>{" "}
-                  <span className="text-muted-foreground">页面</span>
+                <span className="text-muted-foreground/30">·</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-bold tabular-nums">{pageCountResult[0]?.count ?? 0}</span>
+                  <span className="text-[13px] text-muted-foreground">页面</span>
                 </div>
               </div>
+
+              {/* Edit profile */}
               {isOwnProfile && (
                 <Link
                   href="/settings"
-                  className="inline-flex items-center justify-center w-full gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-secondary hover:text-foreground transition-colors"
+                  className="inline-flex items-center justify-center w-full gap-1.5 rounded-lg border border-border/60 bg-card px-4 py-2 text-[13px] font-medium text-muted-foreground hover:bg-surface-secondary hover:text-foreground hover:border-border transition-all"
                 >
                   <Settings className="size-3.5" />
                   <T tKey="profile.editProfile" fallback="编辑资料" />

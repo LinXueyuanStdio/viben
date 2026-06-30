@@ -507,42 +507,90 @@ export async function toggleReaction(params: {
       ),
     });
 
-    if (params.entityType === 'comment') {
-      comment = await tx.query.communityComments.findFirst({
-        where: and(
-          eq(communityComments.id, params.entityId),
-          eq(communityComments.status, 'active')
-        ),
-      });
-      if (!comment) throw new Error('community_entity_not_found');
+    // Auto-create community_entities record if missing
+    if (!entity) {
+      if (params.entityType === 'comment') {
+        comment = await tx.query.communityComments.findFirst({
+          where: and(
+            eq(communityComments.id, params.entityId),
+            eq(communityComments.status, 'active')
+          ),
+        });
+        if (!comment) throw new Error('community_entity_not_found');
 
-      const parentEntity = await tx.query.communityEntities.findFirst({
-        where: and(
-          eq(communityEntities.id, comment.communityEntityId),
-          eq(communityEntities.status, 'active'),
-          eq(communityEntities.visibility, 'public')
-        ),
-      });
-      if (!parentEntity) throw new Error('community_entity_not_found');
-    }
+        const parentEntity = await tx.query.communityEntities.findFirst({
+          where: and(
+            eq(communityEntities.id, comment.communityEntityId),
+            eq(communityEntities.status, 'active'),
+            eq(communityEntities.visibility, 'public')
+          ),
+        });
+        if (!parentEntity) throw new Error('community_entity_not_found');
 
-    if (!entity && params.entityType === 'comment' && comment) {
-      const [created] = await tx
-        .insert(communityEntities)
-        .values({
-          entityType: 'comment',
-          entityId: comment.id,
-          ownerUserId: comment.userId,
-          visibility: 'public',
-          status: comment.status === 'active' ? 'active' : 'hidden',
-          title: 'Comment',
-        })
-        .onConflictDoUpdate({
-          target: [communityEntities.entityType, communityEntities.entityId],
-          set: { status: comment.status === 'active' ? 'active' : 'hidden' },
-        })
-        .returning();
-      entity = created;
+        const [created] = await tx
+          .insert(communityEntities)
+          .values({
+            entityType: 'comment',
+            entityId: comment.id,
+            ownerUserId: comment.userId,
+            visibility: 'public',
+            status: comment.status === 'active' ? 'active' : 'hidden',
+            title: 'Comment',
+          })
+          .onConflictDoUpdate({
+            target: [communityEntities.entityType, communityEntities.entityId],
+            set: { status: comment.status === 'active' ? 'active' : 'hidden' },
+          })
+          .returning();
+        entity = created;
+      } else if (params.entityType === 'published_page') {
+        const [page] = await tx
+          .select({ userId: publishedPages.userId, title: publishedPages.title })
+          .from(publishedPages)
+          .where(eq(publishedPages.id, params.entityId));
+        if (!page) throw new Error('community_entity_not_found');
+
+        const [created] = await tx
+          .insert(communityEntities)
+          .values({
+            entityType: 'published_page',
+            entityId: params.entityId,
+            ownerUserId: page.userId,
+            visibility: 'public',
+            status: 'active',
+            title: page.title,
+          })
+          .onConflictDoUpdate({
+            target: [communityEntities.entityType, communityEntities.entityId],
+            set: { title: page.title },
+          })
+          .returning();
+        entity = created;
+      } else if (params.entityType === 'moment') {
+        const [m] = await tx
+          .select({ userId: moments.authorUserId, body: moments.body })
+          .from(moments)
+          .where(eq(moments.id, params.entityId));
+        if (!m) throw new Error('community_entity_not_found');
+
+        const title = (m.body || '').length > 80 ? `${(m.body || '').slice(0, 80)}...` : (m.body || '');
+        const [created] = await tx
+          .insert(communityEntities)
+          .values({
+            entityType: 'moment',
+            entityId: params.entityId,
+            ownerUserId: m.userId,
+            visibility: 'public',
+            status: 'active',
+            title,
+          })
+          .onConflictDoUpdate({
+            target: [communityEntities.entityType, communityEntities.entityId],
+            set: { title },
+          })
+          .returning();
+        entity = created;
+      }
     }
 
     if (!entity || !canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
@@ -605,7 +653,7 @@ export async function toggleFavorite(params: {
   session: Session;
 }) {
   return db.transaction(async (tx) => {
-    const entity = await tx.query.communityEntities.findFirst({
+    let entity = await tx.query.communityEntities.findFirst({
       where: and(
         eq(communityEntities.entityType, params.entityType),
         eq(communityEntities.entityId, params.entityId),
@@ -613,6 +661,58 @@ export async function toggleFavorite(params: {
         eq(communityEntities.visibility, 'public')
       ),
     });
+
+    // Auto-create community_entities record if missing
+    if (!entity) {
+      if (params.entityType === 'published_page') {
+        const [page] = await tx
+          .select({ userId: publishedPages.userId, title: publishedPages.title })
+          .from(publishedPages)
+          .where(eq(publishedPages.id, params.entityId));
+        if (!page) throw new Error('community_entity_not_found');
+
+        const [created] = await tx
+          .insert(communityEntities)
+          .values({
+            entityType: 'published_page',
+            entityId: params.entityId,
+            ownerUserId: page.userId,
+            visibility: 'public',
+            status: 'active',
+            title: page.title,
+          })
+          .onConflictDoUpdate({
+            target: [communityEntities.entityType, communityEntities.entityId],
+            set: { title: page.title },
+          })
+          .returning();
+        entity = created;
+      } else if (params.entityType === 'moment') {
+        const [m] = await tx
+          .select({ userId: moments.authorUserId, body: moments.body })
+          .from(moments)
+          .where(eq(moments.id, params.entityId));
+        if (!m) throw new Error('community_entity_not_found');
+
+        const title = (m.body || '').length > 80 ? `${(m.body || '').slice(0, 80)}...` : (m.body || '');
+        const [created] = await tx
+          .insert(communityEntities)
+          .values({
+            entityType: 'moment',
+            entityId: params.entityId,
+            ownerUserId: m.userId,
+            visibility: 'public',
+            status: 'active',
+            title,
+          })
+          .onConflictDoUpdate({
+            target: [communityEntities.entityType, communityEntities.entityId],
+            set: { title },
+          })
+          .returning();
+        entity = created;
+      }
+    }
 
     if (!entity || !canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
 
