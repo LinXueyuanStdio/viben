@@ -7,6 +7,8 @@ export interface UploadResult {
   url: string;
   checksum: string;
   size: number;
+  /** Vercel Blob pathname, used to construct proxy URL */
+  pathname?: string;
 }
 
 export interface FileInfo {

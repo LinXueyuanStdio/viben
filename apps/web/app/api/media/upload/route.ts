@@ -43,19 +43,24 @@ export async function POST(request: NextRequest) {
 
     const result = await getStorage().upload(key, buffer, { contentType: file.type });
 
+    // Use proxy URL for Vercel Blob (private blobs return 403 on direct access)
+    const assetUrl = result.pathname
+      ? `/api/media/asset?pathname=${encodeURIComponent(result.pathname)}`
+      : result.url;
+
     const [asset] = await db
       .insert(mediaAssets)
       .values({
         ownerUserId: session.userId,
         kind,
         source: 'object_storage',
-        url: result.url,
+        url: assetUrl,
         mimeType: file.type,
         sizeBytes: file.size,
       })
       .returning({ id: mediaAssets.id });
 
-    return NextResponse.json({ url: result.url, asset_id: asset.id });
+    return NextResponse.json({ url: assetUrl, asset_id: asset.id });
   } catch (error) {
     console.error('Media upload failed:', error);
     return NextResponse.json({ error: 'upload_failed' }, { status: 500 });

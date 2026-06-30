@@ -23,7 +23,7 @@ export class VercelBlobStorage implements StorageProvider {
       contentType: options?.contentType,
     });
 
-    return { url: result.url, checksum, size: buffer.length };
+    return { url: result.url, checksum, size: buffer.length, pathname: result.pathname };
   }
 
   async download(filePath: string): Promise<Buffer> {
