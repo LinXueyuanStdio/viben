@@ -372,61 +372,59 @@ export async function createCommunityComment(params: {
     throw new Error('comment_content_too_long');
   }
 
-  return db.transaction(async (tx) => {
-    const entity = await tx.query.communityEntities.findFirst({
-      where: and(
-        eq(communityEntities.entityType, params.entityType),
-        eq(communityEntities.entityId, params.entityId),
-        eq(communityEntities.status, 'active'),
-        eq(communityEntities.visibility, 'public')
-      ),
-    });
-
-    if (!entity) {
-      throw new Error('community_entity_not_found');
-    }
-
-    let parent: typeof communityComments.$inferSelect | null = null;
-    if (params.parentCommentId) {
-      parent =
-        (await tx.query.communityComments.findFirst({
-          where: and(
-            eq(communityComments.id, params.parentCommentId),
-            eq(communityComments.communityEntityId, entity.id),
-            eq(communityComments.status, 'active')
-          ),
-        })) ?? null;
-
-      if (!parent || parent.depth !== 0) {
-        throw new Error('comment_not_found');
-      }
-    }
-
-    const [comment] = await tx
-      .insert(communityComments)
-      .values({
-        communityEntityId: entity.id,
-        parentCommentId: parent?.id ?? null,
-        userId: params.session.userId,
-        content,
-        depth: parent ? 1 : 0,
-      })
-      .returning();
-
-    await tx
-      .update(communityEntities)
-      .set({ commentsCount: sql`${communityEntities.commentsCount} + 1` })
-      .where(eq(communityEntities.id, entity.id));
-
-    if (parent) {
-      await tx
-        .update(communityComments)
-        .set({ repliesCount: sql`${communityComments.repliesCount} + 1` })
-        .where(eq(communityComments.id, parent.id));
-    }
-
-    return comment;
+  const entity = await db.query.communityEntities.findFirst({
+    where: and(
+      eq(communityEntities.entityType, params.entityType),
+      eq(communityEntities.entityId, params.entityId),
+      eq(communityEntities.status, 'active'),
+      eq(communityEntities.visibility, 'public')
+    ),
   });
+
+  if (!entity) {
+    throw new Error('community_entity_not_found');
+  }
+
+  let parent: typeof communityComments.$inferSelect | null = null;
+  if (params.parentCommentId) {
+    parent =
+      (await db.query.communityComments.findFirst({
+        where: and(
+          eq(communityComments.id, params.parentCommentId),
+          eq(communityComments.communityEntityId, entity.id),
+          eq(communityComments.status, 'active')
+        ),
+      })) ?? null;
+
+    if (!parent || parent.depth !== 0) {
+      throw new Error('comment_not_found');
+    }
+  }
+
+  const [comment] = await db
+    .insert(communityComments)
+    .values({
+      communityEntityId: entity.id,
+      parentCommentId: parent?.id ?? null,
+      userId: params.session.userId,
+      content,
+      depth: parent ? 1 : 0,
+    })
+    .returning();
+
+  await db
+    .update(communityEntities)
+    .set({ commentsCount: sql`${communityEntities.commentsCount} + 1` })
+    .where(eq(communityEntities.id, entity.id));
+
+  if (parent) {
+    await db
+      .update(communityComments)
+      .set({ repliesCount: sql`${communityComments.repliesCount} + 1` })
+      .where(eq(communityComments.id, parent.id));
+  }
+
+  return comment;
 }
 
 export async function updateCommunityComment(params: {
@@ -469,62 +467,60 @@ export async function deleteCommunityComment(params: {
   commentId: string;
   session: Session;
 }) {
-  return db.transaction(async (tx) => {
-    const comment = await tx.query.communityComments.findFirst({
-      where: and(
-        eq(communityComments.id, params.commentId),
-        eq(communityComments.status, 'active')
-      ),
-    });
-    if (!comment) throw new Error('comment_not_found');
-    const entity = await tx.query.communityEntities.findFirst({
-      where: eq(communityEntities.id, comment.communityEntityId),
-    });
-    if (!canManageComment(params.session, comment, entity)) throw new Error('permission_denied');
+  const comment = await db.query.communityComments.findFirst({
+    where: and(
+      eq(communityComments.id, params.commentId),
+      eq(communityComments.status, 'active')
+    ),
+  });
+  if (!comment) throw new Error('comment_not_found');
+  const entity = await db.query.communityEntities.findFirst({
+    where: eq(communityEntities.id, comment.communityEntityId),
+  });
+  if (!canManageComment(params.session, comment, entity)) throw new Error('permission_denied');
 
-    const replies =
-      comment.parentCommentId === null
-        ? await tx.query.communityComments.findMany({
-            where: and(
-              eq(communityComments.parentCommentId, params.commentId),
-              eq(communityComments.status, 'active')
-            ),
-          })
-        : [];
-    const deletedCount = 1 + replies.length;
+  const replies =
+    comment.parentCommentId === null
+      ? await db.query.communityComments.findMany({
+          where: and(
+            eq(communityComments.parentCommentId, params.commentId),
+            eq(communityComments.status, 'active')
+          ),
+        })
+      : [];
+  const deletedCount = 1 + replies.length;
 
-    await tx
+  await db
+    .update(communityComments)
+    .set({
+      status: 'deleted',
+      deletedAt: new Date(),
+      deletedByUserId: params.session.userId,
+    })
+    .where(eq(communityComments.id, params.commentId));
+  if (replies.length > 0) {
+    await db
       .update(communityComments)
       .set({
         status: 'deleted',
         deletedAt: new Date(),
         deletedByUserId: params.session.userId,
       })
-      .where(eq(communityComments.id, params.commentId));
-    if (replies.length > 0) {
-      await tx
-        .update(communityComments)
-        .set({
-          status: 'deleted',
-          deletedAt: new Date(),
-          deletedByUserId: params.session.userId,
-        })
-        .where(inArray(communityComments.id, replies.map((reply) => reply.id)));
-    }
-    await tx
-      .update(communityEntities)
-      .set({ commentsCount: sql`greatest(${communityEntities.commentsCount} - ${deletedCount}, 0)` })
-      .where(eq(communityEntities.id, comment.communityEntityId));
+      .where(inArray(communityComments.id, replies.map((reply) => reply.id)));
+  }
+  await db
+    .update(communityEntities)
+    .set({ commentsCount: sql`greatest(${communityEntities.commentsCount} - ${deletedCount}, 0)` })
+    .where(eq(communityEntities.id, comment.communityEntityId));
 
-    if (comment.parentCommentId) {
-      await tx
-        .update(communityComments)
-        .set({ repliesCount: sql`greatest(${communityComments.repliesCount} - 1, 0)` })
-        .where(eq(communityComments.id, comment.parentCommentId));
-    }
+  if (comment.parentCommentId) {
+    await db
+      .update(communityComments)
+      .set({ repliesCount: sql`greatest(${communityComments.repliesCount} - 1, 0)` })
+      .where(eq(communityComments.id, comment.parentCommentId));
+  }
 
-    return { success: true, deleted_count: deletedCount };
-  });
+  return { success: true, deleted_count: deletedCount };
 }
 
 function canManageComment(
@@ -541,161 +537,116 @@ function canManageComment(
   );
 }
 
+async function ensureCommunityEntity(
+  entityType: 'published_page' | 'moment' | 'comment',
+  entityId: string
+): Promise<typeof communityEntities.$inferSelect> {
+  const existing = await db.query.communityEntities.findFirst({
+    where: and(
+      eq(communityEntities.entityType, entityType),
+      eq(communityEntities.entityId, entityId),
+      eq(communityEntities.status, 'active'),
+      eq(communityEntities.visibility, 'public')
+    ),
+  });
+  if (existing) return existing;
+
+  if (entityType === 'comment') {
+    const [comment] = await db.select().from(communityComments).where(
+      and(eq(communityComments.id, entityId), eq(communityComments.status, 'active'))
+    );
+    if (!comment) throw new Error('community_entity_not_found');
+    const [created] = await db.insert(communityEntities).values({
+      entityType: 'comment', entityId: comment.id, ownerUserId: comment.userId,
+      visibility: 'public', status: comment.status === 'active' ? 'active' : 'hidden', title: 'Comment',
+    }).onConflictDoUpdate({
+      target: [communityEntities.entityType, communityEntities.entityId],
+      set: { status: comment.status === 'active' ? 'active' : 'hidden' },
+    }).returning();
+    return created;
+  }
+
+  if (entityType === 'published_page') {
+    const [page] = await db.select({ userId: publishedPages.userId, title: publishedPages.title })
+      .from(publishedPages).where(eq(publishedPages.id, entityId));
+    if (!page) throw new Error('community_entity_not_found');
+    const [created] = await db.insert(communityEntities).values({
+      entityType: 'published_page', entityId, ownerUserId: page.userId,
+      visibility: 'public', status: 'active', title: page.title,
+    }).onConflictDoUpdate({
+      target: [communityEntities.entityType, communityEntities.entityId],
+      set: { title: page.title },
+    }).returning();
+    return created;
+  }
+
+  if (entityType === 'moment') {
+    const [m] = await db.select({ userId: moments.authorUserId, body: moments.body })
+      .from(moments).where(eq(moments.id, entityId));
+    if (!m) throw new Error('community_entity_not_found');
+    const title = (m.body || '').length > 80 ? `${(m.body || '').slice(0, 80)}...` : (m.body || '');
+    const [created] = await db.insert(communityEntities).values({
+      entityType: 'moment', entityId, ownerUserId: m.userId,
+      visibility: 'public', status: 'active', title,
+    }).onConflictDoUpdate({
+      target: [communityEntities.entityType, communityEntities.entityId],
+      set: { title },
+    }).returning();
+    return created;
+  }
+
+  throw new Error('community_entity_not_found');
+}
+
 export async function toggleReaction(params: {
   entityType: 'published_page' | 'moment' | 'comment';
   entityId: string;
   reactionType: 'like';
   session: Session;
 }) {
-  return db.transaction(async (tx) => {
-    let comment: typeof communityComments.$inferSelect | undefined;
-    let entity = await tx.query.communityEntities.findFirst({
-      where: and(
-        eq(communityEntities.entityType, params.entityType),
-        eq(communityEntities.entityId, params.entityId),
-        eq(communityEntities.status, 'active'),
-        eq(communityEntities.visibility, 'public')
-      ),
-    });
+  const entity = await ensureCommunityEntity(params.entityType, params.entityId);
+  if (!canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
 
-    // Auto-create community_entities record if missing
-    if (!entity) {
-      if (params.entityType === 'comment') {
-        comment = await tx.query.communityComments.findFirst({
-          where: and(
-            eq(communityComments.id, params.entityId),
-            eq(communityComments.status, 'active')
-          ),
-        });
-        if (!comment) throw new Error('community_entity_not_found');
-
-        const parentEntity = await tx.query.communityEntities.findFirst({
-          where: and(
-            eq(communityEntities.id, comment.communityEntityId),
-            eq(communityEntities.status, 'active'),
-            eq(communityEntities.visibility, 'public')
-          ),
-        });
-        if (!parentEntity) throw new Error('community_entity_not_found');
-
-        const [created] = await tx
-          .insert(communityEntities)
-          .values({
-            entityType: 'comment',
-            entityId: comment.id,
-            ownerUserId: comment.userId,
-            visibility: 'public',
-            status: comment.status === 'active' ? 'active' : 'hidden',
-            title: 'Comment',
-          })
-          .onConflictDoUpdate({
-            target: [communityEntities.entityType, communityEntities.entityId],
-            set: { status: comment.status === 'active' ? 'active' : 'hidden' },
-          })
-          .returning();
-        entity = created;
-      } else if (params.entityType === 'published_page') {
-        const [page] = await tx
-          .select({ userId: publishedPages.userId, title: publishedPages.title })
-          .from(publishedPages)
-          .where(eq(publishedPages.id, params.entityId));
-        if (!page) throw new Error('community_entity_not_found');
-
-        const [created] = await tx
-          .insert(communityEntities)
-          .values({
-            entityType: 'published_page',
-            entityId: params.entityId,
-            ownerUserId: page.userId,
-            visibility: 'public',
-            status: 'active',
-            title: page.title,
-          })
-          .onConflictDoUpdate({
-            target: [communityEntities.entityType, communityEntities.entityId],
-            set: { title: page.title },
-          })
-          .returning();
-        entity = created;
-      } else if (params.entityType === 'moment') {
-        const [m] = await tx
-          .select({ userId: moments.authorUserId, body: moments.body })
-          .from(moments)
-          .where(eq(moments.id, params.entityId));
-        if (!m) throw new Error('community_entity_not_found');
-
-        const title = (m.body || '').length > 80 ? `${(m.body || '').slice(0, 80)}...` : (m.body || '');
-        const [created] = await tx
-          .insert(communityEntities)
-          .values({
-            entityType: 'moment',
-            entityId: params.entityId,
-            ownerUserId: m.userId,
-            visibility: 'public',
-            status: 'active',
-            title,
-          })
-          .onConflictDoUpdate({
-            target: [communityEntities.entityType, communityEntities.entityId],
-            set: { title },
-          })
-          .returning();
-        entity = created;
-      }
-    }
-
-    if (!entity || !canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
-
-    const existing = await tx.query.communityReactions.findFirst({
-      where: and(
-        eq(communityReactions.communityEntityId, entity.id),
-        eq(communityReactions.userId, params.session.userId),
-        eq(communityReactions.reactionType, params.reactionType)
-      ),
-    });
-
-    if (existing) {
-      await tx
-        .delete(communityReactions)
-        .where(eq(communityReactions.id, existing.id));
-      await tx
-        .update(communityEntities)
-        .set({ reactionsCount: sql`greatest(${communityEntities.reactionsCount} - 1, 0)` })
-        .where(eq(communityEntities.id, entity.id));
-      if (params.entityType === 'comment') {
-        await tx
-          .update(communityComments)
-          .set({ reactionsCount: sql`greatest(${communityComments.reactionsCount} - 1, 0)` })
-          .where(eq(communityComments.id, params.entityId));
-      }
-    } else {
-      await tx.insert(communityReactions).values({
-        communityEntityId: entity.id,
-        userId: params.session.userId,
-        reactionType: params.reactionType,
-      });
-      await tx
-        .update(communityEntities)
-        .set({ reactionsCount: sql`${communityEntities.reactionsCount} + 1` })
-        .where(eq(communityEntities.id, entity.id));
-      if (params.entityType === 'comment') {
-        await tx
-          .update(communityComments)
-          .set({ reactionsCount: sql`${communityComments.reactionsCount} + 1` })
-          .where(eq(communityComments.id, params.entityId));
-      }
-    }
-
-    const updated = await tx.query.communityEntities.findFirst({
-      where: eq(communityEntities.id, entity.id),
-    });
-
-    return {
-      has_reacted: !existing,
-      reaction_type: params.reactionType,
-      reactions_count: updated?.reactionsCount ?? 0,
-    };
+  const existing = await db.query.communityReactions.findFirst({
+    where: and(
+      eq(communityReactions.communityEntityId, entity.id),
+      eq(communityReactions.userId, params.session.userId),
+      eq(communityReactions.reactionType, params.reactionType)
+    ),
   });
+
+  if (existing) {
+    await db.delete(communityReactions).where(eq(communityReactions.id, existing.id));
+    await db.update(communityEntities)
+      .set({ reactionsCount: sql`greatest(${communityEntities.reactionsCount} - 1, 0)` })
+      .where(eq(communityEntities.id, entity.id));
+    if (params.entityType === 'comment') {
+      await db.update(communityComments)
+        .set({ reactionsCount: sql`greatest(${communityComments.reactionsCount} - 1, 0)` })
+        .where(eq(communityComments.id, params.entityId));
+    }
+  } else {
+    await db.insert(communityReactions).values({
+      communityEntityId: entity.id, userId: params.session.userId, reactionType: params.reactionType,
+    });
+    await db.update(communityEntities)
+      .set({ reactionsCount: sql`${communityEntities.reactionsCount} + 1` })
+      .where(eq(communityEntities.id, entity.id));
+    if (params.entityType === 'comment') {
+      await db.update(communityComments)
+        .set({ reactionsCount: sql`${communityComments.reactionsCount} + 1` })
+        .where(eq(communityComments.id, params.entityId));
+    }
+  }
+
+  const [updated] = await db.select({ reactionsCount: communityEntities.reactionsCount })
+    .from(communityEntities).where(eq(communityEntities.id, entity.id));
+
+  return {
+    has_reacted: !existing,
+    reaction_type: params.reactionType,
+    reactions_count: updated?.reactionsCount ?? 0,
+  };
 }
 
 export async function toggleBookmark(params: {
@@ -703,103 +654,37 @@ export async function toggleBookmark(params: {
   entityId: string;
   session: Session;
 }) {
-  return db.transaction(async (tx) => {
-    let entity = await tx.query.communityEntities.findFirst({
-      where: and(
-        eq(communityEntities.entityType, params.entityType),
-        eq(communityEntities.entityId, params.entityId),
-        eq(communityEntities.status, 'active'),
-        eq(communityEntities.visibility, 'public')
-      ),
-    });
+  const entity = await ensureCommunityEntity(params.entityType, params.entityId);
+  if (!canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
 
-    // Auto-create community_entities record if missing
-    if (!entity) {
-      if (params.entityType === 'published_page') {
-        const [page] = await tx
-          .select({ userId: publishedPages.userId, title: publishedPages.title })
-          .from(publishedPages)
-          .where(eq(publishedPages.id, params.entityId));
-        if (!page) throw new Error('community_entity_not_found');
-
-        const [created] = await tx
-          .insert(communityEntities)
-          .values({
-            entityType: 'published_page',
-            entityId: params.entityId,
-            ownerUserId: page.userId,
-            visibility: 'public',
-            status: 'active',
-            title: page.title,
-          })
-          .onConflictDoUpdate({
-            target: [communityEntities.entityType, communityEntities.entityId],
-            set: { title: page.title },
-          })
-          .returning();
-        entity = created;
-      } else if (params.entityType === 'moment') {
-        const [m] = await tx
-          .select({ userId: moments.authorUserId, body: moments.body })
-          .from(moments)
-          .where(eq(moments.id, params.entityId));
-        if (!m) throw new Error('community_entity_not_found');
-
-        const title = (m.body || '').length > 80 ? `${(m.body || '').slice(0, 80)}...` : (m.body || '');
-        const [created] = await tx
-          .insert(communityEntities)
-          .values({
-            entityType: 'moment',
-            entityId: params.entityId,
-            ownerUserId: m.userId,
-            visibility: 'public',
-            status: 'active',
-            title,
-          })
-          .onConflictDoUpdate({
-            target: [communityEntities.entityType, communityEntities.entityId],
-            set: { title },
-          })
-          .returning();
-        entity = created;
-      }
-    }
-
-    if (!entity || !canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
-
-    const existing = await tx.query.communityBookmarks.findFirst({
-      where: and(
-        eq(communityBookmarks.communityEntityId, entity.id),
-        eq(communityBookmarks.userId, params.session.userId)
-      ),
-    });
-
-    if (existing) {
-      await tx.delete(communityBookmarks).where(eq(communityBookmarks.id, existing.id));
-      await tx
-        .update(communityEntities)
-        .set({ bookmarksCount: sql`greatest(${communityEntities.bookmarksCount} - 1, 0)` })
-        .where(eq(communityEntities.id, entity.id));
-    } else {
-      await tx.insert(communityBookmarks).values({
-        communityEntityId: entity.id,
-        userId: params.session.userId,
-      });
-      await tx
-        .update(communityEntities)
-        .set({ bookmarksCount: sql`${communityEntities.bookmarksCount} + 1` })
-        .where(eq(communityEntities.id, entity.id));
-    }
-
-    const updated = await tx.query.communityEntities.findFirst({
-      where: eq(communityEntities.id, entity.id),
-    });
-
-    return {
-      has_bookmarked: !existing,
-      bookmarks_count: updated?.bookmarksCount ?? 0,
-    };
+  const existing = await db.query.communityBookmarks.findFirst({
+    where: and(
+      eq(communityBookmarks.communityEntityId, entity.id),
+      eq(communityBookmarks.userId, params.session.userId)
+    ),
   });
+
+  if (existing) {
+    await db.delete(communityBookmarks).where(eq(communityBookmarks.id, existing.id));
+    await db.update(communityEntities)
+      .set({ bookmarksCount: sql`greatest(${communityEntities.bookmarksCount} - 1, 0)` })
+      .where(eq(communityEntities.id, entity.id));
+  } else {
+    await db.insert(communityBookmarks).values({
+      communityEntityId: entity.id, userId: params.session.userId,
+    });
+    await db.update(communityEntities)
+      .set({ bookmarksCount: sql`${communityEntities.bookmarksCount} + 1` })
+      .where(eq(communityEntities.id, entity.id));
+  }
+
+  const [updated] = await db.select({ bookmarksCount: communityEntities.bookmarksCount })
+    .from(communityEntities).where(eq(communityEntities.id, entity.id));
+
+  return {
+    has_bookmarked: !existing,
+    bookmarks_count: updated?.bookmarksCount ?? 0,
+  };
 }
 
 export async function listCommunityBookmarks(params: {
@@ -1046,32 +931,29 @@ export async function followUser(params: {
   if (!followee) throw new Error('user_not_found');
   if (followee.id === params.follower.userId) throw new Error('cannot_follow_self');
 
-  await db.transaction(async (tx) => {
-    const existing = await tx.query.userFollows.findFirst({
-      where: and(
-        eq(userFollows.followerUserId, params.follower.userId),
-        eq(userFollows.followeeUserId, followee.id)
-      ),
-    });
+  const existing = await db.query.userFollows.findFirst({
+    where: and(
+      eq(userFollows.followerUserId, params.follower.userId),
+      eq(userFollows.followeeUserId, followee.id)
+    ),
+  });
 
-    if (existing) {
-      await tx
-        .update(userFollows)
-        .set({ notifyLevel: params.notifyLevel, updatedAt: sql`now()` })
-        .where(eq(userFollows.id, existing.id));
-      return;
-    }
-
-    await tx.insert(userFollows).values({
+  if (existing) {
+    await db
+      .update(userFollows)
+      .set({ notifyLevel: params.notifyLevel, updatedAt: sql`now()` })
+      .where(eq(userFollows.id, existing.id));
+  } else {
+    await db.insert(userFollows).values({
       followerUserId: params.follower.userId,
       followeeUserId: followee.id,
       notifyLevel: params.notifyLevel,
     });
-    await tx
+    await db
       .update(users)
       .set({ followersCount: sql`${users.followersCount} + 1` })
       .where(eq(users.id, followee.id));
-  });
+  }
 
   const updated = await db.query.users.findFirst({ where: eq(users.id, followee.id) });
   return { following: true, followers_count: updated?.followersCount ?? 0 };
@@ -1083,20 +965,19 @@ export async function unfollowUser(params: { follower: Session; followeeSlug: st
   });
   if (!followee) throw new Error('user_not_found');
 
-  await db.transaction(async (tx) => {
-    const existing = await tx.query.userFollows.findFirst({
-      where: and(
-        eq(userFollows.followerUserId, params.follower.userId),
-        eq(userFollows.followeeUserId, followee.id)
-      ),
-    });
-    if (!existing) return;
-    await tx.delete(userFollows).where(eq(userFollows.id, existing.id));
-    await tx
+  const existing = await db.query.userFollows.findFirst({
+    where: and(
+      eq(userFollows.followerUserId, params.follower.userId),
+      eq(userFollows.followeeUserId, followee.id)
+    ),
+  });
+  if (existing) {
+    await db.delete(userFollows).where(eq(userFollows.id, existing.id));
+    await db
       .update(users)
       .set({ followersCount: sql`greatest(${users.followersCount} - 1, 0)` })
       .where(eq(users.id, followee.id));
-  });
+  }
 
   const updated = await db.query.users.findFirst({ where: eq(users.id, followee.id) });
   return { following: false, followers_count: updated?.followersCount ?? 0 };
@@ -1109,31 +990,29 @@ export async function subscribeToPage(params: {
 }) {
   if (!canReadPage(params.context.page, params.session)) throw new Error('permission_denied');
 
-  await db.transaction(async (tx) => {
-    const existing = await tx.query.pageSubscriptions.findFirst({
-      where: and(
-        eq(pageSubscriptions.userId, params.session.userId),
-        eq(pageSubscriptions.publishedPageId, params.context.page.id)
-      ),
-    });
-    if (existing) {
-      await tx
-        .update(pageSubscriptions)
-        .set({ notifyLevel: params.notifyLevel, updatedAt: sql`now()` })
-        .where(eq(pageSubscriptions.id, existing.id));
-      return;
-    }
-    await tx.insert(pageSubscriptions).values({
+  const existing = await db.query.pageSubscriptions.findFirst({
+    where: and(
+      eq(pageSubscriptions.userId, params.session.userId),
+      eq(pageSubscriptions.publishedPageId, params.context.page.id)
+    ),
+  });
+  if (existing) {
+    await db
+      .update(pageSubscriptions)
+      .set({ notifyLevel: params.notifyLevel, updatedAt: sql`now()` })
+      .where(eq(pageSubscriptions.id, existing.id));
+  } else {
+    await db.insert(pageSubscriptions).values({
       userId: params.session.userId,
       publishedPageId: params.context.page.id,
       notifyLevel: params.notifyLevel,
       lastSeenVersion: params.context.page.currentVersion ?? 0,
     });
-    await tx
+    await db
       .update(publishedPages)
       .set({ subscriberCount: sql`${publishedPages.subscriberCount} + 1` })
       .where(eq(publishedPages.id, params.context.page.id));
-  });
+  }
 
   const updated = await db.query.publishedPages.findFirst({
     where: eq(publishedPages.id, params.context.page.id),
@@ -1151,20 +1030,19 @@ export async function unsubscribeFromPage(params: {
   context: PublicPageContext;
   session: Session;
 }) {
-  await db.transaction(async (tx) => {
-    const existing = await tx.query.pageSubscriptions.findFirst({
-      where: and(
-        eq(pageSubscriptions.userId, params.session.userId),
-        eq(pageSubscriptions.publishedPageId, params.context.page.id)
-      ),
-    });
-    if (!existing) return;
-    await tx.delete(pageSubscriptions).where(eq(pageSubscriptions.id, existing.id));
-    await tx
+  const existing = await db.query.pageSubscriptions.findFirst({
+    where: and(
+      eq(pageSubscriptions.userId, params.session.userId),
+      eq(pageSubscriptions.publishedPageId, params.context.page.id)
+    ),
+  });
+  if (existing) {
+    await db.delete(pageSubscriptions).where(eq(pageSubscriptions.id, existing.id));
+    await db
       .update(publishedPages)
       .set({ subscriberCount: sql`greatest(${publishedPages.subscriberCount} - 1, 0)` })
       .where(eq(publishedPages.id, params.context.page.id));
-  });
+  }
 
   const updated = await db.query.publishedPages.findFirst({
     where: eq(publishedPages.id, params.context.page.id),

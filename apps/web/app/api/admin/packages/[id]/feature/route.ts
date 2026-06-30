@@ -80,32 +80,29 @@ export async function POST(
         });
       }
 
-      // Use transaction to ensure atomicity
-      await db.transaction(async (tx) => {
-        // Update to featured
-        const updateData: Record<string, unknown> = {
-          status: 'featured' as PackageStatus,
-          reviewedAt: new Date(),
-          reviewedBy: session.userId,
-          featuredAt: new Date(),
-          featuredBy: session.userId,
-        };
+      // Update to featured
+      const updateData: Record<string, unknown> = {
+        status: 'featured' as PackageStatus,
+        reviewedAt: new Date(),
+        reviewedBy: session.userId,
+        featuredAt: new Date(),
+        featuredBy: session.userId,
+      };
 
-        if (packageType === 'mcp') {
-          await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
-        } else {
-          await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
-        }
+      if (packageType === 'mcp') {
+        await db.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+      } else {
+        await db.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+      }
 
-        // Create moderation log
-        await tx.insert(moderationLogs).values({
-          adminId: session.userId,
-          entityType: packageType,
-          entityId: id,
-          action: 'feature',
-          reason: null,
-          metadata: null,
-        });
+      // Create moderation log
+      await db.insert(moderationLogs).values({
+        adminId: session.userId,
+        entityType: packageType,
+        entityId: id,
+        action: 'feature',
+        reason: null,
+        metadata: null,
       });
 
       return NextResponse.json({
@@ -131,32 +128,29 @@ export async function POST(
         });
       }
 
-      // Use transaction to ensure atomicity
-      await db.transaction(async (tx) => {
-        // Update to approved (unfeature)
-        const updateData: Record<string, unknown> = {
-          status: 'approved' as PackageStatus,
-          reviewedAt: new Date(),
-          reviewedBy: session.userId,
-          featuredAt: null,
-          featuredBy: null,
-        };
+      // Update to approved (unfeature)
+      const updateData: Record<string, unknown> = {
+        status: 'approved' as PackageStatus,
+        reviewedAt: new Date(),
+        reviewedBy: session.userId,
+        featuredAt: null,
+        featuredBy: null,
+      };
 
-        if (packageType === 'mcp') {
-          await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
-        } else {
-          await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
-        }
+      if (packageType === 'mcp') {
+        await db.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+      } else {
+        await db.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+      }
 
-        // Create moderation log
-        await tx.insert(moderationLogs).values({
-          adminId: session.userId,
-          entityType: packageType,
-          entityId: id,
-          action: 'unfeature',
-          reason: null,
-          metadata: null,
-        });
+      // Create moderation log
+      await db.insert(moderationLogs).values({
+        adminId: session.userId,
+        entityType: packageType,
+        entityId: id,
+        action: 'unfeature',
+        reason: null,
+        metadata: null,
       });
 
       return NextResponse.json({
