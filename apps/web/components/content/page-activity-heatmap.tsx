@@ -33,11 +33,7 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
   const isInView = useInView(ref);
 
   const { weeks, monthLabels, totalPages, maxCount } = useMemo(() => {
-    if (!data || data.length === 0) {
-      return { weeks: [], monthLabels: [], totalPages: 0, maxCount: 0 };
-    }
-
-    const dateMap = new Map(data.map((d) => [d.date, d.count]));
+    const dateMap = new Map(data?.map((d) => [d.date, d.count]) ?? []);
     const today = new Date();
     const startDate = new Date(today);
     startDate.setDate(startDate.getDate() - 364);
@@ -90,10 +86,6 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
   const cellGap = 3;
   const leftPad = 32;
   const topPad = 16;
-
-  if (!data || data.length === 0) {
-    return null;
-  }
 
   return (
     <div
