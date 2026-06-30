@@ -27,14 +27,14 @@ describe('PublishedPageList', () => {
     expect(screen.getByRole('heading', { name: 'Published pages' })).toBeInTheDocument();
 
     const demoLink = screen.getByRole('link', { name: /Demo Demo description/i });
-    expect(demoLink).toHaveAttribute('href', '/read/alice/demo');
+    expect(demoLink).toHaveAttribute('href', '/alice/demo?tab=read');
     expect(screen.getByTitle('Preview: Demo')).toHaveAttribute(
       'srcDoc',
       '<!doctype html><html><body><h1>Demo HTML</h1></body></html>'
     );
 
     const notesLink = screen.getByRole('link', { name: /Notes/i });
-    expect(notesLink).toHaveAttribute('href', '/read/alice/notes');
+    expect(notesLink).toHaveAttribute('href', '/alice/notes?tab=read');
     expect(screen.getByTitle('Preview: Notes')).toBeInTheDocument();
   });
 

@@ -22,7 +22,7 @@ const baseSummary = {
     reactions_count: 2,
     favorites_count: 1,
     comments_count: 3,
-    canonical_path: '/read/alice/demo',
+    canonical_path: '/alice/demo?tab=read',
   },
   viewer: {
     is_authenticated: true,
@@ -229,7 +229,7 @@ describe('CommunityInteractions', () => {
     fireEvent.click(screen.getByRole('button', { name: /share/i }));
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:3000/read/alice/demo');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:3000/alice/demo?tab=read');
     });
     expect(toast.success).toHaveBeenCalledWith('链接已复制。');
   });
