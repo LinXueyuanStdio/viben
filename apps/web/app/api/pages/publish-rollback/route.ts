@@ -33,8 +33,6 @@ export async function POST(request: NextRequest) {
 
     let result: { status: number; body: Record<string, unknown> };
 
-    await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${session.userId}), hashtext(${uid}))`);
-
     const publishedPage = await db.query.publishedPages.findFirst({
       where: and(
         eq(publishedPages.userId, session.userId),
