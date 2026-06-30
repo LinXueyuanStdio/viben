@@ -11,46 +11,40 @@ import {
   LANGUAGES, DEFAULT_LANGUAGE, getLanguageByCode, changeLanguage,
 } from '@/lib/i18n';
 import { DownloadButton } from './download';
+import { ChallengeCard } from './animated-cards/challenge-card';
+import { LifecycleCard } from './animated-cards/lifecycle-card';
+import { FeatureCard } from './animated-cards/feature-card';
 
 // ============================================
-// Lazy-loaded below-fold components
+// Lazy-loaded heavy sections (below fold)
 // ============================================
 
 const DemoTabs = dynamic(() => import('./demo-tabs').then(m => ({ default: m.DemoTabs })), {
-  loading: () => <SectionSkeleton height="h-[520px]" />,
-});
-
-const ChallengeCard = dynamic(() => import('./animated-cards/challenge-card').then(m => ({ default: m.ChallengeCard })), {
-  loading: () => <div className="h-64 animate-pulse rounded-xl bg-white/[0.03]" />,
-});
-
-const LifecycleCard = dynamic(() => import('./animated-cards/lifecycle-card').then(m => ({ default: m.LifecycleCard })), {
-  loading: () => <div className="h-64 animate-pulse rounded-xl bg-white/[0.03]" />,
-});
-
-const FeatureCard = dynamic(() => import('./animated-cards/feature-card').then(m => ({ default: m.FeatureCard })), {
-  loading: () => <div className="h-64 animate-pulse rounded-xl bg-white/[0.03]" />,
+  ssr: false,
+  loading: () => (
+    <section className="py-8">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="h-[480px] animate-pulse rounded-xl bg-white/[0.03]" />
+      </div>
+    </section>
+  ),
 });
 
 const DownloadSection = dynamic(() => import('./download').then(m => ({ default: m.DownloadSection })), {
-  loading: () => <SectionSkeleton />,
+  ssr: false,
+  loading: () => (
+    <section className="py-20">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="h-[300px] animate-pulse rounded-xl bg-white/[0.02]" />
+      </div>
+    </section>
+  ),
 });
 
 const AgentBadgeList = dynamic(() => import('./animated-cards/agent-badge').then(m => ({ default: m.AgentBadgeList })), {
+  ssr: false,
   loading: () => <div className="h-20 animate-pulse rounded-xl bg-white/[0.03]" />,
 });
-
-// ============================================
-// Skeleton
-// ============================================
-
-function SectionSkeleton({ height = 'h-[300px]' }: { height?: string }) {
-  return (
-    <section className="py-20">
-      <div className={`mx-auto max-w-6xl px-6 ${height} animate-pulse rounded-xl bg-white/[0.02]`} />
-    </section>
-  );
-}
 
 // ============================================
 // Constants
@@ -188,7 +182,7 @@ export function HomePage() {
         style={{ backgroundImage: 'radial-gradient(circle, rgba(214,216,118,0.08) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       <Nav />
 
-      {/* Hero — above fold, eager */}
+      {/* Hero */}
       <section className="relative overflow-hidden border-b border-white/10 pb-20 pt-24 md:pt-28">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(214,216,118,0.18),transparent_45%)]" />
         <div className="relative mx-auto max-w-5xl px-6 text-center">
@@ -209,10 +203,10 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Lazy: Demo Tabs */}
+      {/* Demo Tabs — lazy (29 KB) */}
       <DemoTabs />
 
-      {/* Lazy: Challenges */}
+      {/* Challenges */}
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
@@ -225,7 +219,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Lazy: Lifecycle */}
+      {/* Lifecycle */}
       <section className="border-y border-white/10 bg-white/[0.02] py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
@@ -237,7 +231,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Lazy: Features */}
+      {/* Features */}
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 flex items-end justify-between gap-4">
@@ -255,10 +249,10 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Lazy: Download */}
+      {/* Download — lazy (16 KB) */}
       <DownloadSection />
 
-      {/* Lazy: Supported Agents (heaviest — 92 KB icons below fold) */}
+      {/* Supported Agents — lazy (92 KB via @lobehub/icons) */}
       <section className="border-y border-white/10 bg-[#0f0f16] py-20">
         <div className="mx-auto max-w-6xl px-6 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('homepage.agents.title')}</h2>
@@ -267,7 +261,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* FAQ & Pricing — inline, lightweight */}
+      {/* FAQ & Pricing */}
       <section className="py-20">
         <div className="mx-auto grid max-w-6xl gap-10 px-6 md:grid-cols-2">
           <div>
@@ -291,7 +285,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* CTA — inline, lightweight */}
+      {/* CTA */}
       <section className="border-t border-white/10 bg-[radial-gradient(circle_at_top,rgba(214,216,118,0.16),transparent_60%)] py-16">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 text-center md:flex-row md:text-left">
           <div>
