@@ -1,60 +1,49 @@
 /**
  * i18n configuration for the web application.
  *
- * This module provides i18next initialization with localStorage persistence.
- * Uses the same translation files as the desktop app for consistency.
+ * Lazy-loads non-default languages to reduce initial bundle size.
+ * Only en + zh-CN are eagerly loaded (~90 KB each); the other 18
+ * languages are loaded on demand when changeLanguage() is called.
  */
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-
 import { DEFAULT_LANGUAGE, LANGUAGES, LANGUAGE_STORAGE_KEY } from './languages';
 
-// Import all locale files
+// Eagerly load only the two most-used languages
 import en from './locales/en.json';
 import zhCN from './locales/zh-CN.json';
-import ja from './locales/ja.json';
-import ko from './locales/ko.json';
-import de from './locales/de.json';
-import fr from './locales/fr.json';
-import es from './locales/es.json';
-import pt from './locales/pt.json';
-import it from './locales/it.json';
-import nl from './locales/nl.json';
-import pl from './locales/pl.json';
-import ru from './locales/ru.json';
-import tr from './locales/tr.json';
-import vi from './locales/vi.json';
-import th from './locales/th.json';
-import id from './locales/id.json';
-import ms from './locales/ms.json';
-import hi from './locales/hi.json';
-import uk from './locales/uk.json';
-import sv from './locales/sv.json';
 
-// Resource bundle with all languages
-const resources = {
+// Resource bundle — starts with eager languages, lazy-loads the rest
+const resources: Record<string, { translation: typeof en }> = {
   en: { translation: en },
   'zh-CN': { translation: zhCN },
-  ja: { translation: ja },
-  ko: { translation: ko },
-  de: { translation: de },
-  fr: { translation: fr },
-  es: { translation: es },
-  pt: { translation: pt },
-  it: { translation: it },
-  nl: { translation: nl },
-  pl: { translation: pl },
-  ru: { translation: ru },
-  tr: { translation: tr },
-  vi: { translation: vi },
-  th: { translation: th },
-  id: { translation: id },
-  ms: { translation: ms },
-  hi: { translation: hi },
-  uk: { translation: uk },
-  sv: { translation: sv },
+};
+
+// Track which languages have been loaded
+const loadedLanguages = new Set<string>(['en', 'zh-CN']);
+
+// Dynamic imports for remaining languages (loaded on first use)
+const localeLoaders: Record<string, () => Promise<{ default: typeof en }>> = {
+  ja:  () => import('./locales/ja.json'),
+  ko:  () => import('./locales/ko.json'),
+  de:  () => import('./locales/de.json'),
+  fr:  () => import('./locales/fr.json'),
+  es:  () => import('./locales/es.json'),
+  pt:  () => import('./locales/pt.json'),
+  it:  () => import('./locales/it.json'),
+  nl:  () => import('./locales/nl.json'),
+  pl:  () => import('./locales/pl.json'),
+  ru:  () => import('./locales/ru.json'),
+  tr:  () => import('./locales/tr.json'),
+  vi:  () => import('./locales/vi.json'),
+  th:  () => import('./locales/th.json'),
+  id:  () => import('./locales/id.json'),
+  ms:  () => import('./locales/ms.json'),
+  hi:  () => import('./locales/hi.json'),
+  uk:  () => import('./locales/uk.json'),
+  sv:  () => import('./locales/sv.json'),
 };
 
 // Get supported language codes
@@ -63,36 +52,50 @@ const supportedLanguages = LANGUAGES.map((lang) => lang.code);
 // Check if running on client or server
 const isClient = typeof window !== 'undefined';
 
-// Initialize i18next - must work on both client and server for SSR
+// Initialize i18next
 if (!i18n.isInitialized) {
-  // On client, use language detector; on server, use default language
   if (isClient) {
     i18n.use(LanguageDetector);
   }
 
   i18n
-    .use(initReactI18next) // Pass i18n instance to react-i18next
+    .use(initReactI18next)
     .init({
       resources,
-      lng: isClient ? undefined : DEFAULT_LANGUAGE, // Server uses default, client uses detector
+      lng: isClient ? undefined : DEFAULT_LANGUAGE,
       fallbackLng: DEFAULT_LANGUAGE,
       supportedLngs: supportedLanguages,
-      interpolation: {
-        escapeValue: false, // React already escapes
-      },
+      interpolation: { escapeValue: false },
       detection: isClient ? {
-        // Detection order: localStorage first, then navigator
         order: ['localStorage', 'navigator'],
-        // Cache to localStorage
         caches: ['localStorage'],
-        // LocalStorage key name
         lookupLocalStorage: LANGUAGE_STORAGE_KEY,
       } : undefined,
-      // React specific options
-      react: {
-        useSuspense: false, // Disable suspense to prevent loading states
-      },
+      react: { useSuspense: false },
     });
+}
+
+/**
+ * Load a language bundle on demand and add it to i18next.
+ */
+async function loadLanguageBundle(langCode: string): Promise<void> {
+  if (loadedLanguages.has(langCode)) return;
+
+  const loader = localeLoaders[langCode];
+  if (!loader) {
+    console.warn(`[i18n] Unknown language: ${langCode}`);
+    return;
+  }
+
+  try {
+    const mod = await loader();
+    const bundle = mod.default;
+    // Add to i18next resources
+    i18n.addResourceBundle(langCode, 'translation', bundle, true, true);
+    loadedLanguages.add(langCode);
+  } catch (err) {
+    console.error(`[i18n] Failed to load language bundle: ${langCode}`, err);
+  }
 }
 
 // Re-export from languages module
@@ -107,14 +110,15 @@ export {
 
 /**
  * Change the current language and persist to localStorage.
- * @param langCode - Language code (e.g., "en", "zh-CN")
+ * Lazy-loads the translation bundle if needed.
  */
-export function changeLanguage(langCode: string): Promise<void> {
+export async function changeLanguage(langCode: string): Promise<void> {
+  // Ensure the bundle is loaded before switching
+  await loadLanguageBundle(langCode);
+
   return i18n.changeLanguage(langCode).then(() => {
-    // Also save to localStorage (handled by detector, but explicit for clarity)
     if (typeof window !== 'undefined') {
       localStorage.setItem(LANGUAGE_STORAGE_KEY, langCode);
-      // Dispatch a custom event so other components can react
       window.dispatchEvent(
         new CustomEvent('languagechange', { detail: { language: langCode } })
       );
