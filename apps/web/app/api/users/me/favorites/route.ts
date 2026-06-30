@@ -11,7 +11,7 @@ interface FavoritePackage {
   version: string;
   description: string | null;
   category: string | null;
-  favoritesCount: number;
+  bookmarksCount: number;
   downloadsCount: number;
   ratingAvg: number;
   transport?: string;
@@ -100,7 +100,7 @@ export async function GET() {
             version: pkg.version,
             description: pkg.description,
             category: pkg.category,
-            favoritesCount: pkg.bookmarksCount,
+            bookmarksCount: pkg.bookmarksCount,
             downloadsCount: pkg.downloadsCount,
             ratingAvg: pkg.ratingAvg,
             transport: pkg.transport,
@@ -119,7 +119,7 @@ export async function GET() {
             version: pkg.version,
             description: pkg.description,
             category: pkg.category,
-            favoritesCount: pkg.bookmarksCount,
+            bookmarksCount: pkg.bookmarksCount,
             downloadsCount: pkg.downloadsCount,
             ratingAvg: pkg.ratingAvg,
             skillType: pkg.skillType,

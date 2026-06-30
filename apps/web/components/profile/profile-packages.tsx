@@ -16,7 +16,7 @@ interface DbMcpPackage {
   description: string | null;
   category: string | null;
   transport: string;
-  favoritesCount: number;
+  bookmarksCount: number;
   downloads: number;
   ratingAvg: number;
   [key: string]: unknown;
@@ -30,7 +30,7 @@ interface DbSkillPackage {
   description: string | null;
   category: string | null;
   skillType: string;
-  favoritesCount: number;
+  bookmarksCount: number;
   downloads: number;
   ratingAvg: number;
   [key: string]: unknown;
@@ -127,7 +127,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
                   description: pkg.description,
                   category: pkg.category,
                   transport: pkg.transport,
-                  favoritesCount: pkg.favoritesCount,
+                  bookmarksCount: pkg.bookmarksCount,
                   downloadsCount: pkg.downloads,
                   ratingAvg: pkg.ratingAvg,
                   author: null,
@@ -153,7 +153,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
                   description: pkg.description,
                   category: pkg.category,
                   skillType: pkg.skillType,
-                  favoritesCount: pkg.favoritesCount,
+                  bookmarksCount: pkg.bookmarksCount,
                   downloadsCount: pkg.downloads,
                   ratingAvg: pkg.ratingAvg,
                   author: null,

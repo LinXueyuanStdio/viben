@@ -16,7 +16,7 @@ interface FavoritePackage {
   version: string;
   description: string | null;
   category: string | null;
-  favoritesCount: number;
+  bookmarksCount: number;
   downloadsCount: number;
   ratingAvg: number;
   transport?: string;
@@ -159,7 +159,7 @@ function FavoriteCard({ package: pkg }: { package: FavoritePackage }) {
             )}
             <span className="flex items-center gap-1">
               <Heart className="h-3 w-3" />
-              {pkg.favoritesCount}
+              {pkg.bookmarksCount}
             </span>
             <span className="text-muted-foreground/60">
               {t('profile.favorites.favoritedTime', { time: formatRelativeTime(pkg.favoritedAt) })}
