@@ -40,3 +40,29 @@ export async function toggleBookmark(momentId: string): Promise<ToggleBookmarkRe
     entity_id: momentId,
   }) as Promise<ToggleBookmarkResult>
 }
+
+export interface CreateCommentResult {
+  comment: {
+    id: string
+    content: string
+    status: string
+    depth: number
+    parent_comment_id: string | null
+    created_at: string
+  }
+}
+
+export async function createComment(params: {
+  entityType: "moment" | "published_page"
+  entityId: string
+  content: string
+  parentCommentId?: string | null
+}): Promise<CreateCommentResult> {
+  const body: Record<string, string> = {
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+    parent_comment_id: params.parentCommentId ?? "",
+    content: params.content,
+  }
+  return postCommunityApi("/api/community/comments", body) as Promise<CreateCommentResult>
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, ThumbsUp, Repeat2, Share2 } from "lucide-react"
+import { Eye, MessageCircle, ThumbsUp, Repeat2, Share2, Send, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { FeedHead } from "./feed-head"
 import type { FeedHeadData } from "./feed-head"
@@ -11,7 +11,8 @@ import type { AttachmentData } from "./attachment"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
 import { cn } from "@/lib/utils"
-import { toggleReaction } from "@/lib/api/community"
+import { toggleReaction, createComment } from "@/lib/api/community"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export interface FeedCardData {
   head: FeedHeadData
@@ -29,14 +30,21 @@ export interface FeedCardData {
   }
 }
 
+export interface FeedCardSession {
+  userId: string
+  username: string
+  avatarUrl?: string
+}
+
 interface FeedCardProps {
   data: FeedCardData
   variant?: "preloaded" | "rich"
   className?: string
+  session?: FeedCardSession | null
   onAction?: (action: string) => void
 }
 
-export function FeedCard({ data, variant = "preloaded", className, onAction }: FeedCardProps) {
+export function FeedCard({ data, variant = "preloaded", className, session, onAction }: FeedCardProps) {
   const { t } = useTranslation()
 
   const [optimisticLikes, setOptimisticLikes] = useState(data.actions.likes)
