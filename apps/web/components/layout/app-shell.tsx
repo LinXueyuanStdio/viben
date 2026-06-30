@@ -49,7 +49,8 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const isRead = searchParams.get("tab") === "read"
+  const tab = searchParams.get("tab")
+  const isRead = tab === "read" || tab === "settings"
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false

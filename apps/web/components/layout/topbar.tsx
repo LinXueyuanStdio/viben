@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
-import { usePathname, useSearchParams } from "next/navigation"
-import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight } from "lucide-react"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
+import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
@@ -43,13 +43,35 @@ export function Topbar({
   const { t } = useTranslation()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const mode = getTopbarMode(pathname, searchParams)
   const isRead = mode === "read"
   const { toggle: toggleDrawer } = useDrawer()
 
   const [immersive, setImmersive] = React.useState(false)
   const [readHasSidePage, setReadHasSidePage] = React.useState(true)
-  const [readActiveTab, setReadActiveTab] = React.useState("page")
+  const [readHasSettings, setReadHasSettings] = React.useState(false)
+  const [sideActive, setSideActive] = React.useState(false)
+
+  // Derive active tab from URL param (read→"page", settings→"settings") + local side state
+  const tabParam = searchParams.get("tab")
+  const readActiveTab = React.useMemo(() => {
+    if (sideActive) return "side"
+    if (tabParam === "settings") return "settings"
+    return "page"
+  }, [sideActive, tabParam])
+
+  const handleReadTabChange = React.useCallback((value: string) => {
+    if (value === "side") {
+      setSideActive(true)
+    } else if (value === "settings") {
+      setSideActive(false)
+      router.push(`${pathname}?tab=settings`, { scroll: false })
+    } else {
+      setSideActive(false)
+      router.push(`${pathname}?tab=read`, { scroll: false })
+    }
+  }, [router, pathname])
 
   // 客户端按需加载搜索数据（避免阻塞服务端布局渲染）
   const [lazyHotSearches, setLazyHotSearches] = React.useState<Array<{ query: string; count: number }>>([])
@@ -86,6 +108,17 @@ export function Topbar({
     check()
     const observer = new MutationObserver(check)
     observer.observe(el, { attributes: true, attributeFilter: ["data-read-has-side-page"] })
+    return () => observer.disconnect()
+  }, [isRead])
+
+  // 监听 ReadPageClient 通过 data 属性传递的 settings 状态（仅作者可见）
+  React.useEffect(() => {
+    if (!isRead) return
+    const el = document.documentElement
+    const check = () => setReadHasSettings(el.getAttribute("data-read-has-settings") === "1")
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(el, { attributes: true, attributeFilter: ["data-read-has-settings"] })
     return () => observer.disconnect()
   }, [isRead])
 
@@ -181,11 +214,14 @@ export function Topbar({
                   : "opacity-0 scale-95 -translate-y-1 pointer-events-none"
               )}
             >
-              <VibenTabs value={readActiveTab} onValueChange={(v) => v && setReadActiveTab(v)}>
+              <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
                 <VibenTabsList variant="pill">
                   <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
                   {readHasSidePage && (
                     <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
+                  )}
+                  {readHasSettings && (
+                    <VibenTabsTrigger value="settings" variant="pill"><Settings className="h-4 w-4" /> {t("community.settings")}</VibenTabsTrigger>
                   )}
                 </VibenTabsList>
               </VibenTabs>
