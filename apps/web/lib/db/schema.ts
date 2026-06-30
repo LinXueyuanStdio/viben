@@ -140,7 +140,7 @@ export const mcpPackages = pgTable(
     category: text('category').default('general'),
 
     // Social counts (denormalized for performance)
-    favoritesCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('favorites_count').default(0).notNull(),
     downloadsCount: integer('downloads_count').default(0).notNull(),
     ratingAvg: real('rating_avg').default(0).notNull(),
     ratingCount: integer('rating_count').default(0).notNull(),
@@ -205,7 +205,7 @@ export const skillPackages = pgTable(
     compatibility: json('compatibility').$type<string[]>().default([]),
 
     // Social counts
-    favoritesCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('favorites_count').default(0).notNull(),
     downloadsCount: integer('downloads_count').default(0).notNull(),
     ratingAvg: real('rating_avg').default(0).notNull(),
     ratingCount: integer('rating_count').default(0).notNull(),
@@ -913,7 +913,7 @@ export const communityEntities = pgTable(
     title: text('title'),
     canonicalPath: text('canonical_path'),
     reactionsCount: integer('reactions_count').default(0).notNull(),
-    favoritesCount: integer('favorites_count').default(0).notNull(),
+    bookmarksCount: integer('favorites_count').default(0).notNull(),
     commentsCount: integer('comments_count').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -959,7 +959,7 @@ export const communityReactions = pgTable(
   ]
 );
 
-export const communityFavorites = pgTable(
+export const communityBookmarks = pgTable(
   'community_favorites',
   {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

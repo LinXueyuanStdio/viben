@@ -7,11 +7,11 @@ type EntityType = 'mcp' | 'skill';
 // Favorites Service
 // ============================================
 
-export async function toggleFavorite(
+export async function toggleBookmark(
   userId: string,
   entityType: EntityType,
   entityId: string
-): Promise<{ isFavorited: boolean; count: number }> {
+): Promise<{ isBookmarked: boolean; count: number }> {
   const existing = await db.query.favorites.findFirst({
     where: and(
       eq(favorites.userId, userId),
@@ -31,9 +31,9 @@ export async function toggleFavorite(
           eq(favorites.entityId, entityId)
         )
       );
-    await updateFavoritesCount(entityType, entityId, -1);
-    const newCount = await getFavoritesCount(entityType, entityId);
-    return { isFavorited: false, count: newCount };
+    await updateBookmarksCount(entityType, entityId, -1);
+    const newCount = await getBookmarksCount(entityType, entityId);
+    return { isBookmarked: false, count: newCount };
   } else {
     // Add favorite
     await db.insert(favorites).values({
@@ -41,13 +41,13 @@ export async function toggleFavorite(
       entityType,
       entityId,
     });
-    await updateFavoritesCount(entityType, entityId, 1);
-    const newCount = await getFavoritesCount(entityType, entityId);
-    return { isFavorited: true, count: newCount };
+    await updateBookmarksCount(entityType, entityId, 1);
+    const newCount = await getBookmarksCount(entityType, entityId);
+    return { isBookmarked: true, count: newCount };
   }
 }
 
-export async function isFavorited(
+export async function isBookmarked(
   userId: string,
   entityType: EntityType,
   entityId: string
@@ -62,7 +62,7 @@ export async function isFavorited(
   return !!result;
 }
 
-async function updateFavoritesCount(
+async function updateBookmarksCount(
   entityType: EntityType,
   entityId: string,
   delta: number
@@ -74,7 +74,7 @@ async function updateFavoritesCount(
     if (pkg) {
       await db
         .update(mcpPackages)
-        .set({ favoritesCount: Math.max(0, pkg.favoritesCount + delta) })
+        .set({ bookmarksCount: Math.max(0, pkg.bookmarksCount + delta) })
         .where(eq(mcpPackages.id, entityId));
     }
   } else {
@@ -84,13 +84,13 @@ async function updateFavoritesCount(
     if (pkg) {
       await db
         .update(skillPackages)
-        .set({ favoritesCount: Math.max(0, pkg.favoritesCount + delta) })
+        .set({ bookmarksCount: Math.max(0, pkg.bookmarksCount + delta) })
         .where(eq(skillPackages.id, entityId));
     }
   }
 }
 
-async function getFavoritesCount(
+async function getBookmarksCount(
   entityType: EntityType,
   entityId: string
 ): Promise<number> {

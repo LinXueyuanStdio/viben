@@ -2,7 +2,7 @@ import { and, count, desc, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-
 import {
   communityComments,
   communityEntities,
-  communityFavorites,
+  communityBookmarks,
   communityReactions,
   db,
   momentAttachments,
@@ -159,10 +159,10 @@ export async function getCommunitySummary(
             eq(communityReactions.reactionType, 'like')
           ),
         }),
-        db.query.communityFavorites.findFirst({
+        db.query.communityBookmarks.findFirst({
           where: and(
-            eq(communityFavorites.communityEntityId, entity.id),
-            eq(communityFavorites.userId, session.userId)
+            eq(communityBookmarks.communityEntityId, entity.id),
+            eq(communityBookmarks.userId, session.userId)
           ),
         }),
       ])
@@ -176,14 +176,14 @@ export async function getCommunitySummary(
       visibility: entity.visibility,
       status: entity.status,
       reactions_count: entity.reactionsCount,
-      favorites_count: entity.favoritesCount,
+      bookmarks_count: entity.bookmarksCount,
       comments_count: entity.commentsCount,
       canonical_path: entity.canonicalPath,
     },
     viewer: {
       is_authenticated: Boolean(session),
       has_reacted: Boolean(reaction),
-      has_favorited: Boolean(favorite),
+      has_bookmarked: Boolean(favorite),
       can_comment: Boolean(session),
       can_moderate: session?.role === 'admin' || session?.role === 'super_admin' || session?.role === 'moderator',
     },
@@ -716,27 +716,27 @@ export async function toggleBookmark(params: {
 
     if (!entity || !canUseCommunityEntity(entity)) throw new Error('community_entity_not_found');
 
-    const existing = await tx.query.communityFavorites.findFirst({
+    const existing = await tx.query.communityBookmarks.findFirst({
       where: and(
-        eq(communityFavorites.communityEntityId, entity.id),
-        eq(communityFavorites.userId, params.session.userId)
+        eq(communityBookmarks.communityEntityId, entity.id),
+        eq(communityBookmarks.userId, params.session.userId)
       ),
     });
 
     if (existing) {
-      await tx.delete(communityFavorites).where(eq(communityFavorites.id, existing.id));
+      await tx.delete(communityBookmarks).where(eq(communityBookmarks.id, existing.id));
       await tx
         .update(communityEntities)
-        .set({ favoritesCount: sql`greatest(${communityEntities.favoritesCount} - 1, 0)` })
+        .set({ bookmarksCount: sql`greatest(${communityEntities.bookmarksCount} - 1, 0)` })
         .where(eq(communityEntities.id, entity.id));
     } else {
-      await tx.insert(communityFavorites).values({
+      await tx.insert(communityBookmarks).values({
         communityEntityId: entity.id,
         userId: params.session.userId,
       });
       await tx
         .update(communityEntities)
-        .set({ favoritesCount: sql`${communityEntities.favoritesCount} + 1` })
+        .set({ bookmarksCount: sql`${communityEntities.bookmarksCount} + 1` })
         .where(eq(communityEntities.id, entity.id));
     }
 
@@ -746,12 +746,12 @@ export async function toggleBookmark(params: {
 
     return {
       has_bookmarked: !existing,
-      bookmarks_count: updated?.favoritesCount ?? 0,
+      bookmarks_count: updated?.bookmarksCount ?? 0,
     };
   });
 }
 
-export async function listCommunityFavorites(params: {
+export async function listCommunityBookmarks(params: {
   session: Session;
   entityType?: 'published_page' | 'moment';
   limit: number;
@@ -762,22 +762,22 @@ export async function listCommunityFavorites(params: {
   const cursorPredicate =
     decodedCursor && cursorCreatedAt && !Number.isNaN(cursorCreatedAt.getTime())
       ? or(
-          lt(communityFavorites.createdAt, cursorCreatedAt),
+          lt(communityBookmarks.createdAt, cursorCreatedAt),
           and(
-            eq(communityFavorites.createdAt, cursorCreatedAt),
-            lt(communityFavorites.id, decodedCursor.id)
+            eq(communityBookmarks.createdAt, cursorCreatedAt),
+            lt(communityBookmarks.id, decodedCursor.id)
           )
         )
       : undefined;
 
   const rows = await db
     .select({
-      favorite: communityFavorites,
+      favorite: communityBookmarks,
       entity: communityEntities,
       page: publishedPages,
     })
-    .from(communityFavorites)
-    .innerJoin(communityEntities, eq(communityEntities.id, communityFavorites.communityEntityId))
+    .from(communityBookmarks)
+    .innerJoin(communityEntities, eq(communityEntities.id, communityBookmarks.communityEntityId))
     .leftJoin(
       publishedPages,
       and(
@@ -787,7 +787,7 @@ export async function listCommunityFavorites(params: {
     )
     .where(
       and(
-        eq(communityFavorites.userId, params.session.userId),
+        eq(communityBookmarks.userId, params.session.userId),
         params.entityType ? eq(communityEntities.entityType, params.entityType) : undefined,
         eq(communityEntities.status, 'active'),
         eq(communityEntities.visibility, 'public'),
@@ -801,7 +801,7 @@ export async function listCommunityFavorites(params: {
         cursorPredicate
       )
     )
-    .orderBy(desc(communityFavorites.createdAt), desc(communityFavorites.id))
+    .orderBy(desc(communityBookmarks.createdAt), desc(communityBookmarks.id))
     .limit(params.limit + 1);
 
   const visibleRows = rows.slice(0, params.limit);
@@ -1702,10 +1702,10 @@ export async function listMoments(params: {
           ),
           columns: { communityEntityId: true },
         }),
-        db.query.communityFavorites.findMany({
+        db.query.communityBookmarks.findMany({
           where: and(
-            inArray(communityFavorites.communityEntityId, entityIds),
-            eq(communityFavorites.userId, params.session!.userId),
+            inArray(communityBookmarks.communityEntityId, entityIds),
+            eq(communityBookmarks.userId, params.session!.userId),
           ),
           columns: { communityEntityId: true },
         }),
