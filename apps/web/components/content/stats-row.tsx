@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react"
 import type { LucideIcon } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -9,7 +10,7 @@ export interface StatProps {
   format?: boolean
   className?: string
   dataAction?: string
-  onClick?: (action: string) => void
+  onClick?: (action: string, e?: MouseEvent) => void
   disabled?: boolean
   active?: boolean
   activeColor?: string
@@ -25,7 +26,7 @@ export function Stat({ icon: Icon, value, format = false, className, dataAction,
       <button
         type="button"
         data-action={dataAction}
-        onClick={disabled ? undefined : () => onClick(dataAction)}
+        onClick={disabled ? undefined : (e: MouseEvent) => onClick(dataAction, e)}
         aria-pressed={active}
         disabled={disabled}
         className={cn(

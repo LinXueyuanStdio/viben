@@ -10,6 +10,9 @@ import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
 import { ReportDialog } from "./report-dialog"
 import { FeedbackDialog } from "./feedback-dialog"
+import { useToggleLike } from "@/hooks/use-toggle-like"
+import { useToggleBookmark } from "@/hooks/use-toggle-bookmark"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 export interface PageCardData {
@@ -28,6 +31,10 @@ export interface PageCardData {
     comments?: number
     bookmarks?: number
   }
+  viewerHasLiked?: boolean
+  viewerHasBookmarked?: boolean
+  isAuthenticated?: boolean
+  pageDbId?: string
 }
 
 interface PageCardProps {
@@ -108,7 +115,33 @@ function MoreMenu({ pageId }: { pageId?: string }) {
 
 export function PageCard({ data, variant = "default", href, className, hideAuthor }: PageCardProps) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { cover, title, description, author, timeAgo, stats } = data
+
+  const like = useToggleLike({
+    entityType: "published_page",
+    entityId: data.pageDbId ?? "",
+    initialLiked: data.viewerHasLiked ?? false,
+    initialCount: data.stats?.likes ?? 0,
+  })
+  const bookmark = useToggleBookmark({
+    entityType: "published_page",
+    entityId: data.pageDbId ?? "",
+    initialBookmarked: data.viewerHasBookmarked ?? false,
+    initialCount: data.stats?.bookmarks ?? 0,
+  })
+  const interactive = !!data.pageDbId
+
+  const wrapHandler = React.useCallback((fn: () => Promise<void>) => {
+    return (action: string, e?: React.MouseEvent) => {
+      e?.stopPropagation()
+      if (!data.isAuthenticated) {
+        toast.info(t("community.loginToInteract"))
+        return
+      }
+      fn().catch(() => {})
+    }
+  }, [data.isAuthenticated, t])
 
   const coverStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
@@ -117,10 +150,45 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
-    ...(stats.likes != null ? [{ icon: ThumbsUp, value: stats.likes, format: true }] : []),
-    ...(stats.bookmarks != null ? [{ icon: Bookmark, value: stats.bookmarks, format: true }] : []),
-    ...(stats.comments != null ? [{ icon: MessageCircle, value: stats.comments, format: true }] : []),
   ]
+
+  if (interactive) {
+    detailStats.push({
+      icon: ThumbsUp,
+      value: like.count,
+      format: true,
+      dataAction: "like",
+      onClick: wrapHandler(like.toggle),
+      active: like.liked,
+      activeColor: "text-red-500",
+      bounce: like.bounce,
+      disabled: like.pending,
+      loading: like.pending,
+    })
+  } else if (stats.likes != null) {
+    detailStats.push({ icon: ThumbsUp, value: stats.likes, format: true })
+  }
+
+  if (interactive) {
+    detailStats.push({
+      icon: Bookmark,
+      value: bookmark.count,
+      format: true,
+      dataAction: "bookmark",
+      onClick: wrapHandler(bookmark.toggle),
+      active: bookmark.bookmarked,
+      activeColor: "text-amber-500",
+      bounce: bookmark.bounce,
+      disabled: bookmark.pending,
+      loading: bookmark.pending,
+    })
+  } else if (stats.bookmarks != null) {
+    detailStats.push({ icon: Bookmark, value: stats.bookmarks, format: true })
+  }
+
+  if (stats.comments != null) {
+    detailStats.push({ icon: MessageCircle, value: stats.comments, format: true })
+  }
 
   const pageId = extractPageUid(href)
 
