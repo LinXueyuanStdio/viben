@@ -604,6 +604,7 @@ export async function toggleReaction(params: {
     ),
   });
 
+  const delta = existing ? -1 : 1
   if (existing) {
     await db.delete(communityReactions).where(eq(communityReactions.id, existing.id));
     await db.update(communityEntities)
@@ -626,6 +627,17 @@ export async function toggleReaction(params: {
         .set({ reactionsCount: sql`${communityComments.reactionsCount} + 1` })
         .where(eq(communityComments.id, params.entityId));
     }
+  }
+
+  // Also update the source table's denormalized counter
+  if (params.entityType === 'published_page') {
+    await db.update(publishedPages)
+      .set({ likeCount: sql`greatest(${publishedPages.likeCount} + ${delta}, 0)` })
+      .where(eq(publishedPages.id, params.entityId));
+  } else if (params.entityType === 'moment') {
+    await db.update(moments)
+      .set({ likeCount: sql`greatest(${moments.likeCount} + ${delta}, 0)` })
+      .where(eq(moments.id, params.entityId));
   }
 
   const [updated] = await db.select({ reactionsCount: communityEntities.reactionsCount })
@@ -653,6 +665,7 @@ export async function toggleBookmark(params: {
     ),
   });
 
+  const delta = existing ? -1 : 1
   if (existing) {
     await db.delete(communityBookmarks).where(eq(communityBookmarks.id, existing.id));
     await db.update(communityEntities)
@@ -665,6 +678,17 @@ export async function toggleBookmark(params: {
     await db.update(communityEntities)
       .set({ bookmarksCount: sql`${communityEntities.bookmarksCount} + 1` })
       .where(eq(communityEntities.id, entity.id));
+  }
+
+  // Also update the source table's denormalized counter
+  if (params.entityType === 'published_page') {
+    await db.update(publishedPages)
+      .set({ bookmarkCount: sql`greatest(${publishedPages.bookmarkCount} + ${delta}, 0)` })
+      .where(eq(publishedPages.id, params.entityId));
+  } else if (params.entityType === 'moment') {
+    await db.update(moments)
+      .set({ bookmarkCount: sql`greatest(${moments.bookmarkCount} + ${delta}, 0)` })
+      .where(eq(moments.id, params.entityId));
   }
 
   const [updated] = await db.select({ bookmarksCount: communityEntities.bookmarksCount })
