@@ -321,7 +321,7 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
                 disabled={avatarUploading}
               >
                 <Avatar className="h-20 w-20 ring-2 ring-border group-hover:ring-primary transition-all">
-                  <AvatarImage src={avatarUrl || undefined} />
+                  <AvatarImage key={avatarUrl} src={avatarUrl || undefined} />
                   <AvatarFallback className="text-2xl">
                     {user.displayName[0]?.toUpperCase()}
                   </AvatarFallback>

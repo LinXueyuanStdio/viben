@@ -260,12 +260,14 @@ export default async function UserSlugPage({
             <div className="space-y-3">
               {/* Avatar + identity */}
               <div className="flex flex-col items-center lg:items-start gap-2">
-                <Avatar className="w-full max-w-[200px] aspect-square rounded-full">
-                  <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
-                  <AvatarFallback className="text-3xl font-semibold text-muted-foreground">
-                    {displayName[0] ?? "?"}
-                  </AvatarFallback>
-                </Avatar>
+                {avatarUrl && (
+                  <Avatar className="w-full max-w-[200px] aspect-square rounded-full">
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                    <AvatarFallback className="text-3xl font-semibold text-muted-foreground">
+                      {displayName[0] ?? "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
                 <div className="text-center lg:text-left">
                   <h1 className="text-2xl font-bold tracking-tight leading-tight">
                     {user.displayName}
