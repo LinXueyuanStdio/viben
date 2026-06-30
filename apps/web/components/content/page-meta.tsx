@@ -2,8 +2,9 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ChevronRight, Eye, Bookmark, Share2, Heart } from "lucide-react"
+import { ChevronRight, Eye, Bookmark, Share2, Heart, Check } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FollowButton } from "./follow-button"
 import { Pill } from "./pill"
@@ -41,12 +42,21 @@ export interface PageMetaData {
     number: number
     title: string
     status?: string
+    /** href for navigating to this chapter's page (合集内其他页面) */
+    href?: string
   }[]
   chapterProgress?: {
     current: number
     total: number
   }
   recommendations?: Array<{ data: MiniPageCardData; href: string }>
+  // Viewer state for action buttons
+  viewerHasReacted: boolean
+  viewerHasFavorited: boolean
+  isAuthenticated: boolean
+  communityEntityId: string
+  userSlug: string
+  pageId: string
 }
 
 interface PageMetaProps {
@@ -61,11 +71,102 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { author, title, uid, sidePageUid, description, tags, stats, actions, chapters, chapterProgress, recommendations } = data
 
-  const actionButtons = [
-    { icon: Heart, label: formatCount(actions.likes), value: actions.likes },
-    { icon: Bookmark, label: formatCount(actions.bookmarks), value: actions.bookmarks },
-    { icon: Share2, label: formatCount(actions.shares), value: actions.shares },
-  ]
+  // Optimistic state for action buttons
+  const [hasReacted, setHasReacted] = useState(data.viewerHasReacted)
+  const [hasFavorited, setHasFavorited] = useState(data.viewerHasFavorited)
+  const [likeCount, setLikeCount] = useState(actions.likes)
+  const [bookmarkCount, setBookmarkCount] = useState(actions.bookmarks)
+  const [shareCount, setShareCount] = useState(actions.shares)
+  const [likePending, setLikePending] = useState(false)
+  const [bookmarkPending, setBookmarkPending] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleLike = async () => {
+    if (!data.isAuthenticated) {
+      toast.error(t("community.loginRequired"))
+      return
+    }
+    if (likePending) return
+    setLikePending(true)
+    const wasReacted = hasReacted
+    setHasReacted(!wasReacted)
+    setLikeCount(c => c + (wasReacted ? -1 : 1))
+    try {
+      const res = await fetch("/api/community/reactions/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity_type: "published_page",
+          entity_id: data.communityEntityId,
+          reaction_type: "like",
+        }),
+      })
+      if (!res.ok) throw new Error("failed")
+      const result = await res.json()
+      setHasReacted(result.has_reacted)
+      setLikeCount(result.reactions_count)
+    } catch {
+      setHasReacted(wasReacted)
+      setLikeCount(c => c + (wasReacted ? 1 : -1))
+    } finally {
+      setLikePending(false)
+    }
+  }
+
+  const handleBookmark = async () => {
+    if (!data.isAuthenticated) {
+      toast.error(t("community.loginRequired"))
+      return
+    }
+    if (bookmarkPending) return
+    setBookmarkPending(true)
+    const wasFavorited = hasFavorited
+    setHasFavorited(!wasFavorited)
+    setBookmarkCount(c => c + (wasFavorited ? -1 : 1))
+    try {
+      const res = await fetch("/api/community/favorites/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity_type: "published_page",
+          entity_id: data.communityEntityId,
+        }),
+      })
+      if (!res.ok) throw new Error("failed")
+      const result = await res.json()
+      setHasFavorited(result.has_favorited)
+      setBookmarkCount(result.favorites_count)
+    } catch {
+      setHasFavorited(wasFavorited)
+      setBookmarkCount(c => c + (wasFavorited ? 1 : -1))
+    } finally {
+      setBookmarkPending(false)
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      const res = await fetch("/api/community/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity_type: "published_page",
+          user_slug: data.userSlug,
+          page_id: data.pageId,
+          channel: "copy_link",
+        }),
+      })
+      if (!res.ok) throw new Error("failed")
+      const result = await res.json()
+      const absoluteUrl = new URL(result.share_link.url, window.location.origin).toString()
+      await navigator.clipboard.writeText(absoluteUrl)
+      setShareCount(c => c + 1)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error(t("community.copyFailed"))
+    }
+  }
 
   return (
     <div className={cn("grid gap-[11px]", className)}>
@@ -111,15 +212,44 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
 
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-[7px]">
-        {actionButtons.map((btn, i) => (
-          <button
-            key={i}
-            className="flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-          >
-            <btn.icon className="size-5" />
-            <span className="text-[13px] font-bold">{btn.label}</span>
-          </button>
-        ))}
+        <button
+          onClick={handleLike}
+          disabled={likePending}
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] transition-colors",
+            hasReacted
+              ? "bg-red-50 dark:bg-red-950/20 text-red-500"
+              : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
+          )}
+        >
+          <Heart className={cn("size-5", hasReacted && "fill-current")} />
+          <span className="text-[13px] font-bold">{formatCount(likeCount)}</span>
+        </button>
+        <button
+          onClick={handleBookmark}
+          disabled={bookmarkPending}
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] transition-colors",
+            hasFavorited
+              ? "bg-amber-50 dark:bg-amber-950/20 text-amber-500"
+              : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
+          )}
+        >
+          <Bookmark className={cn("size-5", hasFavorited && "fill-current")} />
+          <span className="text-[13px] font-bold">{formatCount(bookmarkCount)}</span>
+        </button>
+        <button
+          onClick={handleShare}
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 min-h-[62px] rounded-[13px] transition-colors",
+            copied
+              ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500"
+              : "bg-surface-secondary hover:bg-primary/10 text-muted-foreground hover:text-primary"
+          )}
+        >
+          {copied ? <Check className="size-5" /> : <Share2 className="size-5" />}
+          <span className="text-[13px] font-bold">{copied ? t("community.copied") : formatCount(shareCount)}</span>
+        </button>
       </div>
 
       {/* Expanded Details */}
@@ -143,28 +273,39 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         </div>
       )}
 
-      {/* Chapters */}
+      {/* Chapters — 合集内的各页面，点击可导航 */}
       {chapters && chapters.length > 0 && (
         <div className="grid gap-2 pt-0.5">
           <SectionHead
-            title={t('community.collections')}
+            title={t("community.collections")}
             actionLabel={chapterProgress ? `${chapterProgress.current} / ${chapterProgress.total}` : undefined}
             actionHref={undefined}
           />
           <div className="grid gap-1.5">
-            {chapters.map((ch) => (
-              <div
-                key={ch.number}
-                className="grid gap-2 items-center rounded-[9px] px-2.5 min-h-[38px] hover:bg-surface-secondary cursor-pointer"
-                style={{ gridTemplateColumns: "auto 1fr auto" }}
-              >
-                <Pill variant="rank">{String(ch.number).padStart(2, "0")}</Pill>
-                <span className="font-bold text-sm truncate">{ch.title}</span>
-                {ch.status && (
-                  <span className="text-[12.5px] text-muted-foreground">{ch.status}</span>
-                )}
-              </div>
-            ))}
+            {chapters.map((ch) => {
+              const content = (
+                <div
+                  className={cn(
+                    "grid gap-2 items-center rounded-[9px] px-2.5 min-h-[38px] hover:bg-surface-secondary",
+                    ch.href && "cursor-pointer"
+                  )}
+                  style={{ gridTemplateColumns: "auto 1fr auto" }}
+                >
+                  <Pill variant="rank">{String(ch.number).padStart(2, "0")}</Pill>
+                  <span className="font-bold text-sm truncate">{ch.title}</span>
+                  {ch.status && (
+                    <span className="text-[12.5px] text-muted-foreground">{ch.status}</span>
+                  )}
+                </div>
+              )
+              return ch.href ? (
+                <Link key={ch.number} href={ch.href}>
+                  {content}
+                </Link>
+              ) : (
+                <React.Fragment key={ch.number}>{content}</React.Fragment>
+              )
+            })}
           </div>
         </div>
       )}
@@ -172,7 +313,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
       {/* Recommendations */}
       {recommendations && recommendations.length > 0 && (
         <div className="grid gap-2">
-          <SectionHead title={t('community.recommended')} />
+          <SectionHead title={t("community.recommended")} />
           <div className="grid gap-2">
             {recommendations.map((entry, i) => (
               <MiniPageCard key={i} data={entry.data} href={entry.href} />
