@@ -14,6 +14,10 @@ import {
   BarChart3,
   Search,
   User,
+  Heart,
+  Key,
+  Flag,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react"
 
@@ -49,9 +53,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/tags": { label: "标签", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
 
   // 市场
-  "/mcp": { label: "MCP 市场", icon: Package, parent: "/", dropdownCategory: "市场" },
   "/mcp-market": { label: "MCP 市场", icon: Package, parent: "/", dropdownCategory: "市场" },
-  "/skills": { label: "技能市场", icon: Sparkles, parent: "/", dropdownCategory: "市场" },
   "/skill-market": { label: "技能市场", icon: Sparkles, parent: "/", dropdownCategory: "市场" },
   "/collections": { label: "合集", icon: Layers, parent: "/", dropdownCategory: "市场" },
 
@@ -63,6 +65,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
   // 设置
   "/settings/favorites": { label: "收藏", icon: Sparkles, parent: "/", dropdownCategory: "我的" },
   "/settings/tokens": { label: "API 密钥", icon: Package, parent: "/", dropdownCategory: "我的" },
+  "/settings/packages": { label: "我的包", icon: PackageSearch, parent: "/", dropdownCategory: "我的" },
 
   // 管理员路由（仅 role=admin 可见）
   "/admin": {
@@ -80,6 +83,18 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/admin/users": {
     label: "用户管理",
     icon: Sparkles,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/reports": {
+    label: "举报管理",
+    icon: Flag,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/logs": {
+    label: "操作日志",
+    icon: ScrollText,
     parent: "/admin",
     dropdownCategory: "管理",
   },

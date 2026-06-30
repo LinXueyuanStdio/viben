@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getSession, isAdminRole } from "@/lib/auth"
 import { countPendingPackages } from "@/lib/admin/stats"
 import { AppShell } from "@/components/layout/app-shell"
+import { ErrorBoundary } from "@/components/layout/error-boundary"
 
 export default async function AdminLayout({
   children,
@@ -19,7 +20,9 @@ export default async function AdminLayout({
 
   return (
     <AppShell session={session} adminStats={{ pendingPackagesCount }}>
-      {children}
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
     </AppShell>
   )
 }

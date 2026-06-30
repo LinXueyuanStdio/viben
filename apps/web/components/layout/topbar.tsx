@@ -47,6 +47,7 @@ export function Topbar({
 
   const [immersive, setImmersive] = React.useState(false)
   const [readHasSidePage, setReadHasSidePage] = React.useState(true)
+  const [readActiveTab, setReadActiveTab] = React.useState("page")
 
   // 监听 ReadPageClient 通过 data 属性传递的副页状态
   React.useEffect(() => {
@@ -58,6 +59,12 @@ export function Topbar({
     observer.observe(el, { attributes: true, attributeFilter: ["data-read-has-side-page"] })
     return () => observer.disconnect()
   }, [isRead])
+
+  // 同步阅读页活动标签到 data 属性，供 ReadPageClient 读取
+  React.useEffect(() => {
+    if (!isRead) return
+    document.documentElement.setAttribute("data-read-active-tab", readActiveTab)
+  }, [isRead, readActiveTab])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
   // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
@@ -145,7 +152,7 @@ export function Topbar({
                   : "opacity-0 scale-95 -translate-y-1 pointer-events-none"
               )}
             >
-              <VibenTabs defaultValue="page">
+              <VibenTabs value={readActiveTab} onValueChange={(v) => v && setReadActiveTab(v)}>
                 <VibenTabsList variant="pill">
                   <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
                   {readHasSidePage && (

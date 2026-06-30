@@ -26,6 +26,8 @@ import {
   Heart,
   Key,
   Users,
+  Flag,
+  ScrollText,
 } from 'lucide-react';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
@@ -40,6 +42,7 @@ const navigation = [
 const myNavigation = [
   { nameKey: 'nav.favorites', href: '/settings/favorites', icon: Heart },
   { nameKey: 'nav.apiKeys', href: '/settings/tokens', icon: Key },
+  { nameKey: 'nav.myPackages', href: '/settings/packages', icon: PackageSearch },
 ];
 
 // "浏览" section - community browsing, always visible
@@ -125,6 +128,18 @@ export function Sidebar({
       href: '/admin/users',
       icon: Users,
       permission: 'users.view',
+    },
+    {
+      name: t('nav.reports'),
+      href: '/admin/reports',
+      icon: Flag,
+      permission: 'reports.view',
+    },
+    {
+      name: t('nav.logs'),
+      href: '/admin/logs',
+      icon: ScrollText,
+      permission: 'admin.access',
     },
   ];
 

@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth/cookies"
 import { AppShell } from "@/components/layout/app-shell"
+import { ErrorBoundary } from "@/components/layout/error-boundary"
 import { listNotifications, getBrowseHistory } from "@/lib/services/community"
 import { getHotSearches, getRecentSearches } from "@/lib/services/search"
 
@@ -57,7 +58,9 @@ export default async function DashboardLayout({
       hotSearches={hotSearches}
       recentSearches={recentSearches}
     >
-      {children}
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
     </AppShell>
   )
 }
