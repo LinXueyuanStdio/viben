@@ -173,6 +173,7 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
 
   const actionStats: StatProps[] = variant === "rich"
     ? [
+        { icon: Eye, value: actions.views, format: true },
         {
           icon: ThumbsUp,
           value: optimisticLikes,
@@ -205,6 +206,18 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
       ]
     : [
         { icon: Eye, value: actions.views, format: true },
+        {
+          icon: ThumbsUp,
+          value: optimisticLikes,
+          format: true,
+          dataAction: "like",
+          onClick: handleLike,
+          disabled: pendingLike,
+          loading: pendingLike,
+          active: likedActive,
+          activeColor: "text-red-500",
+          bounce: bounceLike,
+        },
         {
           icon: MessageCircle,
           value: optimisticComments,
