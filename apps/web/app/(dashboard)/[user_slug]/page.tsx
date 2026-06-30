@@ -1,8 +1,9 @@
-import { ProfileHero } from "@/components/content/profile-hero"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PageCard } from "@/components/content/page-card"
 import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { SectionHead } from "@/components/content/section-head"
+import { PageActivityHeatmap } from "@/components/content/page-activity-heatmap"
 import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityFavorites } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
@@ -12,7 +13,6 @@ import { CollectionCard } from "@/components/collections/collection-card"
 import Link from "next/link"
 import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
-import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { FeedKind } from "@/components/content/feed-head"
 
@@ -127,6 +127,8 @@ export default async function UserSlugPage({
     createdCollections,
     likedPageRows,
     favoritedPageRows,
+    pinnedPageRows,
+    profileReadmePage,
   ] = await Promise.all([
     db.select().from(publishedPages)
       .where(and(
@@ -181,6 +183,24 @@ export default async function UserSlugPage({
       ))
       .orderBy(desc(communityFavorites.createdAt))
       .limit(20),
+    // Pinned pages (up to 6)
+    db.select().from(publishedPages)
+      .where(and(
+        eq(publishedPages.userId, user.id),
+        eq(publishedPages.isPinned, true),
+        eq(publishedPages.visibility, "public"),
+        eq(publishedPages.moderationStatus, "approved")
+      ))
+      .orderBy(desc(publishedPages.pinnedAt))
+      .limit(6),
+    // Profile README: page where uid === userSlug
+    db.select().from(publishedPages)
+      .where(and(
+        eq(publishedPages.userId, user.id),
+        eq(publishedPages.uid, user.userSlug),
+        eq(publishedPages.moderationStatus, "approved")
+      ))
+      .limit(1),
   ])
 
   const profile: ProfileHeroData = {
