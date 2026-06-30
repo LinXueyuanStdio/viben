@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -45,19 +46,21 @@ interface RankingItem {
   scoreLabel: string | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  building: { label: '构建中', variant: 'secondary' },
-  ready: { label: '就绪', variant: 'default' },
-  failed: { label: '失败', variant: 'destructive' },
-  expired: { label: '已过期', variant: 'outline' },
-};
-
 function formatDateTime(dateStr: string | null) {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleString('zh-CN');
 }
 
 export function RankingManagement() {
+  const { t } = useTranslation();
+
+  const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    building: { label: t('dashboard.admin.rankings.buildStatus.building'), variant: 'secondary' },
+    ready: { label: t('dashboard.admin.rankings.buildStatus.ready'), variant: 'default' },
+    failed: { label: t('dashboard.admin.rankings.buildStatus.failed'), variant: 'destructive' },
+    expired: { label: t('dashboard.admin.rankings.buildStatus.expired'), variant: 'outline' },
+  };
+
   const [snapshots, setSnapshots] = useState<RankingSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,11 +81,11 @@ export function RankingManagement() {
       const data = await res.json();
       setSnapshots(data.snapshots);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load rankings');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.rankings.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, t]);
 
   useEffect(() => {
     fetchSnapshots();
@@ -97,7 +100,7 @@ export function RankingManagement() {
       const data = await res.json();
       setItems(data.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load items');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.rankings.loadError'));
     } finally {
       setItemsLoading(false);
     }
@@ -113,10 +116,10 @@ export function RankingManagement() {
       });
       if (!res.ok) throw new Error('Failed to trigger rebuild');
       const data = await res.json();
-      toast.success(data.message || '榜单重建成功');
+      toast.success(data.message || t('dashboard.admin.rankings.rebuildSuccess'));
       fetchSnapshots();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '重建榜单失败');
+      toast.error(err instanceof Error ? err.message : t('dashboard.admin.rankings.rebuildError'));
     } finally {
       setRebuilding(false);
     }
@@ -129,15 +132,15 @@ export function RankingManagement() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => setSelectedSnapshot(null)}>
             <ArrowLeft className="h-4 w-4 mr-1" />
-            返回列表
+            {t('dashboard.admin.rankings.backToList')}
           </Button>
           <div>
             <h1 className="font-serif text-2xl font-bold">
-              榜单详情 — {selectedSnapshot.rankingKey}
+              {t('dashboard.admin.rankings.detailTitle')} &mdash; {selectedSnapshot.rankingKey}
             </h1>
             <p className="text-muted-foreground">
-              时间窗口: {selectedSnapshot.timeWindow} · 条目数: {selectedSnapshot.itemCount} ·{' '}
-              生成时间: {formatDateTime(selectedSnapshot.generatedAt)}
+              {t('dashboard.admin.rankings.timeWindow')}: {selectedSnapshot.timeWindow} &middot; {t('dashboard.admin.rankings.itemCount')}: {selectedSnapshot.itemCount} &middot;{' '}
+              {t('dashboard.admin.rankings.generatedAt')}: {formatDateTime(selectedSnapshot.generatedAt)}
             </p>
           </div>
         </div>
@@ -148,20 +151,20 @@ export function RankingManagement() {
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-lg text-muted-foreground">暂无排行条目</p>
+            <p className="text-lg text-muted-foreground">{t('dashboard.admin.rankings.noItems')}</p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border">
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium w-16">排名</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">标题</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">类型</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">作者</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">评分</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">数据</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">变化</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium w-16">{t('dashboard.admin.rankings.detailColumns.rank')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.detailColumns.title')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.detailColumns.type')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.detailColumns.author')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.detailColumns.score')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.detailColumns.data')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.detailColumns.delta')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,8 +221,8 @@ export function RankingManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold">榜单管理</h1>
-          <p className="text-muted-foreground">查看榜单快照和排行数据，手动触发榜单重建</p>
+          <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.rankings.title')}</h1>
+          <p className="text-muted-foreground">{t('dashboard.admin.rankings.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           {(['all', 'ready', 'building', 'failed', 'expired'] as const).map((s) => (
@@ -233,7 +236,7 @@ export function RankingManagement() {
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
             >
-              {s === 'all' ? '全部' : STATUS_CONFIG[s]?.label || s}
+              {s === 'all' ? t('dashboard.admin.rankings.filterAll') : STATUS_CONFIG[s]?.label || s}
             </button>
           ))}
           <Button onClick={handleRebuild} disabled={rebuilding}>
@@ -242,7 +245,7 @@ export function RankingManagement() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-1" />
             )}
-            重建榜单
+            {rebuilding ? t('dashboard.admin.rankings.rebuilding') : t('dashboard.admin.rankings.rebuild')}
           </Button>
         </div>
       </div>
@@ -255,26 +258,26 @@ export function RankingManagement() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-destructive">{error}</p>
           <button onClick={fetchSnapshots} className="mt-2 text-sm text-primary hover:underline">
-            重试
+            {t('dashboard.admin.rankings.retry')}
           </button>
         </div>
       ) : snapshots.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg text-muted-foreground">暂无榜单快照</p>
+          <p className="text-lg text-muted-foreground">{t('dashboard.admin.rankings.emptyTitle')}</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">榜单 Key</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">实体类型</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">时间窗口</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">范围</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">条目数</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">生成时间</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.key')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.entity')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.window')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.scope')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.status')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.items')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.generated')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.rankings.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -300,7 +303,7 @@ export function RankingManagement() {
                         onClick={() => fetchItems(snap)}
                         disabled={snap.status === 'building'}
                       >
-                        查看条目
+                        {t('dashboard.admin.rankings.viewItems')}
                       </Button>
                     </td>
                   </tr>
@@ -312,7 +315,7 @@ export function RankingManagement() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        共 {snapshots.length} 个快照
+        {t('dashboard.admin.rankings.showingSnapshots', { count: snapshots.length })}
       </p>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,11 +20,8 @@ interface Pagination {
   page: number; limit: number; total: number; totalPages: number;
 }
 
-const CATEGORY_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  bug: { label: 'Bug', variant: 'destructive' }, suggestion: { label: '建议', variant: 'default' }, other: { label: '其他', variant: 'secondary' },
-};
-
 export function FeedbackManagement() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -37,6 +35,12 @@ export function FeedbackManagement() {
   const currentCategory = searchParams.get('category') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
 
+  const CATEGORY_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    bug: { label: t('dashboard.admin.feedbacks.categories.bug'), variant: 'destructive' },
+    suggestion: { label: t('dashboard.admin.feedbacks.categories.suggestion'), variant: 'default' },
+    other: { label: t('dashboard.admin.feedbacks.categories.other'), variant: 'secondary' },
+  };
+
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -47,9 +51,9 @@ export function FeedbackManagement() {
       setFeedbacks(data.feedbacks);
       setPagination(data.pagination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load feedbacks');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.feedbacks.loadError'));
     } finally { setLoading(false); }
-  }, [currentPage, currentCategory]);
+  }, [currentPage, currentCategory, t]);
 
   useEffect(() => { fetchFeedbacks(); }, [fetchFeedbacks]);
 
@@ -74,7 +78,7 @@ export function FeedbackManagement() {
       setDeleteId(null);
       fetchFeedbacks();
     } catch {
-      setError('删除反馈失败');
+      setError(t('dashboard.admin.feedbacks.deleteError'));
     } finally { setDeleting(false); }
   };
 
@@ -89,36 +93,36 @@ export function FeedbackManagement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="font-serif text-2xl font-bold">反馈管理</h1><p className="text-muted-foreground">查看和管理用户反馈与建议</p></div>
+        <div><h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.feedbacks.title')}</h1><p className="text-muted-foreground">{t('dashboard.admin.feedbacks.subtitle')}</p></div>
       </div>
       <div className="flex gap-2">
         {(['all', 'bug', 'suggestion', 'other'] as const).map((c) => (
           <button key={c} type="button" onClick={() => updateFilter(c)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${currentCategory === c ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'}`}>
-            {c === 'all' ? '全部' : CATEGORY_CONFIG[c]?.label || c}
+            {c === 'all' ? t('dashboard.admin.feedbacks.filterAll') : CATEGORY_CONFIG[c]?.label || c}
           </button>
         ))}
       </div>
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center"><p className="text-destructive">{error}</p><button onClick={fetchFeedbacks} className="mt-2 text-sm text-primary hover:underline">重试</button></div>
+        <div className="flex flex-col items-center justify-center py-12 text-center"><p className="text-destructive">{error}</p><button onClick={fetchFeedbacks} className="mt-2 text-sm text-primary hover:underline">{t('dashboard.admin.feedbacks.retry')}</button></div>
       ) : feedbacks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center"><p className="text-lg text-muted-foreground">暂无反馈</p></div>
+        <div className="flex flex-col items-center justify-center py-16 text-center"><p className="text-lg text-muted-foreground">{t('dashboard.admin.feedbacks.emptyTitle')}</p></div>
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <table className="w-full">
             <thead><tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left text-sm font-medium">用户</th><th className="px-4 py-3 text-left text-sm font-medium">页面ID</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">分类</th><th className="px-4 py-3 text-left text-sm font-medium">评分</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">内容</th><th className="px-4 py-3 text-left text-sm font-medium">时间</th>
-              <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.feedbacks.columns.reporter')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.feedbacks.columns.pageId')}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.feedbacks.columns.category')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.feedbacks.columns.rating')}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.feedbacks.columns.content')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.feedbacks.columns.time')}</th>
+              <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.feedbacks.columns.actions')}</th>
             </tr></thead>
             <tbody>
               {feedbacks.map((f) => {
                 const catConf = CATEGORY_CONFIG[f.category] || CATEGORY_CONFIG.other;
                 return (<tr key={f.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{f.reporterDisplayName || f.reporterName || '匿名'}</td>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">{f.reporterDisplayName || f.reporterName || t('dashboard.admin.feedbacks.columns.reporter')}</td>
                   <td className="px-4 py-3 text-sm font-mono text-xs max-w-[120px] truncate">{f.pageId.slice(0, 12)}...</td>
                   <td className="px-4 py-3 text-sm"><Badge variant={catConf.variant}>{catConf.label}</Badge></td>
                   <td className="px-4 py-3 text-sm">{renderStars(f.rating)}</td>
@@ -143,14 +147,14 @@ export function FeedbackManagement() {
           ))}
         </div>
       )}
-      <p className="text-sm text-muted-foreground">显示 {feedbacks.length} / {pagination.total} 条反馈</p>
+      <p className="text-sm text-muted-foreground">{t('dashboard.admin.feedbacks.showing', { count: feedbacks.length, total: pagination.total })}</p>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>确认删除</DialogTitle><DialogDescription>此操作不可撤销。确定要删除此反馈吗？</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{t('dashboard.admin.feedbacks.deleteConfirm')}</DialogTitle><DialogDescription>{t('dashboard.admin.feedbacks.deleteConfirmDesc')}</DialogDescription></DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>取消</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}确认删除</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleting}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
