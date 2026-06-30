@@ -51,7 +51,7 @@ export async function McpGrid({ searchParams }: McpGridProps) {
       description: mcpPackages.description,
       category: mcpPackages.category,
       transport: mcpPackages.transport,
-      favoritesCount: mcpPackages.bookmarksCount,
+      bookmarksCount: mcpPackages.bookmarksCount,
       downloadsCount: mcpPackages.downloadsCount,
       ratingAvg: mcpPackages.ratingAvg,
       author: {

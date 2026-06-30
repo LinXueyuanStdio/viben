@@ -85,7 +85,7 @@ export function McpHeader({ package: pkg, isAuthenticated = false }: McpHeaderPr
 
       <McpActions
         packageId={pkg.id}
-        favoritesCount={pkg.bookmarksCount}
+        bookmarksCount={pkg.bookmarksCount}
         repositoryUrl={pkg.repositoryUrl}
         isAuthenticated={isAuthenticated}
       />

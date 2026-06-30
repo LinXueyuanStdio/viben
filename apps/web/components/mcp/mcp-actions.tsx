@@ -9,14 +9,14 @@ import { useState } from 'react';
 
 interface McpActionsProps {
   packageId: string;
-  favoritesCount: number;
+  bookmarksCount: number;
   repositoryUrl: string | null;
   isAuthenticated: boolean;
 }
 
 export function McpActions({
   packageId,
-  favoritesCount,
+  bookmarksCount,
   repositoryUrl,
   isAuthenticated,
 }: McpActionsProps) {
@@ -43,7 +43,7 @@ export function McpActions({
       <BookmarkButton
         entityType="mcp"
         entityId={packageId}
-        initialCount={favoritesCount}
+        initialCount={bookmarksCount}
         isAuthenticated={isAuthenticated}
       />
       <Button onClick={handleInstall}>

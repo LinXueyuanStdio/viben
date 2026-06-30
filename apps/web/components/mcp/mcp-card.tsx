@@ -28,7 +28,7 @@ interface McpCardProps {
     description: string | null;
     category: string | null;
     transport: string;
-    favoritesCount: number;
+    bookmarksCount: number;
     downloadsCount: number;
     ratingAvg: number;
     author: {
@@ -79,7 +79,7 @@ export function McpCard({ package: pkg }: McpCardProps) {
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Heart className="h-3 w-3" />
-              {formatNumber(pkg.favoritesCount)}
+              {formatNumber(pkg.bookmarksCount)}
             </span>
             <span className="flex items-center gap-1">
               <Download className="h-3 w-3" />
