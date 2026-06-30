@@ -30,7 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Loader2, AlertTriangle, Ban, CheckCircle, Eye } from 'lucide-react';
+import { Loader2, AlertTriangle, Ban, CheckCircle, Eye, Users } from 'lucide-react';
 
 interface User {
   id: string;
@@ -53,6 +53,7 @@ interface UserTableProps {
   onUnban: (userId: string) => Promise<{ success: boolean; error?: string }>;
   onWarn: (userId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
   onViewDetail: (userId: string) => void;
+  onViewFollowNetwork?: (userId: string) => void;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -91,7 +92,7 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban, onWarn, onViewDetail }: UserTableProps) {
+export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban, onWarn, onViewDetail, onViewFollowNetwork }: UserTableProps) {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [banDialog, setBanDialog] = useState<{ userId: string; username: string } | null>(null);
   const [warnDialog, setWarnDialog] = useState<{ userId: string; username: string } | null>(null);
@@ -249,6 +250,18 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+
+                    {/* Follow network button */}
+                    {onViewFollowNetwork && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="关注网络"
+                        onClick={() => onViewFollowNetwork(user.id)}
+                      >
+                        <Users className="h-4 w-4" />
+                      </Button>
+                    )}
 
                     {user.role !== 'super_admin' && getAvailableRoles(user.role).length > 0 && (
                       updatingUserId === user.id ? (

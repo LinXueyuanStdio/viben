@@ -13,6 +13,7 @@ import {
 import { Pagination } from '@/components/shared/pagination';
 import { UserTable } from './user-table';
 import { UserDetailDialog } from './user-detail-dialog';
+import { FollowNetworkDialog } from './follow-network-dialog';
 import { Loader2, Search } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
@@ -61,6 +62,7 @@ export function UserManagement({
   const currentSort = searchParams.get('sort') || initialSort || 'newest';
 
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [followNetworkUserId, setFollowNetworkUserId] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState(currentSearch);
 
   const fetchUsers = useCallback(async () => {
@@ -221,6 +223,10 @@ export function UserManagement({
     setDetailUserId(userId);
   };
 
+  const handleViewFollowNetwork = (userId: string) => {
+    setFollowNetworkUserId(userId);
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -292,6 +298,7 @@ export function UserManagement({
             onUnban={handleUnban}
             onWarn={handleWarn}
             onViewDetail={handleViewDetail}
+            onViewFollowNetwork={handleViewFollowNetwork}
           />
 
           {pagination.totalPages > 1 && (
@@ -313,6 +320,12 @@ export function UserManagement({
         userId={detailUserId}
         isOpen={!!detailUserId}
         onClose={() => setDetailUserId(null)}
+      />
+
+      <FollowNetworkDialog
+        userId={followNetworkUserId}
+        isOpen={!!followNetworkUserId}
+        onClose={() => setFollowNetworkUserId(null)}
       />
     </div>
   );
