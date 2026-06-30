@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toggleReaction } from "@/lib/api/community"
 
 interface UseToggleLikeOptions {
@@ -31,6 +31,14 @@ export function useToggleLike({
 
   const pendingRef = useRef(false)
   const snapshotRef = useRef(initialCount)
+
+  // Sync from props when data changes externally, but skip during in-flight mutations
+  useEffect(() => {
+    if (pendingRef.current) return
+    setLiked(initialLiked)
+    setCount(initialCount)
+    snapshotRef.current = initialCount
+  }, [initialLiked, initialCount])
 
   const toggle = useCallback(async () => {
     if (pendingRef.current) return

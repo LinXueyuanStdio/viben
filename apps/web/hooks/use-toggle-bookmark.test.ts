@@ -76,6 +76,22 @@ describe("useToggleBookmark", () => {
     expect(result.current.count).toBe(5)
   })
 
+  it("syncs count from props when not pending", async () => {
+    mocks.toggleBookmark.mockResolvedValue({ has_bookmarked: true, bookmarks_count: 1 })
+
+    const { result, rerender } = renderHook(
+      ({ initialBookmarked, initialCount }) =>
+        useToggleBookmark({ entityType: "published_page", entityId: "p1", initialBookmarked, initialCount }),
+      { initialProps: { initialBookmarked: false, initialCount: 3 } },
+    )
+
+    expect(result.current.count).toBe(3)
+
+    rerender({ initialBookmarked: true, initialCount: 8 })
+    expect(result.current.count).toBe(8)
+    expect(result.current.bookmarked).toBe(true)
+  })
+
   it("prevents concurrent toggles", async () => {
     let resolvePromise!: (value: unknown) => void
     mocks.toggleBookmark.mockReturnValue(new Promise((r) => { resolvePromise = r }))

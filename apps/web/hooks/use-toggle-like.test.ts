@@ -78,6 +78,51 @@ describe("useToggleLike", () => {
     expect(result.current.count).toBe(5)
   })
 
+  it("syncs count from props when not pending", async () => {
+    mocks.toggleReaction.mockResolvedValue({ has_reacted: true, reactions_count: 1 })
+
+    const { result, rerender } = renderHook(
+      ({ initialLiked, initialCount }) =>
+        useToggleLike({ entityType: "moment", entityId: "m1", initialLiked, initialCount }),
+      { initialProps: { initialLiked: false, initialCount: 5 } },
+    )
+
+    expect(result.current.count).toBe(5)
+    expect(result.current.liked).toBe(false)
+
+    // Rerender with new prop values (simulating external data refresh)
+    rerender({ initialLiked: true, initialCount: 10 })
+    expect(result.current.count).toBe(10)
+    expect(result.current.liked).toBe(true)
+  })
+
+  it("does not sync from props during in-flight mutation", async () => {
+    let resolvePromise!: (value: unknown) => void
+    mocks.toggleReaction.mockReturnValue(new Promise((r) => { resolvePromise = r }))
+
+    const { result, rerender } = renderHook(
+      ({ initialLiked, initialCount }) =>
+        useToggleLike({ entityType: "moment", entityId: "m1", initialLiked, initialCount }),
+      { initialProps: { initialLiked: false, initialCount: 5 } },
+    )
+
+    // Start toggle
+    await act(async () => { result.current.toggle() })
+    expect(result.current.liked).toBe(true)
+    expect(result.current.count).toBe(6)
+
+    // Try to sync while pending — should be ignored
+    rerender({ initialLiked: false, initialCount: 3 })
+    expect(result.current.liked).toBe(true) // still optimistic
+    expect(result.current.count).toBe(6) // still optimistic
+
+    // Complete the API call
+    await act(async () => {
+      resolvePromise({ has_reacted: true, reactions_count: 6 })
+    })
+    expect(result.current.count).toBe(6)
+  })
+
   it("prevents concurrent toggles", async () => {
     let resolvePromise!: (value: unknown) => void
     mocks.toggleReaction.mockReturnValue(new Promise((r) => { resolvePromise = r }))
