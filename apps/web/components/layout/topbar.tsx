@@ -7,6 +7,7 @@ import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, 
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
+import { useReadPageMode } from "@/hooks/use-read-mode"
 import { useDrawer } from "./drawer-context"
 import { BreadcrumbNav } from "./breadcrumb"
 import { GlobalSearch } from "./global-search"
@@ -45,13 +46,16 @@ export function Topbar({
   const searchParams = useSearchParams()
   const router = useRouter()
   const mode = getTopbarMode(pathname, searchParams)
-  const isRead = mode === "read"
   const { toggle: toggleDrawer } = useDrawer()
 
   const [immersive, setImmersive] = React.useState(false)
   const [readHasSidePage, setReadHasSidePage] = React.useState(true)
   const [readHasSettings, setReadHasSettings] = React.useState(false)
   const [sideActive, setSideActive] = React.useState(false)
+  const readHasPageMode = useReadPageMode()
+
+  // 阅读模式：URL tab 参数 或 ReadPageClient 设置的 data-page-mode
+  const isRead = mode === "read" || readHasPageMode
 
   // Derive active tab from URL param (read→"page", settings→"settings") + local side state
   const tabParam = searchParams.get("tab")
@@ -100,25 +104,20 @@ export function Topbar({
   const effectiveHotSearches = hotSearches.length > 0 ? hotSearches : lazyHotSearches
   const effectiveRecentSearches = recentSearches.length > 0 ? recentSearches : lazyRecentSearches
 
-  // 监听 ReadPageClient 通过 data 属性传递的副页状态
+  // 监听 ReadPageClient 通过 data 属性传递的副页 + 设置状态
   React.useEffect(() => {
     if (!isRead) return
     const el = document.documentElement
-    const check = () => setReadHasSidePage(el.getAttribute("data-read-has-side-page") !== "0")
+    const check = () => {
+      setReadHasSidePage(el.getAttribute("data-read-has-side-page") !== "0")
+      setReadHasSettings(el.getAttribute("data-read-has-settings") === "1")
+    }
     check()
     const observer = new MutationObserver(check)
-    observer.observe(el, { attributes: true, attributeFilter: ["data-read-has-side-page"] })
-    return () => observer.disconnect()
-  }, [isRead])
-
-  // 监听 ReadPageClient 通过 data 属性传递的 settings 状态（仅作者可见）
-  React.useEffect(() => {
-    if (!isRead) return
-    const el = document.documentElement
-    const check = () => setReadHasSettings(el.getAttribute("data-read-has-settings") === "1")
-    check()
-    const observer = new MutationObserver(check)
-    observer.observe(el, { attributes: true, attributeFilter: ["data-read-has-settings"] })
+    observer.observe(el, {
+      attributes: true,
+      attributeFilter: ["data-read-has-side-page", "data-read-has-settings"],
+    })
     return () => observer.disconnect()
   }, [isRead])
 
@@ -205,15 +204,8 @@ export function Topbar({
               : "justify-center min-w-0"
           )}
         >
-          {isRead ? (
-            <div
-              className={cn(
-                "pointer-events-auto transition-all duration-300 ease-out",
-                readHasSidePage
-                  ? "opacity-100 scale-100 translate-y-0"
-                  : "opacity-0 scale-95 -translate-y-1 pointer-events-none"
-              )}
-            >
+          {isRead && (readHasSidePage || readHasSettings) ? (
+            <div className="pointer-events-auto">
               <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
                 <VibenTabsList variant="pill">
                   <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
@@ -226,7 +218,7 @@ export function Topbar({
                 </VibenTabsList>
               </VibenTabs>
             </div>
-          ) : (
+          ) : isRead ? null : (
             <GlobalSearch
               recentSearches={effectiveRecentSearches}
               hotSearches={effectiveHotSearches}

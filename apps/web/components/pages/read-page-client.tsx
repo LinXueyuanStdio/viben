@@ -168,23 +168,19 @@ export function ReadPageClient({
 }: ReadPageClientProps) {
   const { t } = useTranslation()
 
-  // 通知 Topbar 当前阅读页是否有副页（side page）
+  // 通知 Topbar：阅读模式、副页、设置 tab（仅作者）
   React.useEffect(() => {
+    document.documentElement.setAttribute("data-page-mode", "read")
     document.documentElement.setAttribute("data-read-has-side-page", pageSidePageUid ? "1" : "0")
-    return () => {
-      document.documentElement.removeAttribute("data-read-has-side-page")
-    }
-  }, [pageSidePageUid])
-
-  // 通知 Topbar 当前阅读页是否有设置 tab（仅作者可见）
-  React.useEffect(() => {
     if (isAuthor) {
       document.documentElement.setAttribute("data-read-has-settings", "1")
     }
     return () => {
+      document.documentElement.removeAttribute("data-page-mode")
+      document.documentElement.removeAttribute("data-read-has-side-page")
       document.documentElement.removeAttribute("data-read-has-settings")
     }
-  }, [isAuthor])
+  }, [pageSidePageUid, isAuthor])
 
   // 合集章节数据：仅来自 pageChaptersJson，不从 HTML H2 提取
   const { chapters, collectionSlug, collectionName } = parseChapters(pageChaptersJson)
