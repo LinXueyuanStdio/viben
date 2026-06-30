@@ -84,7 +84,7 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
   type ProfileValues = z.infer<typeof profileSchema>;
 
   const form = useForm<ProfileValues>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(profileSchema as any),
     defaultValues: {
       displayName: user.displayName,
       bio: user.bio || '',

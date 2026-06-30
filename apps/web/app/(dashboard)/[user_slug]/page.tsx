@@ -409,17 +409,6 @@ export default async function UserSlugPage({
             )}
           </>
         }
-        about={
-          <div className="max-w-[760px] text-sm text-muted-foreground leading-relaxed space-y-3">
-            {user.bio ? (
-              <p>{user.bio}</p>
-            ) : (
-              <p>
-                <T tKey="community.noDescription" fallback="这位用户还没有填写简介。" />
-              </p>
-            )}
-          </div>
-        }
         pageCount={pageCountResult[0]?.count ?? 0}
         likeCount={likedCards.length}
         favoriteCount={favoritedCards.length}

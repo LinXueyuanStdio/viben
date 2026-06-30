@@ -45,7 +45,7 @@ export function CreateCollectionButton() {
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const form = useForm<CreateValues>({
-    resolver: zodResolver(createSchema),
+    resolver: zodResolver(createSchema as any),
     defaultValues: {
       name: '',
       slug: '',

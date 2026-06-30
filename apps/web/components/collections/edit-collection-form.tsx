@@ -46,7 +46,7 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(true); // Start as true since we have existing slug
 
   const form = useForm<UpdateValues>({
-    resolver: zodResolver(updateSchema),
+    resolver: zodResolver(updateSchema as any),
     defaultValues: {
       name: collection.name,
       slug: collection.slug,
