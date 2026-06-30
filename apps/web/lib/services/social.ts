@@ -116,6 +116,7 @@ export interface CommentWithAuthor {
   author: {
     id: string;
     username: string;
+    userSlug: string;
     displayName: string;
     avatarUrl: string | null;
   };
@@ -137,6 +138,7 @@ export async function getComments(
         columns: {
           id: true,
           username: true,
+          userSlug: true,
           displayName: true,
           avatarUrl: true,
         },
@@ -195,6 +197,7 @@ export async function createComment(
     columns: {
       id: true,
       username: true,
+      userSlug: true,
       displayName: true,
       avatarUrl: true,
     },

@@ -226,6 +226,7 @@ export type ModerationAction =
 export interface AdminUser {
   id: string;
   username: string;
+  userSlug: string;
   email: string;
   role: 'admin' | 'super_admin' | 'moderator' | 'support';
   avatarUrl?: string;

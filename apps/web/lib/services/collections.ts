@@ -25,6 +25,7 @@ export interface CollectionWithOwner extends Collection {
   owner: {
     id: string;
     username: string;
+    userSlug: string;
     displayName: string;
     avatarUrl: string | null;
   };
@@ -101,6 +102,7 @@ export async function listPublicCollections(): Promise<CollectionWithOwner[]> {
         columns: {
           id: true,
           username: true,
+          userSlug: true,
           displayName: true,
           avatarUrl: true,
         },
@@ -120,6 +122,7 @@ export async function listUserCollections(userId: string): Promise<CollectionWit
         columns: {
           id: true,
           username: true,
+          userSlug: true,
           displayName: true,
           avatarUrl: true,
         },
@@ -141,6 +144,7 @@ export async function getCollection(
         columns: {
           id: true,
           username: true,
+          userSlug: true,
           displayName: true,
           avatarUrl: true,
         },

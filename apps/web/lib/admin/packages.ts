@@ -22,6 +22,7 @@ import type { PackageStatus } from '@/lib/types/admin';
 export interface PackageAuthor {
   id: string;
   username: string;
+  userSlug: string;
   displayName: string;
   avatarUrl: string | null;
 }
@@ -111,6 +112,7 @@ export async function listPackagesForReview(
         author: {
           id: users.id,
           username: users.username,
+          userSlug: users.userSlug,
           displayName: users.displayName,
           avatarUrl: users.avatarUrl,
         },
@@ -160,6 +162,7 @@ export async function listPackagesForReview(
         author: {
           id: users.id,
           username: users.username,
+          userSlug: users.userSlug,
           displayName: users.displayName,
           avatarUrl: users.avatarUrl,
         },
@@ -254,6 +257,7 @@ transport: sql<string | null>`NULL`.as('transport'),
       author: {
         id: users.id,
         username: users.username,
+        userSlug: users.userSlug,
         displayName: users.displayName,
         avatarUrl: users.avatarUrl,
       },
@@ -316,6 +320,7 @@ export async function getPackageDetails(
         columns: {
           id: true,
           username: true,
+          userSlug: true,
           displayName: true,
           avatarUrl: true,
         },
@@ -356,6 +361,7 @@ export async function getPackageDetails(
         columns: {
           id: true,
           username: true,
+          userSlug: true,
           displayName: true,
           avatarUrl: true,
         },
