@@ -11,13 +11,13 @@ import type { AttachmentData } from "./attachment"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
 import { cn } from "@/lib/utils"
+import { toggleReaction, toggleBookmark } from "@/lib/api/community"
 
 export interface FeedCardData {
   head: FeedHeadData
   text: string
   quote?: string
   attachment?: AttachmentData
-  attachments?: AttachmentData[]
   actions: {
     views: number
     likes: number
@@ -38,34 +38,6 @@ interface FeedCardProps {
   onAction?: (action: string) => void
 }
 
-async function callCommunityApi(action: string, momentId: string) {
-  let url = ""
-  let body: Record<string, string> = {}
-
-  if (action === "like") {
-    url = "/api/community/reactions/toggle"
-    body = { entity_type: "moment", entity_id: momentId, reaction_type: "like" }
-  } else if (action === "bookmark") {
-    url = "/api/community/bookmarks/toggle"
-    body = { entity_type: "moment", entity_id: momentId }
-  } else {
-    return null
-  }
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
-
-  if (res.status === 401) throw new Error("login_required")
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.code ?? "api_error")
-  }
-  return res.json()
-}
-
 export function FeedCard({ data, variant = "preloaded", className, onAction }: FeedCardProps) {
   const { t } = useTranslation()
 
@@ -73,14 +45,18 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
   const [optimisticBookmarks, setOptimisticBookmarks] = useState(data.actions.bookmarks)
   const [likedActive, setLikedActive] = useState(data.actions.hasLiked ?? false)
   const [bookmarkedActive, setBookmarkedActive] = useState(data.actions.hasBookmarked ?? false)
-  const [pendingAction, setPendingAction] = useState<string | null>(null)
-  const [heartBounce, setHeartBounce] = useState(false)
+  const [pendingLike, setPendingLike] = useState(false)
+  const [pendingBookmark, setPendingBookmark] = useState(false)
 
+  // Ref-based guard so useEffect doesn't overwrite in-flight mutations
+  const pendingRef = useRef({ like: false, bookmark: false })
   // Snapshot refs for safe rollback
   const snapshotRef = useRef({ likes: data.actions.likes, bookmarks: data.actions.bookmarks })
 
-  // Sync state when data prop changes (e.g., after page re-render with fresh data)
+  // Sync state when data prop changes (e.g., after page re-render with fresh data),
+  // but skip if a mutation is in-flight to avoid overwriting optimistic updates.
   useEffect(() => {
+    if (pendingRef.current.like || pendingRef.current.bookmark) return
     setOptimisticLikes(data.actions.likes)
     setOptimisticBookmarks(data.actions.bookmarks)
     setLikedActive(data.actions.hasLiked ?? false)
@@ -98,10 +74,9 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
     }
   }, [data.head.name, data.text, data.actions.shareUrl])
 
-  const handleAction = useCallback(async (action: string) => {
-    // If parent provides onAction, delegate to it
+  const handleLike = useCallback(async () => {
     if (onAction) {
-      onAction(action)
+      onAction("like")
       return
     }
 
@@ -111,70 +86,90 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
       return
     }
 
-    // Comment and repost are not yet supported via API for moments
-    if (action === "comment" || action === "repost") {
-      toast.info(t("community.interactSoon"))
-      return
-    }
+    if (pendingRef.current.like) return
 
-    // Guard against duplicate clicks
-    if (pendingAction) return
-
-    // Save pre-update values for safe rollback
-    const prevLikes = optimisticLikes
-    const prevBookmarks = optimisticBookmarks
-
-    // Optimistic update
-    setPendingAction(action)
-    if (action === "like") {
-      const wasActive = likedActive
-      setLikedActive(!wasActive)
-      setOptimisticLikes((c) => wasActive ? Math.max(0, c - 1) : c + 1)
-      if (!wasActive) {
-        setHeartBounce(true)
-        setTimeout(() => setHeartBounce(false), 300)
-      }
-    } else if (action === "bookmark") {
-      const wasActive = bookmarkedActive
-      setBookmarkedActive(!wasActive)
-      setOptimisticBookmarks((c) => wasActive ? Math.max(0, c - 1) : c + 1)
-    }
+    pendingRef.current.like = true
+    setPendingLike(true)
+    const wasActive = likedActive
+    setLikedActive(!wasActive)
+    setOptimisticLikes((c) => (wasActive ? Math.max(0, c - 1) : c + 1))
 
     try {
-      const result = await callCommunityApi(action, momentId)
-
-      if (action === "like" && result) {
-        setLikedActive(result.has_reacted)
-        setOptimisticLikes(result.reactions_count)
-      } else if (action === "bookmark" && result) {
-        setBookmarkedActive(result.has_bookmarked)
-        setOptimisticBookmarks(result.bookmarks_count)
-      }
+      const result = await toggleReaction(momentId)
+      setLikedActive(result.has_reacted)
+      setOptimisticLikes(result.reactions_count)
+      snapshotRef.current.likes = result.reactions_count
     } catch (err: unknown) {
-      // Revert using snapshot refs (not stale closure data)
-      if (action === "like") {
-        setLikedActive((prev) => !prev)
-        setOptimisticLikes(snapshotRef.current.likes)
-      } else if (action === "bookmark") {
-        setBookmarkedActive((prev) => !prev)
-        setOptimisticBookmarks(snapshotRef.current.bookmarks)
-      }
+      // Revert optimistic update
+      setLikedActive(wasActive)
+      setOptimisticLikes(snapshotRef.current.likes)
 
       const msg = err instanceof Error ? err.message : ""
       if (msg === "login_required") {
         toast.error(t("community.loginToInteract"))
-      } else if (msg === "community_entity_not_found") {
-        toast.info(t("community.interactSoon"))
       } else {
-        toast.error(action === "like" ? t("community.likeFailed") : t("community.bookmarkFailed"))
+        toast.error(t("community.likeFailed"))
       }
     } finally {
-      setPendingAction(null)
+      pendingRef.current.like = false
+      setPendingLike(false)
     }
-  }, [data.actions.momentId, likedActive, bookmarkedActive, optimisticLikes, optimisticBookmarks, pendingAction, onAction, t])
+  }, [data.actions.momentId, likedActive, onAction, t])
 
-  const { head, text, quote, attachment, attachments, actions } = data
-  const allAttachments = attachments ?? (attachment ? [attachment] : [])
+  const handleBookmark = useCallback(async () => {
+    if (onAction) {
+      onAction("bookmark")
+      return
+    }
+
+    const momentId = data.actions.momentId
+    if (!momentId) {
+      toast.info(t("community.interactSoon"))
+      return
+    }
+
+    if (pendingRef.current.bookmark) return
+
+    pendingRef.current.bookmark = true
+    setPendingBookmark(true)
+    const wasActive = bookmarkedActive
+    setBookmarkedActive(!wasActive)
+    setOptimisticBookmarks((c) => (wasActive ? Math.max(0, c - 1) : c + 1))
+
+    try {
+      const result = await toggleBookmark(momentId)
+      setBookmarkedActive(result.has_bookmarked)
+      setOptimisticBookmarks(result.bookmarks_count)
+      snapshotRef.current.bookmarks = result.bookmarks_count
+    } catch (err: unknown) {
+      // Revert optimistic update
+      setBookmarkedActive(wasActive)
+      setOptimisticBookmarks(snapshotRef.current.bookmarks)
+
+      const msg = err instanceof Error ? err.message : ""
+      if (msg === "login_required") {
+        toast.error(t("community.loginToInteract"))
+      } else {
+        toast.error(t("community.bookmarkFailed"))
+      }
+    } finally {
+      pendingRef.current.bookmark = false
+      setPendingBookmark(false)
+    }
+  }, [data.actions.momentId, bookmarkedActive, onAction, t])
+
+  const handleCommentOrRepost = useCallback((action: string) => {
+    if (onAction) {
+      onAction(action)
+      return
+    }
+    toast.info(t("community.interactSoon"))
+  }, [onAction, t])
+
+  const { head, text, quote, attachment, actions } = data
+  const allAttachments = attachment ? [attachment] : []
+
+  const anyActionPending = pendingLike || pendingBookmark
 
   const actionStats: StatProps[] = variant === "rich"
     ? [
@@ -183,9 +178,9 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           value: optimisticLikes,
           format: true,
           dataAction: "like",
-          onClick: handleAction,
-          disabled: pendingAction !== null,
-          loading: pendingAction === "like",
+          onClick: handleLike,
+          disabled: pendingLike,
+          loading: pendingLike,
           active: likedActive,
         },
         {
@@ -193,7 +188,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           value: actions.comments,
           format: true,
           dataAction: "comment",
-          onClick: handleAction,
+          onClick: () => handleCommentOrRepost("comment"),
           disabled: true,
         },
         {
@@ -201,7 +196,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           value: actions.reposts ?? 0,
           format: true,
           dataAction: "repost",
-          onClick: handleAction,
+          onClick: () => handleCommentOrRepost("repost"),
           disabled: true,
         },
         {
@@ -209,9 +204,9 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           value: optimisticBookmarks,
           format: true,
           dataAction: "bookmark",
-          onClick: handleAction,
-          disabled: pendingAction !== null,
-          loading: pendingAction === "bookmark",
+          onClick: handleBookmark,
+          disabled: pendingBookmark,
+          loading: pendingBookmark,
           active: bookmarkedActive,
         },
       ]
@@ -222,7 +217,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           value: actions.comments,
           format: true,
           dataAction: "comment",
-          onClick: handleAction,
+          onClick: () => handleCommentOrRepost("comment"),
           disabled: true,
         },
         {
@@ -230,8 +225,9 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           value: optimisticBookmarks,
           format: true,
           dataAction: "bookmark",
-          onClick: handleAction,
-          disabled: pendingAction !== null,
+          onClick: handleBookmark,
+          disabled: pendingBookmark,
+          loading: pendingBookmark,
           active: bookmarkedActive,
         },
       ]
@@ -267,11 +263,11 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
           <button
             className={cn(
               "inline-flex items-center justify-center size-[30px] rounded-[9px] hover:bg-surface-secondary text-muted-foreground transition-colors",
-              pendingAction !== null && "opacity-60 pointer-events-none",
+              anyActionPending && "opacity-60 pointer-events-none",
             )}
             aria-label={t("community.share")}
             onClick={handleShare}
-            disabled={pendingAction !== null}
+            disabled={anyActionPending}
           >
             <Share2 className="size-4" />
           </button>
