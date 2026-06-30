@@ -213,6 +213,12 @@ export const routeRegistry: Record<string, RouteConfig> = {
     parent: "/admin",
     dropdownCategory: "管理",
   },
+  "/admin/shares": {
+    label: "分享管理",
+    icon: Link,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
 
   // 阅读面包屑（模式=read 时使用）
   "/read": { label: "页面", icon: FileText, mode: "read" },

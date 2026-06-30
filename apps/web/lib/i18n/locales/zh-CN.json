@@ -484,6 +484,7 @@
         "visibility": { "draft": "草稿", "scheduled": "已排期", "published": "已发布", "archived": "已归档" },
         "showing": "共 {{count}} 个运营位",
         "form": { "uid": "UID", "name": "名称", "surface": "位置", "slotKey": "标识", "description": "描述", "layoutType": "布局类型", "locale": "区域", "minItems": "最小条目数", "maxItems": "最大条目数", "sortOrder": "排序", "contentType": "内容类型", "contentId": "内容 ID", "title": "标题", "subtitle": "副标题", "imageUrl": "图片地址", "linkUrl": "链接地址", "ctaLabel": "按钮文案", "badgeLabel": "角标", "visibility": "可见性", "isActive": "启用状态" },
+        "layoutTypes": { "list": "列表", "grid": "网格", "carousel": "轮播", "hero": "Hero", "sidebar": "侧边栏" },
         "columns": { "name": "名称", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "布局", "locale": "区域", "status": "状态", "minMax": "条目限制", "actions": "操作" },
         "itemColumns": { "title": "标题", "type": "类型", "target": "目标", "status": "状态", "actions": "操作" }
       },

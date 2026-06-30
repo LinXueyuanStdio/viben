@@ -484,6 +484,7 @@
         "visibility": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published", "archived": "Archived" },
         "showing": "{{count}} slots",
         "form": { "uid": "UID", "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "description": "Description", "layoutType": "Layout Type", "locale": "Locale", "minItems": "Min Items", "maxItems": "Max Items", "sortOrder": "Sort Order", "contentType": "Content Type", "contentId": "Content ID", "title": "Title", "subtitle": "Subtitle", "imageUrl": "Image URL", "linkUrl": "Link URL", "ctaLabel": "CTA Label", "badgeLabel": "Badge", "visibility": "Visibility", "isActive": "Active" },
+        "layoutTypes": { "list": "List", "grid": "Grid", "carousel": "Carousel", "hero": "Hero", "sidebar": "Sidebar" },
         "columns": { "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "Layout", "locale": "Locale", "status": "Status", "minMax": "Limits", "actions": "Actions" },
         "itemColumns": { "title": "Title", "type": "Type", "target": "Target", "status": "Status", "actions": "Actions" }
       },
