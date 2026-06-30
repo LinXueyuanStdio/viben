@@ -59,6 +59,8 @@ export interface PageMetaData {
   viewerHasFavorited: boolean
   isAuthenticated: boolean
   communityEntityId: string
+  /** 页面在 published_pages 表中的 DB ID，用于 reactions/favorites API */
+  pageDbId: string
   userSlug: string
   pageId: string
 }
@@ -101,7 +103,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           entity_type: "published_page",
-          entity_id: data.communityEntityId,
+          entity_id: data.pageDbId,
           reaction_type: "like",
         }),
       })
@@ -133,7 +135,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           entity_type: "published_page",
-          entity_id: data.communityEntityId,
+          entity_id: data.pageDbId,
         }),
       })
       if (!res.ok) throw new Error("failed")

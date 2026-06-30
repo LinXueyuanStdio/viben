@@ -30,6 +30,8 @@ interface CommunityComment {
 
 interface CommentsPanelProps {
   communityEntityId: string
+  /** 页面在 published_pages 表中的 DB ID，用于评论 API 的 entity_id */
+  pageDbId: string
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
@@ -57,6 +59,7 @@ function timeAgo(date: string | Date): string {
 
 function CommentComposer({
   communityEntityId,
+  pageDbId,
   isAuthenticated,
   sessionUsername,
   sessionAvatarUrl,
@@ -66,6 +69,7 @@ function CommentComposer({
   onCancelReply,
 }: {
   communityEntityId: string
+  pageDbId: string
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
@@ -100,7 +104,7 @@ function CommentComposer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           entity_type: "published_page",
-          entity_id: communityEntityId,
+          entity_id: pageDbId,
           parent_comment_id: parentCommentId ?? null,
           content: text.trim(),
         }),
@@ -226,6 +230,7 @@ function CommentCard({
 
 export function CommentsPanel({
   communityEntityId,
+  pageDbId,
   isAuthenticated,
   sessionUsername,
   sessionAvatarUrl,
@@ -250,7 +255,7 @@ export function CommentsPanel({
     try {
       const params = new URLSearchParams({
         entity_type: "published_page",
-        entity_id: communityEntityId,
+        entity_id: pageDbId,
         limit: "20",
       })
       if (cursor) params.set("cursor", cursor)
@@ -270,7 +275,7 @@ export function CommentsPanel({
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [communityEntityId])
+  }, [pageDbId])
 
   // Refresh after posting a new comment
   const refreshComments = useCallback(() => {
@@ -335,6 +340,7 @@ export function CommentsPanel({
       </div>
       <CommentComposer
         communityEntityId={communityEntityId}
+        pageDbId={pageDbId}
         isAuthenticated={isAuthenticated}
         sessionUsername={sessionUsername}
         sessionAvatarUrl={sessionAvatarUrl}

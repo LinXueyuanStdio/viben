@@ -144,6 +144,7 @@ export default async function ReadPage({ params }: ReadPageProps) {
       viewerHasReacted={viewerHasReacted}
       viewerHasFavorited={viewerHasFavorited}
       communityEntityId={communityEntity.id}
+      pageDbId={ctx.page.id}
       initialComments={initialComments.comments}
       initialCommentsNextCursor={initialComments.next_cursor}
       recommendationEntries={recommendationEntries}

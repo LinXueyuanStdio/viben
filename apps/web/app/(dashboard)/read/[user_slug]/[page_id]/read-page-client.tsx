@@ -48,6 +48,7 @@ interface ReadPageClientProps {
   sessionUserSlug?: string
   sessionUserId?: string
   communityEntityId: string
+  pageDbId: string
   recommendationEntries: Array<{ data: MiniPageCardData; href: string }>
   viewerHasReacted: boolean
   viewerHasFavorited: boolean
@@ -149,6 +150,7 @@ export function ReadPageClient({
   sessionUserSlug,
   sessionUserId,
   communityEntityId,
+  pageDbId,
   recommendationEntries,
   viewerHasReacted,
   viewerHasFavorited,
@@ -218,6 +220,7 @@ export function ReadPageClient({
     viewerHasFavorited,
     isAuthenticated,
     communityEntityId,
+    pageDbId,
     userSlug,
     pageId,
   }
@@ -232,6 +235,7 @@ export function ReadPageClient({
   const commentsTab = useMemo(() => (
     <CommentsPanel
       communityEntityId={communityEntityId}
+      pageDbId={pageDbId}
       isAuthenticated={isAuthenticated}
       sessionUsername={sessionUsername}
       sessionAvatarUrl={sessionAvatarUrl}
@@ -239,7 +243,7 @@ export function ReadPageClient({
       initialComments={initialComments}
       initialNextCursor={initialCommentsNextCursor}
     />
-  ), [communityEntityId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialCommentsNextCursor])
+  ), [communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialCommentsNextCursor])
 
   const notesTab = useMemo(() => <NotesPanel pageId={pageUid} />, [pageUid])
 
