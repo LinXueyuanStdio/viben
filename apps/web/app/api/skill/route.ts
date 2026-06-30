@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         tags: skillPackages.tags,
         category: skillPackages.category,
         compatibility: skillPackages.compatibility,
-        favoritesCount: skillPackages.bookmarksCount,
+        bookmarksCount: skillPackages.bookmarksCount,
         downloadsCount: skillPackages.downloadsCount,
         ratingAvg: skillPackages.ratingAvg,
         createdAt: skillPackages.createdAt,

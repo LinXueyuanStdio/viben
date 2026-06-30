@@ -177,7 +177,7 @@ export function PackageDetailModal({
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <Heart className="h-4 w-4" />
-                  {t('dashboard.admin.packages.detail.favorites', { count: pkg.favoritesCount })}
+                  {t('dashboard.admin.packages.detail.favorites', { count: pkg.bookmarksCount })}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <MessageSquare className="h-4 w-4" />

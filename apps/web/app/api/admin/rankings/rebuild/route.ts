@@ -5,7 +5,7 @@
  *
  * Rebuilds ranking snapshots for published pages based on engagement metrics.
  * The scoring algorithm uses a weighted sum of viewCount, likeCount, commentCount,
- * repostCount, and favoriteCount with time decay applied.
+ * repostCount, and bookmarkCount with time decay applied.
  */
 
 import { NextResponse } from 'next/server';
@@ -33,7 +33,7 @@ const ENGAGEMENT_WEIGHTS = {
   like: 1.5,
   comment: 3.0,
   repost: 4.0,
-  favorite: 2.0,
+  bookmark: 2.0,
 } as const;
 
 interface PageForRanking {
@@ -50,7 +50,7 @@ interface PageForRanking {
   likeCount: number;
   commentCount: number;
   repostCount: number;
-  favoriteCount: number;
+  bookmarkCount: number;
   authorName: string | null;
   authorAvatarUrl: string | null;
 }
@@ -67,7 +67,7 @@ function calculateScore(page: PageForRanking, sourceFrom: Date | null, sourceUnt
     (page.likeCount || 0) * ENGAGEMENT_WEIGHTS.like +
     (page.commentCount || 0) * ENGAGEMENT_WEIGHTS.comment +
     (page.repostCount || 0) * ENGAGEMENT_WEIGHTS.repost +
-    (page.favoriteCount || 0) * ENGAGEMENT_WEIGHTS.favorite;
+    (page.bookmarkCount || 0) * ENGAGEMENT_WEIGHTS.bookmark;
 
   let decayFactor = 1.0;
   if (sourceFrom) {
@@ -95,7 +95,7 @@ function buildBreakdown(page: ScoredPage): Record<string, unknown> {
       likeCount: page.likeCount || 0,
       commentCount: page.commentCount || 0,
       repostCount: page.repostCount || 0,
-      favoriteCount: page.favoriteCount || 0,
+      bookmarkCount: page.bookmarkCount || 0,
     },
     weights: ENGAGEMENT_WEIGHTS,
   };
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
         likeCount: publishedPages.likeCount,
         commentCount: publishedPages.commentCount,
         repostCount: publishedPages.repostCount,
-        favoriteCount: publishedPages.favoriteCount,
+        bookmarkCount: publishedPages.favoriteCount,
         authorName: publishedPages.authorName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
       })
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
       score: page.score,
       rawScore: page.rawScore,
       decayFactor: page.decayFactor,
-      reason: `weighted_engagement(v=${ENGAGEMENT_WEIGHTS.view},l=${ENGAGEMENT_WEIGHTS.like},c=${ENGAGEMENT_WEIGHTS.comment},r=${ENGAGEMENT_WEIGHTS.repost},f=${ENGAGEMENT_WEIGHTS.favorite})`,
+      reason: `weighted_engagement(v=${ENGAGEMENT_WEIGHTS.view},l=${ENGAGEMENT_WEIGHTS.like},c=${ENGAGEMENT_WEIGHTS.comment},r=${ENGAGEMENT_WEIGHTS.repost},f=${ENGAGEMENT_WEIGHTS.bookmark})`,
       breakdown: buildBreakdown(page),
       title: page.title,
       description: page.description,

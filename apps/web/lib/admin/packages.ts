@@ -53,7 +53,7 @@ export interface PackageDetails extends PackageForReview {
   // Review history
   reviewHistory: ReviewHistoryEntry[];
   // Stats
-  favoritesCount: number;
+  bookmarksCount: number;
   downloadsCount: number;
   commentsCount: number;
 }
@@ -347,7 +347,7 @@ export async function getPackageDetails(
       transport: mcpPkg.transport,
       entryPoint: mcpPkg.entryPoint,
       reviewHistory,
-      favoritesCount: mcpPkg.bookmarksCount,
+      bookmarksCount: mcpPkg.bookmarksCount,
       downloadsCount: mcpPkg.downloadsCount,
       commentsCount,
     };
@@ -389,7 +389,7 @@ export async function getPackageDetails(
       content: skillPkg.content,
       triggerPatterns: skillPkg.triggerPatterns as string[] | null,
       reviewHistory,
-      favoritesCount: skillPkg.bookmarksCount,
+      bookmarksCount: skillPkg.bookmarksCount,
       downloadsCount: skillPkg.downloadsCount,
       commentsCount,
     };
