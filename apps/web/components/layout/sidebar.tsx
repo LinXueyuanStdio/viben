@@ -123,7 +123,7 @@ export function Sidebar({
   const isLoggedIn = Boolean(userRole);
   const showAdmin = userRole && isAdminRole(userRole);
 
-  // Admin navigation organized by functional groups
+  // Admin navigation organized by functional workflow
   const adminGroups: { label: string; items: AdminNavItem[] }[] = [
     {
       label: t('nav.adminOverview', '总览'),
@@ -134,12 +134,6 @@ export function Sidebar({
           href: '/admin/logs',
           icon: ScrollText,
           permission: 'admin.access',
-        },
-        {
-          name: t('nav.activity', '活动流'),
-          href: '/admin/activity',
-          icon: Activity,
-          permission: 'rankings.view',
         },
       ],
     },
@@ -153,146 +147,47 @@ export function Sidebar({
           permission: 'packages.review',
           badgeCount: pendingPackagesCount,
         },
-        {
-          name: t('nav.pages', '页面审核'),
-          href: '/admin/pages',
-          icon: FileText,
-          permission: 'pages.review',
-        },
-        {
-          name: t('nav.comments', '评论管理'),
-          href: '/admin/comments',
-          icon: MessageSquare,
-          permission: 'content.moderate',
-        },
-        {
-          name: t('nav.collections', '合集管理'),
-          href: '/admin/collections',
-          icon: Layers,
-          permission: 'content.moderate',
-        },
-        {
-          name: t('nav.reports'),
-          href: '/admin/reports',
-          icon: Flag,
-          permission: 'reports.view',
-        },
+        { name: t('nav.pages', '页面审核'), href: '/admin/pages', icon: FileText, permission: 'pages.review' },
+        { name: t('nav.comments', '评论管理'), href: '/admin/comments', icon: MessageSquare, permission: 'content.moderate' },
+        { name: t('nav.collections', '合集管理'), href: '/admin/collections', icon: Layers, permission: 'content.moderate' },
+        { name: t('nav.moments', '动态管理'), href: '/admin/moments', icon: Clock, permission: 'moments.moderate' },
+        { name: t('nav.reports'), href: '/admin/reports', icon: Flag, permission: 'reports.view' },
+        { name: t('nav.feedbacks', '反馈管理'), href: '/admin/feedbacks', icon: Heart, permission: 'feedbacks.view' },
+        { name: t('nav.ratings', '评分管理'), href: '/admin/ratings', icon: Star, permission: 'content.moderate' },
       ],
     },
     {
-      label: t('nav.adminContentOps', '内容运营'),
+      label: t('nav.adminContentOps', '运营'),
       items: [
-        {
-          name: t('nav.categories', '分类管理'),
-          href: '/admin/categories',
-          icon: Grid3X3,
-          permission: 'categories.manage',
-        },
-        {
-          name: t('nav.topics', '话题管理'),
-          href: '/admin/topics',
-          icon: MessageSquare,
-          permission: 'topics.manage',
-        },
-        {
-          name: t('nav.rankings', '榜单管理'),
-          href: '/admin/rankings',
-          icon: TrendingUp,
-          permission: 'rankings.view',
-        },
-        {
-          name: t('nav.operations', '运营位管理'),
-          href: '/admin/operations',
-          icon: Layers,
-          permission: 'operations.manage',
-        },
-        {
-          name: t('nav.moments', '动态管理'),
-          href: '/admin/moments',
-          icon: Clock,
-          permission: 'moments.moderate',
-        },
+        { name: t('nav.categories', '分类管理'), href: '/admin/categories', icon: Grid3X3, permission: 'categories.manage' },
+        { name: t('nav.topics', '话题管理'), href: '/admin/topics', icon: MessageSquare, permission: 'topics.manage' },
+        { name: t('nav.rankings', '榜单管理'), href: '/admin/rankings', icon: TrendingUp, permission: 'rankings.view' },
+        { name: t('nav.operations', '运营位管理'), href: '/admin/operations', icon: Layers, permission: 'operations.manage' },
       ],
     },
     {
-      label: t('nav.adminUsersGroup', '用户与反馈'),
+      label: t('nav.adminUsersGroup', '用户'),
       items: [
-        {
-          name: t('nav.users'),
-          href: '/admin/users',
-          icon: Users,
-          permission: 'users.view',
-        },
-        {
-          name: t('nav.feedbacks', '反馈管理'),
-          href: '/admin/feedbacks',
-          icon: Heart,
-          permission: 'feedbacks.view',
-        },
-        {
-          name: t('nav.ratings', '评分管理'),
-          href: '/admin/ratings',
-          icon: Star,
-          permission: 'content.moderate',
-        },
+        { name: t('nav.users'), href: '/admin/users', icon: Users, permission: 'users.view' },
+        { name: t('nav.drafts', '草稿管理'), href: '/admin/drafts', icon: FileEdit, permission: 'content.delete' },
       ],
     },
     {
-      label: t('nav.adminAnalytics', '数据分析'),
+      label: t('nav.adminAnalytics', '数据'),
       items: [
-        {
-          name: t('nav.analytics', '内容分析'),
-          href: '/admin/analytics',
-          icon: BarChart3,
-          permission: 'rankings.view',
-        },
-        {
-          name: t('nav.searchAnalytics', '搜索分析'),
-          href: '/admin/search-analytics',
-          icon: Search,
-          permission: 'rankings.view',
-        },
-        {
-          name: t('nav.downloads', '下载统计'),
-          href: '/admin/downloads',
-          icon: Download,
-          permission: 'rankings.view',
-        },
+        { name: t('nav.analytics', '内容分析'), href: '/admin/analytics', icon: BarChart3, permission: 'rankings.view' },
+        { name: t('nav.searchAnalytics', '搜索分析'), href: '/admin/search-analytics', icon: Search, permission: 'rankings.view' },
+        { name: t('nav.downloads', '下载统计'), href: '/admin/downloads', icon: Download, permission: 'rankings.view' },
+        { name: t('nav.activity', '活动流'), href: '/admin/activity', icon: Activity, permission: 'rankings.view' },
       ],
     },
     {
-      label: t('nav.adminSystem', '系统管理'),
+      label: t('nav.adminSystem', '系统'),
       items: [
-        {
-          name: t('nav.media', '媒体管理'),
-          href: '/admin/media',
-          icon: Image,
-          permission: 'content.moderate',
-        },
-        {
-          name: t('nav.shares', '分享管理'),
-          href: '/admin/shares',
-          icon: Share2,
-          permission: 'content.moderate',
-        },
-        {
-          name: t('nav.notifications', '通知管理'),
-          href: '/admin/notifications',
-          icon: Bell,
-          permission: 'admin.access',
-        },
-        {
-          name: t('nav.drafts', '草稿管理'),
-          href: '/admin/drafts',
-          icon: FileEdit,
-          permission: 'content.delete',
-        },
-        {
-          name: t('nav.apiKeys', 'API 密钥'),
-          href: '/admin/api-keys',
-          icon: Key,
-          permission: 'users.view',
-        },
+        { name: t('nav.media', '媒体管理'), href: '/admin/media', icon: Image, permission: 'content.moderate' },
+        { name: t('nav.shares', '分享管理'), href: '/admin/shares', icon: Share2, permission: 'content.moderate' },
+        { name: t('nav.notifications', '通知管理'), href: '/admin/notifications', icon: Bell, permission: 'admin.access' },
+        { name: t('nav.apiKeys', 'API 密钥'), href: '/admin/api-keys', icon: Key, permission: 'users.view' },
       ],
     },
   ];

@@ -113,10 +113,10 @@
     "comments": "评论管理",
     "adminOverview": "总览",
     "adminModeration": "审核",
-    "adminContentOps": "内容运营",
-    "adminUsersGroup": "用户与反馈",
-    "adminAnalytics": "数据分析",
-    "adminSystem": "系统管理"
+    "adminContentOps": "运营",
+    "adminUsersGroup": "用户",
+    "adminAnalytics": "数据",
+    "adminSystem": "系统"
   },
   "sidebar": {
     "setupComplete": "设置完成",

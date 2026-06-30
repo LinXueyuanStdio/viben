@@ -113,9 +113,9 @@
     "comments": "Comments",
     "adminOverview": "Overview",
     "adminModeration": "Moderation",
-    "adminContentOps": "Content Ops",
-    "adminUsersGroup": "Users & Feedback",
-    "adminAnalytics": "Analytics",
+    "adminContentOps": "Ops",
+    "adminUsersGroup": "Users",
+    "adminAnalytics": "Data",
     "adminSystem": "System"
   },
   "sidebar": {
