@@ -18,6 +18,7 @@ interface FavoritePackage {
   skillType?: string;
   author: {
     username: string;
+    userSlug: string;
     avatarUrl: string | null;
   } | null;
   favoritedAt: Date;
@@ -56,6 +57,7 @@ export async function GET() {
             author: {
               columns: {
                 username: true,
+                userSlug: true,
                 avatarUrl: true,
               },
             },
@@ -71,6 +73,7 @@ export async function GET() {
             author: {
               columns: {
                 username: true,
+                userSlug: true,
                 avatarUrl: true,
               },
             },

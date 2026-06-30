@@ -24,6 +24,7 @@ interface SkillHeaderProps {
     author: {
       id: string;
       username: string;
+      userSlug: string;
       displayName: string;
       avatarUrl: string | null;
     } | null;
@@ -54,7 +55,7 @@ export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHead
       <div className="flex flex-wrap items-center gap-4">
         {pkg.author && (
           <Link
-            href={`/users/${pkg.author.username}`}
+            href={`/${encodeURIComponent(pkg.author.userSlug)}`}
             className="flex items-center gap-2 hover:underline"
           >
             <Avatar className="h-6 w-6">

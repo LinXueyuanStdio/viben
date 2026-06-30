@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         author: {
           id: users.id,
           username: users.username,
+          userSlug: users.userSlug,
           displayName: users.displayName,
           avatarUrl: users.avatarUrl,
         },

@@ -22,6 +22,7 @@ export default async function SkillDetailPage({ params }: SkillDetailPageProps) 
           columns: {
             id: true,
             username: true,
+            userSlug: true,
             displayName: true,
             avatarUrl: true,
           },

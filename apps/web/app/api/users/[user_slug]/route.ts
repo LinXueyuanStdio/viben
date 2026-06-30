@@ -16,6 +16,7 @@ export async function GET(
       columns: {
         id: true,
         username: true,
+        userSlug: true,
         displayName: true,
         avatarUrl: true,
         bio: true,

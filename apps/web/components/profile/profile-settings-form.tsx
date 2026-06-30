@@ -30,6 +30,7 @@ interface ProfileSettingsFormProps {
   user: {
     id: string;
     username: string;
+    userSlug: string;
     displayName: string;
     bio: string | null;
     email: string;
