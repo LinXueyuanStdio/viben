@@ -55,7 +55,7 @@ export async function SkillsGrid({ searchParams }: SkillsGridProps) {
       description: skillPackages.description,
       category: skillPackages.category,
       skillType: skillPackages.skillType,
-      favoritesCount: skillPackages.bookmarksCount,
+      bookmarksCount: skillPackages.bookmarksCount,
       downloadsCount: skillPackages.downloadsCount,
       ratingAvg: skillPackages.ratingAvg,
       author: {

@@ -86,7 +86,7 @@ export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHead
 
       <SkillActions
         packageId={pkg.id}
-        favoritesCount={pkg.bookmarksCount}
+        bookmarksCount={pkg.bookmarksCount}
         isAuthenticated={isAuthenticated}
       />
 

@@ -9,13 +9,13 @@ import { useState } from 'react';
 
 interface SkillActionsProps {
   packageId: string;
-  favoritesCount: number;
+  bookmarksCount: number;
   isAuthenticated: boolean;
 }
 
 export function SkillActions({
   packageId,
-  favoritesCount,
+  bookmarksCount,
   isAuthenticated,
 }: SkillActionsProps) {
   const { t } = useTranslation();
@@ -41,7 +41,7 @@ export function SkillActions({
       <BookmarkButton
         entityType="skill"
         entityId={packageId}
-        initialCount={favoritesCount}
+        initialCount={bookmarksCount}
         isAuthenticated={isAuthenticated}
       />
       <Button onClick={handleInstall}>

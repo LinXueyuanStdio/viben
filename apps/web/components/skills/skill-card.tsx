@@ -46,7 +46,7 @@ interface SkillCardProps {
     description: string | null;
     category: string | null;
     skillType: string;
-    favoritesCount: number;
+    bookmarksCount: number;
     downloadsCount: number;
     ratingAvg: number;
     author: {
@@ -106,7 +106,7 @@ export function SkillCard({ package: pkg }: SkillCardProps) {
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Heart className="h-3 w-3" />
-              {formatNumber(pkg.favoritesCount)}
+              {formatNumber(pkg.bookmarksCount)}
             </span>
             <span className="flex items-center gap-1">
               <Download className="h-3 w-3" />
