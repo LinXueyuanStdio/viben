@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, Bookmark, Heart, Repeat2, Share2 } from "lucide-react"
+import { Eye, MessageCircle, Bookmark, ThumbsUp, Repeat2, Share2 } from "lucide-react"
 import { toast } from "sonner"
 import { FeedHead } from "./feed-head"
 import type { FeedHeadData } from "./feed-head"
@@ -46,7 +46,7 @@ async function callCommunityApi(action: string, momentId: string) {
     url = "/api/community/reactions/toggle"
     body = { entity_type: "moment", entity_id: momentId, reaction_type: "like" }
   } else if (action === "bookmark") {
-    url = "/api/community/favorites/toggle"
+    url = "/api/community/bookmarks/toggle"
     body = { entity_type: "moment", entity_id: momentId }
   } else {
     return null
@@ -147,8 +147,8 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
         setLikedActive(result.has_reacted)
         setOptimisticLikes(result.reactions_count)
       } else if (action === "bookmark" && result) {
-        setBookmarkedActive(result.has_favorited)
-        setOptimisticBookmarks(result.favorites_count)
+        setBookmarkedActive(result.has_bookmarked)
+        setOptimisticBookmarks(result.bookmarks_count)
       }
     } catch (err: unknown) {
       // Revert using snapshot refs (not stale closure data)
@@ -179,7 +179,7 @@ export function FeedCard({ data, variant = "preloaded", className, onAction }: F
   const actionStats: StatProps[] = variant === "rich"
     ? [
         {
-          icon: Heart,
+          icon: ThumbsUp,
           value: optimisticLikes,
           format: true,
           dataAction: "like",

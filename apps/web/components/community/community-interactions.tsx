@@ -7,7 +7,7 @@ import {
   MoreHorizontal,
   Send,
   Share2,
-  Star,
+  Bookmark,
   ThumbsUp,
   Trash2,
 } from 'lucide-react';
@@ -98,7 +98,7 @@ export function CommunityInteractions({
   const [commentError, setCommentError] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isPostingComment, setIsPostingComment] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'like' | 'favorite' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'like' | 'bookmark' | null>(null);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -206,9 +206,9 @@ export function CommunityInteractions({
 
   async function toggleBookmark() {
     if (!requireInteractionAuth()) return;
-    setPendingAction('favorite');
+    setPendingAction('bookmark');
     try {
-      const response = await fetch('/api/community/favorites/toggle', {
+      const response = await fetch('/api/community/bookmarks/toggle', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +216,7 @@ export function CommunityInteractions({
           entity_id: entityId,
         }),
       });
-      if (!response.ok) throw new Error('favorite_failed');
+      if (!response.ok) throw new Error('bookmark_failed');
       const data = (await response.json()) as {
         has_bookmarked: boolean;
         bookmarks_count: number;
@@ -429,9 +429,9 @@ export function CommunityInteractions({
             label="收藏"
             count={summary.entity.bookmarks_count}
             active={summary.viewer.has_bookmarked}
-            icon={<Star className="h-4 w-4" />}
-            disabled={pendingAction === 'favorite'}
-            loading={pendingAction === 'favorite'}
+            icon={<Bookmark className="h-4 w-4" />}
+            disabled={pendingAction === 'bookmark'}
+            loading={pendingAction === 'bookmark'}
             onClick={toggleBookmark}
           />
           <ActionButton
