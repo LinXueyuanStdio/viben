@@ -68,7 +68,13 @@ export type AdminPermission =
   | 'users.ban' // Ban/unban users
   | 'reports.view' // View reports
   | 'reports.resolve' // Resolve reports
-  | 'admin.manage'; // Manage other admins
+  | 'admin.manage' // Manage other admins
+  | 'categories.manage' // Manage page categories
+  | 'topics.manage' // Manage moment topics/tags
+  | 'rankings.view' // View ranking snapshots and items
+  | 'rankings.manage' // Rebuild and configure rankings
+  | 'operations.manage' // Manage operation slots and items
+  | 'pages.review'; // Review and moderate published pages
 
 /**
  * All available admin permissions.
@@ -86,6 +92,12 @@ export const ALL_PERMISSIONS: AdminPermission[] = [
   'reports.view',
   'reports.resolve',
   'admin.manage',
+  'categories.manage',
+  'topics.manage',
+  'rankings.view',
+  'rankings.manage',
+  'operations.manage',
+  'pages.review',
 ];
 
 /**
@@ -99,6 +111,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AdminPermission[]> = {
     'users.view',
     'reports.view',
     'reports.resolve',
+    'rankings.view',
   ],
   moderator: [
     'admin.access',
@@ -111,6 +124,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, AdminPermission[]> = {
     'users.warn',
     'reports.view',
     'reports.resolve',
+    'categories.manage',
+    'topics.manage',
+    'rankings.view',
+    'pages.review',
   ],
   // Legacy admin role - full permissions
   admin: ALL_PERMISSIONS,

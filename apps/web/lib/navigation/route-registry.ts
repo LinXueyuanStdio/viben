@@ -98,6 +98,36 @@ export const routeRegistry: Record<string, RouteConfig> = {
     parent: "/admin",
     dropdownCategory: "管理",
   },
+  "/admin/categories": {
+    label: "分类管理",
+    icon: Grid3X3,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/topics": {
+    label: "话题管理",
+    icon: MessageSquare,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/rankings": {
+    label: "榜单管理",
+    icon: TrendingUp,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/operations": {
+    label: "运营位管理",
+    icon: Layers,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
+  "/admin/pages": {
+    label: "页面审核",
+    icon: FileText,
+    parent: "/admin",
+    dropdownCategory: "管理",
+  },
 
   // 阅读面包屑（模式=read 时使用）
   "/read": { label: "页面", icon: FileText, mode: "read" },
