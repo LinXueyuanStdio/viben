@@ -4,8 +4,18 @@
  * Provides query functions for admin dashboard statistics.
  */
 
-import { db, mcpPackages, skillPackages, reports, moderationLogs, users } from '@/lib/db';
-import { eq, gte, count, inArray } from 'drizzle-orm';
+import {
+  db,
+  mcpPackages,
+  skillPackages,
+  reports,
+  moderationLogs,
+  users,
+  publishedPages,
+  moments,
+  comments,
+} from '@/lib/db';
+import { eq, gte, count, inArray, sum } from 'drizzle-orm';
 
 /**
  * Stats for the admin dashboard overview.
@@ -15,6 +25,13 @@ export interface AdminStats {
   openReports: number;
   todayActions: number;
   totalUsers: number;
+  totalPublishedPages: number;
+  totalMoments: number;
+  totalPackages: number;
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  totalDownloads: number;
+  totalComments: number;
   recentActivity: ActivityItem[];
   pendingQueue: QueueItem[];
 }
@@ -92,6 +109,94 @@ export async function countTodayActions(): Promise<number> {
  */
 export async function countTotalUsers(): Promise<number> {
   const result = await db.select({ count: count() }).from(users);
+
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Count published pages with approved moderation status.
+ */
+export async function countPublishedPages(): Promise<number> {
+  const result = await db
+    .select({ count: count() })
+    .from(publishedPages)
+    .where(eq(publishedPages.moderationStatus, 'approved'));
+
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Count total moments (non-deleted).
+ */
+export async function countTotalMoments(): Promise<number> {
+  const result = await db
+    .select({ count: count() })
+    .from(moments)
+    .where(eq(moments.isDeleted, false));
+
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Count total packages (MCP + Skill).
+ */
+export async function countTotalPackages(): Promise<number> {
+  const [mcpResult, skillResult] = await Promise.all([
+    db.select({ count: count() }).from(mcpPackages),
+    db.select({ count: count() }).from(skillPackages),
+  ]);
+
+  return (mcpResult[0]?.count ?? 0) + (skillResult[0]?.count ?? 0);
+}
+
+/**
+ * Count users created today.
+ */
+export async function countNewUsersToday(): Promise<number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const result = await db
+    .select({ count: count() })
+    .from(users)
+    .where(gte(users.createdAt, today));
+
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Count users created in the last 7 days.
+ */
+export async function countNewUsersThisWeek(): Promise<number> {
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  weekAgo.setHours(0, 0, 0, 0);
+
+  const result = await db
+    .select({ count: count() })
+    .from(users)
+    .where(gte(users.createdAt, weekAgo));
+
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Sum total downloads across all packages.
+ */
+export async function countTotalDownloads(): Promise<number> {
+  const [mcpResult, skillResult] = await Promise.all([
+    db.select({ total: sum(mcpPackages.downloadsCount) }).from(mcpPackages),
+    db.select({ total: sum(skillPackages.downloadsCount) }).from(skillPackages),
+  ]);
+
+  return (mcpResult[0]?.total ?? 0) + (skillResult[0]?.total ?? 0);
+}
+
+/**
+ * Count total comments.
+ */
+export async function countTotalComments(): Promise<number> {
+  const result = await db.select({ count: count() }).from(comments);
 
   return result[0]?.count ?? 0;
 }
@@ -276,6 +381,13 @@ export async function getAdminStats(): Promise<AdminStats> {
     openReports,
     todayActions,
     totalUsers,
+    totalPublishedPages,
+    totalMoments,
+    totalPackages,
+    newUsersToday,
+    newUsersThisWeek,
+    totalDownloads,
+    totalComments,
     recentActivity,
     pendingQueue,
   ] = await Promise.all([
@@ -283,6 +395,13 @@ export async function getAdminStats(): Promise<AdminStats> {
     countOpenReports(),
     countTodayActions(),
     countTotalUsers(),
+    countPublishedPages(),
+    countTotalMoments(),
+    countTotalPackages(),
+    countNewUsersToday(),
+    countNewUsersThisWeek(),
+    countTotalDownloads(),
+    countTotalComments(),
     getRecentActivity(10),
     getPendingQueue(5),
   ]);
@@ -292,6 +411,13 @@ export async function getAdminStats(): Promise<AdminStats> {
     openReports,
     todayActions,
     totalUsers,
+    totalPublishedPages,
+    totalMoments,
+    totalPackages,
+    newUsersToday,
+    newUsersThisWeek,
+    totalDownloads,
+    totalComments,
     recentActivity,
     pendingQueue,
   };
