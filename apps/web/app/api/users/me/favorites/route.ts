@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, favorites, mcpPackages, skillPackages } from '@/lib/db';
+import { db, bookmarks, mcpPackages, skillPackages } from '@/lib/db';
 import { eq, inArray } from 'drizzle-orm';
 
 interface FavoritePackage {
@@ -32,8 +32,8 @@ export async function GET() {
     }
 
     // Get user's favorites
-    const userFavorites = await db.query.favorites.findMany({
-      where: eq(favorites.userId, session.userId),
+    const userFavorites = await db.query.bookmarks.findMany({
+      where: eq(bookmarks.userId, session.userId),
       orderBy: (fav, { desc }) => [desc(fav.createdAt)],
     });
 

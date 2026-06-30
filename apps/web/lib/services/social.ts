@@ -1,4 +1,4 @@
-import { db, favorites, comments, ratings, mcpPackages, skillPackages, users } from '@/lib/db';
+import { db, bookmarks, comments, ratings, mcpPackages, skillPackages, users } from '@/lib/db';
 import { eq, and, avg, count, desc } from 'drizzle-orm';
 
 type EntityType = 'mcp' | 'skill';
@@ -12,23 +12,23 @@ export async function toggleBookmark(
   entityType: EntityType,
   entityId: string
 ): Promise<{ isBookmarked: boolean; count: number }> {
-  const existing = await db.query.favorites.findFirst({
+  const existing = await db.query.bookmarks.findFirst({
     where: and(
-      eq(favorites.userId, userId),
-      eq(favorites.entityType, entityType),
-      eq(favorites.entityId, entityId)
+      eq(bookmarks.userId, userId),
+      eq(bookmarks.entityType, entityType),
+      eq(bookmarks.entityId, entityId)
     ),
   });
 
   if (existing) {
     // Remove favorite
     await db
-      .delete(favorites)
+      .delete(bookmarks)
       .where(
         and(
-          eq(favorites.userId, userId),
-          eq(favorites.entityType, entityType),
-          eq(favorites.entityId, entityId)
+          eq(bookmarks.userId, userId),
+          eq(bookmarks.entityType, entityType),
+          eq(bookmarks.entityId, entityId)
         )
       );
     await updateBookmarksCount(entityType, entityId, -1);
@@ -36,7 +36,7 @@ export async function toggleBookmark(
     return { isBookmarked: false, count: newCount };
   } else {
     // Add favorite
-    await db.insert(favorites).values({
+    await db.insert(bookmarks).values({
       userId,
       entityType,
       entityId,
@@ -52,11 +52,11 @@ export async function isBookmarked(
   entityType: EntityType,
   entityId: string
 ): Promise<boolean> {
-  const result = await db.query.favorites.findFirst({
+  const result = await db.query.bookmarks.findFirst({
     where: and(
-      eq(favorites.userId, userId),
-      eq(favorites.entityType, entityType),
-      eq(favorites.entityId, entityId)
+      eq(bookmarks.userId, userId),
+      eq(bookmarks.entityType, entityType),
+      eq(bookmarks.entityId, entityId)
     ),
   });
   return !!result;
@@ -96,9 +96,9 @@ async function getBookmarksCount(
 ): Promise<number> {
   const [result] = await db
     .select({ count: count() })
-    .from(favorites)
+    .from(bookmarks)
     .where(
-      and(eq(favorites.entityType, entityType), eq(favorites.entityId, entityId))
+      and(eq(bookmarks.entityType, entityType), eq(bookmarks.entityId, entityId))
     );
   return result?.count ?? 0;
 }

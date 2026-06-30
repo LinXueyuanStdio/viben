@@ -16,7 +16,7 @@ export interface Collection {
   itemCount: number;
   forksCount: number;
   forkedFromId: string | null;
-  favoritesCount: number;
+  bookmarksCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -96,7 +96,7 @@ async function generateUniqueSlug(
 export async function listPublicCollections(): Promise<CollectionWithOwner[]> {
   const results = await db.query.collections.findMany({
     where: eq(collections.isPublic, true),
-    orderBy: [desc(collections.favoritesCount), desc(collections.createdAt)],
+    orderBy: [desc(collections.bookmarksCount), desc(collections.createdAt)],
     with: {
       owner: {
         columns: {

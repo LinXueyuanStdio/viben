@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
         likeCount: publishedPages.likeCount,
         commentCount: publishedPages.commentCount,
         repostCount: publishedPages.repostCount,
-        bookmarkCount: publishedPages.favoriteCount,
+        bookmarkCount: publishedPages.bookmarkCount,
         authorName: publishedPages.authorName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
       })

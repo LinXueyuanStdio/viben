@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         isPublic: collections.isPublic,
         itemCount: collections.itemCount,
         forksCount: collections.forksCount,
-        favoritesCount: collections.favoritesCount,
+        bookmarksCount: collections.bookmarksCount,
         createdAt: collections.createdAt,
         ownerId: collections.ownerId,
         ownerName: users.username,

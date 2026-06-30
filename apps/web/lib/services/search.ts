@@ -62,7 +62,7 @@ export async function searchPages(query: string) {
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
-      bookmarkCount: publishedPages.favoriteCount,
+      bookmarkCount: publishedPages.bookmarkCount,
       lastPublishedAt: publishedPages.lastPublishedAt,
       userSlug: users.userSlug,
     })
