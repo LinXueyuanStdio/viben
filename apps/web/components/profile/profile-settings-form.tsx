@@ -53,6 +53,11 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl);
 
+  // Sync avatarUrl when server data refreshes (e.g., after router.refresh())
+  useEffect(() => {
+    setAvatarUrl(user.avatarUrl);
+  }, [user.avatarUrl]);
+
   // Password change states
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');

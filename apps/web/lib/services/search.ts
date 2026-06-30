@@ -64,7 +64,6 @@ export async function searchPages(query: string) {
       commentCount: publishedPages.commentCount,
       favoriteCount: publishedPages.favoriteCount,
       lastPublishedAt: publishedPages.lastPublishedAt,
-      userId: publishedPages.userId,
       userSlug: users.userSlug,
     })
     .from(publishedPages)
