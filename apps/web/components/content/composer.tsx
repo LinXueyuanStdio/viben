@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { Link as LinkIcon, Image as ImageIcon, Send } from "lucide-react"
 import { InsertLinkDialog } from "@/components/content/insert-link-dialog"
@@ -19,9 +20,12 @@ interface ComposerProps {
 
 export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className }: ComposerProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const [text, setText] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [focused, setFocused] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [imageDialogOpen, setImageDialogOpen] = useState(false)
 
@@ -47,15 +51,28 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
       }
       toast.success(t("community.publishSuccess"))
       setText("")
+      router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("community.publishFailed"))
     } finally {
       setSubmitting(false)
     }
-  }, [text, onSubmit])
+  }, [text, onSubmit, t, router])
+
+  const handleFocus = useCallback(() => {
+    setFocused(true)
+  }, [])
+
+  const handleBlur = useCallback((e: React.FocusEvent) => {
+    // Keep expanded if focus moves to another element within the composer
+    if (containerRef.current?.contains(e.relatedTarget as Node)) {
+      return
+    }
+    setFocused(false)
+  }, [])
 
   return (
-    <div className={cn("grid gap-2.5", className)}>
+    <div ref={containerRef} className={cn("grid gap-2.5", className)}>
       <div className="grid grid-cols-[auto_1fr] gap-2.5 items-start">
         <Avatar className="size-[34px] shrink-0">
           <AvatarImage src={userAvatarUrl} alt={userFallbackText} />
@@ -66,35 +83,42 @@ export function Composer({ userFallbackText, userAvatarUrl, onSubmit, className 
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             placeholder={t('community.postPlaceholder')}
-            className="w-full min-h-[78px] rounded-[10px] border border-border bg-background p-3 text-sm resize-y focus:outline-none focus:border-primary placeholder:text-muted-foreground"
+            className={cn(
+              "w-full rounded-[10px] border border-border bg-background p-3 text-sm resize-y focus:outline-none focus:border-primary placeholder:text-muted-foreground",
+              focused ? "min-h-[78px]" : "min-h-[38px] h-[38px] overflow-hidden",
+            )}
           />
         </div>
       </div>
-      <div className="flex items-center justify-between pl-[44px]">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setLinkDialogOpen(true)}
-            className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
-            aria-label={t("community.addLink")}
-          >
-            <LinkIcon className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setImageDialogOpen(true)}
-            className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
-            aria-label={t("community.addImage")}
-          >
-            <ImageIcon className="size-4" />
-          </button>
+      {focused && (
+        <div className="flex items-center justify-between pl-[44px]">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setLinkDialogOpen(true)}
+              className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
+              aria-label={t("community.addLink")}
+            >
+              <LinkIcon className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setImageDialogOpen(true)}
+              className="inline-flex items-center justify-center size-9 rounded-[9px] hover:bg-surface-secondary text-muted-foreground"
+              aria-label={t("community.addImage")}
+            >
+              <ImageIcon className="size-4" />
+            </button>
+          </div>
+          <Button onClick={handleSubmit} disabled={!text.trim() || submitting} size="sm" className="gap-1.5 min-h-[38px]">
+            <Send className="size-3.5" />
+            {submitting ? t("community.publishing") : t("community.published")}
+          </Button>
         </div>
-        <Button onClick={handleSubmit} disabled={!text.trim() || submitting} size="sm" className="gap-1.5 min-h-[38px]">
-          <Send className="size-3.5" />
-          {submitting ? t("community.publishing") : t("community.published")}
-        </Button>
-      </div>
+      )}
       <InsertLinkDialog
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
