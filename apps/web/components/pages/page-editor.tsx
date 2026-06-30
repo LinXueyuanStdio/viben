@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
-import { marked } from "marked"
 import DOMPurify from "dompurify"
 import { toast } from "sonner"
 import { X, Loader2, Upload } from "lucide-react"
@@ -35,7 +34,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
   const [uid, setUid] = useState("")
   const [uidManuallyEdited, setUidManuallyEdited] = useState(false)
   const [description, setDescription] = useState("")
-  const [markdown, setMarkdown] = useState("")
+  const [htmlContent, setHtmlContent] = useState("")
   const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public")
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
@@ -110,14 +109,13 @@ export function PageEditor({ userSlug }: PageEditorProps) {
   }, [])
 
   const previewHtml = useMemo(() => {
-    if (!markdown.trim()) return ""
+    if (!htmlContent.trim()) return ""
     try {
-      const raw = marked.parse(markdown) as string
-      return DOMPurify.sanitize(raw)
+      return DOMPurify.sanitize(htmlContent)
     } catch {
       return `<div style="color:red;padding:1rem;">${t("pageEditor.parseError")}</div>`
     }
-  }, [markdown, t])
+  }, [htmlContent, t])
 
   const handlePublish = useCallback(async () => {
     if (!title.trim()) {
@@ -128,14 +126,14 @@ export function PageEditor({ userSlug }: PageEditorProps) {
       toast.error(t("pageEditor.uidRequired"))
       return
     }
-    if (!markdown.trim()) {
+    if (!htmlContent.trim()) {
       toast.error(t("pageEditor.contentRequired"))
       return
     }
 
     setIsSubmitting(true)
     try {
-      const html = DOMPurify.sanitize(await marked.parse(markdown) as string)
+      const html = DOMPurify.sanitize(htmlContent)
       const res = await fetch("/api/pages/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,7 +159,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
     } finally {
       setIsSubmitting(false)
     }
-  }, [title, uid, markdown, description, visibility, tags, coverAssetId, router, t, userSlug])
+  }, [title, uid, htmlContent, description, visibility, tags, coverAssetId, router, t, userSlug])
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 py-8">
@@ -317,12 +315,12 @@ export function PageEditor({ userSlug }: PageEditorProps) {
       {/* Editor + Preview split */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-2">
-          <Label>{t("pageEditor.markdownLabel")}</Label>
+          <Label>{t("pageEditor.htmlLabel")}</Label>
           <Textarea
-            value={markdown}
-            onChange={(e) => setMarkdown(e.target.value)}
+            value={htmlContent}
+            onChange={(e) => setHtmlContent(e.target.value)}
             className="min-h-[400px] font-mono text-sm"
-            placeholder="Write your markdown here..."
+            placeholder="<!DOCTYPE html>..."
           />
         </div>
         <div className="space-y-2">

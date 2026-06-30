@@ -2359,7 +2359,7 @@
     "tagsPlaceholder": "Enter tags, press Enter to add",
     "coverLabel": "Cover Image (optional)",
     "coverHint": "Click or drag to upload a cover",
-    "markdownLabel": "Markdown Content",
+    "htmlLabel": "HTML Content",
     "previewLabel": "Preview",
     "publish": "Publish Page",
     "publishing": "Publishing...",

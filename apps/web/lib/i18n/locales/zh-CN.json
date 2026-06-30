@@ -2359,7 +2359,7 @@
     "tagsPlaceholder": "输入标签，回车添加",
     "coverLabel": "封面图片（可选）",
     "coverHint": "点击或拖拽上传封面",
-    "markdownLabel": "Markdown 内容",
+    "htmlLabel": "HTML 内容",
     "previewLabel": "预览",
     "publish": "发布页面",
     "publishing": "发布中...",
