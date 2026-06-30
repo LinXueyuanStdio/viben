@@ -183,7 +183,6 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
         }
         setAvatarUrl(uploadData.url);
         toast.success(t('profile.toast.avatarUpdated'));
-        router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : t('profile.toast.avatarUploadFailed');
         toast.error(message);
@@ -193,7 +192,7 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [t, router]
+    [t]
   );
 
   // ============================================
