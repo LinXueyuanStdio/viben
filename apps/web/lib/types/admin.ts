@@ -134,6 +134,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, AdminPermission[]> = {
     'categories.manage',
     'topics.manage',
     'rankings.view',
+    'rankings.manage',
+    'operations.manage',
     'pages.review',
     'moments.moderate',
     'feedbacks.view',
