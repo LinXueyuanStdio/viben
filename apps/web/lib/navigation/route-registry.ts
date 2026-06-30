@@ -69,10 +69,26 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/my-packages": { label: "我的包", icon: PackageSearch, parent: "/", dropdownCategory: "创作" },
   "/analytics": { label: "分析", icon: BarChart3, parent: "/", dropdownCategory: "创作" },
 
+  // 市场详情（动态段父路由已注册，此处注册静态子页面）
+  "/mcp-market/official": { label: "官方精选", icon: Package, parent: "/mcp-market" },
+  "/skill-market/official": { label: "官方精选", icon: Sparkles, parent: "/skill-market" },
+
+  // 个人
+  "/profile": { label: "个人主页", icon: User, parent: "/", dropdownCategory: "我的" },
+  "/profile/settings": { label: "账户设置", icon: Sparkles, parent: "/profile" },
+
+  // 创作
+  "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },
+
   // 设置
   "/settings/favorites": { label: "收藏", icon: Sparkles, parent: "/", dropdownCategory: "我的" },
   "/settings/tokens": { label: "API 密钥", icon: Package, parent: "/", dropdownCategory: "我的" },
   "/settings/packages": { label: "我的包", icon: PackageSearch, parent: "/", dropdownCategory: "我的" },
+
+  // 其他
+  "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
+  "/landing": { label: "落地页", icon: Home, parent: "/" },
+  "/web": { label: "Web", icon: FileText, parent: "/" },
 
   // 管理员路由（仅 role=admin 可见）
   "/admin": {
@@ -86,6 +102,16 @@ export const routeRegistry: Record<string, RouteConfig> = {
     icon: Package,
     parent: "/admin",
     dropdownCategory: "管理",
+  },
+  "/admin/packages/mcp-market": {
+    label: "MCP 审核",
+    icon: Package,
+    parent: "/admin/packages",
+  },
+  "/admin/packages/skill-market": {
+    label: "技能审核",
+    icon: Sparkles,
+    parent: "/admin/packages",
   },
   "/admin/users": {
     label: "用户管理",
@@ -285,10 +311,20 @@ export function getSiblingRoutes(
 ): Array<{ href: string; config: RouteConfig }> {
   if (customSiblings) return customSiblings
 
+  // 先查找以 parentPath 为父路由的注册子路由
+  const children = Object.entries(routeRegistry).filter(
+    ([href, config]) => href !== parentPath && config.parent === parentPath
+  )
+
+  // 如果有注册的子路由，优先展示子路由（如 /admin → 管理子页面）
+  if (children.length > 0) {
+    return children.map(([href, config]) => ({ href, config }))
+  }
+
   const siblings: Array<{ href: string; config: RouteConfig }> = []
 
   // 对于根路由、/read 段、以及根路由的直接子路由（/category、/leaderboard 等），
-  // 显示社区浏览页下拉（与 index.html 全局下拉一致）
+  // 且没有注册子路由时，显示社区浏览页下拉（与 index.html 全局下拉一致）
   const parentRoute = routeRegistry[parentPath]
   const isRootChild = parentRoute?.parent === "/"
   if (parentPath === "/" || parentPath === "/read" || isRootChild) {
