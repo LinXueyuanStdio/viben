@@ -197,7 +197,6 @@ export async function POST(request: NextRequest) {
       scoreLabel: '热度',
     }));
 
-    // Expire old snapshots + create new one + insert items
     // 1. Mark existing ready snapshots as expired
     await db
       .update(rankingSnapshots)
@@ -210,42 +209,46 @@ export async function POST(request: NextRequest) {
         )
       );
 
-    // 2. Create new snapshot with id
+    // 2-4. Create snapshot + items (with cleanup on failure)
     const snapshotId = crypto.randomUUID();
+    try {
+      await db.insert(rankingSnapshots).values({
+        id: snapshotId,
+        rankingKey,
+        entityType: 'published_page',
+        timeWindow,
+        scopeType: 'global',
+        algorithmVersion,
+        status: 'building',
+        validFrom: now,
+        sourceFrom,
+        sourceUntil,
+        itemCount: 0,
+      });
 
-    await db.insert(rankingSnapshots).values({
-      id: snapshotId,
-      rankingKey,
-      entityType: 'published_page',
-      timeWindow,
-      scopeType: 'global',
-      algorithmVersion,
-      status: 'building',
-      validFrom: now,
-      sourceFrom,
-      sourceUntil,
-      itemCount: 0,
-    });
+      // Batch insert ranking items
+      const chunkSize = 100;
+      for (let i = 0; i < rankingItemsData.length; i += chunkSize) {
+        const chunk = rankingItemsData.slice(i, i + chunkSize).map((item) => ({
+          ...item,
+          snapshotId,
+        }));
+        await db.insert(rankingItems).values(chunk);
+      }
 
-    // 3. Batch insert ranking items (in chunks of 100 to avoid oversized statements)
-    const chunkSize = 100;
-    for (let i = 0; i < rankingItemsData.length; i += chunkSize) {
-      const chunk = rankingItemsData.slice(i, i + chunkSize).map((item) => ({
-        ...item,
-        snapshotId,
-      }));
-      await db.insert(rankingItems).values(chunk);
+      await db
+        .update(rankingSnapshots)
+        .set({
+          status: 'ready',
+          itemCount: rankingItemsData.length,
+          generatedAt: new Date(),
+        })
+        .where(eq(rankingSnapshots.id, snapshotId));
+    } catch (innerError) {
+      // Clean up orphaned snapshot on failure
+      await db.delete(rankingSnapshots).where(eq(rankingSnapshots.id, snapshotId)).catch(() => {});
+      throw innerError;
     }
-
-    // 4. Update snapshot to ready
-    await db
-      .update(rankingSnapshots)
-      .set({
-        status: 'ready',
-        itemCount: rankingItemsData.length,
-        generatedAt: new Date(),
-      })
-      .where(eq(rankingSnapshots.id, snapshotId));
 
     // Fetch the final snapshot
     const [result] = await db
