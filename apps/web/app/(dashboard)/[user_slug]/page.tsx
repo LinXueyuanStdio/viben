@@ -268,7 +268,7 @@ export default async function UserSlugPage({
                     </AvatarFallback>
                   </Avatar>
                 )}
-                <div className="text-center lg:text-left">
+                <div className="text-center">
                   <h1 className="text-2xl font-bold tracking-tight leading-tight">
                     {user.displayName}
                   </h1>
@@ -280,9 +280,9 @@ export default async function UserSlugPage({
 
               {/* Bio */}
               {user.bio ? (
-                <p className="text-sm text-muted-foreground leading-relaxed">{user.bio}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed text-center">{user.bio}</p>
               ) : isOwnProfile ? (
-                <p className="text-sm text-muted-foreground/60 italic leading-relaxed">
+                <p className="text-sm text-muted-foreground/60 italic leading-relaxed text-center">
                   <T tKey="profile.addBio" fallback="添加简介，向大家介绍自己…" />
                 </p>
               ) : null}
@@ -293,7 +293,7 @@ export default async function UserSlugPage({
                   href={user.websiteUrl.startsWith("http") ? user.websiteUrl : `https://${user.websiteUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 w-fit text-[13px] text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  className="inline-flex items-center justify-center gap-1.5 w-full text-[13px] text-muted-foreground hover:text-foreground transition-colors font-medium"
                 >
                   <svg className="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -304,7 +304,7 @@ export default async function UserSlugPage({
               )}
 
               {/* Stats */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center gap-3">
                 <div className="flex items-baseline gap-1">
                   <span className="text-base font-bold tabular-nums">{user.followersCount}</span>
                   <span className="text-[13px] text-muted-foreground">关注者</span>
