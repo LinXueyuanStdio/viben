@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isReservedSlug } from '@/lib/utils/user-slug';
 
 export const userSlugRegex = /^[A-Za-z_][A-Za-z0-9_-]{2,29}$/;
 export const userSlugMessage =
@@ -10,7 +11,10 @@ export const registerSchema = z.object({
     .string()
     .min(3, 'Username must be at least 3 characters')
     .max(30, 'Username must be at most 30 characters')
-    .regex(userSlugRegex, userSlugMessage),
+    .regex(userSlugRegex, userSlugMessage)
+    .refine((val) => !isReservedSlug(val), {
+      message: 'This username is reserved and cannot be used',
+    }),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   displayName: z.string().min(1).max(100),
 });
