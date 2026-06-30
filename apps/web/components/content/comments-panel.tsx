@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
+import Link from "next/link"
 import { Send, ThumbsUp, MessageCircle, ChevronDown, Trash2, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -11,6 +12,23 @@ import { cn } from "@/lib/utils"
 import { createComment } from "@/lib/api/community"
 import { useToggleLike } from "@/hooks/use-toggle-like"
 import { timeAgo } from "@/lib/services/moment-mapper"
+
+/** Parse @mentions in comment text and render as blue links */
+function renderMentionText(text: string): React.ReactNode {
+  const parts = text.split(/(@\S+)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith("@") && part.length > 1) {
+      const name = part.slice(1)
+      const href = `/${encodeURIComponent(name)}`
+      return (
+        <Link key={i} href={href} className="text-primary hover:underline font-medium">
+          {part}
+        </Link>
+      )
+    }
+    return part
+  })
+}
 
 // --- Types ---
 
@@ -176,6 +194,7 @@ function CommentCard({
   const [replyPage, setReplyPage] = useState(0)
   const [threadText, setThreadText] = useState("")
   const [threadSubmitting, setThreadSubmitting] = useState(false)
+  const [replyToUser, setReplyToUser] = useState<string | null>(null)
   const [optimisticRepliesCount, setOptimisticRepliesCount] = useState(comment.replies_count)
 
   useEffect(() => { setOptimisticRepliesCount(comment.replies_count) }, [comment.replies_count])
@@ -234,6 +253,7 @@ function CommentCard({
         parentCommentId: comment.id,
       })
       setThreadText("")
+      setReplyToUser(null)
       setOptimisticRepliesCount((c) => c + 1)
       // Invalidate and refetch cached replies
       queryClient.invalidateQueries({ queryKey: ["replies", entityType, pageDbId, comment.id] })
@@ -264,7 +284,7 @@ function CommentCard({
           <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
           <span className="text-muted-foreground">{timeAgo(comment.created_at)}</span>
         </div>
-        <p className="text-[#173f4c] dark:text-foreground leading-relaxed text-sm mt-1">{comment.content}</p>
+        <p className="text-[#173f4c] dark:text-foreground leading-relaxed text-sm mt-1">{renderMentionText(comment.content)}</p>
         <div className="flex items-center gap-4 mt-2">
           <button
             onClick={() => like.toggle().catch(() => {})}
@@ -312,14 +332,7 @@ function CommentCard({
                     <span className="font-bold">{r.author.display_name}</span>
                     <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
                   </div>
-                  <p className="text-muted-foreground leading-relaxed mt-0.5">{r.content}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* "查看全部 N 条回复" button */}
+                  <p className="text-muted-foreground leading-relaxed mt-0.5">{renderMentionText(r.content)}</p>
         {optimisticRepliesCount > 2 && (
           <button
             onClick={() => setThreadOpen(!threadOpen)}
@@ -338,19 +351,11 @@ function CommentCard({
               <p className="text-[13px] text-muted-foreground py-2">{t("community.commentsLoading")}</p>
             ) : (
               threadComments.map((r) => (
-                <div key={r.id} className="grid gap-2 text-[13px] py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
-                  <Avatar className="size-[20px] shrink-0">
-                    <AvatarImage src={r.author.avatar_url ?? undefined} alt={r.author.display_name} />
-                    <AvatarFallback className="text-[10px]">{r.author.display_name?.[0] ?? "?"}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold">{r.author.display_name}</span>
-                      <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
-                    </div>
-                    <p className="text-foreground leading-relaxed mt-0.5">{r.content}</p>
-                  </div>
-                </div>
+                <ThreadReply
+                  key={r.id}
+                  reply={r}
+                  onReply={(username) => { setReplyToUser(username); setThreadText(`@${username} `) }}
+                />
               ))
             )}
             {threadHasMore && (
@@ -374,31 +379,102 @@ function CommentCard({
             )}
             {/* Mini composer */}
             {isAuthenticated ? (
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  value={threadText}
-                  onChange={(e) => setThreadText(e.target.value)}
-                  placeholder={t("community.writeComment")}
-                  className="flex-1 min-w-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[13px] focus:outline-none focus:border-primary placeholder:text-muted-foreground"
-                />
-                <button
-                  onClick={handleThreadSubmit}
-                  disabled={!threadText.trim() || threadSubmitting}
-                  className="shrink-0 inline-flex items-center gap-1 text-[13px] text-primary font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {threadSubmitting ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Send className="size-3.5" />
-                  )}
-                  {t("community.published")}
-                </button>
+              <div className="pt-1 space-y-1.5">
+                {replyToUser && (
+                  <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                    <span>{t("community.replyingTo", { name: replyToUser })}</span>
+                    <button
+                      onClick={() => { setReplyToUser(null); setThreadText("") }}
+                      className="text-primary hover:underline"
+                    >
+                      {t("community.cancel")}
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    value={threadText}
+                    onChange={(e) => setThreadText(e.target.value)}
+                    placeholder={t("community.writeComment")}
+                    className="flex-1 min-w-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[13px] focus:outline-none focus:border-primary placeholder:text-muted-foreground"
+                  />
+                  <button
+                    onClick={handleThreadSubmit}
+                    disabled={!threadText.trim() || threadSubmitting}
+                    className="shrink-0 inline-flex items-center gap-1 text-[13px] text-primary font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {threadSubmitting ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Send className="size-3.5" />
+                    )}
+                    {t("community.published")}
+                  </button>
+                </div>
               </div>
             ) : (
               <p className="text-[13px] text-muted-foreground">{t("community.loginToComment")}</p>
             )}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// --- Thread Reply ---
+
+function ThreadReply({
+  reply,
+  onReply,
+}: {
+  reply: CommunityComment
+  onReply?: (username: string) => void
+}) {
+  const { t } = useTranslation()
+  const threadLike = useToggleLike({
+    entityType: "comment",
+    entityId: reply.id,
+    initialLiked: reply.viewer_has_reacted,
+    initialCount: reply.reactions_count,
+  })
+
+  return (
+    <div className="grid gap-2 text-[13px] py-1" style={{ gridTemplateColumns: "auto 1fr" }}>
+      <Avatar className="size-[20px] shrink-0">
+        <AvatarImage src={reply.author.avatar_url ?? undefined} alt={reply.author.display_name} />
+        <AvatarFallback className="text-[10px]">{reply.author.display_name?.[0] ?? "?"}</AvatarFallback>
+      </Avatar>
+      <div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold">{reply.author.display_name}</span>
+          <span className="text-muted-foreground text-[12px]">{timeAgo(reply.created_at)}</span>
+        </div>
+        <p className="text-foreground leading-relaxed mt-0.5">{reply.content}</p>
+        <div className="flex items-center gap-4 mt-1.5">
+          <button
+            onClick={() => threadLike.toggle().catch(() => {})}
+            disabled={threadLike.pending}
+            className={cn(
+              "inline-flex items-center gap-1 text-[12px] transition-colors",
+              threadLike.liked ? "text-red-500 font-bold" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {threadLike.pending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <ThumbsUp className={cn("size-3 transition-transform duration-200", threadLike.liked && "fill-current scale-110")} />
+            )}
+            {threadLike.count > 0 && <span>{threadLike.count}</span>}
+          </button>
+          <button
+            onClick={() => onReply?.(reply.author.display_name)}
+            className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <MessageCircle className="size-3" />
+            {reply.replies_count > 0 && <span>{reply.replies_count}</span>}
+          </button>
+        </div>
       </div>
     </div>
   )
