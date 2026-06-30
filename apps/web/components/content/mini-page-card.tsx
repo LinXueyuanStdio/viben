@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Eye, Heart, MessageCircle } from "lucide-react"
+import { Eye, ThumbsUp, MessageCircle } from "lucide-react"
 import { Cover } from "./cover"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
@@ -31,7 +31,7 @@ export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
-    { icon: Heart, value: stats.likes, format: true },
+    { icon: ThumbsUp, value: stats.likes, format: true },
     ...(commentCount !== undefined ? [{ icon: MessageCircle, value: commentCount, format: true } as StatProps] : []),
   ]
 

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, Bookmark, Heart, MoreHorizontal, Flag, MessageSquare } from "lucide-react"
+import { Eye, MessageCircle, Bookmark, ThumbsUp, MoreHorizontal, Flag, MessageSquare } from "lucide-react"
 import { Cover } from "./cover"
 import { MetaRow } from "./meta-row"
 import { StatsRow } from "./stats-row"
@@ -117,7 +117,7 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
-    ...(stats.likes != null ? [{ icon: Heart, value: stats.likes, format: true }] : []),
+    ...(stats.likes != null ? [{ icon: ThumbsUp, value: stats.likes, format: true }] : []),
     ...(stats.bookmarks != null ? [{ icon: Bookmark, value: stats.bookmarks, format: true }] : []),
     ...(stats.comments != null ? [{ icon: MessageCircle, value: stats.comments, format: true }] : []),
   ]

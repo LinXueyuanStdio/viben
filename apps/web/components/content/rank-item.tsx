@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Eye, Heart, MessageCircle } from "lucide-react"
+import { Eye, ThumbsUp, MessageCircle } from "lucide-react"
 import { Cover } from "./cover"
 import { MetaRow } from "./meta-row"
 import { Stat } from "./stats-row"
@@ -62,7 +62,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
         <MetaRow author={author} />
         <div className="flex items-center gap-2">
           <Stat icon={Eye} value={stats.views} format />
-          <Stat icon={Heart} value={stats.likes} format />
+          <Stat icon={ThumbsUp} value={stats.likes} format />
           <Stat icon={MessageCircle} value={stats.comments} format />
         </div>
       </div>

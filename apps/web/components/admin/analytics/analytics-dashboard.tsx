@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Eye, Users, Heart, MessageSquare, Share2, TrendingUp } from 'lucide-react';
+import { Loader2, Eye, Users, ThumbsUp, MessageSquare, Share2, TrendingUp } from 'lucide-react';
 
 interface DailyStat {
   statDate: string;
@@ -168,7 +168,7 @@ export function AnalyticsDashboard() {
             </div>
             <div className="rounded-xl border bg-card p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Heart className="h-4 w-4" />
+                <ThumbsUp className="h-4 w-4" />
                 <span className="text-xs font-medium">点赞</span>
               </div>
               <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalLikes)}</p>

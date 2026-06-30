@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronLeft, ChevronRight, Eye, Heart, MessageCircle } from "lucide-react"
+import { ChevronLeft, ChevronRight, Eye, ThumbsUp, MessageCircle } from "lucide-react"
 import { IconButton } from "@/components/ui/icon-button"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
@@ -58,7 +58,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
   const statsList: StatProps[] = slide.stats
     ? [
         { icon: Eye, value: slide.stats.views, format: true },
-        { icon: Heart, value: slide.stats.likes, format: true },
+        { icon: ThumbsUp, value: slide.stats.likes, format: true },
         { icon: MessageCircle, value: slide.stats.comments, format: true },
       ]
     : []

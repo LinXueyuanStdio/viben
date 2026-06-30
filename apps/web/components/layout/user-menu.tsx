@@ -3,7 +3,7 @@
 import { useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileText, Heart, LogOut, Settings, Star, User } from "lucide-react"
+import { FileText, LogOut, Settings, Star, ThumbsUp, User } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import {
@@ -83,7 +83,7 @@ export function UserMenu({ session }: UserMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={`/${session.userSlug}?tab=likes`}>
-            <Heart className="mr-2 h-4 w-4 shrink-0" />
+            <ThumbsUp className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.likes", "喜欢")}
           </Link>
         </DropdownMenuItem>

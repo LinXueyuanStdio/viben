@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next"
 import Link from "next/link"
-import { Eye, Heart, MessageSquare } from "lucide-react"
+import { Eye, ThumbsUp, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 
 export interface SearchResultData {
@@ -61,7 +61,7 @@ export function SearchResultCard({ data }: { data: SearchResultData }) {
           {data.stats.views.toLocaleString()}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Heart className="h-3.5 w-3.5" />
+          <ThumbsUp className="h-3.5 w-3.5" />
           {data.stats.likes.toLocaleString()}
         </span>
         <span className="inline-flex items-center gap-1">
