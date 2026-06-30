@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PageCard } from "@/components/content/page-card"
 import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
+import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
 import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityFavorites } from "@/lib/db"
 import { eq, desc, and, count } from "drizzle-orm"
@@ -317,6 +318,9 @@ export default async function UserSlugPage({
                   </div>
                 </section>
               )}
+
+              {/* Activity heatmap (lazy-loaded) */}
+              <ActivityHeatmapLoader userId={user.id} />
 
               {/* Recent moments */}
               {feedCards.length > 0 && (
