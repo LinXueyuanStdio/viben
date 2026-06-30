@@ -2400,6 +2400,7 @@
     "copyLinkFailed": "复制链接失败",
     "likeFailed": "点赞失败",
     "bookmarkFailed": "收藏失败",
+    "commentFailed": "评论失败",
     "tags": {
       "title": "标签",
       "empty": "暂无标签"

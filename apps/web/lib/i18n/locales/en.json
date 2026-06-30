@@ -2400,6 +2400,7 @@
     "copyLinkFailed": "Failed to copy link",
     "likeFailed": "Like failed",
     "bookmarkFailed": "Bookmark failed",
+    "commentFailed": "Comment failed",
     "tags": {
       "title": "Tags",
       "empty": "No tags"
