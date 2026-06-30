@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface ProfileSettingsHeaderProps {
-  userSlug?: string
+  userSlug: string
 }
 
 export function ProfileSettingsHeader({ userSlug }: ProfileSettingsHeaderProps) {
@@ -16,7 +16,7 @@ export function ProfileSettingsHeader({ userSlug }: ProfileSettingsHeaderProps) 
     <>
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={userSlug ? `/${encodeURIComponent(userSlug)}` : "/profile"}>
+          <Link href={`/${encodeURIComponent(userSlug)}`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('profile.settings.backToProfile')}
           </Link>

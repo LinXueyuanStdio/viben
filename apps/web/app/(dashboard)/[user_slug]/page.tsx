@@ -283,7 +283,7 @@ export default async function UserSlugPage({
               </div>
               {isOwnProfile && (
                 <Link
-                  href="/profile"
+                  href="/settings"
                   className="inline-flex items-center justify-center w-full gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-secondary hover:text-foreground transition-colors"
                 >
                   <Settings className="size-3.5" />

@@ -401,7 +401,7 @@ export function Sidebar({
         {/* User Section */}
         {isLoggedIn && username ? (
           <Link
-            href={userSlug ? `/${encodeURIComponent(userSlug)}` : "/profile"}
+            href={userSlug ? `/${encodeURIComponent(userSlug)}` : "#"}
             className={cn(
               'flex w-full items-center gap-3 rounded-lg p-2',
               'text-left transition-colors duration-200',
