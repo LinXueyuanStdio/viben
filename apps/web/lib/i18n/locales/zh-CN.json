@@ -2027,6 +2027,16 @@
     "reportSubmit": "提交举报",
     "reportSuccess": "举报已提交",
     "reportFailed": "举报失败，请稍后重试",
+    "feedbackCategory": "反馈类别",
+    "feedbackCategoryBug": "问题报告",
+    "feedbackCategorySuggestion": "改进建议",
+    "feedbackCategoryOther": "其他",
+    "feedbackRating": "评分",
+    "feedbackContent": "反馈内容",
+    "feedbackContentPlaceholder": "请描述你的想法或遇到的问题...",
+    "feedbackSubmit": "提交反馈",
+    "feedbackSuccess": "感谢你的反馈！",
+    "feedbackFailed": "反馈提交失败，请稍后重试",
     "submitting": "提交中..."
   }
 }

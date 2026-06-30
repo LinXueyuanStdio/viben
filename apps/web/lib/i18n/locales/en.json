@@ -2001,6 +2001,16 @@
     "reportSubmit": "Submit report",
     "reportSuccess": "Report submitted",
     "reportFailed": "Report failed, please try again later",
+    "feedbackCategory": "Feedback category",
+    "feedbackCategoryBug": "Bug report",
+    "feedbackCategorySuggestion": "Suggestion",
+    "feedbackCategoryOther": "Other",
+    "feedbackRating": "Rating",
+    "feedbackContent": "Feedback content",
+    "feedbackContentPlaceholder": "Describe your thoughts or issues...",
+    "feedbackSubmit": "Submit feedback",
+    "feedbackSuccess": "Thank you for your feedback!",
+    "feedbackFailed": "Failed to submit feedback, please try again later",
     "submitting": "Submitting..."
   }
 }
