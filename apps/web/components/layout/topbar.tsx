@@ -50,6 +50,33 @@ export function Topbar({
   const [readHasSidePage, setReadHasSidePage] = React.useState(true)
   const [readActiveTab, setReadActiveTab] = React.useState("page")
 
+  // 客户端按需加载搜索数据（避免阻塞服务端布局渲染）
+  const [lazyHotSearches, setLazyHotSearches] = React.useState<Array<{ query: string; count: number }>>([])
+  const [lazyRecentSearches, setLazyRecentSearches] = React.useState<string[]>([])
+
+  React.useEffect(() => {
+    // 如果布局已提供数据则跳过
+    if (hotSearches.length > 0 && recentSearches.length > 0) return
+
+    const abort = new AbortController()
+    Promise.all([
+      hotSearches.length === 0
+        ? fetch("/api/search/hot?limit=8", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => [])
+        : Promise.resolve(hotSearches),
+      recentSearches.length === 0 && session
+        ? fetch("/api/search/recent?limit=5", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => [])
+        : Promise.resolve(recentSearches),
+    ]).then(([hot, recent]) => {
+      setLazyHotSearches(hot)
+      setLazyRecentSearches(recent)
+    }).catch(() => {})
+
+    return () => abort.abort()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const effectiveHotSearches = hotSearches.length > 0 ? hotSearches : lazyHotSearches
+  const effectiveRecentSearches = recentSearches.length > 0 ? recentSearches : lazyRecentSearches
+
   // 监听 ReadPageClient 通过 data 属性传递的副页状态
   React.useEffect(() => {
     if (!isRead) return
@@ -164,8 +191,8 @@ export function Topbar({
             </div>
           ) : (
             <GlobalSearch
-              recentSearches={recentSearches}
-              hotSearches={hotSearches}
+              recentSearches={effectiveRecentSearches}
+              hotSearches={effectiveHotSearches}
             />
           )}
         </div>

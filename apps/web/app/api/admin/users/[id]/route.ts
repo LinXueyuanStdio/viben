@@ -19,7 +19,7 @@ import {
   userBrowseHistory,
   moderationLogs,
 } from '@/lib/db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -82,19 +82,34 @@ export async function GET(
         .where(eq(oauthConnections.userId, id)),
 
       // API keys count
-      db.$count(apiKeys, eq(apiKeys.userId, id)),
+      db
+        .select({ count: count() })
+        .from(apiKeys)
+        .where(eq(apiKeys.userId, id)),
 
       // Followers count (users following this user)
-      db.$count(userFollows, eq(userFollows.followeeUserId, id)),
+      db
+        .select({ count: count() })
+        .from(userFollows)
+        .where(eq(userFollows.followeeUserId, id)),
 
       // Followees count (users this user follows)
-      db.$count(userFollows, eq(userFollows.followerUserId, id)),
+      db
+        .select({ count: count() })
+        .from(userFollows)
+        .where(eq(userFollows.followerUserId, id)),
 
       // Page subscriptions count
-      db.$count(pageSubscriptions, eq(pageSubscriptions.userId, id)),
+      db
+        .select({ count: count() })
+        .from(pageSubscriptions)
+        .where(eq(pageSubscriptions.userId, id)),
 
       // Drafts count
-      db.$count(drafts, eq(drafts.userId, id)),
+      db
+        .select({ count: count() })
+        .from(drafts)
+        .where(eq(drafts.userId, id)),
 
       // Published pages
       db
@@ -139,12 +154,19 @@ export async function GET(
         })
         .from(moderationLogs)
         .where(
-          eq(moderationLogs.entityType, 'user'),
-          eq(moderationLogs.entityId, id)
+          and(
+            eq(moderationLogs.entityType, 'user'),
+            eq(moderationLogs.entityId, id)
+          )
         )
         .orderBy(desc(moderationLogs.createdAt))
         .limit(20),
     ]);
+
+    // Extract counts from the count query results
+    const getCount = (result: { count: number }[]): number => {
+      return result[0]?.count ?? 0;
+    };
 
     return NextResponse.json({
       user: {
@@ -169,11 +191,11 @@ export async function GET(
         warnedReason: user.warnedReason,
       },
       oauthConnections: oauthList,
-      apiKeysCount: apiKeyCountResult,
-      followersCount: followersCountResult,
-      followeesCount: followeesCountResult,
-      pageSubscriptionsCount: subscriptionsCountResult,
-      draftsCount: draftsCountResult,
+      apiKeysCount: getCount(apiKeyCountResult),
+      followersCount: getCount(followersCountResult),
+      followeesCount: getCount(followeesCountResult),
+      pageSubscriptionsCount: getCount(subscriptionsCountResult),
+      draftsCount: getCount(draftsCountResult),
       publishedPagesCount: publishedPagesList.length,
       publishedPages: publishedPagesList,
       recentBrowseHistory: browseHistory,
