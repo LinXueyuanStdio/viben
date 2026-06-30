@@ -2014,6 +2014,19 @@
     "uploadFailed": "上传图片失败",
     "cancel": "取消",
     "mySkills": "我的技能",
-    "myCollections": "我的合集"
+    "myCollections": "我的合集",
+    "report": "举报",
+    "reportReason": "举报原因",
+    "reportReasonSpam": "垃圾信息",
+    "reportReasonInappropriate": "不当内容",
+    "reportReasonCopyright": "版权问题",
+    "reportReasonSecurity": "安全问题",
+    "reportReasonOther": "其他",
+    "reportDescription": "详细描述",
+    "reportDescriptionPlaceholder": "请描述具体问题...",
+    "reportSubmit": "提交举报",
+    "reportSuccess": "举报已提交",
+    "reportFailed": "举报失败，请稍后重试",
+    "submitting": "提交中..."
   }
 }

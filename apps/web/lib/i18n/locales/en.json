@@ -1988,6 +1988,19 @@
     "uploadFailed": "Failed to upload image",
     "cancel": "Cancel",
     "mySkills": "My Skills",
-    "myCollections": "My Collections"
+    "myCollections": "My Collections",
+    "report": "Report",
+    "reportReason": "Report reason",
+    "reportReasonSpam": "Spam",
+    "reportReasonInappropriate": "Inappropriate content",
+    "reportReasonCopyright": "Copyright issue",
+    "reportReasonSecurity": "Security issue",
+    "reportReasonOther": "Other",
+    "reportDescription": "Description",
+    "reportDescriptionPlaceholder": "Describe the issue...",
+    "reportSubmit": "Submit report",
+    "reportSuccess": "Report submitted",
+    "reportFailed": "Report failed, please try again later",
+    "submitting": "Submitting..."
   }
 }
