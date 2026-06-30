@@ -25,7 +25,8 @@ const resources: Record<string, { translation: typeof en }> = {
 const loadedLanguages = new Set<string>(['en', 'zh-CN']);
 
 // Dynamic imports for remaining languages (loaded on first use)
-const localeLoaders: Record<string, () => Promise<{ default: typeof en }>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const localeLoaders: Record<string, () => Promise<{ default: any }>> = {
   ja:  () => import('./locales/ja.json'),
   ko:  () => import('./locales/ko.json'),
   de:  () => import('./locales/de.json'),
