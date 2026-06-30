@@ -372,18 +372,7 @@ export async function createCommunityComment(params: {
     throw new Error('comment_content_too_long');
   }
 
-  const entity = await db.query.communityEntities.findFirst({
-    where: and(
-      eq(communityEntities.entityType, params.entityType),
-      eq(communityEntities.entityId, params.entityId),
-      eq(communityEntities.status, 'active'),
-      eq(communityEntities.visibility, 'public')
-    ),
-  });
-
-  if (!entity) {
-    throw new Error('community_entity_not_found');
-  }
+  const entity = await ensureCommunityEntity(params.entityType, params.entityId);
 
   let parent: typeof communityComments.$inferSelect | null = null;
   if (params.parentCommentId) {
