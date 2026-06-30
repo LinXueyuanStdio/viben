@@ -35,6 +35,8 @@ interface CommentsPanelProps {
   communityEntityId: string
   /** 页面在 published_pages 表中的 DB ID，用于评论 API 的 entity_id */
   pageDbId: string
+  /** entity_type for comments API, defaults to "published_page" */
+  entityType?: "published_page" | "moment"
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
@@ -48,6 +50,7 @@ interface CommentsPanelProps {
 function CommentComposer({
   communityEntityId,
   pageDbId,
+  entityType = "published_page",
   isAuthenticated,
   sessionUsername,
   sessionAvatarUrl,
@@ -58,6 +61,7 @@ function CommentComposer({
 }: {
   communityEntityId: string
   pageDbId: string
+  entityType?: "published_page" | "moment"
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
@@ -88,7 +92,7 @@ function CommentComposer({
     setSubmitting(true)
     try {
       await createComment({
-        entityType: "published_page",
+        entityType,
         entityId: pageDbId,
         content: text.trim(),
         parentCommentId: parentCommentId ?? null,
@@ -223,6 +227,7 @@ function CommentCard({
 export function CommentsPanel({
   communityEntityId,
   pageDbId,
+  entityType = "published_page",
   isAuthenticated,
   sessionUsername,
   sessionAvatarUrl,
@@ -246,7 +251,7 @@ export function CommentsPanel({
     }
     try {
       const params = new URLSearchParams({
-        entity_type: "published_page",
+        entity_type: entityType,
         entity_id: pageDbId,
         limit: "20",
       })
@@ -307,6 +312,7 @@ export function CommentsPanel({
       <CommentComposer
         communityEntityId={communityEntityId}
         pageDbId={pageDbId}
+        entityType={entityType}
         isAuthenticated={isAuthenticated}
         sessionUsername={sessionUsername}
         sessionAvatarUrl={sessionAvatarUrl}
