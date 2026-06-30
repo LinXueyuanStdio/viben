@@ -1,12 +1,14 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
-import { Send, ThumbsUp, MessageCircle, ChevronDown, Trash2 } from "lucide-react"
+import { Send, ThumbsUp, MessageCircle, ChevronDown, Trash2, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { createComment } from "@/lib/api/community"
+import { timeAgo } from "@/lib/services/moment-mapper"
 
 // --- Types ---
 
@@ -38,21 +40,6 @@ interface CommentsPanelProps {
   sessionUserId?: string
   initialComments: CommunityComment[]
   initialNextCursor: string | null
-}
-
-// --- Helpers ---
-
-function timeAgo(date: string | Date): string {
-  const d = new Date(date)
-  const diff = Date.now() - d.getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "刚刚"
-  if (mins < 60) return `${mins}分钟前`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}小时前`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}天前`
-  return `${Math.floor(days / 30)}个月前`
 }
 
 // --- Comment Composer ---
@@ -99,26 +86,15 @@ function CommentComposer({
     if (!text.trim() || submitting) return
     setSubmitting(true)
     try {
-      const res = await fetch("/api/community/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entity_type: "published_page",
-          entity_id: pageDbId,
-          parent_comment_id: parentCommentId ?? null,
-          content: text.trim(),
-        }),
+      await createComment({
+        entityType: "published_page",
+        entityId: pageDbId,
+        content: text.trim(),
+        parentCommentId: parentCommentId ?? null,
       })
-      if (res.ok) {
-        setText("")
-        onCommentPosted()
-      } else {
-        const err = await res.json().catch(() => ({}))
-        console.error("Post comment failed:", res.status, err)
-        toast.error(t("community.commentFailed"))
-      }
-    } catch (err) {
-      console.error("Failed to post comment:", err)
+      setText("")
+      onCommentPosted()
+    } catch {
       toast.error(t("community.commentFailed"))
     } finally {
       setSubmitting(false)
@@ -176,18 +152,20 @@ function CommentCard({
   onReply,
   onDelete,
   sessionUserId,
+  bounce,
 }: {
   comment: CommunityComment
   onReaction: (id: string) => void
   onReply?: (username: string, commentId: string) => void
   onDelete?: (id: string) => void
   sessionUserId?: string
+  bounce?: boolean
 }) {
   const { t } = useTranslation()
   const isOwnComment = sessionUserId ? comment.author.id === sessionUserId : false
 
   return (
-    <div className="grid gap-2 py-1.5 border-t border-border first:border-t-0" style={{ gridTemplateColumns: "auto 1fr" }}>
+    <div className={cn("grid gap-2 py-1.5 border-t border-border first:border-t-0", bounce && "animate-bounce-in")} style={{ gridTemplateColumns: "auto 1fr" }}>
       <Avatar className="size-[28px] shrink-0">
         <AvatarImage src={comment.author.avatar_url ?? undefined} alt={comment.author.display_name} />
         <AvatarFallback>{comment.author.display_name?.[0] ?? "?"}</AvatarFallback>
@@ -203,23 +181,23 @@ function CommentCard({
           <button
             onClick={() => onReaction(comment.id)}
             className={cn(
-              "inline-flex items-center gap-1 text-[13px]",
-              comment.viewer_has_reacted ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
+              "inline-flex items-center gap-1 text-[13px] transition-colors",
+              comment.viewer_has_reacted ? "text-red-500 font-bold" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <ThumbsUp className={cn("size-3.5", comment.viewer_has_reacted && "fill-current")} />
+            <ThumbsUp className={cn("size-3.5 transition-transform duration-200", comment.viewer_has_reacted && "fill-current scale-110")} />
             {comment.reactions_count > 0 && <span>{comment.reactions_count}</span>}
           </button>
           <button
             onClick={() => onReply?.(comment.author.display_name, comment.id)}
-            className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
           >
             <MessageCircle className="size-3.5" />
           </button>
           {isOwnComment && (
             <button
               onClick={() => onDelete?.(comment.id)}
-              className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-destructive"
+              className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-destructive transition-colors"
               aria-label={t("community.delete")}
             >
               <Trash2 className="size-3.5" />
@@ -250,6 +228,7 @@ export function CommentsPanel({
   const [replyTo, setReplyTo] = useState<{ username: string; commentId: string } | null>(null)
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [bounceIds, setBounceIds] = useState<Set<string>>(new Set())
 
   const fetchComments = useCallback(async (cursor?: string | null) => {
     if (cursor) {
@@ -312,6 +291,16 @@ export function CommentsPanel({
               : c
           )
         )
+        // Trigger bounce if newly liked
+        setBounceIds((prev) => {
+          const next = new Set(prev)
+          const comment = comments.find((c) => c.id === commentId)
+          if (comment && !comment.viewer_has_reacted) {
+            next.add(commentId)
+            setTimeout(() => setBounceIds((cur) => { const s = new Set(cur); s.delete(commentId); return s }), 600)
+          }
+          return next
+        })
       }
     } catch (err) {
       console.error("Failed to toggle reaction:", err)
@@ -372,6 +361,7 @@ export function CommentsPanel({
                 onReply={(username, commentId) => setReplyTo({ username, commentId })}
                 onDelete={handleDelete}
                 sessionUserId={sessionUserId}
+                bounce={bounceIds.has(comment.id)}
               />
             ))}
           </div>
