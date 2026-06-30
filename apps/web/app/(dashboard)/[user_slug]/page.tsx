@@ -257,11 +257,11 @@ export default async function UserSlugPage({
         overview={
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
             {/* Left sidebar */}
-            <div className="space-y-3">
+            <div className="space-y-3 px-3">
               {/* Avatar + identity */}
-              <div className="flex flex-col items-center lg:items-start gap-2">
+              <div className="flex flex-col items-center gap-2">
                 {avatarUrl && (
-                  <Avatar className="w-full max-w-[200px] h-auto aspect-square rounded-full">
+                  <Avatar className="w-full h-auto aspect-square rounded-full">
                     <AvatarImage src={avatarUrl} alt={displayName} />
                     <AvatarFallback className="text-3xl font-semibold text-muted-foreground">
                       {displayName[0] ?? "?"}
