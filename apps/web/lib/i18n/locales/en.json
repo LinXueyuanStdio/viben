@@ -2415,6 +2415,8 @@
     "likeFailed": "Like failed",
     "bookmarkFailed": "Bookmark failed",
     "commentFailed": "Comment failed",
+    "commentSent": "Reply sent",
+    "commentPlaceholder": "Post your reply...",
     "tags": {
       "title": "Tags",
       "empty": "No tags"

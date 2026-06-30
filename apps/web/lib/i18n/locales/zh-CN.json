@@ -2414,6 +2414,8 @@
     "likeFailed": "点赞失败",
     "bookmarkFailed": "收藏失败",
     "commentFailed": "评论失败",
+    "commentSent": "评论已发送",
+    "commentPlaceholder": "发表评论...",
     "tags": {
       "title": "标签",
       "empty": "暂无标签"
