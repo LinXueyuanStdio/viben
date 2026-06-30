@@ -11,6 +11,7 @@ interface ProfileHeaderProps {
   user: {
     id: string;
     username: string;
+    userSlug: string;
     displayName: string;
     avatarUrl: string | null;
     email: string;
@@ -60,7 +61,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
       </div>
       <div className="flex gap-2">
         <Button variant="outline" asChild>
-          <Link href="/profile/settings">
+          <Link href="/settings">
             <Pencil className="mr-2 h-4 w-4" />
             {t('common.edit')}
           </Link>

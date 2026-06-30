@@ -420,6 +420,11 @@ export default async function UserSlugPage({
             )}
           </div>
         }
+        pageCount={pageCountResult[0]?.count ?? 0}
+        likeCount={likedCards.length}
+        favoriteCount={favoritedCards.length}
+        momentCount={feedCards.length}
+        collectionCount={createdCollectionCards.length}
       />
     </div>
   )

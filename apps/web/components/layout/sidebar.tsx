@@ -86,7 +86,7 @@ interface AdminNavItem {
 
 interface SidebarProps {
   collapsed: boolean
-  session?: { role?: string; username?: string; email?: string; avatarUrl?: string } | null
+  session?: { role?: string; username?: string; email?: string; avatarUrl?: string; userSlug?: string } | null
   pendingPackagesCount?: number
 }
 
@@ -121,6 +121,7 @@ export function Sidebar({
   const avatarUrl = session?.avatarUrl;
 
   const isLoggedIn = Boolean(userRole);
+  const userSlug = session?.userSlug;
   const showAdmin = userRole && isAdminRole(userRole);
 
   // Admin navigation organized by functional workflow
@@ -400,13 +401,13 @@ export function Sidebar({
         {/* User Section */}
         {isLoggedIn && username ? (
           <Link
-            href="/profile"
+            href={userSlug ? `/${encodeURIComponent(userSlug)}` : "/profile"}
             className={cn(
               'flex w-full items-center gap-3 rounded-lg p-2',
               'text-left transition-colors duration-200',
               'hover:bg-muted',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              pathname === '/profile' && 'bg-primary/10'
+              userSlug && pathname === `/${userSlug}` && 'bg-primary/10'
             )}
           >
             <Avatar className="h-8 w-8">

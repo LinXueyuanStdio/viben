@@ -73,9 +73,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/mcp-market/official": { label: "官方精选", icon: Package, parent: "/mcp-market" },
   "/skill-market/official": { label: "官方精选", icon: Sparkles, parent: "/skill-market" },
 
-  // 个人
-  "/profile": { label: "个人主页", icon: User, parent: "/", dropdownCategory: "我的" },
-  "/profile/settings": { label: "账户设置", icon: Sparkles, parent: "/profile" },
+  // 个人（动态段路由 /[user_slug] 已存在，此处不再注册静态 /profile）
 
   // 创作
   "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },

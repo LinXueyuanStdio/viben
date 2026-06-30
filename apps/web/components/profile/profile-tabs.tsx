@@ -4,8 +4,9 @@ import { useCallback } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 
+const TAB_KEYS = ["pages", "likes", "favorites", "moments", "collections", "about"] as const
+
 const TAB_LABELS: Record<string, string> = {
-  overview: "概览",
   pages: "页面",
   likes: "喜欢",
   favorites: "收藏",
@@ -22,11 +23,29 @@ interface ProfileTabsProps {
   moments: React.ReactNode
   collections: React.ReactNode
   about: React.ReactNode
+  pageCount?: number
+  likeCount?: number
+  favoriteCount?: number
+  momentCount?: number
+  collectionCount?: number
 }
 
 const DEFAULT_TAB = "概览"
 
-export function ProfileTabs({ overview, pages, likes, favorites, moments, collections, about }: ProfileTabsProps) {
+export function ProfileTabs({
+  overview,
+  pages,
+  likes,
+  favorites,
+  moments,
+  collections,
+  about,
+  pageCount,
+  likeCount,
+  favoriteCount,
+  momentCount,
+  collectionCount,
+}: ProfileTabsProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -45,6 +64,14 @@ export function ProfileTabs({ overview, pages, likes, favorites, moments, collec
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false })
   }, [router, pathname, searchParams])
 
+  const countMap: Record<string, number | undefined> = {
+    "页面": pageCount,
+    "喜欢": likeCount,
+    "收藏": favoriteCount,
+    "动态": momentCount,
+    "合集": collectionCount,
+  }
+
   const content: Record<string, React.ReactNode> = {
     "概览": overview,
     "页面": pages,
@@ -58,9 +85,17 @@ export function ProfileTabs({ overview, pages, likes, favorites, moments, collec
   return (
     <VibenTabs value={activeTab} onValueChange={handleTabChange}>
       <VibenTabsList>
-        {Object.keys(TAB_LABELS).map((key) => (
+        <VibenTabsTrigger key="overview" value="概览">
+          概览
+        </VibenTabsTrigger>
+        {TAB_KEYS.map((key) => (
           <VibenTabsTrigger key={key} value={TAB_LABELS[key]}>
             {TAB_LABELS[key]}
+            {countMap[TAB_LABELS[key]] != null && (
+              <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">
+                {countMap[TAB_LABELS[key]]}
+              </span>
+            )}
           </VibenTabsTrigger>
         ))}
       </VibenTabsList>
