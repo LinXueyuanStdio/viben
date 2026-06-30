@@ -98,7 +98,7 @@ export function UserMenu({ session }: UserMenuProps) {
 
         {/* Section 2: Settings */}
         <DropdownMenuItem asChild>
-          <Link href={`/${session.userSlug}/settings`}>
+          <Link href="/settings">
             <Spacer />
             {t("common.settings")}
           </Link>

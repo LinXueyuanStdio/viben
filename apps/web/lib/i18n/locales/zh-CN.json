@@ -2351,6 +2351,8 @@
     "loading": "加载中...",
     "replyingTo": "回复 {{name}}",
     "edited": "已编辑",
+    "read": "阅读",
+    "settings": "设置",
     "subscribeCollection": "订阅合集",
     "subscribedCollection": "已订阅合集",
     "mySkills": "我的技能",

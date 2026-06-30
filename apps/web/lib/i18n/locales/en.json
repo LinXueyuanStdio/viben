@@ -2351,6 +2351,8 @@
     "loading": "Loading...",
     "replyingTo": "Reply to {{name}}",
     "edited": "Edited",
+    "read": "Read",
+    "settings": "Settings",
     "subscribeCollection": "Subscribe",
     "subscribedCollection": "Subscribed",
     "mySkills": "My Skills",
