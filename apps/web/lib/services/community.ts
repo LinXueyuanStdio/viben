@@ -406,6 +406,17 @@ export async function createCommunityComment(params: {
     .set({ commentsCount: sql`${communityEntities.commentsCount} + 1` })
     .where(eq(communityEntities.id, entity.id));
 
+  // Also update the source table's denormalized counter
+  if (params.entityType === 'published_page') {
+    await db.update(publishedPages)
+      .set({ commentCount: sql`${publishedPages.commentCount} + 1` })
+      .where(eq(publishedPages.id, params.entityId));
+  } else if (params.entityType === 'moment') {
+    await db.update(moments)
+      .set({ commentCount: sql`${moments.commentCount} + 1` })
+      .where(eq(moments.id, params.entityId));
+  }
+
   if (parent) {
     await db
       .update(communityComments)
@@ -509,6 +520,19 @@ export async function deleteCommunityComment(params: {
       .where(eq(communityComments.id, comment.parentCommentId));
   }
 
+  // Also update the source table's denormalized counter
+  if (entity) {
+    if (entity.entityType === 'published_page') {
+      await db.update(publishedPages)
+        .set({ commentCount: sql`greatest(${publishedPages.commentCount} - ${deletedCount}, 0)` })
+        .where(eq(publishedPages.id, entity.entityId));
+    } else if (entity.entityType === 'moment') {
+      await db.update(moments)
+        .set({ commentCount: sql`greatest(${moments.commentCount} - ${deletedCount}, 0)` })
+        .where(eq(moments.id, entity.entityId));
+    }
+  }
+
   return { success: true, deleted_count: deletedCount };
 }
 
@@ -526,7 +550,7 @@ function canManageComment(
   );
 }
 
-async function ensureCommunityEntity(
+export async function ensureCommunityEntity(
   entityType: 'published_page' | 'moment' | 'comment',
   entityId: string
 ): Promise<typeof communityEntities.$inferSelect> {

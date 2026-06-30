@@ -124,7 +124,7 @@ vi.mock('drizzle-orm', () => {
   }
 })
 
-import { toggleReaction, toggleBookmark } from './community'
+import { toggleReaction, toggleBookmark, createCommunityComment } from './community'
 
 describe('toggleReaction — denormalized counter updates', () => {
   const entity = {
@@ -291,5 +291,69 @@ describe('toggleBookmark — denormalized counter updates', () => {
     mocks.findCommunityEntity.mockResolvedValue({ ...entity, status: 'hidden' })
     await expect(toggleBookmark({ entityType: 'published_page', entityId: 'page-1', session }))
       .rejects.toThrow('community_entity_not_found')
+  })
+})
+
+describe('createCommunityComment — denormalized counter updates', () => {
+  const entity = {
+    id: 'entity-1',
+    entityType: 'published_page',
+    entityId: 'page-1',
+    status: 'active',
+    visibility: 'public',
+    ownerUserId: 'author-1',
+    title: 'Test Page',
+    canonicalPath: '/test',
+    reactionsCount: 5,
+    bookmarksCount: 3,
+    commentsCount: 2,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    dbOps.length = 0
+    mocks.findCommunityEntity.mockResolvedValue(entity)
+    mocks.select.mockReturnValue(mocks.chain)
+    mocks.chain.from.mockReturnValue(mocks.chain)
+    // Mock insert returning
+    mocks.insert.mockReturnValue(mocks.chain)
+    mocks.chain.values.mockReturnValue(mocks.chain)
+    mocks.chain.returning.mockResolvedValue([{
+      id: 'comment-1', communityEntityId: 'entity-1', parentCommentId: null,
+      userId: 'user-1', content: 'hello', depth: 0, status: 'active',
+      reactionsCount: 0, repliesCount: 0, createdAt: new Date(), updatedAt: new Date(),
+      deletedAt: null, deletedByUserId: null,
+    }])
+  })
+
+  it('creates a comment and updates communityEntities.commentsCount', async () => {
+    await createCommunityComment({ entityType: 'published_page', entityId: 'page-1', content: 'hello', parentCommentId: null, session })
+    // Verify communityEntities update was issued
+    expect(mocks.update).toHaveBeenCalled()
+    const updateOps = dbOps.filter((op) => op.action === 'update')
+    expect(updateOps.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('updates publishedPages.commentCount when entity is published_page', async () => {
+    await createCommunityComment({ entityType: 'published_page', entityId: 'page-1', content: 'hello', parentCommentId: null, session })
+    const pageUpdates = dbOps.filter((op) => op.action === 'update' && op.set && 'commentCount' in (op.set as Record<string, unknown>))
+    expect(pageUpdates.length).toBeGreaterThan(0)
+  })
+
+  it('updates moments.commentCount when entity is moment', async () => {
+    const momentEntity = { ...entity, entityType: 'moment', entityId: 'moment-1' }
+    mocks.findCommunityEntity.mockResolvedValue(momentEntity)
+    mocks.chain.returning.mockResolvedValue([{ id: 'comment-1', communityEntityId: 'entity-1', parentCommentId: null, userId: 'user-1', content: 'hi', depth: 0, status: 'active', reactionsCount: 0, repliesCount: 0, createdAt: new Date(), updatedAt: new Date(), deletedAt: null, deletedByUserId: null }])
+
+    await createCommunityComment({ entityType: 'moment', entityId: 'moment-1', content: 'hi', parentCommentId: null, session })
+    const momentUpdates = dbOps.filter((op) => op.action === 'update' && op.set && 'commentCount' in (op.set as Record<string, unknown>))
+    expect(momentUpdates.length).toBeGreaterThan(0)
+  })
+
+  it('throws when content is empty', async () => {
+    await expect(createCommunityComment({ entityType: 'published_page', entityId: 'page-1', content: '  ', parentCommentId: null, session }))
+      .rejects.toThrow('comment_content_empty')
   })
 })
