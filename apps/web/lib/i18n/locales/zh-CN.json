@@ -2036,6 +2036,13 @@
     "feedbackSuccess": "感谢你的反馈！",
     "feedbackFailed": "反馈提交失败，请稍后重试",
     "submitting": "提交中...",
+    "noteSave": "保存",
+    "noteSaved": "笔记已保存",
+    "noteUpdated": "笔记已更新",
+    "noteSaveFailed": "笔记保存失败",
+    "notePlaceholder": "写下你的笔记...",
+    "noteCancel": "取消",
+    "saving": "保存中...",
     "noteEdit": "编辑",
     "noteDelete": "删除",
     "noteDeleteConfirm": "确认删除？"

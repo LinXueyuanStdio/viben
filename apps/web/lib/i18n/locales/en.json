@@ -2010,6 +2010,13 @@
     "feedbackSuccess": "Thank you for your feedback!",
     "feedbackFailed": "Failed to submit feedback, please try again later",
     "submitting": "Submitting...",
+    "noteSave": "Save",
+    "noteSaved": "Note saved",
+    "noteUpdated": "Note updated",
+    "noteSaveFailed": "Failed to save note",
+    "notePlaceholder": "Write your note...",
+    "noteCancel": "Cancel",
+    "saving": "Saving...",
     "noteEdit": "Edit",
     "noteDelete": "Delete",
     "noteDeleteConfirm": "Confirm delete?"
