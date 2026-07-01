@@ -1,29 +1,17 @@
 "use client"
 
-import React, { useMemo, useRef, useState, useCallback, useEffect } from "react"
-import { User, FileText, Columns2, Settings, PanelRight, Maximize2 } from "lucide-react"
+import React, { useMemo } from "react"
+import { User } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { PageMeta } from "@/components/content/page-meta"
 import type { PageMetaData } from "@/components/content/page-meta"
+import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import { ReadDrawer } from "@/components/layout/read-drawer"
 import { NotesPanel } from "@/components/content/notes-panel"
 import { CommentsPanel } from "@/components/content/comments-panel"
 import { PageSettingsPanel } from "@/components/pages/page-settings-panel"
 import { BreadcrumbDynamicContext } from "@/components/layout/breadcrumb"
 import type { BreadcrumbContextValue } from "@/components/layout/breadcrumb"
-import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
-import { IconButton } from "@/components/ui/icon-button"
-import { useTopbarContent } from "@/components/layout/topbar-content-context"
-import { useDrawer } from "@/components/layout/drawer-context"
-import { ReadMoreMenu } from "@/components/pages/read-more-menu"
-import {
-  useCommunitySummary,
-  useRecommendations,
-  usePrefetchCommunitySummary,
-  usePrefetchComments,
-  usePrefetchRecommendations,
-} from "@/hooks/use-page-data"
 
 // --- Types ---
 
@@ -31,6 +19,7 @@ interface ChapterEntry {
   number: number
   title: string
   status?: string
+  /** page slug for navigating to this chapter's page */
   page_slug?: string
 }
 
@@ -42,8 +31,8 @@ interface ReadPageClientProps {
   pageDescription?: string | null
   pageUid: string
   pageViewCount: number
-  pageLikeCount: number
   pageBookmarkCount: number
+  pageLikeCount: number
   pageCommentCount: number
   pageShareCount: number
   pagePublishedAt: Date | string | null
@@ -62,9 +51,29 @@ interface ReadPageClientProps {
   sessionUserId?: string
   communityEntityId: string
   pageDbId: string
-  pageCategoryId?: string | null
-  authorDbId: string
+  recommendationEntries: Array<{ data: MiniPageCardData; href: string }>
+  viewerHasReacted: boolean
+  viewerHasBookmarked: boolean
+  initialComments: Array<{
+    id: string
+    content: string
+    created_at: string
+    updated_at: string
+    depth: number
+    replies_count: number
+    reactions_count: number
+    viewer_has_reacted: boolean
+    author: {
+      id: string
+      user_slug: string
+      display_name: string
+      avatar_url: string | null
+    }
+  }>
+  initialCommentsNextCursor: string | null
+  /** Active tab (from URL search params) */
   activeTab?: string
+  /** Whether the current viewer is the page author */
   isAuthor?: boolean
 }
 
@@ -129,8 +138,8 @@ export function ReadPageClient({
   pageDescription,
   pageUid,
   pageViewCount,
-  pageLikeCount,
   pageBookmarkCount,
+  pageLikeCount,
   pageCommentCount,
   pageShareCount,
   pagePublishedAt,
@@ -149,109 +158,29 @@ export function ReadPageClient({
   sessionUserId,
   communityEntityId,
   pageDbId,
-  pageCategoryId,
-  authorDbId,
+  recommendationEntries,
+  viewerHasReacted,
+  viewerHasBookmarked,
+  initialComments,
+  initialCommentsNextCursor,
   activeTab,
   isAuthor = false,
 }: ReadPageClientProps) {
   const { t } = useTranslation()
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const { setIsRead, setImmersive, setCenter, setRight } = useTopbarContent()
-  const { toggle: toggleDrawer } = useDrawer()
 
-  // 阅读模式 tab 切换
-  const tabParam = searchParams.get("tab")
-  const [sideActive, setSideActive] = useState(false)
-  const readActiveTab = useMemo(() => {
-    if (sideActive) return "side"
-    if (tabParam === "settings") return "settings"
-    return "page"
-  }, [sideActive, tabParam])
-
-  const handleReadTabChange = useCallback((value: string) => {
-    if (value === "side") {
-      setSideActive(true)
-    } else if (value === "settings") {
-      setSideActive(false)
-      router.push(`${pathname}?tab=settings`, { scroll: false })
-    } else {
-      setSideActive(false)
-      router.push(`${pathname}?tab=read`, { scroll: false })
-    }
-  }, [router, pathname])
-
-  const hasSidePage = !!pageSidePageUid
-
-  // render 阶段同步注入 context（仅 tab 数量变化时重建 tablist，tab 切换由 VibenTabs 内部控制）
-  const prev = useRef({ side: hasSidePage, author: isAuthor })
-  if (prev.current.side !== hasSidePage || prev.current.author !== isAuthor) {
-    prev.current = { side: hasSidePage, author: isAuthor }
-    setIsRead(true)
-    if (hasSidePage || isAuthor) {
-      setCenter(
-        <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
-          <VibenTabsList variant="pill">
-            <VibenTabsTrigger value="page" variant="pill">
-              <FileText className="h-4 w-4" /> {t("community.page")}
-            </VibenTabsTrigger>
-            {hasSidePage && (
-              <VibenTabsTrigger value="side" variant="pill">
-                <Columns2 className="h-4 w-4" /> {t("community.sidePage")}
-              </VibenTabsTrigger>
-            )}
-            {isAuthor && (
-              <VibenTabsTrigger value="settings" variant="pill">
-                <Settings className="h-4 w-4" /> {t("community.settings")}
-              </VibenTabsTrigger>
-            )}
-          </VibenTabsList>
-        </VibenTabs>
-      )
-    } else {
-      setCenter(null)
-    }
-    setRight(
-      <>
-        <IconButton size="compact" label={t("community.expandDetails")} onClick={toggleDrawer}>
-          <PanelRight className="h-4 w-4" />
-        </IconButton>
-        <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
-          <Maximize2 className="h-4 w-4" />
-        </IconButton>
-        <ReadMoreMenu />
-      </>
-    )
-  }
-  // 卸载清理
-  // 卸载清理
+  // 通知 Topbar：阅读模式、副页、设置 tab（仅作者）
   React.useEffect(() => {
-    return () => {
-      setIsRead(false)
-      setCenter(null)
-      setRight(null)
+    document.documentElement.setAttribute("data-page-mode", "read")
+    document.documentElement.setAttribute("data-read-has-side-page", pageSidePageUid ? "1" : "0")
+    if (isAuthor) {
+      document.documentElement.setAttribute("data-read-has-settings", "1")
     }
-  }, [setIsRead, setCenter, setRight])
-
-  // ==========================================================================
-  // react-query：懒加载社区数据
-  // ==========================================================================
-  const { data: summary } = useCommunitySummary("published_page", communityEntityId)
-  const { data: recommendations } = useRecommendations(pageDbId, pageCategoryId, authorDbId)
-
-  // 预加载侧滑栏数据（页面渲染后再加载）
-  const prefetchSummary = usePrefetchCommunitySummary()
-  const prefetchComments = usePrefetchComments()
-  const prefetchRecs = usePrefetchRecommendations()
-  useEffect(() => {
-    prefetchSummary("published_page", communityEntityId)
-    prefetchComments("published_page", communityEntityId)
-    prefetchRecs(pageDbId)
-  }, [prefetchSummary, prefetchComments, prefetchRecs, communityEntityId, pageDbId])
-
-  const viewerHasReacted = summary?.viewer.has_reacted ?? false
-  const viewerHasBookmarked = summary?.viewer.has_bookmarked ?? false
+    return () => {
+      document.documentElement.removeAttribute("data-page-mode")
+      document.documentElement.removeAttribute("data-read-has-side-page")
+      document.documentElement.removeAttribute("data-read-has-settings")
+    }
+  }, [pageSidePageUid, isAuthor])
 
   // 合集章节数据：仅来自 pageChaptersJson，不从 HTML H2 提取
   const { chapters, collectionSlug, collectionName } = parseChapters(pageChaptersJson)
@@ -297,9 +226,11 @@ export function ReadPageClient({
       chapters.length > 0
         ? { current: currentChapter, total: chapters.length }
         : undefined,
+    // Collection metadata
     collectionName,
     collectionSlug,
-    recommendations: recommendations as any,
+    recommendations: recommendationEntries.length > 0 ? recommendationEntries : undefined,
+    // Viewer and interaction state
     viewerHasReacted,
     viewerHasBookmarked,
     isAuthenticated,
@@ -324,8 +255,10 @@ export function ReadPageClient({
       sessionUsername={sessionUsername}
       sessionAvatarUrl={sessionAvatarUrl}
       sessionUserId={sessionUserId}
+      initialComments={initialComments}
+      initialNextCursor={initialCommentsNextCursor}
     />
-  ), [communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId])
+  ), [communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialCommentsNextCursor])
 
   const notesTab = useMemo(() => <NotesPanel pageId={pageUid} />, [pageUid])
 

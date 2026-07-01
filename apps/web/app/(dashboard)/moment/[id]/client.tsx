@@ -62,6 +62,8 @@ export function MomentDetailClient({
           sessionUsername={sessionUsername}
           sessionAvatarUrl={sessionAvatarUrl}
           sessionUserId={sessionUserId}
+          initialComments={initialComments}
+          initialNextCursor={initialCommentsNextCursor}
         />
       </div>
     </div>
