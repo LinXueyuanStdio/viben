@@ -2451,6 +2451,7 @@
   },
   "pageEditor": {
     "title": "Create Page",
+    "editTitle": "Edit Page",
     "titleLabel": "Title",
     "titlePlaceholder": "Enter page title",
     "uidLabel": "Page ID",
@@ -2468,6 +2469,7 @@
     "htmlLabel": "HTML Content",
     "previewLabel": "Preview",
     "publish": "Publish Page",
+    "updatePublish": "Update Publish",
     "publishing": "Publishing...",
     "publishSuccess": "Page published successfully!",
     "publishFailed": "Publish failed",

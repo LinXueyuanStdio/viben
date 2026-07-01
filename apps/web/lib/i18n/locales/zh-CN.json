@@ -2450,6 +2450,7 @@
   },
   "pageEditor": {
     "title": "创建页面",
+    "editTitle": "编辑页面",
     "titleLabel": "标题",
     "titlePlaceholder": "输入页面标题",
     "uidLabel": "页面 ID",
@@ -2467,6 +2468,7 @@
     "htmlLabel": "HTML 内容",
     "previewLabel": "预览",
     "publish": "发布页面",
+    "updatePublish": "更新发布",
     "publishing": "发布中...",
     "publishSuccess": "页面发布成功！",
     "publishFailed": "发布失败",
