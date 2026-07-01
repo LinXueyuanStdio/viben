@@ -16,6 +16,19 @@
 
 ## 流程
 
+```mermaid
+graph TD
+    A[0. 停止已有工作流] --> B[1. 干跑测试]
+    B --> C[2. 监控干跑]
+    C --> D{干跑通过?}
+    D -->|失败| E[分析错误日志并修复]
+    E --> B
+    D -->|通过| F[3. 生成 Changelog]
+    F --> G[4. 预发布检查]
+    G --> H[5. 正式发布]
+    H --> I[6. 监控正式发布]
+```
+
 ### 0. 停止已有发布工作流 `[AI]`
 
 > **重要**: 在触发新发布前，必须先检查并取消所有正在运行的 `release-all.yml` 工作流，避免重复发布。
@@ -28,9 +41,76 @@ gh run list --workflow=release-all.yml --status in_progress --limit 10
 gh run list --workflow=release-all.yml --status in_progress --json databaseId -q '.[].databaseId' | xargs -I {} gh run cancel {}
 ```
 
-### 1. 生成 Changelog `[AI]`
+### 1. 干跑测试 `[AI]`
 
-> **重要**: AI 必须 review 从上一个发布版本到现在的所有 commit message，然后生成 changelog。
+> **重要**: 必须先用干跑模式触发完整构建+测试流程，**全部通过后**才能写 changelog 和正式发布。干跑模式会执行构建和测试但不发布，Desktop E2E 测试必须启用。
+
+```bash
+gh workflow run release-all.yml \
+  --ref main \
+  -f version=<version> \
+  -f dry_run=true \
+  -f skip_desktop_tests=false \
+  -f release_cli=true \
+  -f release_desktop=true
+```
+
+**参数说明:**
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `dry_run` | `true` | 干跑模式：构建+测试，跳过 npm publish 和 GitHub Release |
+| `skip_desktop_tests` | `false` | **必须启用** Desktop E2E 测试 |
+| `release_cli` | `true` | 构建并测试 CLI |
+| `release_desktop` | `true` | 构建并测试 Desktop |
+
+**干跑阶段和预计时间:**
+
+| 阶段 | 预计时间 | 建议检查间隔 |
+|------|----------|--------------|
+| prepare | ~10s | 30s |
+| build-cli | ~8min | 3min |
+| test-cli | ~2min | 1.5min |
+| build-desktop | ~20min | 5min（前15min）/ 3min（后期）|
+| test-desktop | ~8min | 3min |
+| **总计** | **~40min** | |
+
+获取 run ID：
+
+```bash
+sleep 3
+gh run list --workflow=release-all.yml --limit 1 --json databaseId -q '.[0].databaseId'
+```
+
+### 2. 监控干跑 `[AI]`
+
+使用监控脚本跟踪干跑进度，**必须等所有 job 成功后才能继续**：
+
+```bash
+./scripts/monitor-release.sh <run-id>
+```
+
+**监控脚本退出码:**
+
+| 退出码 | 含义 | AI 行为 |
+|--------|------|---------|
+| 0 | 全部通过 | 进入下一步：生成 Changelog |
+| 1 | 失败/取消 | 分析错误日志，修复后重新干跑 |
+| 2 | 进行中 | 根据建议等待时间后再次检查 |
+
+如果干跑失败：
+
+```bash
+# 查看失败日志
+gh run view <run-id> --log-failed
+
+# 修复后可重新运行失败的 jobs
+gh run rerun <run-id> --failed
+```
+
+### 3. 生成 Changelog `[AI]`
+
+> **前置条件**: 干跑测试全部通过后才能执行此步骤。
 
 #### Step 1: 获取上次发布版本
 
@@ -150,7 +230,9 @@ xychart-beta
 **完整变更日志**: https://github.com/LinXueyuanStdio/viben/compare/v<prev>...v<version>
 ```
 
-### 2. 运行预发布检查 `[AI]`
+### 4. 运行预发布检查 `[AI]`
+
+> **前置条件**: Changelog 文件已创建并提交推送。
 
 发布脚本会自动运行预发布检查，也可以手动运行：
 
@@ -174,7 +256,9 @@ pnpm check:release
 
 **所有检查必须通过才能继续发布流程。**
 
-### 3. 执行发布 `[AI]`
+### 5. 执行正式发布 `[AI]`
+
+> **前置条件**: 预发布检查全部通过，changelog 已提交并推送。
 
 ```bash
 pnpm release --version <version>
