@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
 import DOMPurify from "dompurify"
 import { toast } from "sonner"
-import { X, Loader2, Upload } from "lucide-react"
+import { X, Loader2, Upload, FileText, Globe, Eye, Send } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -47,6 +47,8 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const isEditMode = !!initialData
 
   const [title, setTitle] = useState(initialData?.title ?? "")
+  const [uid, setUid] = useState(initialData?.uid ?? "")
+  const [uidManuallyEdited, setUidManuallyEdited] = useState(isEditMode)
   const [description, setDescription] = useState(initialData?.description ?? "")
   const [htmlContent, setHtmlContent] = useState(initialData?.html ?? "")
   const [visibility, setVisibility] = useState<"public" | "private">(
@@ -65,19 +67,25 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewIframeRef = useRef<HTMLIFrameElement>(null)
 
-  // UID availability
+  // Auto-slugify from title when not manually edited
+  const autoUid = useMemo(() => slugify(title), [title])
+  useEffect(() => {
+    if (!uidManuallyEdited) setUid(autoUid)
+  }, [autoUid, uidManuallyEdited])
+
+  const displayedUid = uid || autoUid
+
+  // UID availability check
   const [uidStatus, setUidStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle")
   const uidCheckRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const uid = useMemo(() => slugify(title), [title])
-
   useEffect(() => {
-    if (!uid.trim()) { setUidStatus("idle"); return }
+    if (!displayedUid.trim()) { setUidStatus("idle"); return }
     setUidStatus("checking")
     clearTimeout(uidCheckRef.current)
     uidCheckRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/pages/check-uid?uid=${encodeURIComponent(uid)}`)
+        const res = await fetch(`/api/pages/check-uid?uid=${encodeURIComponent(displayedUid)}`)
         if (!res.ok) { setUidStatus("available"); return }
         const data = await res.json()
         setUidStatus(data.available ? "available" : "unavailable")
@@ -86,7 +94,7 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
       }
     }, 500)
     return () => clearTimeout(uidCheckRef.current)
-  }, [uid])
+  }, [displayedUid])
 
   const handleCoverUpload = useCallback(async (file: File) => {
     const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
@@ -143,7 +151,8 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
 
   const handlePublish = useCallback(async () => {
     if (!title.trim()) { toast.error(t("pageEditor.titleRequired")); return }
-    if (!uid.trim()) { toast.error(t("pageEditor.uidRequired")); return }
+    const finalUid = (uid || autoUid).trim()
+    if (!finalUid) { toast.error(t("pageEditor.uidRequired")); return }
     if (!htmlContent.trim()) { toast.error(t("pageEditor.contentRequired")); return }
     setIsSubmitting(true)
     try {
@@ -167,7 +176,7 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
       const res = await fetch("/api/pages/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uid: uid.trim(), title: title.trim(), html,
+          uid: finalUid, title: title.trim(), html,
           description: description.trim() || undefined,
           visibility, tags: tags.length > 0 ? tags : undefined,
           cover_asset_id: finalCoverAssetId,
@@ -177,21 +186,25 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t("pageEditor.publishFailed"))
       toast.success(t("pageEditor.publishSuccess"))
-      router.push(data.read_url || `/${encodeURIComponent(userSlug)}/${encodeURIComponent(uid.trim())}?tab=read`)
+      router.push(data.read_url || `/${encodeURIComponent(userSlug)}/${encodeURIComponent(finalUid)}?tab=read`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("pageEditor.publishFailed"))
     } finally { setIsSubmitting(false) }
-  }, [title, uid, htmlContent, description, visibility, tags, coverAssetId, collection, router, t, userSlug])
+  }, [title, uid, autoUid, htmlContent, description, visibility, tags, coverAssetId, collection, router, t, userSlug])
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 py-8">
+    <div className="mx-auto max-w-4xl space-y-8 py-8 pb-24">
       <h1 className="text-2xl font-semibold tracking-tight">
         {isEditMode ? t("pageEditor.editTitle") : t("pageEditor.title")}
       </h1>
 
-      {/* ── ① 基础信息 ── */}
+      {/* Basic Info */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold border-b border-border pb-2">① {t("pageEditor.basicInfo")}</h2>
+        <h2 className="text-lg font-semibold border-b border-border pb-2">
+          <FileText className="size-4 mr-2 inline" />
+          {t("pageEditor.basicInfo")}
+        </h2>
+        <p className="text-[13px] text-muted-foreground -mt-2">Title and description for your page.</p>
 
         <div className="space-y-2">
           <Label htmlFor="title">
@@ -204,46 +217,40 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
             placeholder={t("pageEditor.titlePlaceholder")}
             className="text-lg font-medium"
           />
-          {title.trim() ? (
-            <div className="space-y-1">
-              <p className="text-[13px]">
-                <span className="text-muted-foreground">页面地址 </span>
-                <span className="text-muted-foreground select-none">{userSlug} / </span>
-                <span className="font-semibold text-foreground">{uid || "..."}</span>
-              </p>
-              {uid !== title && (
-                <p className="text-[13px] text-amber-600 dark:text-amber-400 leading-relaxed">
-                  页面地址仅支持字母、数字、连字符(-)和下划线(_)。空格和特殊符号已自动替换。
-                </p>
-              )}
-              {uid === title && uidStatus === "idle" && (
-                <p className="text-[13px] text-muted-foreground">
-                  <Loader2 className="size-3 inline animate-spin mr-1" />
-                  检查可用性...
-                </p>
-              )}
-              {uidStatus === "checking" && (
-                <p className="text-[13px] text-muted-foreground">
-                  <Loader2 className="size-3 inline animate-spin mr-1" />
-                  检查可用性...
-                </p>
-              )}
-              {uidStatus === "available" && (
-                <p className="text-[13px] text-emerald-600 dark:text-emerald-400 leading-relaxed">
-                  ✅ <span className="font-semibold">{uid}</span> 可用。发布后可通过 {userSlug}/{uid} 访问。
-                </p>
-              )}
-              {uidStatus === "unavailable" && (
-                <p className="text-[13px] text-red-500 leading-relaxed">
-                  ❌ <span className="font-semibold">{uid}</span> 已被占用。请换一个标题试试，例如在后面加上数字或日期。
-                </p>
-              )}
+          <div className="space-y-1">
+            <div className="flex items-center gap-0 rounded-md border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+              <span className="shrink-0 px-3 py-2 text-sm text-muted-foreground bg-surface-secondary border-r border-border select-none">
+                {userSlug} /
+              </span>
+              <input
+                value={uidManuallyEdited ? uid : autoUid}
+                onChange={(e) => { setUidManuallyEdited(true); setUid(e.target.value) }}
+                placeholder={autoUid || "page-url-identifier"}
+                readOnly={isEditMode}
+                className="flex-1 min-w-0 border-0 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground font-medium"
+              />
             </div>
-          ) : (
-            <p className="text-[13px] text-muted-foreground leading-relaxed">
-              给页面起个好名字吧。标题会自动生成为页面地址的一部分，就像你的专属链接。
-            </p>
-          )}
+            {uid !== autoUid && (
+              <p className="text-[13px] text-amber-600 dark:text-amber-400 leading-relaxed">
+                {t("pageEditor.urlHint")}
+              </p>
+            )}
+            {uidStatus === "checking" && (
+              <p className="text-[13px] text-muted-foreground">
+                <Loader2 className="size-3 inline animate-spin mr-1" />{t("pageEditor.checkingAvailability")}
+              </p>
+            )}
+            {uidStatus === "available" && (
+              <p className="text-[13px] text-emerald-600 dark:text-emerald-400 leading-relaxed">
+                {t("pageEditor.availableMsg", { userSlug, uid: displayedUid })}
+              </p>
+            )}
+            {uidStatus === "unavailable" && (
+              <p className="text-[13px] text-red-500 leading-relaxed">
+                {t("pageEditor.unavailableMsg")}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -258,100 +265,107 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
         </div>
       </section>
 
-      {/* ── ② 配置详情 ── */}
+      {/* Configuration */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold border-b border-border pb-2">② {t("pageEditor.configuration")}</h2>
+        <h2 className="text-lg font-semibold border-b border-border pb-2">
+          <Globe className="size-4 mr-2 inline" />
+          {t("pageEditor.configuration")}
+        </h2>
+        <p className="text-[13px] text-muted-foreground -mt-2">Visibility, tags, collection, and cover image.</p>
 
-        <div className="space-y-2">
-          <Label>
-            {t("pageEditor.visibilityLabel")} <span className="text-red-500">*</span>
-          </Label>
-          <Select
-            value={visibility}
-            onValueChange={(v: "public" | "private") => setVisibility(v)}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="public">{t("pageEditor.public")}</SelectItem>
-              <SelectItem value="private">{t("pageEditor.private")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>{t("pageEditor.tagsLabel")}</Label>
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-3 py-2 focus-within:ring-1 focus-within:ring-ring">
-            {tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="gap-1">
-                {tag}
-                <button
-                  type="button" onClick={() => removeTag(tag)}
-                  className="ml-0.5 rounded-full outline-none hover:bg-secondary-foreground/20"
-                  aria-label={t("pageEditor.removeTag", { tag })}
-                >
-                  <X className="size-3" />
-                </button>
-              </Badge>
-            ))}
-            <input
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              placeholder={t("pageEditor.tagsPlaceholder")}
-              className="min-w-[120px] flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
+        <div className="space-y-3">
+          {/* Visibility */}
+          <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 items-center">
+            <div>
+              <Label className="text-sm font-semibold">{t("pageEditor.visibilityLabel")}</Label>
+              <span className="text-red-500 ml-0.5 text-xs">* 必填</span>
+            </div>
+            <Select value={visibility} onValueChange={(v: "public" | "private") => setVisibility(v)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">🌐 {t("pageEditor.public")}</SelectItem>
+                <SelectItem value="private">🔒 {t("pageEditor.private")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label>{t("pageEditor.collectionLabel")}</Label>
-          <CollectionSelector value={collection} onChange={setCollection} />
-        </div>
+          {/* Tags */}
+          <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
+            <div>
+              <Label className="text-sm font-semibold">{t("pageEditor.tagsLabel")}</Label>
+              <p className="text-[12px] text-muted-foreground">可选</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-3 py-2 focus-within:ring-1 focus-within:ring-ring">
+              {tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="gap-1">
+                  {tag}
+                  <button type="button" onClick={() => removeTag(tag)} className="ml-0.5 rounded-full outline-none hover:bg-secondary-foreground/20" aria-label={t("pageEditor.removeTag", { tag })}>
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              ))}
+              <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder={t("pageEditor.tagsPlaceholder")} className="min-w-[120px] flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label>{t("pageEditor.coverLabel")}</Label>
-          <div
-            className={cn(
-              "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-card p-8 text-center transition-colors",
-              isDragging && "border-primary bg-primary/5",
-              coverUrl && "border-solid p-2",
-            )}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={(e) => { if (e.currentTarget.contains(e.relatedTarget as Node)) return; setIsDragging(false) }}
-            onDrop={(e) => { e.preventDefault(); setIsDragging(false); const file = e.dataTransfer.files[0]; if (file) handleCoverUpload(file) }}
-            onClick={() => fileInputRef.current?.click()}
-            role="button" tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click() }}
-          >
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCoverUpload(file) }} />
-            {isUploading ? (
-              <Loader2 className="size-8 animate-spin text-muted-foreground" />
-            ) : coverUrl ? (
-              <div className="relative w-full">
-                <img src={coverUrl} alt="Cover preview" className="h-48 w-full rounded-lg object-cover" />
-                <button type="button" className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-foreground hover:bg-background"
-                  onClick={(e) => { e.stopPropagation(); setCoverUrl(null); setCoverAssetId(null) }}>
-                  <X className="size-4" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <Upload className="mb-2 size-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{t("pageEditor.coverHint")}</p>
-              </>
-            )}
+          {/* Collection */}
+          <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
+            <div>
+              <Label className="text-sm font-semibold">{t("pageEditor.collectionLabel")}</Label>
+              <p className="text-[12px] text-muted-foreground">可选</p>
+            </div>
+            <CollectionSelector value={collection} onChange={setCollection} />
+          </div>
+
+          {/* Cover */}
+          <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
+            <div>
+              <Label className="text-sm font-semibold">{t("pageEditor.coverLabel")}</Label>
+              <p className="text-[12px] text-muted-foreground">可选</p>
+            </div>
+            <div
+              className={cn(
+                "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-card p-6 text-center transition-colors cursor-pointer",
+                isDragging && "border-primary bg-primary/5",
+                coverUrl && "border-solid p-2",
+              )}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={(e) => { if (e.currentTarget.contains(e.relatedTarget as Node)) return; setIsDragging(false) }}
+              onDrop={(e) => { e.preventDefault(); setIsDragging(false); const file = e.dataTransfer.files[0]; if (file) handleCoverUpload(file) }}
+              onClick={() => fileInputRef.current?.click()}
+              role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click() }}
+            >
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCoverUpload(file) }} />
+              {isUploading ? (
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              ) : coverUrl ? (
+                <div className="relative w-full">
+                  <img src={coverUrl} alt="Cover preview" className="h-48 w-full rounded-lg object-cover" />
+                  <button type="button" className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-foreground hover:bg-background" onClick={(e) => { e.stopPropagation(); setCoverUrl(null); setCoverAssetId(null) }}>
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="mb-1 size-6 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">{t("pageEditor.coverHint")}</p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── ③ 编辑内容 ── */}
+      {/* Edit Content */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold border-b border-border pb-2">
-          ③ {t("pageEditor.editContent")} <span className="text-red-500">*</span>
+          <Eye className="size-4 mr-2 inline" />
+          {t("pageEditor.editContent")} <span className="text-red-500">*</span>
         </h2>
+        <p className="text-[13px] text-muted-foreground -mt-2">Write HTML and preview.</p>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2">
@@ -378,10 +392,14 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
         </div>
       </section>
 
-      {/* Publish */}
-      <div className="flex justify-end">
-        <Button onClick={handlePublish} disabled={isSubmitting} size="lg" className="gap-2">
+      {/* Sticky publish bar */}
+      <div className="sticky bottom-0 -mx-4 px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm flex items-center justify-between">
+        <p className="text-[13px] text-muted-foreground">
+          {title.trim() ? `${userSlug}/${uid}` : t("pageEditor.fillTitleFirst")}
+        </p>
+        <Button onClick={handlePublish} disabled={isSubmitting} size="lg" className="gap-2 min-w-[140px]">
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+          {!isSubmitting && <Send className="size-4" />}
           {isSubmitting
             ? t("pageEditor.publishing")
             : isEditMode
