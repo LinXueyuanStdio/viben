@@ -1,12 +1,9 @@
 import { after } from "next/server"
-import { eq, and, ne, desc } from "drizzle-orm"
-import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments } from "@/lib/services/community"
+import { getPublishedPageContext, canReadPage, ensureCommunityEntityForPage, recordPageView } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
-import { db, publishedPages, users } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
 import { ReadPageClient } from "@/components/pages/read-page-client"
 import type { Metadata } from "next"
-import type { MiniPageCardData } from "@/components/content/mini-page-card"
 
 interface PageProps {
   params: Promise<{ user_slug: string; page_id: string }>
@@ -43,45 +40,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-function gradientCover(title: string): string {
-  const hue = title.charCodeAt(0) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
-}
-
 export default async function PagePage({ params, searchParams }: PageProps) {
   const { user_slug, page_id } = await params
   const { tab } = await searchParams
   const activeTab = tab ?? "read"
-  const session = await getSession()
 
-  const ctx = await getPublishedPageContext(user_slug, page_id)
-  if (!ctx || !canReadPage(ctx.page, session)) {
-    notFound()
-  }
+  const [session, ctx] = await Promise.all([
+    getSession(),
+    getPublishedPageContext(user_slug, page_id),
+  ])
 
-  // Settings tab: only available to the page author
+  if (!ctx || !canReadPage(ctx.page, session)) notFound()
+
   const isAuthor = session?.userId === ctx.page.userId
   if (activeTab === "settings" && !isAuthor) {
     redirect(`/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}?tab=read`)
   }
 
-  const summary = await getCommunitySummary("published_page", ctx.page.id, session)
-  const viewerHasReacted = summary?.viewer.has_reacted ?? false
-  const viewerHasBookmarked = summary?.viewer.has_bookmarked ?? false
-
-  // Ensure community entity exists for comments
+  // 确保社区实体存在（评论需要）
   const communityEntity = await ensureCommunityEntityForPage(ctx)
 
-  // Prefetch initial comments
-  const initialComments = await listCommunityComments({
-    entityType: "published_page",
-    entityId: ctx.page.id,
-    parentCommentId: null,
-    limit: 20,
-    session,
-  })
-
-  // Record page view (fire-and-forget via after())
+  // 记录页面访问（fire-and-forget）
   after(async () => {
     try {
       await recordPageView({
@@ -95,54 +74,6 @@ export default async function PagePage({ params, searchParams }: PageProps) {
     }
   })
 
-  // Fetch recommendations (same category or same author pages, with author detail)
-  type RecEntry = { data: MiniPageCardData; href: string }
-  let recommendationEntries: RecEntry[] = []
-  try {
-    const relatedRows = await db
-      .select({
-        uid: publishedPages.uid,
-        title: publishedPages.title,
-        description: publishedPages.description,
-        authorName: publishedPages.authorName,
-        authorAvatarUrl: publishedPages.authorAvatarUrl,
-        coverUrl: publishedPages.coverUrl,
-        viewCount: publishedPages.viewCount,
-        likeCount: publishedPages.likeCount,
-        commentCount: publishedPages.commentCount,
-        userSlug: users.userSlug,
-      })
-      .from(publishedPages)
-      .innerJoin(users, eq(users.id, publishedPages.userId))
-      .where(
-        and(
-          eq(publishedPages.visibility, "public"),
-          eq(publishedPages.moderationStatus, "approved"),
-          ne(publishedPages.id, ctx.page.id),
-          ctx.page.categoryId
-            ? eq(publishedPages.categoryId, ctx.page.categoryId)
-            : eq(publishedPages.userId, ctx.author.id)
-        )
-      )
-      .orderBy(desc(publishedPages.viewCount))
-      .limit(3)
-    recommendationEntries = relatedRows.map((r) => ({
-      data: {
-        cover: r.coverUrl ? `url(${r.coverUrl})` : gradientCover(r.title),
-        title: r.title,
-        description: r.description ?? "",
-        authorName: r.authorName ?? "?",
-        authorAvatarUrl: r.authorAvatarUrl ?? undefined,
-        authorFallbackText: r.authorName?.[0] ?? "?",
-        commentCount: r.commentCount,
-        stats: { views: r.viewCount, likes: r.likeCount },
-      } satisfies MiniPageCardData,
-      href: `/${encodeURIComponent(r.userSlug)}/${encodeURIComponent(r.uid)}?tab=read`,
-    }))
-  } catch {
-    recommendationEntries = []
-  }
-
   return (
     <ReadPageClient
       userSlug={user_slug}
@@ -152,8 +83,8 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       pageDescription={ctx.page.description}
       pageUid={ctx.page.uid}
       pageViewCount={ctx.page.viewCount}
-      pageBookmarkCount={ctx.page.bookmarkCount}
       pageLikeCount={ctx.page.likeCount}
+      pageBookmarkCount={ctx.page.bookmarkCount}
       pageCommentCount={ctx.page.commentCount}
       pageShareCount={ctx.page.shareCount}
       pagePublishedAt={ctx.page.publishedAt}
@@ -170,13 +101,10 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       sessionAvatarUrl={session?.avatarUrl}
       sessionUserSlug={session?.userSlug}
       sessionUserId={session?.userId}
-      viewerHasReacted={viewerHasReacted}
-      viewerHasBookmarked={viewerHasBookmarked}
       communityEntityId={communityEntity.id}
       pageDbId={ctx.page.id}
-      initialComments={initialComments.comments}
-      initialCommentsNextCursor={initialComments.next_cursor}
-      recommendationEntries={recommendationEntries}
+      pageCategoryId={ctx.page.categoryId}
+      authorDbId={ctx.author.id}
       activeTab={activeTab}
       isAuthor={isAuthor}
     />

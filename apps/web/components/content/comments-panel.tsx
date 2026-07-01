@@ -8,6 +8,9 @@ import { toast } from "sonner"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { useComments, type PageComment } from "@/hooks/use-page-data"
+
+type CommunityComment = PageComment
 import { cn } from "@/lib/utils"
 import { createComment } from "@/lib/api/community"
 import { useToggleLike } from "@/hooks/use-toggle-like"
@@ -30,26 +33,6 @@ function renderMentionText(text: string): React.ReactNode {
   })
 }
 
-// --- Types ---
-
-interface CommunityComment {
-  id: string
-  content: string
-  created_at: string
-  updated_at: string
-  depth: number
-  parent_comment_id?: string | null
-  replies_count: number
-  reactions_count: number
-  viewer_has_reacted: boolean
-  author: {
-    id: string
-    user_slug: string
-    display_name: string
-    avatar_url: string | null
-  }
-}
-
 interface CommentsPanelProps {
   communityEntityId: string
   /** 页面在 published_pages 表中的 DB ID，用于评论 API 的 entity_id */
@@ -60,8 +43,6 @@ interface CommentsPanelProps {
   sessionUsername?: string
   sessionAvatarUrl?: string
   sessionUserId?: string
-  initialComments: CommunityComment[]
-  initialNextCursor: string | null
 }
 
 // --- Comment Composer ---
@@ -550,52 +531,46 @@ export function CommentsPanel({
   sessionUsername,
   sessionAvatarUrl,
   sessionUserId,
-  initialComments,
-  initialNextCursor,
 }: CommentsPanelProps) {
   const { t } = useTranslation()
-  const [comments, setComments] = useState<CommunityComment[]>(initialComments)
-  const [loading, setLoading] = useState(false)
+  const { data: commentsData, isLoading: loading } = useComments(entityType, communityEntityId)
+  const queryClient = useQueryClient()
+  const [comments, setComments] = useState<PageComment[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [sort, setSort] = useState<"latest" | "oldest">("latest")
   const [replyTo, setReplyTo] = useState<{ username: string; commentId: string } | null>(null)
-  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor)
-  const [loadingMore, setLoadingMore] = useState(false)
 
-  const fetchComments = useCallback(async (cursor?: string | null) => {
-    if (cursor) {
-      setLoadingMore(true)
-    } else {
-      setLoading(true)
+  // Sync react-query data to local state
+  useEffect(() => {
+    if (commentsData?.comments) {
+      setComments(commentsData.comments)
+      setNextCursor(commentsData.next_cursor ?? null)
     }
+  }, [commentsData])
+
+  // Load more comments (pagination)
+  const fetchComments = useCallback(async (cursor: string) => {
+    setLoadingMore(true)
     try {
-      const params = new URLSearchParams({
-        entity_type: entityType,
-        entity_id: pageDbId,
-        limit: "20",
-      })
-      if (cursor) params.set("cursor", cursor)
+      const params = new URLSearchParams({ entity_type: entityType, entity_id: communityEntityId, limit: "20", cursor })
       const res = await fetch(`/api/community/comments?${params}`)
       if (res.ok) {
         const data = await res.json()
-        if (cursor) {
-          setComments((prev) => [...prev, ...(data.comments ?? [])])
-        } else {
-          setComments(data.comments ?? [])
-        }
+        setComments((prev) => [...prev, ...(data.comments ?? [])])
         setNextCursor(data.next_cursor ?? null)
       }
     } catch (err) {
-      console.error("Failed to fetch comments:", err)
+      console.error("Failed to load more comments:", err)
     } finally {
-      setLoading(false)
       setLoadingMore(false)
     }
-  }, [pageDbId])
+  }, [entityType, communityEntityId])
 
   // Refresh after posting a new comment
   const refreshComments = useCallback(() => {
-    fetchComments()
-  }, [fetchComments])
+    queryClient.invalidateQueries({ queryKey: ["comments", entityType, communityEntityId] })
+  }, [queryClient, entityType, communityEntityId])
 
   const sortedComments = [...comments].sort((a, b) => {
     const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

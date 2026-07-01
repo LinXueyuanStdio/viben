@@ -1,13 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { createContext, useContext } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { createContext, useContext, type ReactNode } from "react"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider } from "./drawer-context"
-import { getTopbarMode } from "./topbar-mode"
-import { useReadPageMode } from "@/hooks/use-read-mode"
+import { TopbarContentProvider, useTopbarContent } from "./topbar-content-context"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
@@ -28,12 +26,23 @@ export function useAppShell() {
   return useContext(AppShellContext)
 }
 
+// ===== ReadAwareMain — 从 context 读取 isRead 以确定布局 =====
+function ReadAwareMain({ children }: { children: ReactNode }) {
+  const { isRead } = useTopbarContent()
+  return (
+    <main className={cn("flex-1", isRead ? "overflow-hidden" : "overflow-y-auto")}>
+      <div className={cn(isRead ? "p-0 max-w-none" : "w-[min(1280px,100%)] mx-auto px-4 py-4")}>
+        {children}
+      </div>
+    </main>
+  )
+}
+
 // ===== AppShell Component =====
 interface AppShellProps {
   children: React.ReactNode
   session: Session | null
   adminStats?: { pendingPackagesCount: number }
-  // NavPopover + GlobalSearch 数据
   notificationItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
   historyItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
   hotSearches?: Array<{ query: string; count: number }>
@@ -49,11 +58,6 @@ export function AppShell({
   hotSearches = [],
   recentSearches = [],
 }: AppShellProps) {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const readHasPageMode = useReadPageMode()
-  const isRead = getTopbarMode(pathname, searchParams) === "read" || readHasPageMode
-
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("viben-sidebar-collapsed") === "true"
@@ -75,6 +79,7 @@ export function AppShell({
   return (
     <AppShellContext.Provider value={contextValue}>
       <DrawerProvider>
+      <TopbarContentProvider>
       <div className="flex h-screen flex-col overflow-hidden">
         <Topbar
           session={session}
@@ -90,13 +95,10 @@ export function AppShell({
             session={session}
             pendingPackagesCount={adminStats?.pendingPackagesCount}
           />
-          <main className={cn("flex-1", isRead ? "overflow-hidden" : "overflow-y-auto")}>
-            <div className={cn(isRead ? "p-0 max-w-none" : "w-[min(1280px,100%)] mx-auto px-4 py-4")}>
-              {children}
-            </div>
-          </main>
+          <ReadAwareMain>{children}</ReadAwareMain>
         </div>
       </div>
+      </TopbarContentProvider>
       </DrawerProvider>
     </AppShellContext.Provider>
   )
