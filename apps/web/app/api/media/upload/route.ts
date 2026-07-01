@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import sharp from 'sharp';
 import { AuthError, requireAuth } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { mediaAssets } from '@/lib/db/schema';
@@ -41,12 +42,34 @@ export async function POST(request: NextRequest) {
     const folder = kind === 'avatar' ? 'avatars' : 'media';
     const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 
+    // 获取原图尺寸
+    const metadata = await sharp(buffer).metadata();
+    const imageWidth = metadata.width ?? null;
+    const imageHeight = metadata.height ?? null;
+
     const result = await getStorage().upload(key, buffer, { contentType: file.type });
 
     // Use proxy URL for Vercel Blob (private blobs return 403 on direct access)
     const assetUrl = result.pathname
       ? `/api/media/asset?pathname=${encodeURIComponent(result.pathname)}`
       : result.url;
+
+    // 生成缩略图（400px 宽，保持比例，不放大）
+    let thumbnailUrl: string | null = null;
+    try {
+      const thumbKey = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}_thumb.${ext}`;
+      const thumbBuffer = await sharp(buffer)
+        .resize(400, undefined, { withoutEnlargement: true })
+        .toFormat(file.type === 'image/png' ? 'png' : 'jpeg', file.type === 'image/png' ? {} : { quality: 85 })
+        .toBuffer();
+      const thumbResult = await getStorage().upload(thumbKey, thumbBuffer, { contentType: file.type });
+      thumbnailUrl = thumbResult.pathname
+        ? `/api/media/asset?pathname=${encodeURIComponent(thumbResult.pathname)}`
+        : thumbResult.url;
+    } catch (e) {
+      // 缩略图生成失败不阻塞上传
+      console.warn('Thumbnail generation failed:', e);
+    }
 
     const [asset] = await db
       .insert(mediaAssets)
@@ -55,12 +78,19 @@ export async function POST(request: NextRequest) {
         kind,
         source: 'object_storage',
         url: assetUrl,
+        thumbnailUrl,
         mimeType: file.type,
+        width: imageWidth,
+        height: imageHeight,
         sizeBytes: file.size,
       })
-      .returning({ id: mediaAssets.id });
+      .returning({ id: mediaAssets.id, thumbnailUrl: mediaAssets.thumbnailUrl });
 
-    return NextResponse.json({ url: assetUrl, asset_id: asset.id });
+    return NextResponse.json({
+      url: assetUrl,
+      asset_id: asset.id,
+      thumbnail_url: asset.thumbnailUrl,
+    });
   } catch (error) {
     console.error('Media upload failed:', error);
     return NextResponse.json({ error: 'upload_failed' }, { status: 500 });

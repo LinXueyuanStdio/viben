@@ -9,6 +9,7 @@ import { X, Loader2, Upload } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { slugify } from "@/lib/utils"
+import { captureHtmlCover } from "@/lib/cover-capture"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,29 +25,48 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-interface PageEditorProps {
-  userSlug: string
+export interface PageEditorInitialData {
+  pageId: string
+  title: string
+  uid: string
+  description: string
+  html: string
+  visibility: "public" | "unlisted" | "private"
+  tags: string[]
+  coverUrl?: string | null
+  coverAssetId?: string | null
 }
 
-export function PageEditor({ userSlug }: PageEditorProps) {
+interface PageEditorProps {
+  userSlug: string
+  initialData?: PageEditorInitialData
+}
+
+export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const { t } = useTranslation()
   const router = useRouter()
+  const isEditMode = !!initialData
 
-  const [title, setTitle] = useState("")
-  const [uid, setUid] = useState("")
-  const [uidManuallyEdited, setUidManuallyEdited] = useState(false)
-  const [description, setDescription] = useState("")
-  const [htmlContent, setHtmlContent] = useState("")
-  const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public")
-  const [tags, setTags] = useState<string[]>([])
+  const [title, setTitle] = useState(initialData?.title ?? "")
+  const [uid, setUid] = useState(initialData?.uid ?? "")
+  const [uidManuallyEdited, setUidManuallyEdited] = useState(isEditMode)
+  const [description, setDescription] = useState(initialData?.description ?? "")
+  const [htmlContent, setHtmlContent] = useState(initialData?.html ?? "")
+  const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">(
+    initialData?.visibility ?? "public",
+  )
+  const [tags, setTags] = useState<string[]>(initialData?.tags ?? [])
   const [tagInput, setTagInput] = useState("")
-  const [coverAssetId, setCoverAssetId] = useState<string | null>(null)
-  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [coverAssetId, setCoverAssetId] = useState<string | null>(
+    initialData?.coverAssetId ?? null,
+  )
+  const [coverUrl, setCoverUrl] = useState<string | null>(initialData?.coverUrl ?? null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [collection, setCollection] = useState<CollectionSelectorValue | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
 
   const handleTitleChange = useCallback((value: string) => {
     setTitle(value)
@@ -136,6 +156,27 @@ export function PageEditor({ userSlug }: PageEditorProps) {
 
     setIsSubmitting(true)
     try {
+      // 自动封面：未上传封面时从预览 iframe 截取
+      let finalCoverAssetId = coverAssetId
+      if (!finalCoverAssetId && previewIframeRef.current?.contentDocument?.body) {
+        try {
+          const blob = await captureHtmlCover(previewIframeRef.current.contentDocument.body)
+          if (blob) {
+            const formData = new FormData()
+            formData.append("file", new File([blob], "cover.png", { type: "image/png" }))
+            formData.append("kind", "page_cover")
+            const uploadRes = await fetch("/api/media/upload", { method: "POST", body: formData })
+            if (uploadRes.ok) {
+              const data = await uploadRes.json()
+              finalCoverAssetId = data.asset_id
+            }
+          }
+        } catch (e) {
+          // 截图失败不阻塞发布
+          console.warn("Auto cover capture failed:", e)
+        }
+      }
+
       const html = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true })
       const res = await fetch("/api/pages/publish", {
         method: "POST",
@@ -147,7 +188,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
           description: description.trim() || undefined,
           visibility,
           tags: tags.length > 0 ? tags : undefined,
-          cover_asset_id: coverAssetId,
+          cover_asset_id: finalCoverAssetId,
           collection_slug: collection?.slug,
           collection_name: collection?.name,
         }),
@@ -168,7 +209,9 @@ export function PageEditor({ userSlug }: PageEditorProps) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("pageEditor.title")}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">
+        {isEditMode ? t("pageEditor.editTitle") : t("pageEditor.title")}
+      </h1>
 
       {/* Cover upload area */}
       <div className="space-y-2">
@@ -258,6 +301,8 @@ export function PageEditor({ userSlug }: PageEditorProps) {
             value={uid}
             onChange={(e) => handleUidChange(e.target.value)}
             placeholder={t("pageEditor.uidPlaceholder")}
+            readOnly={isEditMode}
+            disabled={isEditMode}
           />
         </div>
         <div className="space-y-2">
@@ -338,9 +383,10 @@ export function PageEditor({ userSlug }: PageEditorProps) {
           <Label>{t("pageEditor.previewLabel")}</Label>
           <div className="overflow-hidden rounded-md border border-border bg-background">
             <iframe
+              ref={previewIframeRef}
               title="Preview"
               srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,sans-serif;line-height:1.6;padding:1rem;color:#333;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}pre{overflow-x:auto;background:#f5f5f5;padding:1rem;border-radius:4px}code{font-size:0.9em}</style></head><body>${previewHtml}</body></html>`}
-              sandbox=""
+              sandbox="allow-same-origin"
               className="h-[400px] w-full border-0"
             />
           </div>
@@ -351,7 +397,11 @@ export function PageEditor({ userSlug }: PageEditorProps) {
       <div className="flex justify-end">
         <Button onClick={handlePublish} disabled={isSubmitting} size="lg">
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          {isSubmitting ? t("pageEditor.publishing") : t("pageEditor.publish")}
+          {isSubmitting
+            ? t("pageEditor.publishing")
+            : isEditMode
+              ? t("pageEditor.updatePublish")
+              : t("pageEditor.publish")}
         </Button>
       </div>
     </div>
