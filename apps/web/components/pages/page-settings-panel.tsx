@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import type { ComponentType, ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
@@ -17,6 +18,7 @@ import {
   Loader2,
   Mail,
   MessageCircle,
+  Pen,
   RotateCcw,
   Search,
   Share2,
@@ -131,6 +133,7 @@ export function PageSettingsPanel({
   className,
 }: PageSettingsPanelProps) {
   const { t } = useTranslation()
+  const router = useRouter()
 
   // Publish sub-view
   const [publishSettingsView, setPublishSettingsView] =
@@ -147,7 +150,6 @@ export function PageSettingsPanel({
   // Publish state
   const [isPublished, setIsPublished] = useState(false)
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null)
-  const [isPublishing, setIsPublishing] = useState(false)
 
   // History state
   const [publishHistory, setPublishHistory] = useState<PublishHistoryRecord[]>([])
@@ -215,39 +217,8 @@ export function PageSettingsPanel({
     }
   }
 
-  const handlePublish = async () => {
-    setIsPublishing(true)
-    try {
-      const res = await fetch("/api/pages/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: pageUid,
-          title: seoTitle.trim() || pageTitle,
-          html: pageHtml,
-          description: seoDescription.trim() || pageDescription || undefined,
-          visibility: pageVisibility,
-          tags: pageTags.length > 0 ? pageTags : undefined,
-          importance: "normal",
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.error ?? t("pageEditor.publishFailed"))
-      }
-      if (data.url) {
-        setPublishedUrl(data.url)
-      }
-      setIsPublished(true)
-      toast.success(t("pageEditor.publishSuccess"))
-      await loadPublishHistory()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("pageEditor.publishFailed"),
-      )
-    } finally {
-      setIsPublishing(false)
-    }
+  const handleEditPage = () => {
+    router.push(`/pages/edit?page_id=${encodeURIComponent(pageUid)}`)
   }
 
   const handleOpenPublishedPage = () => {
@@ -776,25 +747,14 @@ export function PageSettingsPanel({
           </div>
         )}
 
-        {/* Publish / Update button */}
+        {/* Edit page button */}
         <Button
           variant="default"
           size="sm"
-          onClick={handlePublish}
-          disabled={isPublishing || isLoadingHistory}
+          onClick={handleEditPage}
         >
-          {isPublishing || isLoadingHistory ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <UploadCloud className="mr-2 h-4 w-4" />
-          )}
-          {isPublishing
-            ? t("page.settings.publishing", "Publishing...")
-            : isLoadingHistory
-              ? t("common.loading", "Loading...")
-              : isPublished
-                ? t("page.settings.updatePublishButton", "Update Publish")
-                : t("page.settings.publishButton", "Publish")}
+          <Pen className="mr-2 h-4 w-4" />
+          {t("pageEditor.settingsEditPage")}
         </Button>
       </section>
     </div>
