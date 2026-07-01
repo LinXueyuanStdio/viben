@@ -114,7 +114,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
   const previewHtml = useMemo(() => {
     if (!htmlContent.trim()) return ""
     try {
-      return DOMPurify.sanitize(htmlContent)
+      return DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true })
     } catch {
       return `<div style="color:red;padding:1rem;">${t("pageEditor.parseError")}</div>`
     }
@@ -136,7 +136,7 @@ export function PageEditor({ userSlug }: PageEditorProps) {
 
     setIsSubmitting(true)
     try {
-      const html = DOMPurify.sanitize(htmlContent)
+      const html = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true })
       const res = await fetch("/api/pages/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

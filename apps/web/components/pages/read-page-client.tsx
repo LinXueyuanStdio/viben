@@ -168,6 +168,30 @@ export function ReadPageClient({
 }: ReadPageClientProps) {
   const { t } = useTranslation()
 
+  // 包装 pageHtml 为完整 HTML 文档，确保样式和结构正常渲染
+  // - 已有 <!DOCTYPE 或 <html 开头的完整文档不重复包装
+  // - 否则包裹基础文档模板（charset + viewport + 基础样式），兜底旧数据
+  const wrappedHtml = useMemo(() => {
+    const trimmed = pageHtml.trim()
+    if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+      return pageHtml
+    }
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{font-family:system-ui,sans-serif;line-height:1.6;padding:1rem;color:#333;max-width:100%;overflow-x:hidden}
+  img{max-width:100%;height:auto}
+  pre{overflow-x:auto;background:#f5f5f5;padding:1rem;border-radius:4px}
+  code{font-size:0.9em}
+</style>
+</head>
+<body>${pageHtml}</body>
+</html>`
+  }, [pageHtml])
+
   // 通知 Topbar：阅读模式、副页、设置 tab（仅作者）
   React.useEffect(() => {
     document.documentElement.setAttribute("data-page-mode", "read")
@@ -322,7 +346,7 @@ export function ReadPageClient({
         >
           <iframe
             title={pageTitle}
-            srcDoc={pageHtml}
+            srcDoc={wrappedHtml}
             onLoad={() => {
               // iframe 加载后触发 topbar 重测 --reader-header-safe
               window.dispatchEvent(new Event("resize"))
