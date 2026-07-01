@@ -1105,3 +1105,171 @@ Search for `[perf]` in Vercel Logs. Verify `t1_ms` < 30ms, `topbar_ready` latenc
 
 ---
 
+
+---
+
+## Review Fixes (2026-07-02)
+
+Three subagent reviews identified 2 Critical, 5 High, and 12 Medium findings. This section documents fixes applied to the plan. **Apply these fixes before executing any tasks.**
+
+### Fix 1 (CRITICAL): TopbarSlotContext unreachable from Topbar
+
+**Finding**: Topbar renders in AppShell, which is a parent of `{children}` where TopbarSlotProvider lives. Context is inaccessible.
+
+**Fix**: Replace TopbarSlotContext-based `hasSidePage` with `window.__viben_page_meta` global. This is the same mechanism v3 used — server component injects `<script>` tag, client reads synchronously.
+
+In **Task 4.2**, update Topbar's `hasSidePage` reading:
+
+```typescript
+// REPLACE:
+const topbarSlots = useTopbarSlots()
+const hasSidePage = topbarSlots?.hasSidePage ?? false
+
+// WITH:
+function getPageMeta(): { hasSidePage?: boolean } | null {
+  if (typeof window === "undefined") return null
+  const el = document.getElementById("viben-page-meta")
+  if (!el) return null
+  try { return JSON.parse(el.textContent ?? "") } catch { return null }
+}
+const [pageMeta] = React.useState(() => getPageMeta())
+const hasSidePage = pageMeta?.hasSidePage ?? false
+```
+
+TopbarSlotContext is still used for `centerContent`/`rightContent` overrides — these fall through to defaults when not set, which is fine.
+
+In **Task 5.1**, ReadPageShell no longer needs TopbarSlotProvider for hasSidePage. Keep it only if centerContent/rightContent overrides are needed later.
+
+### Fix 2 (CRITICAL): Publish/save code never updated for authorSlug
+
+**Finding**: After Task 1.3 (NOT NULL authorSlug), any new `INSERT INTO published_pages` will fail.
+
+**Fix**: Add **Task 1.4: Update publish/insert code to populate authorSlug**:
+
+Locate all code paths that INSERT or UPDATE `published_pages` (likely in `lib/services/community.ts` publish functions, or page creation API routes). Ensure `authorSlug` is set to `currentUser.userSlug` at write time.
+
+- Search: `grep -r "insert(publishedPages)" apps/web --include="*.ts" --include="*.tsx"`
+- For each insert site, add `authorSlug: author.userSlug` (or equivalent) to the values object
+- Verify with typecheck and manual publish test
+
+### Fix 3 (HIGH): Task 6.1 wrong line numbers
+
+**Finding**: Plan says delete "lines 172-183" but DOM effect is at lines 196-207.
+
+**Fix**: In Task 6.1 Step 1, change "lines 172-183" to "the useEffect that calls `document.documentElement.setAttribute('data-page-mode', 'read')`". Do NOT reference line numbers — reference the logical code block.
+
+### Fix 4 (HIGH): Task 3.1 wrong spec section reference
+
+**Finding**: Says "See spec Section 7.2" but API design is in spec Section 5.1.
+
+**Fix**: In Task 3.1 Step 2, change "See spec Section 7.2" to "See spec Section 5.1 (API Design) for full implementation".
+
+### Fix 5 (HIGH): No bridge mechanism for T2/T3 data
+
+**Finding**: After Task 5.2 removes T2/T3 server fetches, ReadPageClient receives null data for comments/community summary. Components that need this data have no way to access it.
+
+**Fix**: In Task 5.2, the CommunitySummaryLoader and InitialCommentsLoader async components inject data via `<script type="application/json">` tags. Add **Task 5.3: Create usePageScriptData hook** that reads these script tags:
+
+```typescript
+// hooks/use-script-data.ts (new file)
+export function useScriptData<T>(scriptId: string): T | null {
+  const [data] = React.useState<T | null>(() => {
+    if (typeof window === "undefined") return null
+    const el = document.getElementById(scriptId)
+    if (!el) return null
+    try { return JSON.parse(el.textContent ?? "") } catch { return null }
+  })
+  return data
+}
+```
+
+ReadPageClient and drawer tab components use this hook to get initial T2/T3 data. react-query then updates with fresh data.
+
+### Fix 6 (HIGH): Removing useReadPageMode without fixing isRead in app-shell.tsx
+
+**Finding**: `app-shell.tsx` uses `getTopbarMode(pathname, searchParams) === "read" || readHasPageMode`. After removing `readHasPageMode`, pages without `?tab=read` URL param will not be detected as read mode by the shell layout.
+
+**Fix**: In Task 4.4 Step 4, replace the `isRead` computation with:
+
+```typescript
+import { isPublishedPageRoute } from "@/lib/navigation/page-route"
+
+// REPLACE:
+const readHasPageMode = useReadPageMode()
+const isRead = getTopbarMode(pathname, searchParams) === "read" || readHasPageMode
+
+// WITH:
+const isRead = getTopbarMode(pathname, searchParams) === "read"
+  || isPublishedPageRoute(pathname).isPage
+```
+
+### Fix 7 (HIGH): Settings tab layout shift when session arrives
+
+**Finding**: Settings tab appears suddenly after session confirms isAuthor, shifting sibling tabs in the pill layout.
+
+**Fix**: In Task 4.2, reserve space for the Settings tab by always rendering a placeholder:
+
+```tsx
+{isAuthor !== undefined && (
+  <VibenTabsTrigger value="settings" variant="pill"
+    className={cn(!isAuthor && "invisible")}>
+    <Settings className="h-4 w-4" />
+    <span className="ml-1.5">{t("community.settings")}</span>
+  </VibenTabsTrigger>
+)}
+```
+
+Use `visibility: hidden` (not `display: none`) so the tab occupies space from first render. When `isAuthor` becomes true, it becomes visible without layout shift.
+
+### Fix 8 (MEDIUM): Missing tasks
+
+Add these tasks to the plan:
+
+- **Task 1.4**: Update publish code to populate authorSlug (see Fix 2)
+- **Task 5.3**: Create useScriptData hook for T2/T3 bridge (see Fix 5)
+- **Task 6.3**: Simplify topbar-mode.ts to remove read mode detection (after confirming isPublishedPageRoute handles it in app-shell.tsx)
+- **Task 7.4**: Lazy load GlobalSearch in Topbar via next/dynamic
+- **Task 11.3**: Verify legacy `GET /page/[userSlug]/[pageId]` raw HTML endpoint still works
+
+### Fix 9 (MEDIUM): Add loading.tsx and error.tsx
+
+- **Task 9.3**: Create `app/(dashboard)/[user_slug]/[page_id]/loading.tsx` — iframe-shaped skeleton for slow T1 queries
+- **Task 9.4**: Create `app/(dashboard)/[user_slug]/[page_id]/error.tsx` — error boundary for T2/T3 failures
+
+### Fix 10 (MEDIUM): RESERVED_SLUGS missing entries
+
+In Task 2.3, explicitly add `'analytics'` and `'pages'` to RESERVED_SLUGS. These are top-level (dashboard) routes confirmed by directory listing.
+
+### Fix 11 (LOW): Verification improvements
+
+In Task 11.2, add specific test URLs and device/browser scenarios:
+- Mobile (375px viewport): drawer full-width, tab labels not overflowing
+- Safari: requestIdleCallback fallback
+- Firefox: iframe sandbox behavior
+- Logged-out: no Settings tab, API returns public cache headers
+- Private page: 404 for non-owner, private cache headers
+- Legacy HTML endpoint: `GET /page/[userSlug]/[pageId]` still returns raw HTML
+
+### Fix 12 (LOW): DOMPurify hotfix conflict
+
+The commit `96574ac10` (2026-07-02) modified read-page-client.tsx (DOMPurify WHOLE_DOCUMENT fix). Task 6.1 must only remove the data-attribute effects while preserving the DOMPurify changes. Before editing, read the current file to understand the latest state.
+
+---
+
+## Execution Order (with fixes applied)
+
+```
+Phase 1: 1.1 → 1.2 → 1.3 → 1.4 (authorSlug + publish fix)
+Phase 2: 2.1 → 2.2 → 2.3 (services + navigation)
+Phase 3: 3.1 → 3.2 (API + hook)
+Phase 4: 4.1 → 4.2 → 4.3 → 4.4 (Topbar refactoring)
+Phase 5: 5.1 → 5.2 → 5.3 (ReadPageShell + page.tsx + script bridge)
+Phase 6: 6.1 → 6.2 → 6.3 (cleanup)
+Phase 7: 7.1 → 7.2 → 7.3 → 7.4 (lazy loading)
+Phase 8: 8.1 (prefetch hook)
+Phase 9: 9.1 → 9.2 → 9.3 → 9.4 (monitoring + loading/error)
+Phase 10: 10.1 → 10.2 (preconnect + optimizePackageImports)
+Phase 11: 11.1 → 11.2 → 11.3 (verification)
+```
+
+Each phase boundary is a safe deploy point. Phase 4 (Topbar) is the highest-risk deploy — monitor Vercel Analytics closely after deployment.
