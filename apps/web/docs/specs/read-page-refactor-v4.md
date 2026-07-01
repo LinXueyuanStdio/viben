@@ -105,6 +105,27 @@
 | DashboardShell 骨架 | 闪烁后变 AppShell | **就是阅读页的 Topbar 占位条** |
 | 页面内容谁先渲染 | Topbar → 正文 | **正文 → Topbar 叠加**（流式顺序） |
 
+### 2.4 为什么正文可以先于 Topbar 到达
+
+Next.js App Router 的渲染顺序是 layout → page。但通过 Suspense 可以实现流式优先级反转：
+
+```
+Layout 渲染:
+  DashboardShell → dynamic(ssr:false) → 服务端仅输出骨架 HTML（几 KB，瞬时）
+  ★ 骨架就是"Topbar 占位条 + 内容区域加载中"
+
+Page 渲染 (Suspense):
+  T1 完成后 → ★ iframe srcDoc 立即流式输出
+  ★ 浏览器收到后立即渲染正文 — 此时 Topbar 还是骨架状态
+
+客户端:
+  AppShellWrapper JS bundle 后台下载（几百 KB，~200ms）
+  → 下载完成 → useEffect → fetch session → AppShell 渲染 → Topbar 出现
+  ★ Topbar 出现时正文已经在 iframe 中渲染了 ~200ms
+```
+
+关键：`DashboardShell` 的 `dynamic(ssr:false)` 意味着 AppShell 的 JS 不阻塞服务端响应。服务端只输出轻量骨架 HTML（几 KB），然后 Suspense 边界内的正文立即流式跟上。骨架就是阅读页的天然"Topbar 占位条"——无需额外的 placeholder 组件。
+
 ---
 
 ## 三、Schema 变更
@@ -483,7 +504,7 @@ export function ReadPageShell({ hasSidePage, activeTab: initialTab, children }: 
 }
 ```
 
-### 7.2 Server Component 改造
+### 7.2 Server Component 改造（正文优先流式）
 
 ```typescript
 // app/(dashboard)/[user_slug]/[page_id]/page.tsx
@@ -492,12 +513,22 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   const { user_slug, page_id } = await params
   const session = await getSession()
 
-  // T1 唯一阻塞：1 次查询
+  // ★ T1 唯一阻塞：1 次查询。完成后立即流式输出正文
   const ctx = await getPublishedPageContext(user_slug, page_id)
   if (!ctx || !canReadPage(ctx.page, session)) notFound()
 
   const isAuthor = session?.userId === ctx.page.userId
   if (searchParams.tab === "settings" && !isAuthor) redirect(...)
+
+  // ★ 流式顺序（Suspense 控制）：
+  //   1. ReadPageShell + iframe（T1 完成，立即流式）
+  //   2. CommunitySummaryLoader（T2，不阻塞正文）
+  //   3. InitialCommentsLoader（T3，不阻塞正文）
+  //
+  //   注意：Topbar 由 DashboardShell → AppShellWrapper 渲染，
+  //   不在 page.tsx 的流式范围内。但 Topbar 通过 URL 判定（0ms）
+  //   知道自己处于阅读模式，不等正文到达即可正确展示。
+  //   正文在 Suspense 边界内先于 Topbar 完整 render 到达浏览器。
 
   return (
     <ReadPageShell
@@ -508,10 +539,10 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       hasSidePage={!!ctx.page.sidePageUid}
       activeTab={searchParams.tab ?? "read"}
     >
-      {/* T1: iframe 主体，立即渲染 */}
+      {/* ★ T1: iframe 正文 — 第一帧流式输出的主要内容 */}
       <ReadPageClient ... />
 
-      {/* T2: 互动数据，Suspense 流式，不阻塞 T1 */}
+      {/* T2: 互动数据，Suspense 流式，不阻塞正文 */}
       <Suspense fallback={null}>
         <CommunitySummaryLoader pageId={ctx.page.id} session={session} />
       </Suspense>
@@ -524,6 +555,37 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   )
 }
 ```
+
+**流式输出顺序解释**：
+
+```
+HTTP Response Body 字节顺序:
+┌────────────────────────────────────────────┐
+│ <html><head>...CSS...</head><body>         │  ← layout shell
+│   <DashboardShell skeleton>                │  ← 骨架（Topbar 占位条 + 内容占位）
+│     <Suspense fallback={skeleton}>         │
+│       ★ <iframe srcDoc={pageHtml} />       │  ← 第一帧正文（T1 完成后立即流式）
+│     </Suspense>                            │
+│     <Suspense fallback={null}>             │
+│       <script>community_summary</script>   │  ← T2（流式，不阻塞正文）
+│     </Suspense>                            │
+│     <Suspense fallback={null}>             │
+│       <script>initial_comments</script>    │  ← T3（流式，不阻塞正文）
+│     </Suspense>                            │
+│   </DashboardShell>                        │
+│   <script src="app-shell-wrapper.js" />    │  ← AppShellWrapper JS（后台加载）
+│ </body></html>                             │
+└────────────────────────────────────────────┘
+
+浏览器处理:
+  1. 收到 layout shell → 渲染 CSS + DashboardShell 骨架
+  2. 收到 Suspense 块 → ★ 渲染 iframe 正文（用户看到内容！）
+  3. 收到 T2/T3 → 静默注入数据
+  4. JS bundle 加载 → AppShellWrapper → fetch session → Topbar 渲染
+     → URL 判定(0ms) → Topbar 首帧就是阅读模式
+```
+
+DashboardShell 的骨架（来自 `dynamic(ssr:false)` 的 `loading` fallback）就是阅读页的"Topbar 占位条 + 内容加载中"。正文在 Suspense 解析后立即流式到达，此时 Topbar 尚未渲染——**正文先于 Topbar 到达浏览器**。
 
 ---
 
@@ -804,11 +866,13 @@ AppShell
 
 ## 十三、性能对比
 
-| 指标 | 重构前 | 重构后 |
-|------|--------|--------|
-| Topbar 模式切换 | ~500ms-2s | **0ms** |
-| 服务端 TTFB | ~75-270ms（6 串行查询） | **~10-30ms**（1 次索引查询） |
-| 首访正文可见 | ~590ms-2.3s | **~120-550ms**（-78%） |
+| 指标 | 重构前 | v4 |
+|------|--------|-----|
+| Topbar 模式切换 | ~500ms-2s | **0ms**（URL 判定） |
+| 服务端 TTFB | ~75-270ms（6 串行） | **~10-30ms**（1 次查询） |
+| 正文第一帧可见 | ~590-2300ms | **~50-200ms**（Suspense 流式，不等 session） |
+| Topbar 完整就绪 | ~530-2200ms | **~200-500ms**（第二帧：AppShellWrapper + session） |
+| Settings tab 可见（作者） | ~530-2200ms | **~200-500ms**（session 到达后出现） |
 | 后退/前进 | 同首访 | **0ms**（react-query 缓存） |
 | CDN 缓存（公开页） | 不支持 | **TTFB < 50ms** |
 | JS Bundle | 含 drawer + settings | **-40-60KB** |
@@ -818,19 +882,31 @@ AppShell
 
 ```
 场景 A：首次访问公开页面（冷加载）
-  重构前: 75-270ms(串行DB) + 100-500ms(网络) + 350-1250ms(JS) + 50-200ms(session fetch)
-        = 575ms-2.2s
-  重构后: 10-30ms(1次DB) + 100-500ms(网络) + 150-400ms(JS, 减半)
-        = 260ms-930ms
-  重构后 + CDN: <50ms(TTFB) + 150-400ms(JS) = 200-450ms
+  当前:
+    服务端 6 串行查询(~75-270ms) → 网络 → JS bundle → AppShellWrapper session fetch
+    → Topbar 渲染(默认模式) → MutationObserver → Topbar 切换到阅读模式
+    → 正文可见 ~590-2300ms
+
+  v4:
+    第一帧: 10-30ms(1次DB) → Suspense 流式 → 正文 HTML 到达 ~50-200ms
+            ★ 用户看到正文 — 此时 Topbar 还是 DashboardShell 骨架
+    第二帧: ~200-500ms → AppShellWrapper JS + session fetch → Topbar 渲染
+            ★ URL 判定(0ms) → 阅读模式首帧正确 → Settings tab 按需出现
+            ★ 右侧按钮(抽屉/沉浸/ReadMoreMenu) 立即可用，与 session 无关
+
+  v4 + CDN: TTFB < 50ms → 正文 < 100ms → Topbar ~250ms
 
 场景 B：后退到已访问页面（热加载）
-  重构前: 575ms-2.2s（全流程重来）
-  重构后: 0ms（react-query 缓存 + Topbar 同步判定）
+  当前: 575ms-2.2s（全流程重来）
+  v4: 0ms（react-query 缓存命中 + bfcache）
 
 场景 C：hover 链接（预取）
-  重构前: 不支持
-  重构后: prefetchQuery → 导航前缓存就绪 → 瞬时
+  当前: 不支持
+  v4: prefetchQuery → 导航前缓存就绪 → 瞬时
+
+场景 D：非作者访问（绝大多数流量）
+  session 到达后 isAuthor 仍为 false → 无变化 → Settings tab 永远不会出现
+  正文在第一帧 ~50-200ms 就可见，与是否有 session 无关
 ```
 
 ---
