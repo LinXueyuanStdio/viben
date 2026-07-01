@@ -49,8 +49,18 @@ else
 fi
 echo ""
 
-# 2. TypeScript type checking
-echo -e "${BLUE}[2/9] Running TypeScript type check...${NC}"
+# 2. Clean stale Next.js cache (prevents false TS errors from deleted pages)
+echo -e "${BLUE}[2/10] Cleaning stale Next.js cache...${NC}"
+if [[ -d "apps/web/.next" ]]; then
+  rm -rf apps/web/.next
+  check_pass "Next.js cache cleaned"
+else
+  check_pass "No Next.js cache to clean"
+fi
+echo ""
+
+# 3. TypeScript type checking
+echo -e "${BLUE}[3/10] Running TypeScript type check...${NC}"
 if pnpm typecheck 2>&1 | tee /tmp/typecheck-output.txt | tail -5; then
   # Check for actual TypeScript errors (error TS), not rollup/bundler warnings
   if grep -qE "error TS[0-9]+" /tmp/typecheck-output.txt; then
@@ -68,8 +78,8 @@ else
 fi
 echo ""
 
-# 3. ESLint check
-echo -e "${BLUE}[3/9] Running ESLint...${NC}"
+# 4. ESLint check
+echo -e "${BLUE}[4/10] Running ESLint...${NC}"
 if pnpm lint 2>&1 | tee /tmp/lint-output.txt | tail -5; then
   if grep -qE "[0-9]+ error" /tmp/lint-output.txt; then
     check_fail "ESLint errors found"
@@ -86,8 +96,8 @@ else
 fi
 echo ""
 
-# 4. Build @viben/core (required for CLI and Desktop)
-echo -e "${BLUE}[4/9] Building @viben/core...${NC}"
+# 5. Build @viben/core (required for CLI and Desktop)
+echo -e "${BLUE}[5/10] Building @viben/core...${NC}"
 if pnpm turbo build --filter=@viben/core 2>&1 | tee /tmp/core-build-output.txt | tail -5; then
   # Check for actual build errors, excluding bundler warnings about eval
   if grep -E "Build (failed|error)" /tmp/core-build-output.txt | grep -qv "Use of eval"; then
@@ -100,8 +110,8 @@ else
 fi
 echo ""
 
-# 5. Build viben CLI
-echo -e "${BLUE}[5/9] Building viben CLI...${NC}"
+# 6. Build viben CLI
+echo -e "${BLUE}[6/10] Building viben CLI...${NC}"
 if pnpm turbo build --filter=viben 2>&1 | tee /tmp/cli-build-output.txt | tail -5; then
   check_pass "viben CLI build passed"
 else
@@ -109,8 +119,8 @@ else
 fi
 echo ""
 
-# 6. Rust cargo check (for Tauri)
-echo -e "${BLUE}[6/9] Running Cargo check (Tauri)...${NC}"
+# 7. Rust cargo check (for Tauri)
+echo -e "${BLUE}[7/10] Running Cargo check (Tauri)...${NC}"
 if (cd apps/desktop/src-tauri && cargo check 2>&1) | tail -5; then
   check_pass "Cargo check passed"
 else
@@ -118,8 +128,8 @@ else
 fi
 echo ""
 
-# 7. Check for uncommitted changes
-echo -e "${BLUE}[7/9] Checking for uncommitted changes...${NC}"
+# 8. Check for uncommitted changes
+echo -e "${BLUE}[8/10] Checking for uncommitted changes...${NC}"
 if [[ -z "$(git status --porcelain)" ]]; then
   check_pass "Working directory is clean"
 else
@@ -128,8 +138,8 @@ else
 fi
 echo ""
 
-# 8. Check we're on main branch
-echo -e "${BLUE}[8/9] Checking current branch...${NC}"
+# 9. Check we're on main branch
+echo -e "${BLUE}[9/10] Checking current branch...${NC}"
 CURRENT_BRANCH=$(git branch --show-current)
 if [[ "$CURRENT_BRANCH" == "main" ]]; then
   check_pass "On main branch"
@@ -138,8 +148,8 @@ else
 fi
 echo ""
 
-# 9. Check local commits are pushed to remote
-echo -e "${BLUE}[9/9] Checking if local commits are pushed...${NC}"
+# 10. Check local commits are pushed to remote
+echo -e "${BLUE}[10/10] Checking if local commits are pushed...${NC}"
 git fetch origin main --quiet 2>/dev/null || true
 LOCAL_COMMIT=$(git rev-parse HEAD 2>/dev/null)
 REMOTE_COMMIT=$(git rev-parse origin/main 2>/dev/null || echo "")
