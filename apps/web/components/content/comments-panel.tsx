@@ -195,6 +195,9 @@ function CommentCard({
   const [threadText, setThreadText] = useState("")
   const [threadSubmitting, setThreadSubmitting] = useState(false)
   const [replyToUser, setReplyToUser] = useState<string | null>(null)
+  const [inlineReplyOpen, setInlineReplyOpen] = useState(false)
+  const [inlineReplyText, setInlineReplyText] = useState("")
+  const [inlineReplySubmitting, setInlineReplySubmitting] = useState(false)
   const [optimisticRepliesCount, setOptimisticRepliesCount] = useState(comment.replies_count)
 
   useEffect(() => { setOptimisticRepliesCount(comment.replies_count) }, [comment.replies_count])
@@ -242,6 +245,22 @@ function CommentCard({
   const threadHasMore = threadData?.has_more ?? false
   const threadLoading = threadQuery.isFetching
 
+  const handleInlineReplySubmit = async () => {
+    if (!inlineReplyText.trim() || inlineReplySubmitting) return
+    setInlineReplySubmitting(true)
+    try {
+      await createComment({ entityType: entityType as "published_page" | "moment", entityId: pageDbId!, content: inlineReplyText.trim(), parentCommentId: comment.id })
+      setInlineReplyText("")
+      setInlineReplyOpen(false)
+      setOptimisticRepliesCount((c) => c + 1)
+      queryClient.invalidateQueries({ queryKey: ["replies", entityType, pageDbId, comment.id] })
+    } catch {
+      toast.error(t("community.commentFailed"))
+    } finally {
+      setInlineReplySubmitting(false)
+    }
+  }
+
   const handleThreadSubmit = async () => {
     if (!threadText.trim() || threadSubmitting) return
     setThreadSubmitting(true)
@@ -280,7 +299,9 @@ function CommentCard({
       </Avatar>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
-          <span className="font-bold">{comment.author.display_name}</span>
+          <Link href={`/${encodeURIComponent(comment.author.user_slug)}`} className="font-bold hover:underline">
+            {comment.author.display_name}
+          </Link>
           <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
           <span className="text-muted-foreground">{timeAgo(comment.created_at)}</span>
         </div>
@@ -302,8 +323,15 @@ function CommentCard({
             {like.count > 0 && <span>{like.count}</span>}
           </button>
           <button
-            onClick={() => onReply?.(comment.author.display_name, comment.id)}
-            className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => {
+              if (!isAuthenticated) { toast.error("请先登录"); return }
+              setInlineReplyOpen(!inlineReplyOpen)
+              if (!inlineReplyOpen) setInlineReplyText(`@${comment.author.display_name} `)
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 text-[13px] transition-colors",
+              inlineReplyOpen ? "text-sky-500" : "text-muted-foreground hover:text-foreground"
+            )}
           >
             <MessageCircle className="size-3.5" />
           </button>
@@ -318,6 +346,27 @@ function CommentCard({
           )}
         </div>
 
+        {/* Inline reply composer */}
+        {inlineReplyOpen && (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              value={inlineReplyText}
+              onChange={(e) => setInlineReplyText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInlineReplySubmit() } }}
+              placeholder={t("community.writeComment")}
+              disabled={inlineReplySubmitting}
+              className="flex-1 min-w-0 rounded-full border border-border bg-surface-secondary px-3 py-1.5 text-[13px] outline-none focus:border-primary/50 placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={handleInlineReplySubmit}
+              disabled={!inlineReplyText.trim() || inlineReplySubmitting}
+              className="shrink-0 text-[13px] text-primary font-bold hover:underline disabled:opacity-40"
+            >
+              {inlineReplySubmitting ? <Loader2 className="size-3.5 animate-spin" /> : t("community.send")}
+            </button>
+          </div>
+        )}
+
         {/* Preloaded replies — hidden when thread is open to avoid duplication */}
         {!threadOpen && replies.length > 0 && (
           <div className="mt-2 space-y-2">
@@ -329,10 +378,19 @@ function CommentCard({
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-bold">{r.author.display_name}</span>
+                    <Link href={`/${encodeURIComponent(r.author.user_slug)}`} className="font-bold hover:underline">
+                      {r.author.display_name}
+                    </Link>
                     <span className="text-muted-foreground text-[12px]">{timeAgo(r.created_at)}</span>
                   </div>
                   <p className="text-muted-foreground leading-relaxed mt-0.5">{renderMentionText(r.content)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* "查看全部 N 条回复" button */}
         {optimisticRepliesCount > 2 && (
           <button
             onClick={() => setThreadOpen(!threadOpen)}
@@ -447,10 +505,12 @@ function ThreadReply({
       </Avatar>
       <div>
         <div className="flex items-center gap-1.5">
-          <span className="font-bold">{reply.author.display_name}</span>
+          <Link href={`/${encodeURIComponent(reply.author.user_slug)}`} className="font-bold hover:underline">
+            {reply.author.display_name}
+          </Link>
           <span className="text-muted-foreground text-[12px]">{timeAgo(reply.created_at)}</span>
         </div>
-        <p className="text-foreground leading-relaxed mt-0.5">{reply.content}</p>
+        <p className="text-foreground leading-relaxed mt-0.5">{renderMentionText(reply.content)}</p>
         <div className="flex items-center gap-4 mt-1.5">
           <button
             onClick={() => threadLike.toggle().catch(() => {})}
