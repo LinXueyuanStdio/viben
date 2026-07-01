@@ -16,6 +16,18 @@
 
 ## 流程
 
+### 0. 停止已有发布工作流 `[AI]`
+
+> **重要**: 在触发新发布前，必须先检查并取消所有正在运行的 `release-all.yml` 工作流，避免重复发布。
+
+```bash
+# 查看正在运行的发布工作流
+gh run list --workflow=release-all.yml --status in_progress --limit 10
+
+# 取消所有进行中的发布工作流
+gh run list --workflow=release-all.yml --status in_progress --json databaseId -q '.[].databaseId' | xargs -I {} gh run cancel {}
+```
+
 ### 1. 生成 Changelog `[AI]`
 
 > **重要**: AI 必须 review 从上一个发布版本到现在的所有 commit message，然后生成 changelog。
