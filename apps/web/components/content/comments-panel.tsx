@@ -324,7 +324,7 @@ function CommentCard({
           </button>
           <button
             onClick={() => {
-              if (!isAuthenticated) { toast.error("请先登录"); return }
+              if (!isAuthenticated) { toast.error(t("community.loginToInteract")); return }
               setInlineReplyOpen(!inlineReplyOpen)
               if (!inlineReplyOpen) setInlineReplyText(`@${comment.author.display_name} `)
             }}
