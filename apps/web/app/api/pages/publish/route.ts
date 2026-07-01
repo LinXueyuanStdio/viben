@@ -190,6 +190,7 @@ export async function POST(request: NextRequest) {
       .values({
         uid,
         userId: session.userId,
+        authorSlug: session.userSlug,
         title,
         icon: icon ?? null,
         description: description ?? null,
@@ -218,6 +219,7 @@ export async function POST(request: NextRequest) {
           tags: normalizedTags,
           visibility: normalizedVisibility,
           moderationStatus: 'approved',
+          authorSlug: session.userSlug,
           lastPublishedAt: sql`now()`,
           versionCount: nextVersion,
           updatedAt: sql`now()`,

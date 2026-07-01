@@ -726,6 +726,7 @@ export const publishedPages = pgTable(
     coverUrl: text('cover_url'),
     authorName: text('author_name'),
     authorAvatarUrl: text('author_avatar_url'),
+    authorSlug: text('author_slug').notNull(),
     sidePageUid: text('side_page_uid'),
     chaptersJson: jsonb('chapters_json'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -743,6 +744,7 @@ export const publishedPages = pgTable(
     index('published_pages_last_published_at_idx').on(table.lastPublishedAt),
     index('published_pages_category_id_idx').on(table.categoryId),
     uniqueIndex('published_pages_user_id_uid_idx').on(table.userId, table.uid),
+    uniqueIndex('published_pages_author_slug_uid_idx').on(table.authorSlug, table.uid),
   ]
 );
 
