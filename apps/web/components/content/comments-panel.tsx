@@ -160,7 +160,7 @@ function CommentComposer({
         <div className="flex justify-end mt-1.5">
           <Button onClick={handleSubmit} disabled={!text.trim() || submitting} size="sm" className="gap-1.5 min-h-[38px]">
             <Send className="size-3.5" />
-            {t("community.published")}
+            {t("community.send")}
           </Button>
         </div>
       </div>
