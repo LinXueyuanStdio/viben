@@ -3,12 +3,13 @@
 import * as React from "react"
 import { useTranslation } from "react-i18next"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Bell, Clock, Flag, Maximize2, MessageSquare, MoreHorizontal, FileText, Columns2, PanelRight, Settings } from "lucide-react"
+import { Bell, Clock, Maximize2, FileText, Columns2, PanelRight, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
-import { useReadPageMode } from "@/hooks/use-read-mode"
+import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { useDrawer } from "./drawer-context"
+import { useTopbarSlots } from "./topbar-slots"
 import { BreadcrumbNav } from "./breadcrumb"
 import { GlobalSearch } from "./global-search"
 import { NavPopover } from "./nav-popover"
@@ -16,8 +17,7 @@ import { IconButton } from "@/components/ui/icon-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
 import { CreateDropdown } from "./create-dropdown"
-import { ReportDialog } from "@/components/content/report-dialog"
-import { FeedbackDialog } from "@/components/content/feedback-dialog"
+import { ReadMoreMenu } from "@/components/pages/read-more-menu"
 import { HeaderAuthButtons } from "./header-auth-buttons"
 import { ThemeToggle } from "./theme-toggle"
 import { LanguageSwitcher } from "./language-switcher"
@@ -26,6 +26,8 @@ import type { Session } from "@/lib/auth/types"
 interface TopbarProps {
   session: Session | null
   onToggleSidebar: () => void
+  centerContent?: React.ReactNode
+  rightContent?: React.ReactNode
   // NavPopover + GlobalSearch 数据
   notificationItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
   historyItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
@@ -33,9 +35,20 @@ interface TopbarProps {
   recentSearches?: string[]
 }
 
+// hasSidePage: 从服务端注入的 <script id="viben-page-meta"> 同步读取
+// 首次渲染时可用（服务端已在 HTML 中输出），0ms
+function getPageMeta(): { hasSidePage?: boolean } | null {
+  if (typeof window === "undefined") return null
+  const el = document.getElementById("viben-page-meta")
+  if (!el) return null
+  try { return JSON.parse(el.textContent ?? "") } catch { return null }
+}
+
 export function Topbar({
   session,
   onToggleSidebar,
+  centerContent,
+  rightContent,
   notificationItems = [],
   historyItems = [],
   hotSearches = [],
@@ -48,32 +61,36 @@ export function Topbar({
   const mode = getTopbarMode(pathname, searchParams)
   const { toggle: toggleDrawer } = useDrawer()
 
+  // URL 同步判定阅读模式（0ms，不等任何异步数据）
+  const { isPage: isReadPageFromUrl, userSlug: urlUserSlug, pageId: urlPageId } =
+    isPublishedPageRoute(pathname)
+
+  const topbarSlots = useTopbarSlots()
+
+  // isAuthor: session 未就绪时为 false，就绪后 React re-render 自动更新
+  // session 由 AppShellWrapper 异步 fetch，到达后 AppShell 重渲染 → Topbar 收到新 session
+  const isAuthor = isReadPageFromUrl && session?.userSlug === urlUserSlug
+
+  const [pageMeta] = React.useState(() => getPageMeta())
+  const hasSidePage = pageMeta?.hasSidePage ?? false
+
   const [immersive, setImmersive] = React.useState(false)
-  const [readHasSidePage, setReadHasSidePage] = React.useState(true)
-  const [readHasSettings, setReadHasSettings] = React.useState(false)
-  const [sideActive, setSideActive] = React.useState(false)
-  const readHasPageMode = useReadPageMode()
 
-  // 阅读模式：URL tab 参数 或 ReadPageClient 设置的 data-page-mode
-  const isRead = mode === "read" || readHasPageMode
+  // 阅读模式：仅通过 URL 判定
+  const isRead = isReadPageFromUrl || mode === "read"
 
-  // Derive active tab from URL param (read→"page", settings→"settings") + local side state
+  // Derive active tab from URL param (read→"page", settings→"settings")
   const tabParam = searchParams.get("tab")
   const readActiveTab = React.useMemo(() => {
-    if (sideActive) return "side"
     if (tabParam === "settings") return "settings"
     return "page"
-  }, [sideActive, tabParam])
+  }, [tabParam])
 
   const handleReadTabChange = React.useCallback((value: string) => {
-    if (value === "side") {
-      setSideActive(true)
-    } else if (value === "settings") {
-      setSideActive(false)
-      router.push(`${pathname}?tab=settings`, { scroll: false })
+    if (value === "settings") {
+      router.replace(`${pathname}?tab=settings`, { scroll: false })
     } else {
-      setSideActive(false)
-      router.push(`${pathname}?tab=read`, { scroll: false })
+      router.replace(`${pathname}?tab=read`, { scroll: false })
     }
   }, [router, pathname])
 
@@ -103,29 +120,6 @@ export function Topbar({
 
   const effectiveHotSearches = hotSearches.length > 0 ? hotSearches : lazyHotSearches
   const effectiveRecentSearches = recentSearches.length > 0 ? recentSearches : lazyRecentSearches
-
-  // 监听 ReadPageClient 通过 data 属性传递的副页 + 设置状态
-  React.useEffect(() => {
-    if (!isRead) return
-    const el = document.documentElement
-    const check = () => {
-      setReadHasSidePage(el.getAttribute("data-read-has-side-page") !== "0")
-      setReadHasSettings(el.getAttribute("data-read-has-settings") === "1")
-    }
-    check()
-    const observer = new MutationObserver(check)
-    observer.observe(el, {
-      attributes: true,
-      attributeFilter: ["data-read-has-side-page", "data-read-has-settings"],
-    })
-    return () => observer.disconnect()
-  }, [isRead])
-
-  // 同步阅读页活动标签到 data 属性，供 ReadPageClient 读取
-  React.useEffect(() => {
-    if (!isRead) return
-    document.documentElement.setAttribute("data-read-active-tab", readActiveTab)
-  }, [isRead, readActiveTab])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
   // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
@@ -204,21 +198,25 @@ export function Topbar({
               : "justify-center min-w-0"
           )}
         >
-          {isRead && (readHasSidePage || readHasSettings) ? (
-            <div className="pointer-events-auto">
-              <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
-                <VibenTabsList variant="pill">
-                  <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
-                  {readHasSidePage && (
-                    <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
-                  )}
-                  {readHasSettings && (
-                    <VibenTabsTrigger value="settings" variant="pill"><Settings className="h-4 w-4" /> {t("community.settings")}</VibenTabsTrigger>
-                  )}
-                </VibenTabsList>
-              </VibenTabs>
-            </div>
-          ) : isRead ? null : (
+          {isRead ? (
+            topbarSlots?.centerContent ?? centerContent ?? (
+              <div className="pointer-events-auto">
+                <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
+                  <VibenTabsList variant="pill">
+                    <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
+                    {hasSidePage && (
+                      <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
+                    )}
+                    <VibenTabsTrigger value="settings" variant="pill"
+                      className={cn(!isAuthor && "invisible")}>
+                      <Settings className="h-4 w-4" />
+                      <span className="ml-1.5">{t("community.settings")}</span>
+                    </VibenTabsTrigger>
+                  </VibenTabsList>
+                </VibenTabs>
+              </div>
+            )
+          ) : (
             <GlobalSearch
               recentSearches={effectiveRecentSearches}
               hotSearches={effectiveHotSearches}
@@ -229,16 +227,18 @@ export function Topbar({
         {/* ===== Right ===== */}
         <div className="flex items-center justify-end gap-1.5 min-w-0">
           {isRead ? (
-            <>
-              {/* 阅读模式操作 */}
-              <IconButton size="compact" label={t("community.expandDetails")} onClick={toggleDrawer}>
-                <PanelRight className="h-4 w-4" />
-              </IconButton>
-              <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
-                <Maximize2 className="h-4 w-4" />
-              </IconButton>
-              <ReadMoreMenu />
-            </>
+            rightContent ?? topbarSlots?.rightContent ?? (
+              <>
+                {/* 阅读模式操作 */}
+                <IconButton size="compact" label={t("community.expandDetails")} onClick={toggleDrawer}>
+                  <PanelRight className="h-4 w-4" />
+                </IconButton>
+                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
+                  <Maximize2 className="h-4 w-4" />
+                </IconButton>
+                <ReadMoreMenu pageId={urlPageId ?? ""} userSlug={urlUserSlug ?? ""} />
+              </>
+            )
           ) : (
             <>
               {/* 默认模式操作 */}
@@ -272,67 +272,5 @@ export function Topbar({
         </div>
       </div>
     </header>
-  )
-}
-
-function ReadMoreMenu() {
-  const { t } = useTranslation()
-  const pathname = usePathname()
-  const [open, setOpen] = React.useState(false)
-  const [reportOpen, setReportOpen] = React.useState(false)
-  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
-
-  // 从 pathname 解析 pageId：/[user_slug]/[page_id]
-  const pageId = React.useMemo(() => {
-    const parts = pathname.split("/")
-    if (parts.length >= 3 && parts[1] !== "" && parts[1] !== "landing" && parts[2] !== "") {
-      return parts[2]
-    }
-    return ""
-  }, [pathname])
-
-  return (
-    <div
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <IconButton size="compact" label={t("community.moreActions")}>
-        <MoreHorizontal className="h-4 w-4" />
-      </IconButton>
-      {open && (
-        <div className="absolute top-full right-0 z-70 w-[min(180px,calc(100vw-28px))] grid gap-1 p-1.5 rounded-xl border border-border bg-popover/98 backdrop-blur-[14px] shadow-md">
-          <button
-            onClick={() => {
-              setOpen(false)
-              setReportOpen(true)
-            }}
-            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
-          >
-            <Flag className="h-4 w-4" /> {t("community.report")}
-          </button>
-          <button
-            onClick={() => {
-              setOpen(false)
-              setFeedbackOpen(true)
-            }}
-            className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
-          >
-            <MessageSquare className="h-4 w-4" /> {t("community.feedback")}
-          </button>
-        </div>
-      )}
-      <ReportDialog
-        open={reportOpen}
-        onOpenChange={setReportOpen}
-        entityType="published_page"
-        entityId={pageId}
-      />
-      <FeedbackDialog
-        open={feedbackOpen}
-        onOpenChange={setFeedbackOpen}
-        pageId={pageId}
-      />
-    </div>
   )
 }

@@ -42,7 +42,7 @@ export async function GET(
         repostOfMomentId: moments.repostOfMomentId,
         replyToMomentId: moments.replyToMomentId,
         authorId: moments.authorUserId,
-        authorName: users.displayName,
+        authorDisplayName: users.displayName,
         authorUsername: users.username,
       })
       .from(moments)
@@ -104,7 +104,7 @@ export async function GET(
           visibility: moments.visibility,
           createdAt: moments.createdAt,
           authorId: moments.authorUserId,
-          authorName: users.displayName,
+          authorDisplayName: users.displayName,
           authorUsername: users.username,
         })
         .from(moments)
@@ -127,7 +127,7 @@ export async function GET(
         createdAt: moments.createdAt,
         repostCount: moments.repostCount,
         authorId: moments.authorUserId,
-        authorName: users.displayName,
+        authorDisplayName: users.displayName,
         authorUsername: users.username,
       })
       .from(moments)

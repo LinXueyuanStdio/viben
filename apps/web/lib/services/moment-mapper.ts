@@ -67,7 +67,7 @@ export function mapRichMomentToFeedCard(
             ? `url(${firstAttachment.cover_url})`
             : gfn(firstAttachment.title ?? ""),
           title: firstAttachment.title ?? "",
-          authorName: firstAttachment.author_name_snapshot ?? "",
+          authorDisplayName: firstAttachment.author_name_snapshot ?? "",
           timeAgo: "",
           stats: {
             views: firstAttachment.view_count_snapshot ?? 0,

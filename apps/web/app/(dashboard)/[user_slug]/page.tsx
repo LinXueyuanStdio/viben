@@ -29,7 +29,7 @@ interface PageRow {
   likeCount: number
   commentCount: number
   bookmarkCount: number
-  authorName: string | null
+  authorDisplayName: string | null
   authorAvatarUrl: string | null
   authorSlug: string
 }
@@ -39,15 +39,15 @@ function mapPageToCard(
   fallbackDisplayName: string,
   fallbackAvatarUrl: string | null | undefined,
 ): { card: PageCardData; href: string } {
-  const authorName = p.authorName ?? fallbackDisplayName
+  const authorDisplayName = p.authorDisplayName ?? fallbackDisplayName
   return {
     card: {
       cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
       title: p.title,
       description: p.description ?? undefined,
       author: {
-        name: authorName,
-        fallbackText: authorName[0] ?? fallbackDisplayName[0] ?? "?",
+        name: authorDisplayName,
+        fallbackText: authorDisplayName[0] ?? fallbackDisplayName[0] ?? "?",
         avatarUrl: p.authorAvatarUrl ?? fallbackAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),
@@ -132,7 +132,7 @@ export default async function UserSlugPage({
     likeCount: publishedPages.likeCount,
     commentCount: publishedPages.commentCount,
     bookmarkCount: publishedPages.bookmarkCount,
-    authorName: publishedPages.authorName,
+    authorDisplayName: publishedPages.authorDisplayName,
     authorAvatarUrl: publishedPages.authorAvatarUrl,
     authorSlug: publishedPages.authorSlug,
   }

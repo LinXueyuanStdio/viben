@@ -69,7 +69,7 @@ export default async function HistoryPage() {
     return {
       cover: item.cover_url ? `url(${item.cover_url})` : gradientCover(item.title),
       title: item.title,
-      author: item.author_name ?? "?",
+      author: item.author_display_name ?? "?",
       chapter,
       source: SOURCE_MAP[item.last_source ?? ""] ?? "首页",
       timeAgo: timeAgo(item.last_viewed_at),

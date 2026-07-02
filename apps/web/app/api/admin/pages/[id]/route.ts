@@ -48,7 +48,7 @@ export async function GET(
         commentCount: publishedPages.commentCount,
         tags: publishedPages.tags,
         categoryId: publishedPages.categoryId,
-        authorName: publishedPages.authorName,
+        authorDisplayName: publishedPages.authorDisplayName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
         authorUsername: users.username,
         authorEmail: users.email,

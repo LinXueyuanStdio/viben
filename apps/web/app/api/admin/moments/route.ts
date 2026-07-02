@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         isDeleted: moments.isDeleted,
         createdAt: moments.createdAt,
         authorId: moments.authorUserId,
-        authorName: users.displayName,
+        authorDisplayName: users.displayName,
         authorUsername: users.username,
       })
       .from(moments)

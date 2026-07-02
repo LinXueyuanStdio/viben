@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         viewCount: publishedPages.viewCount,
         likeCount: publishedPages.likeCount,
         commentCount: publishedPages.commentCount,
-        authorName: publishedPages.authorName,
+        authorDisplayName: publishedPages.authorDisplayName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
         authorUsername: users.username,
       })

@@ -899,7 +899,7 @@ export async function getBrowseHistory(session: Session, limit: number) {
       view_count: history.viewCount,
       last_source: history.lastSource,
       cover_url: page.coverUrl ?? null,
-      author_name: page.authorName ?? author.displayName ?? null,
+      author_display_name: page.authorDisplayName ?? author.displayName ?? null,
       author_slug: author.userSlug,
       author_avatar_url: author.avatarUrl ?? null,
       last_progress: history.lastProgress ?? null,
@@ -1885,7 +1885,7 @@ export async function listRanking(params: {
       view_count: item.viewCount,
       like_count: item.likeCount,
       comment_count: item.commentCount,
-      author_name: item.authorName,
+      author_display_name: item.authorDisplayName,
       author_avatar_url: item.authorAvatarUrl,
       stats: {
         view_count: page.viewCount,

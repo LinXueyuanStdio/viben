@@ -41,7 +41,7 @@ interface ReadPageClientProps {
   pageChaptersJson?: unknown
   pageSidePageUid?: string
   pageVisibility?: string
-  authorName: string
+  authorDisplayName: string
   authorAvatarUrl?: string | null
   authorFollowersCount: number
   isAuthenticated: boolean
@@ -148,7 +148,7 @@ export function ReadPageClient({
   pageChaptersJson,
   pageSidePageUid,
   pageVisibility = "public",
-  authorName,
+  authorDisplayName,
   authorAvatarUrl,
   authorFollowersCount,
   isAuthenticated,
@@ -215,8 +215,8 @@ export function ReadPageClient({
 
   const pageMeta: PageMetaData = {
     author: {
-      name: authorName,
-      fallbackText: authorName?.[0] ?? "?",
+      name: authorDisplayName,
+      fallbackText: authorDisplayName?.[0] ?? "?",
       avatarUrl: authorAvatarUrl ?? undefined,
       userSlug: userSlug,
       followerCount: authorFollowersCount,
@@ -305,7 +305,7 @@ export function ReadPageClient({
 
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
-      [`/${userSlug}`]: { label: authorName, icon: User, href: `/${userSlug}` },
+      [`/${userSlug}`]: { label: authorDisplayName, icon: User, href: `/${userSlug}` },
       [`/${userSlug}/${pageId}`]: { label: pageTitle },
     },
   }

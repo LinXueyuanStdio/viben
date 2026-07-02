@@ -87,8 +87,8 @@ export function AppShellWrapper({ children }: AppShellWrapperProps) {
             const raw = hd.items ?? hd.history ?? [];
             setHistoryItems(raw.map((item: any) => ({
               title: item.title ?? item.snapshot_title ?? '',
-              subtitle: item.author_name
-                ? `${item.author_name} · ${new Date(item.last_viewed_at ?? Date.now()).toLocaleDateString('zh-CN')}`
+              subtitle: item.author_display_name
+                ? `${item.author_display_name} · ${new Date(item.last_viewed_at ?? Date.now()).toLocaleDateString('zh-CN')}`
                 : '',
               href: item.author_slug && item.page_id
                 ? `/${item.author_slug}/${item.page_id}?tab=read`

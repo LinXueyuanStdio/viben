@@ -54,7 +54,7 @@ interface RankingItem {
   description: string | null;
   userId: string | null;
   userSlug: string | null;
-  authorName: string | null;
+  authorDisplayName: string | null;
   authorAvatarUrl: string | null;
   viewCount: number | null;
   likeCount: number | null;
@@ -284,7 +284,7 @@ export function RankingManagement() {
                       {item.entityType}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {item.authorName || item.userSlug || '-'}
+                      {item.authorDisplayName || item.userSlug || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm font-mono">
                       {item.score.toFixed(1)}

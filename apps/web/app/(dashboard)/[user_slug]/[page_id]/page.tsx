@@ -104,7 +104,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
         uid: publishedPages.uid,
         title: publishedPages.title,
         description: publishedPages.description,
-        authorName: publishedPages.authorName,
+        authorDisplayName: publishedPages.authorDisplayName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
         coverUrl: publishedPages.coverUrl,
         viewCount: publishedPages.viewCount,
@@ -131,9 +131,9 @@ export default async function PagePage({ params, searchParams }: PageProps) {
         cover: r.coverUrl ? `url(${r.coverUrl})` : gradientCover(r.title),
         title: r.title,
         description: r.description ?? "",
-        authorName: r.authorName ?? "?",
+        authorDisplayName: r.authorDisplayName ?? "?",
         authorAvatarUrl: r.authorAvatarUrl ?? undefined,
-        authorFallbackText: r.authorName?.[0] ?? "?",
+        authorFallbackText: r.authorDisplayName?.[0] ?? "?",
         commentCount: r.commentCount,
         stats: { views: r.viewCount, likes: r.likeCount },
       } satisfies MiniPageCardData,
@@ -162,7 +162,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       pageChaptersJson={ctx.page.chaptersJson ?? undefined}
       pageSidePageUid={ctx.page.sidePageUid ?? undefined}
       pageVisibility={ctx.page.visibility}
-      authorName={ctx.author.displayName}
+      authorDisplayName={ctx.author.displayName}
       authorAvatarUrl={ctx.author.avatarUrl}
       authorFollowersCount={ctx.author.followersCount}
       isAuthenticated={!!session}

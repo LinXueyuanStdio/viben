@@ -41,7 +41,7 @@ interface PageForReview {
   viewCount: number;
   likeCount: number;
   commentCount: number;
-  authorName: string | null;
+  authorDisplayName: string | null;
   authorAvatarUrl: string | null;
   authorUsername: string | null;
 }
@@ -296,7 +296,7 @@ export function PageReviewManagement() {
                         {page.title}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {page.authorName || page.authorUsername || t('dashboard.admin.pages.unknown')}
+                        {page.authorDisplayName || page.authorUsername || t('dashboard.admin.pages.unknown')}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
                         {visibilityLabels[page.visibility] || page.visibility}
@@ -432,7 +432,7 @@ export function PageReviewManagement() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">{t('dashboard.admin.pages.detailLabels.author')}</span>
-                    {selectedPage.authorName || selectedPage.authorUsername || t('dashboard.admin.pages.unknown')}
+                    {selectedPage.authorDisplayName || selectedPage.authorUsername || t('dashboard.admin.pages.unknown')}
                     {selectedPage.authorEmail && (
                       <span className="text-muted-foreground ml-1">({selectedPage.authorEmail})</span>
                     )}

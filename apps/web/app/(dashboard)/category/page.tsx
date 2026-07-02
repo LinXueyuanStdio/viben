@@ -35,7 +35,7 @@ interface PageResult {
   userSlug: string
   title: string
   description: string | null
-  authorName: string | null
+  authorDisplayName: string | null
   authorAvatarUrl: string | null
   coverUrl: string | null
   lastPublishedAt: Date | null
@@ -56,7 +56,7 @@ export default async function CategoryPage() {
       userSlug: users.userSlug,
       title: publishedPages.title,
       description: publishedPages.description,
-      authorName: publishedPages.authorName,
+      authorDisplayName: publishedPages.authorDisplayName,
       authorAvatarUrl: publishedPages.authorAvatarUrl,
       coverUrl: publishedPages.coverUrl,
       lastPublishedAt: publishedPages.lastPublishedAt,
@@ -88,8 +88,8 @@ export default async function CategoryPage() {
         title: row.title,
         description: row.description ?? undefined,
         author: {
-          name: row.authorName ?? "?",
-          fallbackText: row.authorName?.[0] ?? "?",
+          name: row.authorDisplayName ?? "?",
+          fallbackText: row.authorDisplayName?.[0] ?? "?",
           avatarUrl: row.authorAvatarUrl ?? undefined,
         },
         timeAgo: timeAgo(row.lastPublishedAt),

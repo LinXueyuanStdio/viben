@@ -11,7 +11,7 @@ export interface AttachmentData {
   cover: string
   title: string
   description?: string
-  authorName: string
+  authorDisplayName: string
   timeAgo: string
   stats: {
     views: number
@@ -27,7 +27,7 @@ interface AttachmentProps {
 
 export function Attachment({ data, onRemove, className }: AttachmentProps) {
   const { t } = useTranslation()
-  const { cover, title, authorName, timeAgo, stats } = data
+  const { cover, title, authorDisplayName, timeAgo, stats } = data
 
   const coverStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
@@ -48,7 +48,7 @@ export function Attachment({ data, onRemove, className }: AttachmentProps) {
           {title}
         </div>
         <div className="flex items-center gap-[7px] text-[13px] text-muted-foreground">
-          <span className="font-bold">{authorName}</span>
+          <span className="font-bold">{authorDisplayName}</span>
           <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
           <span>{timeAgo}</span>
         </div>

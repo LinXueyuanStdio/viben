@@ -56,7 +56,7 @@ export async function searchPages(query: string) {
       uid: publishedPages.uid,
       title: publishedPages.title,
       description: publishedPages.description,
-      authorName: publishedPages.authorName,
+      authorDisplayName: publishedPages.authorDisplayName,
       authorAvatarUrl: publishedPages.authorAvatarUrl,
       coverUrl: publishedPages.coverUrl,
       viewCount: publishedPages.viewCount,
@@ -74,7 +74,7 @@ export async function searchPages(query: string) {
       or(
         ilike(publishedPages.title, pattern),
         ilike(publishedPages.description, pattern),
-        ilike(publishedPages.authorName, pattern),
+        ilike(publishedPages.authorDisplayName, pattern),
         sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${publishedPages.tags}) as tag WHERE tag ILIKE ${pattern})`
       )
     ))

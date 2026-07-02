@@ -7,7 +7,7 @@ import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider } from "./drawer-context"
 import { getTopbarMode } from "./topbar-mode"
-import { useReadPageMode } from "@/hooks/use-read-mode"
+import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
@@ -51,8 +51,8 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const readHasPageMode = useReadPageMode()
-  const isRead = getTopbarMode(pathname, searchParams) === "read" || readHasPageMode
+  const isRead = getTopbarMode(pathname, searchParams) === "read"
+    || isPublishedPageRoute(pathname).isPage
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false

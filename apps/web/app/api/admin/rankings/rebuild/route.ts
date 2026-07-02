@@ -51,7 +51,7 @@ interface PageForRanking {
   commentCount: number;
   repostCount: number;
   bookmarkCount: number;
-  authorName: string | null;
+  authorDisplayName: string | null;
   authorAvatarUrl: string | null;
 }
 
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
         commentCount: publishedPages.commentCount,
         repostCount: publishedPages.repostCount,
         bookmarkCount: publishedPages.bookmarkCount,
-        authorName: publishedPages.authorName,
+        authorDisplayName: publishedPages.authorDisplayName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
       })
       .from(publishedPages)
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       viewCount: page.viewCount,
       likeCount: page.likeCount,
       commentCount: page.commentCount,
-      authorName: page.authorName,
+      authorDisplayName: page.authorDisplayName,
       authorAvatarUrl: page.authorAvatarUrl,
       scoreLabel: '热度',
     }));

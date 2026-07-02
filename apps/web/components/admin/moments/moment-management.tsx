@@ -16,7 +16,7 @@ interface Moment {
   id: string; uid: string; kind: string; body: string | null; visibility: string;
   likeCount: number; commentCount: number; repostCount: number; viewCount: number | null;
   attachmentCount: number;
-  isPinned: boolean; isDeleted: boolean; createdAt: string; authorId: string; authorName: string | null; authorUsername: string | null;
+  isPinned: boolean; isDeleted: boolean; createdAt: string; authorId: string; authorDisplayName: string | null; authorUsername: string | null;
 }
 
 interface MomentAttachment {
@@ -36,7 +36,7 @@ interface RepostChainItem {
   moment: {
     id: string; uid: string; kind: string; body: string | null;
     visibility: string; createdAt: string; repostCount?: number;
-    authorId?: string; authorName: string | null; authorUsername: string | null;
+    authorId?: string; authorDisplayName: string | null; authorUsername: string | null;
   };
 }
 
@@ -293,7 +293,7 @@ export function MomentManagement() {
                 <tr key={m.id} className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${m.isDeleted ? 'opacity-60' : ''}`} onClick={() => fetchMomentDetail(m.id)}>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                      {m.authorName || m.authorUsername || '未知'}
+                      {m.authorDisplayName || m.authorUsername || '未知'}
                       {m.isDeleted && <Badge variant="destructive" className="text-xs">已删除</Badge>}
                     </div>
                   </td>
@@ -395,7 +395,7 @@ export function MomentManagement() {
                   <Badge variant="secondary">{VISIBILITY_LABELS[detailMoment.moment.visibility] || detailMoment.moment.visibility}</Badge>
                 </DialogTitle>
                 <DialogDescription>
-                  {detailMoment.moment.authorName || detailMoment.moment.authorUsername || '未知'} · {new Date(detailMoment.moment.createdAt).toLocaleString('zh-CN')}
+                  {detailMoment.moment.authorDisplayName || detailMoment.moment.authorUsername || '未知'} · {new Date(detailMoment.moment.createdAt).toLocaleString('zh-CN')}
                   {detailMoment.moment.isPinned && <Badge variant="outline" className="ml-2">已置顶</Badge>}
                 </DialogDescription>
               </DialogHeader>
@@ -479,7 +479,7 @@ export function MomentManagement() {
                               {item.direction === 'upstream' ? t('dashboard.admin.moments.repostUpstream') : t('dashboard.admin.moments.repostDownstream')}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
-                              {item.moment.authorName || item.moment.authorUsername || '未知'} · {new Date(item.moment.createdAt).toLocaleString('zh-CN')}
+                              {item.moment.authorDisplayName || item.moment.authorUsername || '未知'} · {new Date(item.moment.createdAt).toLocaleString('zh-CN')}
                             </span>
                           </div>
                           <p className="text-sm">{item.moment.body?.slice(0, 200) || '(无内容)'}</p>
