@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, moments, users } from '@/lib/db';
-import { eq, desc, count, and, like, type SQL, sql } from 'drizzle-orm';
+import { eq, desc, count, and, type SQL, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listMomentsQuerySchema = z.object({
