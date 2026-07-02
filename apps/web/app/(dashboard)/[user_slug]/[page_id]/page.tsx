@@ -24,26 +24,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!ctx) return { title: "页面未找到" }
 
-  const title = `${ctx.page.title} - Viben`
-  const description = ctx.page.description ?? `${ctx.author.displayName ?? ctx.author.userSlug} 分享的页面`
+  const seoTitle = ctx.page.seoTitle ?? ctx.page.title
+  const seoDescription = ctx.page.seoDescription ?? ctx.page.description ?? `${ctx.author.displayName ?? ctx.author.userSlug} 分享的页面`
   const ogImage = ctx.page.coverUrl ?? ctx.author.avatarUrl
 
-  return {
+  const title = `${seoTitle} - Viben`
+
+  const metadata: Metadata = {
     title,
-    description,
+    description: seoDescription,
+    keywords: ctx.page.seoKeywords ?? undefined,
     openGraph: {
       title,
-      description,
+      description: seoDescription,
       type: "article" as const,
       ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
       card: ctx.page.coverUrl ? "summary_large_image" as const : "summary" as const,
       title,
-      description,
+      description: seoDescription,
       ...(ogImage ? { images: [ogImage] } : {}),
     },
   }
+
+  // If discoverability is off, tell robots not to index
+  if (ctx.page.isDiscoverable === false) {
+    metadata.robots = { index: false, follow: false }
+  }
+
+  return metadata
 }
 
 export default async function PagePage({ params, searchParams }: PageProps) {
@@ -137,6 +147,10 @@ export default async function PagePage({ params, searchParams }: PageProps) {
         pageChaptersJson={ctx.page.chaptersJson ?? undefined}
         pageSidePageUid={ctx.page.sidePageUid ?? undefined}
         pageVisibility={ctx.page.visibility}
+        pageSeoTitle={ctx.page.seoTitle ?? null}
+        pageSeoDescription={ctx.page.seoDescription ?? null}
+        pageSeoKeywords={ctx.page.seoKeywords ?? null}
+        pageIsDiscoverable={ctx.page.isDiscoverable}
         authorDisplayName={ctx.author.displayName}
         authorAvatarUrl={ctx.author.avatarUrl}
         authorFollowersCount={ctx.author.followersCount}

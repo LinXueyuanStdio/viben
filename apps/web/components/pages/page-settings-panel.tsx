@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import type { ComponentType, ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
   ArrowLeft,
+  CheckCircle2,
   ChevronRight,
   Code2,
   Copy,
@@ -24,6 +25,9 @@ import {
   Share2,
   Tags,
   UploadCloud,
+  AlertTriangle,
+  GitCompare,
+  X,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -31,6 +35,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // ============================================================================
 // Types
@@ -49,6 +61,12 @@ interface PublishHistoryRecord {
   url: string
 }
 
+interface DiffLine {
+  type: "added" | "removed" | "unchanged"
+  content: string
+  lineNumber: number
+}
+
 interface PageSettingsPanelProps {
   userSlug: string
   pageId: string
@@ -62,6 +80,10 @@ interface PageSettingsPanelProps {
   pageViewCount?: number
   pageLikeCount?: number
   pageCommentCount?: number
+  pageSeoTitle?: string | null
+  pageSeoDescription?: string | null
+  pageSeoKeywords?: string | null
+  pageIsDiscoverable?: boolean
   className?: string
 }
 
@@ -81,6 +103,35 @@ function formatPublishRecordTime(value: string): string {
 
 function buildEmbedCode(url: string): string {
   return `<iframe src="${url}" width="100%" height="600" frameborder="0" allowfullscreen />`
+}
+
+/**
+ * Simple line-level diff between two HTML strings.
+ * Marks lines as added / removed / unchanged.
+ */
+function computeSimpleDiff(oldText: string, newText: string): DiffLine[] {
+  const oldLines = oldText.split("\n")
+  const newLines = newText.split("\n")
+  const result: DiffLine[] = []
+
+  const maxLen = Math.max(oldLines.length, newLines.length)
+  for (let i = 0; i < maxLen; i++) {
+    const oldLine = i < oldLines.length ? oldLines[i] : undefined
+    const newLine = i < newLines.length ? newLines[i] : undefined
+
+    if (oldLine === undefined) {
+      result.push({ type: "added", content: newLine!, lineNumber: i + 1 })
+    } else if (newLine === undefined) {
+      result.push({ type: "removed", content: oldLine, lineNumber: i + 1 })
+    } else if (oldLine !== newLine) {
+      result.push({ type: "removed", content: oldLine, lineNumber: i + 1 })
+      result.push({ type: "added", content: newLine, lineNumber: i + 1 })
+    } else {
+      result.push({ type: "unchanged", content: oldLine, lineNumber: i + 1 })
+    }
+  }
+
+  return result
 }
 
 // ============================================================================
@@ -130,6 +181,10 @@ export function PageSettingsPanel({
   pageViewCount,
   pageLikeCount,
   pageCommentCount,
+  pageSeoTitle,
+  pageSeoDescription,
+  pageSeoKeywords,
+  pageIsDiscoverable,
   className,
 }: PageSettingsPanelProps) {
   const { t } = useTranslation()
@@ -139,10 +194,13 @@ export function PageSettingsPanel({
   const [publishSettingsView, setPublishSettingsView] =
     useState<PublishSettingsView>("overview")
 
-  // SEO state
-  const [seoDiscoverable, setSeoDiscoverable] = useState(true)
-  const [seoTitle, setSeoTitle] = useState(pageTitle)
-  const [seoDescription, setSeoDescription] = useState(pageDescription)
+  // SEO state — initialised from props (server-loaded)
+  const [seoDiscoverable, setSeoDiscoverable] = useState(pageIsDiscoverable ?? true)
+  const [seoTitle, setSeoTitle] = useState(pageSeoTitle ?? pageTitle)
+  const [seoDescription, setSeoDescription] = useState(pageSeoDescription ?? pageDescription)
+  const [seoKeywords, setSeoKeywords] = useState(pageSeoKeywords ?? "")
+  const [seoSaving, setSeoSaving] = useState(false)
+  const [seoSaved, setSeoSaved] = useState(false)
 
   // Embed state
   const [showEmbedTitle, setShowEmbedTitle] = useState(true)
@@ -157,6 +215,17 @@ export function PageSettingsPanel({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
 
+  // Version diff state
+  const [diffViewOpen, setDiffViewOpen] = useState(false)
+  const [diffLines, setDiffLines] = useState<DiffLine[]>([])
+  const [diffVersionTitle, setDiffVersionTitle] = useState("")
+  const [diffVersionNumber, setDiffVersionNumber] = useState<number | null>(null)
+  const [diffLoading, setDiffLoading] = useState(false)
+
+  // Rollback confirmation dialog
+  const [rollbackDialogOpen, setRollbackDialogOpen] = useState(false)
+  const [rollbackTarget, setRollbackTarget] = useState<PublishHistoryRecord | null>(null)
+
   // Derived
   const readUrl = `/${encodeURIComponent(userSlug)}/${encodeURIComponent(pageUid)}?tab=read`
   const externalPublishedUrl = publishedUrl
@@ -167,6 +236,23 @@ export function PageSettingsPanel({
     publishHistory.find((record) => record.id === selectedRecordId) ??
     publishHistory[0] ??
     null
+
+  // Check if SEO values changed from server state
+  const seoChanged = useMemo(() => {
+    return (
+      seoDiscoverable !== (pageIsDiscoverable ?? true) ||
+      seoTitle !== (pageSeoTitle ?? pageTitle) ||
+      seoDescription !== (pageSeoDescription ?? pageDescription) ||
+      seoKeywords !== (pageSeoKeywords ?? "")
+    )
+  }, [seoDiscoverable, seoTitle, seoDescription, seoKeywords, pageIsDiscoverable, pageSeoTitle, pageTitle, pageSeoDescription, pageDescription, pageSeoKeywords])
+
+  // Reset seoSaved when seo values change
+  useEffect(() => {
+    if (seoChanged) {
+      setSeoSaved(false)
+    }
+  }, [seoChanged])
 
   // ==========================================================================
   // Load publish history
@@ -205,6 +291,41 @@ export function PageSettingsPanel({
   }, [loadPublishHistory])
 
   // ==========================================================================
+  // SEO save handler
+  // ==========================================================================
+
+  const handleSaveSeoSettings = useCallback(async () => {
+    setSeoSaving(true)
+    try {
+      const res = await fetch("/api/pages/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: pageUid,
+          seo_title: seoTitle || null,
+          seo_description: seoDescription || null,
+          seo_keywords: seoKeywords || null,
+          is_discoverable: seoDiscoverable,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to save SEO settings")
+      }
+      setSeoSaved(true)
+      toast.success(t("page.settings.seoSaved", "SEO 设置已保存"))
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("page.settings.seoSaveFailed", "SEO 设置保存失败"),
+      )
+    } finally {
+      setSeoSaving(false)
+    }
+  }, [pageUid, seoTitle, seoDescription, seoKeywords, seoDiscoverable, t])
+
+  // ==========================================================================
   // Handlers
   // ==========================================================================
 
@@ -233,9 +354,51 @@ export function PageSettingsPanel({
     )
   }
 
-  const handleRollbackSelectedVersion = async () => {
-    if (!selectedRecord || selectedRecord.is_current) return
+  // ==========================================================================
+  // Version diff
+  // ==========================================================================
 
+  const handleCompareVersion = useCallback(async (record: PublishHistoryRecord) => {
+    setDiffLoading(true)
+    setDiffViewOpen(true)
+    setDiffVersionTitle(record.title)
+    setDiffVersionNumber(record.version)
+
+    try {
+      // Fetch the version's HTML content
+      const res = await fetch("/api/pages/publish-version", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: pageUid, version: record.version }),
+      })
+      const data = await res.json()
+      if (data.success && data.html) {
+        const diff = computeSimpleDiff(data.html, pageHtml)
+        setDiffLines(diff)
+      } else {
+        // Fallback: compare line counts
+        setDiffLines([
+          { type: "unchanged", content: t("page.settings.diffUnavailable", "版本内容无法加载"), lineNumber: 1 },
+        ])
+      }
+    } catch {
+      setDiffLines([
+        { type: "unchanged", content: t("page.settings.diffUnavailable", "版本内容无法加载"), lineNumber: 1 },
+      ])
+    } finally {
+      setDiffLoading(false)
+    }
+  }, [pageUid, pageHtml, t])
+
+  const handleOpenRollbackDialog = useCallback((record: PublishHistoryRecord) => {
+    setRollbackTarget(record)
+    setRollbackDialogOpen(true)
+  }, [])
+
+  const handleConfirmRollback = useCallback(async () => {
+    if (!rollbackTarget || rollbackTarget.is_current) return
+
+    setRollbackDialogOpen(false)
     setIsRollingBack(true)
     try {
       const res = await fetch("/api/pages/publish-rollback", {
@@ -243,7 +406,7 @@ export function PageSettingsPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uid: pageUid,
-          version: selectedRecord.version,
+          version: rollbackTarget.version,
         }),
       })
       const data = await res.json()
@@ -266,8 +429,9 @@ export function PageSettingsPanel({
       )
     } finally {
       setIsRollingBack(false)
+      setRollbackTarget(null)
     }
-  }
+  }, [rollbackTarget, pageUid, loadPublishHistory, t])
 
   const handleSocialShare = async (
     target: "x" | "whatsapp" | "facebook" | "linkedin" | "email",
@@ -283,6 +447,16 @@ export function PageSettingsPanel({
     }
     window.open(targets[target], "_blank")
   }
+
+  // ==========================================================================
+  // Helper: diff stats
+  // ==========================================================================
+
+  const diffStats = useMemo(() => {
+    const added = diffLines.filter((l) => l.type === "added").length
+    const removed = diffLines.filter((l) => l.type === "removed").length
+    return { added, removed }
+  }, [diffLines])
 
   // ==========================================================================
   // Render
@@ -519,6 +693,35 @@ export function PageSettingsPanel({
                       className="min-h-[84px]"
                     />
                   </label>
+
+                  <label className="block space-y-1.5 text-sm">
+                    <span className="font-medium text-foreground">
+                      {t("page.settings.seoKeywords", "Keywords (comma separated)")}
+                    </span>
+                    <Input
+                      value={seoKeywords}
+                      onChange={(event) => setSeoKeywords(event.target.value)}
+                      placeholder="keyword1, keyword2, keyword3"
+                    />
+                  </label>
+
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSeoSettings}
+                    disabled={seoSaving || !seoChanged}
+                    className="gap-2"
+                  >
+                    {seoSaving ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : seoSaved ? (
+                      <CheckCircle2 className="size-3.5" />
+                    ) : null}
+                    {seoSaving
+                      ? t("page.settings.saving", "保存中...")
+                      : seoSaved
+                        ? t("page.settings.seoSavedBtn", "已保存")
+                        : t("page.settings.saveSeo", "保存 SEO 设置")}
+                  </Button>
                 </div>
               </div>
             )}
@@ -723,7 +926,27 @@ export function PageSettingsPanel({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleRollbackSelectedVersion}
+                  onClick={() => {
+                    if (selectedRecord && !selectedRecord.is_current) {
+                      void handleCompareVersion(selectedRecord)
+                    }
+                  }}
+                  disabled={
+                    !selectedRecord ||
+                    selectedRecord.is_current
+                  }
+                >
+                  <GitCompare className="mr-2 h-4 w-4" />
+                  {t("page.settings.compare", "Compare")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (selectedRecord && !selectedRecord.is_current) {
+                      handleOpenRollbackDialog(selectedRecord)
+                    }
+                  }}
                   disabled={
                     !selectedRecord ||
                     selectedRecord.is_current ||
@@ -757,6 +980,116 @@ export function PageSettingsPanel({
           {t("pageEditor.settingsEditPage")}
         </Button>
       </section>
+
+      {/* Version Diff Dialog */}
+      <Dialog open={diffViewOpen} onOpenChange={setDiffViewOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitCompare className="size-5" />
+              {t("page.settings.diffTitle", "版本对比")}
+              {diffVersionNumber !== null && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  Version {diffVersionNumber} → {t("page.settings.currentVersion", "Current")}
+                </span>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {diffVersionTitle && (
+                <span className="block truncate">{diffVersionTitle}</span>
+              )}
+              {!diffLoading && (
+                <span className="text-xs">
+                  <span className="text-emerald-500">+{diffStats.added}</span>{" "}
+                  {t("page.settings.diffAdded", "added")},{" "}
+                  <span className="text-red-500">-{diffStats.removed}</span>{" "}
+                  {t("page.settings.diffRemoved", "removed")}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {diffLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="overflow-auto flex-1 rounded-md border border-border bg-card">
+              <pre className="p-4 text-xs font-mono leading-relaxed">
+                {diffLines.map((line, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex",
+                      line.type === "added" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                      line.type === "removed" && "bg-red-500/10 text-red-600 dark:text-red-400",
+                      line.type === "unchanged" && "text-muted-foreground",
+                    )}
+                  >
+                    <span className="shrink-0 w-8 text-right mr-4 select-none text-muted-foreground">
+                      {line.lineNumber}
+                    </span>
+                    <span className="shrink-0 w-4 mr-2 select-none">
+                      {line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}
+                    </span>
+                    <span className="whitespace-pre-wrap break-all">{line.content}</span>
+                  </div>
+                ))}
+              </pre>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiffViewOpen(false)}>
+              <X className="mr-2 h-4 w-4" />
+              {t("common.close", "关闭")}
+            </Button>
+            {diffVersionNumber !== null && !selectedRecord?.is_current && (
+              <Button
+                onClick={() => {
+                  setDiffViewOpen(false)
+                  if (selectedRecord) {
+                    handleOpenRollbackDialog(selectedRecord)
+                  }
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {t("page.settings.restoreThisVersion", "恢复此版本")}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rollback Confirmation Dialog */}
+      <Dialog open={rollbackDialogOpen} onOpenChange={setRollbackDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              {t("page.settings.confirmRollbackTitle", "确认回滚")}
+            </DialogTitle>
+            <DialogDescription>
+              {rollbackTarget && (
+                <span>
+                  {t("page.settings.confirmRollbackDescription", "确定要回滚到 Version {version}（{title}）吗？当前版本的内容将被替换。", {
+                    version: rollbackTarget.version,
+                    title: rollbackTarget.title,
+                  })}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRollbackDialogOpen(false)}>
+              {t("common.cancel", "取消")}
+            </Button>
+            <Button onClick={handleConfirmRollback}>
+              {t("page.settings.rollbackAction", "回滚")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

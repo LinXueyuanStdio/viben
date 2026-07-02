@@ -315,3 +315,79 @@
   background: var(--color-surface-secondary);
   color: var(--color-foreground);
 }
+
+/* ===== Syntax Highlighting (highlight.js) ===== */
+/* Light mode (github) */
+@import "highlight.js/styles/github.css";
+
+/* Dark mode overrides for code blocks */
+.dark .hljs {
+  background: oklch(0.22 0.02 210);
+  color: oklch(0.88 0.02 210);
+}
+
+.dark .hljs-comment,
+.dark .hljs-quote {
+  color: oklch(0.5 0.02 210);
+}
+
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-addition {
+  color: oklch(0.7 0.15 320);
+}
+
+.dark .hljs-string,
+.dark .hljs-doctag,
+.dark .hljs-regexp,
+.dark .hljs-meta .hljs-string {
+  color: oklch(0.65 0.18 150);
+}
+
+.dark .hljs-number,
+.dark .hljs-literal,
+.dark .hljs-variable,
+.dark .hljs-template-variable {
+  color: oklch(0.7 0.18 80);
+}
+
+.dark .hljs-title,
+.dark .hljs-name,
+.dark .hljs-section,
+.dark .hljs-selector-id {
+  color: oklch(0.72 0.14 250);
+}
+
+.dark .hljs-type,
+.dark .hljs-class .hljs-title {
+  color: oklch(0.7 0.14 200);
+}
+
+.dark .hljs-attr,
+.dark .hljs-attribute,
+.dark .hljs-symbol,
+.dark .hljs-bullet,
+.dark .hljs-link {
+  color: oklch(0.72 0.12 280);
+}
+
+.dark .hljs-built_in,
+.dark .hljs-function .hljs-title {
+  color: oklch(0.72 0.14 45);
+}
+
+.dark .hljs-meta {
+  color: oklch(0.6 0.02 210);
+}
+
+.dark .hljs-deletion {
+  color: oklch(0.6 0.2 25);
+}
+
+.dark .hljs-emphasis {
+  font-style: italic;
+}
+
+.dark .hljs-strong {
+  font-weight: bold;
+}

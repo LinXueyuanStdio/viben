@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
 import DOMPurify from "dompurify"
 import { toast } from "sonner"
-import { X, Loader2, Upload, FileText, Globe, Eye, Send } from "lucide-react"
+import { X, Loader2, Upload, FileText, Globe, Eye, Send, Clock, AlertTriangle } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -23,6 +23,15 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CollectionSelector } from "./collection-selector"
 import type { CollectionSelectorValue } from "./collection-selector"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export interface PageEditorInitialData {
   pageId: string
@@ -33,13 +42,26 @@ export interface PageEditorInitialData {
   visibility: "public" | "unlisted" | "private"
   tags: string[]
   coverUrl?: string | null
-  coverAssetId?: string | null
 }
 
 interface PageEditorProps {
   userSlug: string
   initialData?: PageEditorInitialData
 }
+
+/** Shape of data persisted in localStorage for the page editor draft */
+interface PageEditorDraft {
+  title: string
+  uid: string
+  uidManuallyEdited: boolean
+  description: string
+  htmlContent: string
+  visibility: "public" | "private"
+  tags: string[]
+  coverUrl: string | null
+}
+
+type PublishMode = "now" | "scheduled"
 
 export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const { t } = useTranslation()
@@ -56,9 +78,6 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   )
   const [tags, setTags] = useState<string[]>(initialData?.tags ?? [])
   const [tagInput, setTagInput] = useState("")
-  const [coverAssetId, setCoverAssetId] = useState<string | null>(
-    initialData?.coverAssetId ?? null,
-  )
   const [coverUrl, setCoverUrl] = useState<string | null>(initialData?.coverUrl ?? null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -69,6 +88,89 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const previewWrapperRef = useRef<HTMLDivElement>(null)
   const previewIframeRef = useRef<HTMLIFrameElement>(null)
   const [previewScale, setPreviewScale] = useState(1)
+
+  // Scheduled publishing
+  const [publishMode, setPublishMode] = useState<PublishMode>("now")
+  const [scheduledAt, setScheduledAt] = useState("")
+
+  // Draft restoration dialog
+  const [showDraftDialog, setShowDraftDialog] = useState(false)
+  const draftHandledRef = useRef(false)
+
+  // Build draft key
+  const draftKey = useMemo(
+    () => `page-editor:${userSlug}:${initialData?.uid ?? "new"}`,
+    [userSlug, initialData?.uid],
+  )
+
+  // Build draft data for auto-save
+  const draftData = useMemo<PageEditorDraft>(() => ({
+    title,
+    uid,
+    uidManuallyEdited,
+    description,
+    htmlContent,
+    visibility,
+    tags,
+    coverUrl,
+  }), [title, uid, uidManuallyEdited, description, htmlContent, visibility, tags, coverUrl])
+
+  const hasChanges = useMemo(() => {
+    return (
+      title !== (initialData?.title ?? "") ||
+      htmlContent !== (initialData?.html ?? "") ||
+      description !== (initialData?.description ?? "")
+    )
+  }, [title, htmlContent, description, initialData])
+
+  // Auto-save hook
+  const { saved, saving, restoreDraft, clearDraft, hasDraft } = useAutoSave<PageEditorDraft>({
+    key: draftKey,
+    data: draftData,
+    debounceMs: 3000,
+    enabled: hasChanges,
+  })
+
+  // Check for existing draft on mount
+  useEffect(() => {
+    if (draftHandledRef.current) return
+    draftHandledRef.current = true
+    if (!initialData && hasDraft()) {
+      setShowDraftDialog(true)
+    }
+  }, [initialData, hasDraft])
+
+  const handleRestoreDraft = useCallback(() => {
+    const draft = restoreDraft()
+    if (draft) {
+      setTitle(draft.title)
+      setUid(draft.uid)
+      setUidManuallyEdited(draft.uidManuallyEdited)
+      setDescription(draft.description)
+      setHtmlContent(draft.htmlContent)
+      setVisibility(draft.visibility)
+      setTags(draft.tags)
+      setCoverUrl(draft.coverUrl)
+      toast.success(t("pageEditor.draftRestored"))
+    }
+    setShowDraftDialog(false)
+  }, [restoreDraft, t])
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft()
+    setShowDraftDialog(false)
+  }, [clearDraft])
+
+  // beforeunload protection for unsaved changes
+  useEffect(() => {
+    if (!hasChanges) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [hasChanges])
 
   useEffect(() => {
     const el = previewWrapperRef.current
@@ -113,7 +215,6 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
     const now = Date.now()
     const backoff = uploadBackoffRef.current
 
-    // Exponential backoff: block if in cooldown
     if (now < backoff.cooldownUntil) {
       const wait = Math.ceil((backoff.cooldownUntil - now) / 1000)
       toast.error(`请等待 ${wait} 秒后再上传`)
@@ -141,13 +242,10 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
       if (!res.ok) throw new Error("Upload failed")
       const data = await res.json()
       setCoverUrl(data.url)
-      setCoverAssetId(data.asset_id)
-      // Exponential backoff on every upload to prevent rapid re-uploads
       const attempts = backoff.attempts + 1
       const delay = Math.pow(2, attempts) * 1000
       uploadBackoffRef.current = { attempts, cooldownUntil: Date.now() + delay }
     } catch {
-      // Exponential backoff on failure too
       const attempts = backoff.attempts + 1
       const delay = Math.pow(2, attempts) * 1000
       uploadBackoffRef.current = { attempts, cooldownUntil: Date.now() + delay }
@@ -188,11 +286,21 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
     const finalUid = (uid || autoUid).trim()
     if (!finalUid) { toast.error(t("pageEditor.uidRequired")); return }
     if (!htmlContent.trim()) { toast.error(t("pageEditor.contentRequired")); return }
+
+    // Validate scheduled time
+    if (publishMode === "scheduled" && scheduledAt) {
+      const scheduledDate = new Date(scheduledAt)
+      if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+        toast.error(t("pageEditor.scheduledTimeInvalid"))
+        return
+      }
+    }
+
     setIsSubmitting(true)
     try {
       // 自动封面：未上传封面时从预览 iframe 截图
-      let finalCoverAssetId = coverAssetId
-      if (!finalCoverAssetId && previewIframeRef.current?.contentDocument?.body) {
+      let finalCoverUrl = coverUrl
+      if (!finalCoverUrl && previewIframeRef.current?.contentDocument?.body) {
         try {
           const blob = await captureHtmlCover(previewIframeRef.current.contentDocument.body)
           if (blob) {
@@ -204,7 +312,7 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
             const uploadRes = await fetch("/api/media/upload", { method: "POST", body: formData })
             if (uploadRes.ok) {
               const data = await uploadRes.json()
-              finalCoverAssetId = data.asset_id
+              finalCoverUrl = data.url
             }
           }
         } catch (e) { console.warn("Auto cover capture failed:", e) }
@@ -216,24 +324,54 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
           uid: finalUid, title: title.trim(), html,
           description: description.trim() || undefined,
           visibility, tags: tags.length > 0 ? tags : undefined,
-          cover_asset_id: finalCoverAssetId,
+          cover_url: finalCoverUrl,
           collection_slug: collection?.slug, collection_name: collection?.name,
+          scheduled_at: publishMode === "scheduled" && scheduledAt ? scheduledAt : undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t("pageEditor.publishFailed"))
-      toast.success(t("pageEditor.publishSuccess"))
+      // Clear draft on successful publish
+      clearDraft()
+      toast.success(
+        publishMode === "scheduled"
+          ? t("pageEditor.scheduledSuccess")
+          : t("pageEditor.publishSuccess"),
+      )
       router.push(data.read_url || `/${encodeURIComponent(userSlug)}/${encodeURIComponent(finalUid)}?tab=read`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("pageEditor.publishFailed"))
     } finally { setIsSubmitting(false) }
-  }, [title, uid, autoUid, htmlContent, description, visibility, tags, coverAssetId, collection, router, t, userSlug])
+  }, [title, uid, autoUid, htmlContent, description, visibility, tags, coverUrl, collection, router, t, userSlug, publishMode, scheduledAt, clearDraft])
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-8 pb-24">
       <h1 className="text-2xl font-semibold tracking-tight">
         {isEditMode ? t("pageEditor.editTitle") : t("pageEditor.title")}
       </h1>
+
+      {/* Draft restoration dialog */}
+      <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              {t("pageEditor.draftFoundTitle", "未保存的草稿")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("pageEditor.draftFoundDescription", "检测到之前未完成的编辑内容。是否恢复草稿？")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDiscardDraft}>
+              {t("pageEditor.discardDraft", "丢弃草稿")}
+            </Button>
+            <Button onClick={handleRestoreDraft}>
+              {t("pageEditor.restoreDraft", "恢复草稿")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Basic Info */}
       <section className="space-y-4">
@@ -381,7 +519,7 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
               ) : coverUrl ? (
                 <div className="relative w-full">
                   <img src={coverUrl} alt="Cover preview" className="h-48 w-full rounded-lg object-cover" />
-                  <button type="button" className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-foreground hover:bg-background" onClick={(e) => { e.stopPropagation(); setCoverUrl(null); setCoverAssetId(null) }}>
+                  <button type="button" className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-foreground hover:bg-background" onClick={(e) => { e.stopPropagation(); setCoverUrl(null) }}>
                     <X className="size-4" />
                   </button>
                 </div>
@@ -437,19 +575,63 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
       </section>
 
       {/* Sticky publish bar */}
-      <div className="sticky bottom-0 -mx-4 px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm flex items-center justify-between">
-        <p className="text-[13px] text-muted-foreground">
-          {title.trim() ? `${userSlug}/${uid}` : t("pageEditor.fillTitleFirst")}
-        </p>
-        <Button onClick={handlePublish} disabled={isSubmitting} size="lg" className="gap-2 min-w-[140px]">
-          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          {!isSubmitting && <Send className="size-4" />}
-          {isSubmitting
-            ? t("pageEditor.publishing")
-            : isEditMode
-              ? t("pageEditor.updatePublish")
-              : t("pageEditor.publish")}
-        </Button>
+      <div className="sticky bottom-0 -mx-4 px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-[13px] text-muted-foreground">
+            {title.trim() ? `${userSlug}/${uid}` : t("pageEditor.fillTitleFirst")}
+          </p>
+          {/* Auto-save status */}
+          {hasChanges && (
+            <span className={cn("text-[11px]", saving ? "text-amber-500" : saved ? "text-emerald-500" : "text-muted-foreground")}>
+              {saving ? t("pageEditor.saving", "保存中...") : saved ? t("pageEditor.saved", "已保存") : ""}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Scheduled publishing */}
+          <div className="flex items-center gap-2">
+            <Select value={publishMode} onValueChange={(v: PublishMode) => setPublishMode(v)}>
+              <SelectTrigger className="w-[120px] h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="now">
+                  <Send className="size-3 mr-1 inline" />
+                  {t("pageEditor.publishNow", "立即发布")}
+                </SelectItem>
+                <SelectItem value="scheduled">
+                  <Clock className="size-3 mr-1 inline" />
+                  {t("pageEditor.scheduledPublish", "定时发布")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {publishMode === "scheduled" && (
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                min={new Date().toISOString().slice(0, 16)}
+              />
+            )}
+          </div>
+
+          <Button onClick={handlePublish} disabled={isSubmitting} size="lg" className="gap-2 min-w-[140px]">
+            {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+            {!isSubmitting && (
+              publishMode === "scheduled" ? <Clock className="size-4" /> : <Send className="size-4" />
+            )}
+            {isSubmitting
+              ? t("pageEditor.publishing")
+              : publishMode === "scheduled"
+                ? t("pageEditor.schedule", "定时发布")
+                : isEditMode
+                  ? t("pageEditor.updatePublish")
+                  : t("pageEditor.publish")}
+          </Button>
+        </div>
       </div>
     </div>
   )

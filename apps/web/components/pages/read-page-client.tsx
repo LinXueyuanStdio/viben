@@ -38,6 +38,11 @@ interface ReadPageClientProps {
   pageChaptersJson?: unknown
   pageSidePageUid?: string
   pageVisibility?: string
+  // SEO fields
+  pageSeoTitle?: string | null
+  pageSeoDescription?: string | null
+  pageSeoKeywords?: string | null
+  pageIsDiscoverable?: boolean
   authorDisplayName: string
   authorAvatarUrl?: string | null
   authorFollowersCount: number
@@ -162,6 +167,10 @@ export function ReadPageClient({
   pageChaptersJson,
   pageSidePageUid,
   pageVisibility = "public",
+  pageSeoTitle,
+  pageSeoDescription,
+  pageSeoKeywords,
+  pageIsDiscoverable,
   authorDisplayName,
   authorAvatarUrl,
   authorFollowersCount,
@@ -305,6 +314,10 @@ export function ReadPageClient({
               pageViewCount={pageViewCount}
               pageLikeCount={pageLikeCount}
               pageCommentCount={pageCommentCount}
+              pageSeoTitle={pageSeoTitle}
+              pageSeoDescription={pageSeoDescription}
+              pageSeoKeywords={pageSeoKeywords}
+              pageIsDiscoverable={pageIsDiscoverable}
             />
           </div>
         </div>

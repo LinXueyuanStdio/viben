@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import {
   db,
-  mediaAssets,
   publishedPageRecords,
   publishedPages,
   publishedPageVersions,
@@ -51,13 +50,14 @@ export async function POST(request: NextRequest) {
       icon,
       description,
       html,
+      cover_url: coverUrl,
       category_id: categoryId,
-      cover_asset_id: coverAssetId,
       tags,
       visibility,
       importance,
       collection_slug: collectionSlug,
       collection_name: collectionName,
+      scheduled_at: scheduledAtRaw,
     } = body;
 
     if (typeof uid !== 'string' || !uid.trim() || typeof title !== 'string' || !title.trim() || typeof html !== 'string' || !html) {
@@ -84,10 +84,21 @@ export async function POST(request: NextRequest) {
     const normalizedTags = Array.isArray(tags)
       ? tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 12)
       : [];
-    const normalizedCoverAssetId = typeof coverAssetId === 'string' ? coverAssetId : null;
     const normalizedVisibility =
       visibility === 'unlisted' || visibility === 'private' ? visibility : 'public';
     const normalizedImportance = importance === 'major' ? 'major' : 'normal';
+
+    // Scheduled publishing support
+    let scheduledAt: Date | null = null;
+    if (typeof scheduledAtRaw === "string" && scheduledAtRaw.trim()) {
+      const parsed = new Date(scheduledAtRaw);
+      if (!Number.isNaN(parsed.getTime()) && parsed > new Date()) {
+        scheduledAt = parsed;
+      }
+    }
+
+    // Determine publish timestamps: use NOW() for immediate, scheduled time for scheduled
+    const nowOrScheduled = scheduledAt ? scheduledAt : sql`now()`;
 
     await ensurePublishedPagesTable();
 
@@ -102,24 +113,9 @@ export async function POST(request: NextRequest) {
     const authorDisplayName = author?.displayName ?? session.username;
     const authorAvatarUrl = author?.avatarUrl ?? session.avatarUrl ?? null;
 
-    let coverUrl: string | null = null;
-    if (normalizedCoverAssetId) {
-      const coverAsset = await db.query.mediaAssets.findFirst({
-        where: and(
-          eq(mediaAssets.id, normalizedCoverAssetId),
-          eq(mediaAssets.ownerUserId, session.userId)
-        ),
-      });
-
-      if (!coverAsset) {
-        return NextResponse.json(
-          { error: 'cover_asset_id is invalid or not owned by the current user' },
-          { status: 400 }
-        );
-      }
-
-      coverUrl = coverAsset.url;
-    }
+    const normalizedCoverUrl = typeof coverUrl === 'string' && coverUrl.trim()
+      ? coverUrl.trim()
+      : null;
 
     const latestVersion = await db.query.publishedPageVersions.findFirst({
       where: and(
@@ -211,18 +207,18 @@ export async function POST(request: NextRequest) {
         html,
         currentVersion: nextVersion,
         categoryId: typeof categoryId === 'string' ? categoryId : null,
-        coverAssetId: normalizedCoverAssetId,
-        coverUrl,
+        coverUrl: normalizedCoverUrl,
         tags: normalizedTags,
         visibility: normalizedVisibility,
         moderationStatus: 'approved',
         authorSlug: session.userSlug,
         authorDisplayName,
         authorAvatarUrl,
-        publishedAt: sql`now()`,
-        lastPublishedAt: sql`now()`,
+        publishedAt: nowOrScheduled,
+        lastPublishedAt: nowOrScheduled,
         versionCount: nextVersion,
         chaptersJson,
+        scheduledAt,
       })
       .onConflictDoUpdate({
         target: [publishedPages.userId, publishedPages.uid],
@@ -233,18 +229,18 @@ export async function POST(request: NextRequest) {
           html,
           currentVersion: nextVersion,
           categoryId: typeof categoryId === 'string' ? categoryId : null,
-          coverAssetId: normalizedCoverAssetId,
-          coverUrl,
+          coverUrl: normalizedCoverUrl,
           tags: normalizedTags,
           visibility: normalizedVisibility,
           moderationStatus: 'approved',
           authorSlug: session.userSlug,
           authorDisplayName,
           authorAvatarUrl,
-          lastPublishedAt: sql`now()`,
+          lastPublishedAt: nowOrScheduled,
           versionCount: nextVersion,
           updatedAt: sql`now()`,
           chaptersJson,
+          scheduledAt,
         },
       });
 
@@ -294,8 +290,7 @@ export async function POST(request: NextRequest) {
       description: description ?? null,
       html,
       categoryId: typeof categoryId === 'string' ? categoryId : null,
-      coverAssetId: normalizedCoverAssetId,
-      coverUrl,
+      coverUrl: normalizedCoverUrl,
       tags: normalizedTags,
       visibility: normalizedVisibility,
       moderationStatus: 'approved',
