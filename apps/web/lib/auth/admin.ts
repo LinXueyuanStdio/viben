@@ -7,6 +7,7 @@
 
 import type { NextRequest } from 'next/server';
 import { decryptSession } from './jwe';
+import { validateApiKey } from './api-key';
 import { AuthError } from './middleware';
 import type { Session } from './types';
 import {
@@ -102,6 +103,48 @@ export function getRoleLevel(role: string): number {
 }
 
 // ============================================
+// Authentication Helpers
+// ============================================
+
+/**
+ * Authenticate a request from either a session cookie or an API key.
+ *
+ * Tries session cookie first, then falls back to Bearer token in the
+ * Authorization header (validated against the api_keys table).
+ *
+ * @returns The session if authenticated, null otherwise.
+ */
+async function authenticateRequest(request: NextRequest): Promise<Session | null> {
+  // 1. Session cookie
+  const token = request.cookies.get('session')?.value;
+  if (token) {
+    const session = await decryptSession(token);
+    if (session) return session;
+  }
+
+  // 2. API Key via Authorization: Bearer <key>
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader) {
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (match) {
+      const user = await validateApiKey(match[1]);
+      if (user) {
+        return {
+          userId: user.id,
+          username: user.username,
+          userSlug: user.userSlug,
+          email: user.email,
+          role: user.role,
+          expiresAt: Date.now() + 3600000,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ============================================
 // Middleware Helpers
 // ============================================
 
@@ -173,16 +216,10 @@ export async function requirePermission(
   request: NextRequest,
   permission: AdminPermission
 ): Promise<Session> {
-  const token = request.cookies.get('session')?.value;
-
-  if (!token) {
-    throw new AuthError('Authentication required', 401);
-  }
-
-  const session = await decryptSession(token);
+  const session = await authenticateRequest(request);
 
   if (!session) {
-    throw new AuthError('Session expired', 401);
+    throw new AuthError('Authentication required', 401);
   }
 
   if (!hasPermission(session.role, permission)) {
