@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, Bookmark, ThumbsUp, MoreHorizontal, Flag, MessageSquare } from "lucide-react"
+import { Eye, MessageCircle, Bookmark, ThumbsUp, MoreHorizontal, Flag, MessageSquare, CircleUser } from "lucide-react"
 import { Cover } from "./cover"
 import { MetaRow } from "./meta-row"
 import { StatsRow } from "./stats-row"
@@ -224,17 +224,31 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
         {variant === "default" && description && (
           <p className="text-[13px] text-muted-foreground truncate">{description}</p>
         )}
-        {!hideAuthor && (
-          <MetaRow
-            author={author}
-            meta={[timeAgo]}
-          />
-        )}
-        {variant === "default" && (
-          <div className="flex items-end justify-between">
-            <StatsRow stats={detailStats} />
-            <MoreMenu pageId={pageId} />
-          </div>
+        {variant === "home" ? (
+          !hideAuthor && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 min-w-0 text-[13px] text-muted-foreground">
+                <CircleUser className="size-[18px] shrink-0" />
+                <span className="font-bold truncate">{author.name}</span>
+                <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
+                <span className="shrink-0">{timeAgo}</span>
+              </span>
+              <MoreMenu pageId={pageId} />
+            </div>
+          )
+        ) : (
+          <>
+            {!hideAuthor && (
+              <MetaRow
+                author={author}
+                meta={[timeAgo]}
+              />
+            )}
+            <div className="flex items-end justify-between">
+              <StatsRow stats={detailStats} />
+              <MoreMenu pageId={pageId} />
+            </div>
+          </>
         )}
       </div>
     </div>
