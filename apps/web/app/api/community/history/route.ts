@@ -8,8 +8,9 @@ export async function GET(request: NextRequest) {
     const session = await requireAuth(request);
     const rawLimit = Number(request.nextUrl.searchParams.get('limit'));
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 30;
+    const cursor = request.nextUrl.searchParams.get('cursor');
 
-    return NextResponse.json(await getBrowseHistory(session, limit));
+    return NextResponse.json(await getBrowseHistory(session, limit, cursor));
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json(

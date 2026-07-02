@@ -864,7 +864,23 @@ export async function recordPageView(params: {
   }
 }
 
-export async function getBrowseHistory(session: Session, limit: number) {
+export async function getBrowseHistory(
+  session: Session,
+  limit: number,
+  cursor?: string | null,
+) {
+  const decodedCursor = cursor ? decodeCursor(cursor) : null
+  const cursorPredicate =
+    decodedCursor
+      ? or(
+          lt(userBrowseHistory.lastViewedAt, new Date(decodedCursor.created_at)),
+          and(
+            eq(userBrowseHistory.lastViewedAt, new Date(decodedCursor.created_at)),
+            lt(userBrowseHistory.id, decodedCursor.id),
+          ),
+        )
+      : undefined
+
   const rows = await db
     .select({
       history: userBrowseHistory,
@@ -880,14 +896,19 @@ export async function getBrowseHistory(session: Session, limit: number) {
         eq(userBrowseHistory.entityType, 'published_page'),
         isNull(userBrowseHistory.deletedAt),
         eq(publishedPages.visibility, 'public'),
-        eq(publishedPages.moderationStatus, 'approved')
+        eq(publishedPages.moderationStatus, 'approved'),
+        cursorPredicate,
       )
     )
-    .orderBy(desc(userBrowseHistory.lastViewedAt))
-    .limit(limit);
+    .orderBy(desc(userBrowseHistory.lastViewedAt), desc(userBrowseHistory.id))
+    .limit(limit + 1);
+
+  const visibleRows = rows.slice(0, limit)
+  const hasMore = rows.length > limit
+  const cursorSource = hasMore ? visibleRows.at(-1)?.history : null
 
   return {
-    items: rows.map(({ history, page, author }) => ({
+    items: visibleRows.map(({ history, page, author }) => ({
       id: history.id,
       entity_type: history.entityType,
       entity_id: history.entityId,
@@ -904,7 +925,20 @@ export async function getBrowseHistory(session: Session, limit: number) {
       author_slug: author.userSlug,
       author_avatar_url: author.avatarUrl ?? null,
       last_progress: history.lastProgress ?? null,
+      stats: {
+        views: page.viewCount,
+        likes: page.likeCount,
+        comments: page.commentCount,
+        bookmarks: page.bookmarkCount,
+      },
     })),
+    next_cursor: cursorSource
+      ? encodeCursor({
+          created_at: cursorSource.lastViewedAt.toISOString(),
+          id: cursorSource.id,
+        })
+      : null,
+    has_more: hasMore,
   };
 }
 
@@ -1805,11 +1839,11 @@ function normalizeTopic(topic: string): string {
     .slice(0, 64);
 }
 
-export async function listRanking(params: {
+export const listRanking = cache(async (params: {
   rankingKey: string;
   timeWindow: string;
   limit: number;
-}) {
+}) => {
   const snapshot = await db.query.rankingSnapshots.findFirst({
     where: and(
       eq(rankingSnapshots.rankingKey, params.rankingKey),
@@ -1902,7 +1936,7 @@ export async function listRanking(params: {
     has_more: rows.length > params.limit,
     seed: null,
   };
-}
+});
 
 export async function getHomeConfig(surface: string, locale: string) {
   const revision = (await db.query.operationRevisions.findFirst({
