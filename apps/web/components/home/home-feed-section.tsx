@@ -22,7 +22,7 @@ export async function HomeFeedSection() {
     <div className="grid gap-2">
       {feedItems.map((feed, i) => (
         <Link key={i} href={feed.actions.shareUrl || `/moment/${feed.actions.momentId}`} className="block">
-          <FeedCard data={feed} variant="preloaded" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
+          <FeedCard data={feed} variant="preloaded" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} inFeed />
         </Link>
       ))}
     </div>

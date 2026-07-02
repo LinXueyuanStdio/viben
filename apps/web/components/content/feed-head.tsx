@@ -25,9 +25,11 @@ export interface FeedHeadData {
 interface FeedHeadProps {
   data: FeedHeadData
   className?: string
+  shareText?: string
+  shareUrl?: string
 }
 
-export function FeedHead({ data, className }: FeedHeadProps) {
+export function FeedHead({ data, className, shareText, shareUrl }: FeedHeadProps) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -119,6 +121,19 @@ export function FeedHead({ data, className }: FeedHeadProps) {
               className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
             >
               <Flag className="h-4 w-4" /> {t("community.report")}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false)
+                const text = shareText || `${name}: ${""}`
+                const url = shareUrl || window.location.href
+                if (navigator.share) { navigator.share({ title: text, url }).catch(() => {}) }
+                else { navigator.clipboard.writeText(`${text}\n${url}`).then(() => toast.success(t("common.copied"))).catch(() => {}) }
+              }}
+              className="grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2.5 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+            >
+              <Share2 className="h-4 w-4" /> {t("community.shareToOtherApps")}
             </button>
             <button
               role="menuitem"

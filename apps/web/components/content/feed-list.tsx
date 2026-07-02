@@ -69,7 +69,7 @@ export function FeedList({ initialItems, initialHasMore, initialCursor, feedType
   return (
     <div className="grid gap-0">
       {items.map((feed, i) => (
-        <FeedCard key={feed.actions.momentId ?? `feed-${i}`} data={feed} variant="rich" session={session} />
+        <FeedCard key={feed.actions.momentId ?? `feed-${i}`} data={feed} variant="rich" session={session} inFeed />
       ))}
       {hasMore && (
         <Button

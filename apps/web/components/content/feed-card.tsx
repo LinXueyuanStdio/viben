@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useCallback, useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, ThumbsUp, Repeat2, Share2, Send, Loader2 } from "lucide-react"
+import { Eye, MessageCircle, ThumbsUp, Repeat2, Send, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { FeedHead } from "./feed-head"
 import type { FeedHeadData } from "./feed-head"
@@ -48,9 +48,11 @@ interface FeedCardProps {
   onAction?: (action: string) => void
   preloadComments?: boolean
   collapsed?: boolean
+  /** In feed stream: show repost button. In detail: show share button. */
+  inFeed?: boolean
 }
 
-export function FeedCard({ data, variant = "preloaded", className, session, onAction, preloadComments = true, collapsed = true }: FeedCardProps) {
+export function FeedCard({ data, variant = "preloaded", className, session, onAction, preloadComments = true, collapsed = true, inFeed = false }: FeedCardProps) {
   const { t } = useTranslation()
 
   const like = useToggleLike({
@@ -86,15 +88,28 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
     setOptimisticComments(data.actions.comments)
   }, [data.actions.comments, commentSubmitting])
 
-  const handleShare = useCallback(() => {
-    const text = `${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`
-    const url = data.actions.shareUrl ?? window.location.href
-    if (navigator.share) {
-      navigator.share({ title: text, url }).catch(() => {})
-    } else {
-      navigator.clipboard.writeText(`${text}\n${url}`).catch(() => {})
+  const handleRepost = useCallback(async () => {
+    const momentId = data.actions.momentId
+    if (!momentId) return
+    try {
+      const res = await fetch("/api/moments/repost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moment_id: momentId }),
+      })
+      if (res.ok) {
+        setOptimisticReposts((c) => c + 1)
+        toast.success(t("community.repostSuccess"))
+      } else {
+        toast.error(t("community.repostFailed"))
+      }
+    } catch {
+      toast.error(t("community.repostFailed"))
     }
-  }, [data.head.name, data.text, data.actions.shareUrl])
+  }, [data.actions.momentId, t])
+
+  const { head, text, quote, attachment, actions } = data
+  const [optimisticReposts, setOptimisticReposts] = useState(actions.reposts ?? 0)
 
   const handleLikeWrap = useCallback(() => {
     if (onAction) { onAction("like"); return }
@@ -140,12 +155,10 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
     toast.info(t("community.interactSoon"))
   }, [onAction, t])
 
-  const { head, text, quote, attachment, actions } = data
   const allAttachments = attachment ? [attachment] : []
 
   const actionStats: StatProps[] = variant === "rich"
     ? [
-        { icon: Eye, value: actions.views, format: true },
         {
           icon: ThumbsUp,
           value: like.count,
@@ -169,11 +182,10 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
         },
         {
           icon: Repeat2,
-          value: actions.reposts ?? 0,
+          value: optimisticReposts,
           format: true,
           dataAction: "repost",
-          onClick: handleRepostPlaceholder,
-          disabled: true,
+          onClick: handleRepost,
         },
       ]
     : [
@@ -207,7 +219,7 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
       variant === "rich" && "grid gap-[9px]",
       className
     )}>
-      <FeedHead data={head} />
+      <FeedHead data={head} shareText={`${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`} shareUrl={data.actions.shareUrl} />
       <div className="ml-[42px] space-y-[9px]">
         <div className="relative">
           <p className={cn(
@@ -240,15 +252,20 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
             ))}
           </div>
         )}
-        <div className="flex items-center justify-between mt-[5px]">
-          <StatsRow stats={actionStats} />
-          <button
-            className="inline-flex items-center justify-center size-[28px] rounded-[8px] hover:bg-surface-secondary text-muted-foreground transition-colors"
-            aria-label={t("community.share")}
-            onClick={handleShare}
-          >
-            <Share2 className="size-4" />
-          </button>
+        <div className={cn(
+          "mt-[5px]",
+          inFeed ? "flex items-center justify-between" : "flex justify-center"
+        )}>
+          <StatsRow stats={actionStats} className={!inFeed ? "justify-center gap-8" : undefined} />
+          {inFeed && (
+            <button
+              className="inline-flex items-center justify-center size-[28px] rounded-[8px] hover:bg-surface-secondary text-muted-foreground transition-colors"
+              aria-label={t("community.repost")}
+              onClick={handleRepost}
+            >
+              <Repeat2 className="size-4" />
+            </button>
+          )}
         </div>
         {/* Comment preview */}
         {commentPreview.data && commentPreview.data.length > 0 && (
