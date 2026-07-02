@@ -42,7 +42,7 @@ export function HistoryItem({ data, href, className }: HistoryItemProps) {
         fallbackTitle={title}
         aspectRatio="16/10"
         overlay
-        className="rounded-none min-h-full"
+        className="rounded-none"
       />
       <div className="grid gap-[7px] p-3">
         <strong className="font-['Lexend'] text-[15px] font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors duration-200">

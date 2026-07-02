@@ -40,6 +40,12 @@ export interface FeedCardSession {
   avatarUrl?: string
 }
 
+export interface PreloadedComment {
+  id: string
+  content: string
+  author: { display_name: string; user_slug: string; avatar_url: string | null }
+}
+
 interface FeedCardProps {
   data: FeedCardData
   variant?: "preloaded" | "rich"
@@ -50,9 +56,11 @@ interface FeedCardProps {
   collapsed?: boolean
   /** In feed stream: show repost button. In detail: show share button. */
   inFeed?: boolean
+  /** Preloaded comment previews from server — skips client-side useQuery when provided */
+  preloadedComments?: PreloadedComment[]
 }
 
-export function FeedCard({ data, variant = "preloaded", className, session, onAction, preloadComments = true, collapsed = true, inFeed = false }: FeedCardProps) {
+export function FeedCard({ data, variant = "preloaded", className, session, onAction, preloadComments = true, collapsed = true, inFeed = false, preloadedComments }: FeedCardProps) {
   const { t } = useTranslation()
 
   const like = useToggleLike({
@@ -64,16 +72,17 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
 
   const [optimisticComments, setOptimisticComments] = useState(data.actions.comments)
 
-  // Preload latest comment preview
+  // Preload latest comment preview (uses server-preloaded data when available, avoids client HTTP call)
   const commentPreview = useQuery({
     queryKey: ["moment-comment-preview", data.actions.momentId],
     queryFn: async () => {
       const r = await fetch(`/api/community/comments?entity_type=moment&entity_id=${data.actions.momentId}&limit=1`)
       const d = await r.json()
-      return (d.comments ?? []) as Array<{ id: string; content: string; author: { display_name: string; user_slug: string; avatar_url: string | null } }>
+      return (d.comments ?? []) as PreloadedComment[]
     },
-    enabled: preloadComments && optimisticComments > 0 && !!data.actions.momentId,
+    enabled: preloadedComments === undefined && preloadComments && optimisticComments > 0 && !!data.actions.momentId,
     staleTime: 60_000,
+    initialData: preloadedComments,
   })
 
   // Inline comment composer
