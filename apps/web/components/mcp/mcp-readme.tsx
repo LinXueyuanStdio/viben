@@ -2,6 +2,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { MarkdownContent } from '@/components/shared/markdown-content';
 
 interface McpReadmeProps {
   content: string | null;
@@ -29,10 +30,7 @@ export function McpReadme({ content }: McpReadmeProps) {
         <CardTitle>{t('marketplace.readme')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          {/* In production, use a markdown renderer like react-markdown */}
-          <pre className="whitespace-pre-wrap text-sm">{content}</pre>
-        </div>
+        <MarkdownContent content={content} />
       </CardContent>
     </Card>
   );

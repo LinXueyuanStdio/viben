@@ -61,9 +61,9 @@ export function useInfiniteFetch<T>(
     stateRef.current.loading = true
     try {
       const data = await fetchRef.current(null)
-      setItems(data.items)
-      stateRef.current.cursor = data.next_cursor
-      stateRef.current.hasMore = data.has_more
+      setItems(data?.items ?? [])
+      stateRef.current.cursor = data?.next_cursor ?? null
+      stateRef.current.hasMore = data?.has_more ?? false
     } finally {
       setLoading(false)
       stateRef.current.loading = false
@@ -76,9 +76,9 @@ export function useInfiniteFetch<T>(
     stateRef.current.loading = true
     try {
       const data = await fetchRef.current(stateRef.current.cursor)
-      setItems((prev) => [...prev, ...data.items])
-      stateRef.current.cursor = data.next_cursor
-      stateRef.current.hasMore = data.has_more
+      setItems((prev) => [...prev, ...(data?.items ?? [])])
+      stateRef.current.cursor = data?.next_cursor ?? null
+      stateRef.current.hasMore = data?.has_more ?? false
     } finally {
       setLoading(false)
       stateRef.current.loading = false
