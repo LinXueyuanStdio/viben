@@ -153,7 +153,7 @@ export function TopicManagement() {
       const body = {
         slug: formSlug,
         display_name: formDisplayName,
-        description: formDescription || null,
+        description: formDescription || undefined,
         is_featured: formIsFeatured,
       };
       const res = editingTopic

@@ -62,6 +62,7 @@ export function CategoryManagement() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Form state
   const [formSlug, setFormSlug] = useState('');
@@ -128,6 +129,7 @@ export function CategoryManagement() {
     setFormDescription('');
     setFormSortOrder(0);
     setFormIsActive(true);
+    setSaveError(null);
     setDialogOpen(true);
   };
 
@@ -138,16 +140,18 @@ export function CategoryManagement() {
     setFormDescription(cat.description ?? '');
     setFormSortOrder(cat.sortOrder);
     setFormIsActive(cat.isActive);
+    setSaveError(null);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const body = {
         slug: formSlug,
         name: formName,
-        description: formDescription || null,
+        description: formDescription || undefined,
         sort_order: formSortOrder,
         is_active: formIsActive,
       };
@@ -173,9 +177,10 @@ export function CategoryManagement() {
       }
 
       setDialogOpen(false);
+      setSaveError(null);
       fetchCategories();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.categories.actionError'));
+      setSaveError(err instanceof Error ? err.message : t('dashboard.admin.categories.actionError'));
     } finally {
       setSaving(false);
     }
@@ -364,6 +369,9 @@ export function CategoryManagement() {
               />
             </div>
           </div>
+          {saveError && (
+            <p className="text-sm text-destructive">{saveError}</p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               {t('common.cancel')}

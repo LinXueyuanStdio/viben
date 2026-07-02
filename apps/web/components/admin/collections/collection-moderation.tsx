@@ -209,7 +209,7 @@ export function CollectionModeration() {
     try {
       const body: Record<string, unknown> = {};
       if (editName !== detail?.name) body.name = editName;
-      if (editDescription !== (detail?.description ?? '')) body.description = editDescription || null;
+      if (editDescription !== (detail?.description ?? '')) body.description = editDescription || undefined;
       if (editIsPublic !== detail?.isPublic) body.isPublic = editIsPublic;
 
       if (Object.keys(body).length === 0) {
