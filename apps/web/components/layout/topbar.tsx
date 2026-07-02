@@ -7,6 +7,7 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { Maximize2, FileText, Columns2, PanelRight, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
+import { trackAnalytics } from "@/lib/analytics/track"
 import { getTopbarMode } from "./topbar-mode"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { useDrawer } from "./drawer-context"
@@ -79,6 +80,7 @@ export function Topbar({
   }, [tabParam])
 
   const handleReadTabChange = React.useCallback((value: string) => {
+    trackAnalytics("read_tab_switch", { tab: value })
     if (value === "settings") {
       router.replace(`${pathname}?tab=settings`, { scroll: false })
     } else {
@@ -130,7 +132,10 @@ export function Topbar({
   React.useEffect(() => {
     if (!immersive) return
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setImmersive(false)
+      if (e.key === "Escape") {
+        setImmersive(false)
+        trackAnalytics("immersive_exit")
+      }
     }
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
@@ -216,10 +221,10 @@ export function Topbar({
             rightContent ?? topbarSlots?.rightContent ?? (
               <>
                 {/* 阅读模式操作 */}
-                <IconButton size="compact" label={t("community.expandDetails")} onClick={toggleDrawer}>
+                <IconButton size="compact" label={t("community.expandDetails")} onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}>
                   <PanelRight className="h-4 w-4" />
                 </IconButton>
-                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => setImmersive(true)}>
+                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => { setImmersive(true); trackAnalytics("immersive_enter") }}>
                   <Maximize2 className="h-4 w-4" />
                 </IconButton>
                 <ReadMoreMenu pageId={urlPageId ?? ""} userSlug={urlUserSlug ?? ""} />

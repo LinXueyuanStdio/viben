@@ -5,6 +5,7 @@ import { I18nProvider } from '@/components/providers/i18n-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'sonner';
 import { Analytics } from "@vercel/analytics/react"
+import { WebVitalsReporter } from "@/components/analytics/web-vitals"
 import './globals.css';
 
 const inter = Inter({
@@ -50,6 +51,7 @@ export default function RootLayout({
           </I18nProvider>
         </ThemeProvider>
         <Analytics />
+        <WebVitalsReporter />
       </body>
     </html>
   );
