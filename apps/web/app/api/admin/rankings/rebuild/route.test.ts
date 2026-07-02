@@ -77,7 +77,7 @@ const adminSession = {
 function snapshotResult() {
   return [{
     id: 'new-snapshot',
-    rankingKey: 'published_page_7d',
+    rankingKey: 'published_page',
     entityType: 'published_page',
     timeWindow: '7d',
     status: 'ready',

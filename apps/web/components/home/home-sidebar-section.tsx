@@ -21,7 +21,7 @@ export async function HomeSidebarSection() {
       session?.userId
         ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
         : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
-      listRanking({ rankingKey: "popular_pages", timeWindow: "7d", limit: 10 }),
+      listRanking({ rankingKey: "published_page", timeWindow: "7d", limit: 10 }),
     ])
 
     authorCards = topAuthors.map((u) => ({

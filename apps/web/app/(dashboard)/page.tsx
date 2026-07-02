@@ -66,7 +66,7 @@ export default async function HomePage() {
 
   try {
     const [rankingResult, latestPages] = await Promise.all([
-      listRanking({ rankingKey: "popular_pages", timeWindow: "7d", limit: 10 }),
+      listRanking({ rankingKey: "published_page", timeWindow: "7d", limit: 10 }),
       db.select({
         uid: publishedPages.uid,
         title: publishedPages.title,

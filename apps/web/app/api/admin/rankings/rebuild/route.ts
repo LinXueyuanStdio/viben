@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rankingKey = `${entityType}_${timeWindow}`;
+    const rankingKey = entityType;
     const algorithmVersion = '1.0.0';
 
     // Query published pages for scoring

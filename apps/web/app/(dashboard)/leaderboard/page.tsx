@@ -6,9 +6,9 @@ import { EmptyState } from "@/components/content/i18n-text"
 import type { RankItemData } from "@/components/content/rank-item"
 
 const RANK_TABS = [
-  { key: "热门页面", timeWindow: "7d" },
-  { key: "新近上升", timeWindow: "24h" },
-  { key: "30天", timeWindow: "30d" },
+  { key: "最新热度", timeWindow: "1d", label: "最新热度" },
+  { key: "热门页面", timeWindow: "7d", label: "热门页面" },
+  { key: "月度精选", timeWindow: "30d", label: "月度精选" },
 ]
 
 function gradientCover(title: string): string {
@@ -20,7 +20,7 @@ export default async function LeaderboardPage() {
   // Fetch all 3 rankings in parallel
   const rankings = await Promise.all(
     RANK_TABS.map((tab) =>
-      listRanking({ rankingKey: "popular_pages", timeWindow: tab.timeWindow, limit: 20 })
+      listRanking({ rankingKey: "published_page", timeWindow: tab.timeWindow, limit: 20 })
     )
   )
 
