@@ -154,6 +154,13 @@
       "openReports": "Laporan Terbuka",
       "todayActions": "Tindakan Hari Ini",
       "totalUsers": "Jumlah Pengguna",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Moderasi Terkini",
       "pendingQueue": "Baris Gilir Tertangguh",
       "noRecentActivity": "Tiada aktiviti terkini",
@@ -168,7 +175,9 @@
         "delete": "padam",
         "warn": "amaran",
         "ban": "haramkan",
-        "unban": "nyahharamkan"
+        "unban": "nyahharamkan",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Komen",
         "collection": "Koleksi",
         "user": "Pengguna",
-        "report": "Laporan"
+        "report": "Laporan",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

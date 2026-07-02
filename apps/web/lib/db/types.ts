@@ -137,5 +137,6 @@ export type ModerationAction =
   | 'delete'
   | 'warn'
   | 'ban'
-  | 'unban';
+  | 'unban'
+  | 'role_change';
 export type DraftPackageType = 'mcp' | 'skill';

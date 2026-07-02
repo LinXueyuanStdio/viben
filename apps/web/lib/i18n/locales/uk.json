@@ -154,6 +154,13 @@
       "openReports": "Відкриті звіти",
       "todayActions": "Дії сьогодні",
       "totalUsers": "Всього користувачів",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Нещодавня модерація",
       "pendingQueue": "Черга очікування",
       "noRecentActivity": "Немає нещодавньої активності",
@@ -168,7 +175,9 @@
         "delete": "видалити",
         "warn": "попередити",
         "ban": "заблокувати",
-        "unban": "розблокувати"
+        "unban": "розблокувати",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Коментар",
         "collection": "Колекція",
         "user": "Користувач",
-        "report": "Звіт"
+        "report": "Звіт",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

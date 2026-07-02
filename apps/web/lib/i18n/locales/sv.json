@@ -154,6 +154,13 @@
       "openReports": "Öppna rapporter",
       "todayActions": "Dagens åtgärder",
       "totalUsers": "Totalt antal användare",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Senaste moderering",
       "pendingQueue": "Väntande kö",
       "noRecentActivity": "Ingen senaste aktivitet",
@@ -168,7 +175,9 @@
         "delete": "radera",
         "warn": "varna",
         "ban": "bannlys",
-        "unban": "häv bannlysning"
+        "unban": "häv bannlysning",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Kommentar",
         "collection": "Samling",
         "user": "Användare",
-        "report": "Rapport"
+        "report": "Rapport",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

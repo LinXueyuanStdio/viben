@@ -230,7 +230,8 @@
         "ban": "ban",
         "unban": "unban",
         "hide": "hide",
-        "unhide": "unhide"
+        "unhide": "unhide",
+        "role_change": "role change"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -240,7 +241,8 @@
         "user": "User",
         "report": "Report",
         "moment": "Moment",
-        "published_page": "Page"
+        "published_page": "Page",
+        "media_asset": "Media Asset"
       },
       "packages": {
         "status": {
@@ -296,7 +298,11 @@
           "reopenApprove": "Reopen & Approve",
           "fetchError": "Failed to fetch package details",
           "loadError": "Failed to load package",
-          "download": "Download"
+          "download": "Download",
+          "deleteConfirm": "Confirm Delete",
+          "deleteConfirmDesc": "This action cannot be undone. Are you sure you want to permanently delete {{name}}?",
+          "deleteSuccess": "{{name}} has been deleted",
+          "deleteError": "Failed to delete package"
         },
         "card": {
           "skill": "Skill",
@@ -313,7 +319,11 @@
           "rejectError": "Failed to reject package",
           "featureSuccess": "{{name}} is now featured",
           "unfeatureSuccess": "{{name}} has been unfeatured",
-          "featureError": "Failed to update feature status"
+          "featureError": "Failed to update feature status",
+          "deleteConfirm": "Confirm Delete",
+          "deleteConfirmDesc": "This action cannot be undone. Are you sure you want to permanently delete {{name}}?",
+          "deleteSuccess": "{{name}} has been deleted",
+          "deleteError": "Failed to delete package"
         },
         "list": {
           "tryAgain": "Try again",
@@ -326,7 +336,9 @@
           "packageUnfeatured": "Package unfeatured",
           "approveError": "Failed to approve package",
           "rejectError": "Failed to reject package",
-          "featureError": "Failed to update feature status"
+          "featureError": "Failed to update feature status",
+          "deleteSuccess": "Package deleted",
+          "deleteError": "Failed to delete package"
         }
       },
       "comments": {
@@ -361,7 +373,23 @@
         "filterPublic": "Public",
         "filterPrivate": "Private",
         "columns": { "name": "Name", "author": "Author", "items": "Items", "favorites": "Favorites", "visibility": "Visibility", "createdAt": "Created", "actions": "Actions" },
-        "showing": "Showing {{count}} / {{total}} collections"
+        "showing": "Showing {{count}} / {{total}} collections",
+        "viewDetails": "View Details",
+        "edit": "Edit",
+        "editTitle": "Edit Collection",
+        "editSuccess": "Collection updated successfully",
+        "editError": "Failed to update collection",
+        "editName": "Collection Name",
+        "editDescription": "Description",
+        "editVisibility": "Visibility",
+        "detailDescription": "Description",
+        "detailMeta": "Metadata",
+        "detailItems": "Collection Items",
+        "noItems": "No items",
+        "noDescription": "No description",
+        "itemCount": "{{count}} items",
+        "bookmarkCount": "{{count}} bookmarks",
+        "forkCount": "{{count}} forks"
       },
       "pages": {
         "title": "Page Review",
@@ -396,7 +424,16 @@
         "rejectReasonLabel": "Rejection Reason",
         "rejectReasonPlaceholder": "e.g., Incomplete content, violates community guidelines",
         "confirmReject": "Confirm Reject",
-        "loadDetailError": "Failed to load"
+        "loadDetailError": "Failed to load",
+        "unhide": "Unhide",
+        "unhideSuccess": "Page unhidden",
+        "reopen": "Re-review",
+        "reopenSuccess": "Page re-submitted for review",
+        "deletePage": "Delete",
+        "deleteSuccess": "Page deleted",
+        "deleteConfirmTitle": "Confirm Delete",
+        "deleteConfirmDesc": "This action cannot be undone. Are you sure you want to delete this page?",
+        "confirmDelete": "Confirm Delete"
       },
       "categories": {
         "title": "Category Management",
@@ -491,6 +528,25 @@
         "columns": { "reporter": "Reporter", "pageId": "Page ID", "content": "Content", "category": "Category", "rating": "Rating", "time": "Time", "actions": "Actions" },
         "showing": "Showing {{count}} / {{total}} feedback"
       },
+      "ratings": {
+        "title": "Rating Management",
+        "subtitle": "Review and manage user ratings for packages and skills",
+        "emptyTitle": "No ratings",
+        "deleteConfirm": "Confirm Delete",
+        "deleteConfirmDesc": "This action cannot be undone. Are you sure you want to delete this rating?",
+        "delete": "Delete Rating",
+        "deleteSuccess": "Rating deleted",
+        "deleteError": "Failed to delete rating",
+        "retry": "Retry",
+        "loadError": "Failed to load ratings",
+        "filterAll": "All",
+        "columns": { "user": "User", "entity": "Entity", "score": "Rating", "time": "Time", "actions": "Actions" },
+        "showing": "Showing {{count}} / {{total}} ratings",
+        "justNow": "Just now",
+        "minutesAgo": "{{count}} min ago",
+        "hoursAgo": "{{count}} hr ago",
+        "daysAgo": "{{count}} days ago"
+      },
       "rankings": {
         "title": "Ranking Management",
         "subtitle": "View ranking snapshots and manually trigger rebuilds",
@@ -509,10 +565,18 @@
         "buildStatus": { "building": "Building", "ready": "Ready", "failed": "Failed", "expired": "Expired" },
         "columns": { "key": "Key", "entity": "Entity Type", "window": "Time Window", "scope": "Scope", "status": "Status", "items": "Items", "generated": "Generated", "actions": "Actions" },
         "detailColumns": { "rank": "Rank", "title": "Title", "type": "Type", "author": "Author", "score": "Score", "data": "Stats", "delta": "Change" },
-        "showingSnapshots": "{{count}} snapshots",
+        "showingSnapshots": "{{total}} snapshots, page {{page}}/{{totalPages}}",
         "viewItems": "View Items",
         "retry": "Retry",
-        "loadError": "Failed to load rankings"
+        "loadError": "Failed to load rankings",
+        "delete": "Delete",
+        "deleteConfirm": "Confirm Delete",
+        "deleteConfirmDesc": "This action cannot be undone. Deleting this snapshot will also remove all associated ranking items.",
+        "deleteSuccess": "Snapshot deleted successfully",
+        "deleteError": "Failed to delete snapshot",
+        "rebuildConfig": "Rebuild Configuration",
+        "rebuildConfigDesc": "Select entity type and time window for rebuild",
+        "entityType": "Entity Type"
       },
       "operations": {
         "title": "Operation Slot Management",
@@ -545,10 +609,12 @@
         "inactive": "Inactive",
         "visibility": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published", "archived": "Archived" },
         "showing": "{{count}} slots",
-        "form": { "uid": "UID", "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "description": "Description", "layoutType": "Layout Type", "locale": "Locale", "minItems": "Min Items", "maxItems": "Max Items", "sortOrder": "Sort Order", "contentType": "Content Type", "contentId": "Content ID", "title": "Title", "subtitle": "Subtitle", "imageUrl": "Image URL", "linkUrl": "Link URL", "ctaLabel": "CTA Label", "badgeLabel": "Badge", "visibility": "Visibility", "isActive": "Active" },
+        "form": { "uid": "UID", "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "description": "Description", "layoutType": "Layout Type", "locale": "Locale", "minItems": "Min Items", "maxItems": "Max Items", "sortOrder": "Sort Order", "fallbackStrategy": "Fallback Strategy", "contentType": "Content Type", "contentId": "Content ID", "title": "Title", "subtitle": "Subtitle", "imageUrl": "Image URL", "linkUrl": "Link URL", "targetEntityType": "Target Entity Type", "targetEntityId": "Target Entity ID", "targetEntityUid": "Target Entity UID", "startsAt": "Start Time", "endsAt": "End Time", "ctaLabel": "CTA Label", "badgeLabel": "Badge", "visibility": "Visibility", "isActive": "Active" },
         "layoutTypes": { "list": "List", "grid": "Grid", "carousel": "Carousel", "hero": "Hero", "sidebar": "Sidebar" },
+        "fallbackStrategies": { "none": "None", "showDefault": "Show Default", "hideSlot": "Hide Slot" },
         "columns": { "name": "Name", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "Layout", "locale": "Locale", "status": "Status", "minMax": "Limits", "actions": "Actions" },
         "itemColumns": { "title": "Title", "type": "Type", "target": "Target", "status": "Status", "actions": "Actions" },
+        "pagination": { "previous": "Previous", "next": "Next", "showing": "Page {{current}}/{{total}}, {{count}} items total" },
         "revisions": {
           "title": "Revision History",
           "button": "Revision History",
@@ -563,14 +629,16 @@
         }
       },
       "logs": {
-        "title": "Operation Logs",
-        "subtitle": "View admin moderation operation records",
-        "emptyTitle": "No operation logs",
-        "emptySubtitle": "No moderation operation records yet",
-        "filterEntityType": "Entity Type:",
-        "filterAction": "Action:",
+        "title": "Moderation Logs",
+        "subtitle": "Track all moderation activities",
+        "emptyTitle": "No logs found",
+        "emptySubtitle": "Moderation activities will appear here",
+        "filterEntityType": "Entity Type",
+        "filterAction": "Action",
+        "filterAdminId": "Admin ID",
+        "filterEntityId": "Entity ID",
         "filterAll": "All",
-        "showing": "Showing {{count}} / {{total}} records",
+        "showing": "Showing {{count}} of {{total}}",
         "columns": { "admin": "Admin", "action": "Action", "entityType": "Entity Type", "entityName": "Entity Name", "reason": "Reason", "time": "Time" }
       }
     },
@@ -2446,7 +2514,20 @@
       "description": "Description",
       "status": "Status",
       "time": "Time",
-      "actions": "Actions"
+      "actions": "Actions",
+      "retry": "Retry",
+      "unknownReporter": "Unknown",
+      "noDescription": "-",
+      "showing": "Showing {{count}} / {{total}} reports",
+      "viewEntity": "View",
+      "loadError": "Failed to load reports",
+      "reasons": {
+        "spam": "Spam",
+        "inappropriate": "Inappropriate",
+        "copyright": "Copyright",
+        "security": "Security",
+        "other": "Other"
+      }
     }
   },
   "pageEditor": {

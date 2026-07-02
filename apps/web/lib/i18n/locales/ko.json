@@ -154,6 +154,13 @@
       "openReports": "미처리 신고",
       "todayActions": "오늘의 작업",
       "totalUsers": "전체 사용자",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "최근 관리 작업",
       "pendingQueue": "대기 큐",
       "noRecentActivity": "최근 활동 없음",
@@ -168,7 +175,9 @@
         "delete": "삭제",
         "warn": "경고",
         "ban": "차단",
-        "unban": "차단 해제"
+        "unban": "차단 해제",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "댓글",
         "collection": "컬렉션",
         "user": "사용자",
-        "report": "신고"
+        "report": "신고",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

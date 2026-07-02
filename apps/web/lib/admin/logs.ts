@@ -14,6 +14,7 @@ import {
   collections,
   moments,
   publishedPages,
+  shareLinks,
 } from '@/lib/db';
 import { eq, and, desc, count, inArray } from 'drizzle-orm';
 import type { ModerationAction, ModerationEntityType } from '@/lib/types/admin';
@@ -310,12 +311,28 @@ async function batchResolveEntityNames(
         }
         break;
       }
+      case 'share': {
+        const shares = await db
+          .select({ id: shareLinks.id, uid: shareLinks.uid })
+          .from(shareLinks)
+          .where(inArray(shareLinks.id, idsArray));
+
+        for (const s of shares) {
+          entityNameMap.set(`share:${s.id}`, `Share ${s.uid}`);
+        }
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`share:${id}`)) {
+            entityNameMap.set(`share:${id}`, `Share ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
       case 'user': {
         const userResults = await db
           .select({ id: users.id, username: users.username })
           .from(users)
           .where(inArray(users.id, idsArray));
-        
+
         for (const user of userResults) {
           entityNameMap.set(`user:${user.id}`, `@${user.username}`);
         }
@@ -331,6 +348,12 @@ async function batchResolveEntityNames(
         // Reports don't have names, just use ID
         for (const id of idsArray) {
           entityNameMap.set(`report:${id}`, `Report ${id.slice(0, 8)}`);
+        }
+        break;
+      }
+      case 'feedback': {
+        for (const id of idsArray) {
+          entityNameMap.set(`feedback:${id}`, `Feedback ${id.slice(0, 8)}`);
         }
         break;
       }

@@ -154,6 +154,13 @@
       "openReports": "Open Rapporten",
       "todayActions": "Acties Vandaag",
       "totalUsers": "Totaal Gebruikers",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Recente Moderatie",
       "pendingQueue": "Wachtrij",
       "noRecentActivity": "Geen recente activiteit",
@@ -168,7 +175,9 @@
         "delete": "verwijderen",
         "warn": "waarschuwen",
         "ban": "verbannen",
-        "unban": "ban opheffen"
+        "unban": "ban opheffen",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Reactie",
         "collection": "Collectie",
         "user": "Gebruiker",
-        "report": "Rapport"
+        "report": "Rapport",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

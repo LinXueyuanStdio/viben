@@ -154,6 +154,13 @@
       "openReports": "未解決のレポート",
       "todayActions": "本日のアクション",
       "totalUsers": "総ユーザー数",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "最近のモデレーション",
       "pendingQueue": "保留キュー",
       "noRecentActivity": "最近のアクティビティなし",
@@ -168,7 +175,9 @@
         "delete": "削除",
         "warn": "警告",
         "ban": "禁止",
-        "unban": "禁止解除"
+        "unban": "禁止解除",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "コメント",
         "collection": "コレクション",
         "user": "ユーザー",
-        "report": "レポート"
+        "report": "レポート",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

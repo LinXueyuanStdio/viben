@@ -154,6 +154,13 @@
       "openReports": "Reportes abiertos",
       "todayActions": "Acciones de hoy",
       "totalUsers": "Usuarios totales",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Moderación reciente",
       "pendingQueue": "Cola pendiente",
       "noRecentActivity": "Sin actividad reciente",
@@ -168,7 +175,9 @@
         "delete": "eliminar",
         "warn": "advertir",
         "ban": "banear",
-        "unban": "desbanear"
+        "unban": "desbanear",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Comentario",
         "collection": "Colección",
         "user": "Usuario",
-        "report": "Reporte"
+        "report": "Reporte",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

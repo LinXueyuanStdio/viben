@@ -154,6 +154,13 @@
       "openReports": "Открытые жалобы",
       "todayActions": "Действия сегодня",
       "totalUsers": "Всего пользователей",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Последние действия модерации",
       "pendingQueue": "Очередь ожидания",
       "noRecentActivity": "Нет последних действий",
@@ -168,7 +175,9 @@
         "delete": "удалить",
         "warn": "предупредить",
         "ban": "заблокировать",
-        "unban": "разблокировать"
+        "unban": "разблокировать",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Комментарий",
         "collection": "Коллекция",
         "user": "Пользователь",
-        "report": "Жалоба"
+        "report": "Жалоба",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

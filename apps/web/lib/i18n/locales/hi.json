@@ -154,6 +154,13 @@
       "openReports": "खुली रिपोर्ट",
       "todayActions": "आज की कार्रवाइयाँ",
       "totalUsers": "कुल उपयोगकर्ता",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "हालिया मॉडरेशन",
       "pendingQueue": "लंबित कतार",
       "noRecentActivity": "कोई हालिया गतिविधि नहीं",
@@ -168,7 +175,9 @@
         "delete": "हटाएं",
         "warn": "चेतावनी दें",
         "ban": "प्रतिबंधित करें",
-        "unban": "प्रतिबंध हटाएं"
+        "unban": "प्रतिबंध हटाएं",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "टिप्पणी",
         "collection": "संग्रह",
         "user": "उपयोगकर्ता",
-        "report": "रिपोर्ट"
+        "report": "रिपोर्ट",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

@@ -154,6 +154,13 @@
       "openReports": "Otwarte zgłoszenia",
       "todayActions": "Dzisiejsze działania",
       "totalUsers": "Łączna liczba użytkowników",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Ostatnia moderacja",
       "pendingQueue": "Kolejka oczekujących",
       "noRecentActivity": "Brak ostatniej aktywności",
@@ -168,7 +175,9 @@
         "delete": "usuń",
         "warn": "ostrzeż",
         "ban": "zablokuj",
-        "unban": "odblokuj"
+        "unban": "odblokuj",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Komentarz",
         "collection": "Kolekcja",
         "user": "Użytkownik",
-        "report": "Zgłoszenie"
+        "report": "Zgłoszenie",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

@@ -229,7 +229,8 @@
         "ban": "封禁",
         "unban": "解封",
         "hide": "隐藏",
-        "unhide": "取消隐藏"
+        "unhide": "取消隐藏",
+        "role_change": "角色变更"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -239,7 +240,8 @@
         "user": "用户",
         "report": "举报",
         "moment": "动态",
-        "published_page": "页面"
+        "published_page": "页面",
+        "media_asset": "媒体资源"
       },
       "packages": {
         "status": {
@@ -295,7 +297,11 @@
           "reopenApprove": "重新打开并通过",
           "fetchError": "获取包详情失败",
           "loadError": "加载包失败",
-          "download": "下载"
+          "download": "下载",
+          "deleteConfirm": "确认删除",
+          "deleteConfirmDesc": "此操作不可撤销。确定要永久删除 {{name}} 吗？",
+          "deleteSuccess": "{{name}} 已被删除",
+          "deleteError": "删除包失败"
         },
         "card": {
           "skill": "技能",
@@ -312,7 +318,11 @@
           "rejectError": "拒绝包失败",
           "featureSuccess": "{{name}} 已被推荐",
           "unfeatureSuccess": "{{name}} 已取消推荐",
-          "featureError": "更新推荐状态失败"
+          "featureError": "更新推荐状态失败",
+          "deleteConfirm": "确认删除",
+          "deleteConfirmDesc": "此操作不可撤销。确定要永久删除 {{name}} 吗？",
+          "deleteSuccess": "{{name}} 已被删除",
+          "deleteError": "删除包失败"
         },
         "list": {
           "tryAgain": "重试",
@@ -325,7 +335,9 @@
           "packageUnfeatured": "包已取消推荐",
           "approveError": "通过包失败",
           "rejectError": "拒绝包失败",
-          "featureError": "更新推荐状态失败"
+          "featureError": "更新推荐状态失败",
+          "deleteSuccess": "包已删除",
+          "deleteError": "删除包失败"
         }
       },
       "comments": {
@@ -360,7 +372,23 @@
         "filterPublic": "公开",
         "filterPrivate": "私有",
         "columns": { "name": "名称", "author": "作者", "items": "条目", "favorites": "收藏", "visibility": "可见性", "createdAt": "创建时间", "actions": "操作" },
-        "showing": "显示 {{count}} / {{total}} 个合集"
+        "showing": "显示 {{count}} / {{total}} 个合集",
+        "viewDetails": "查看详情",
+        "edit": "编辑",
+        "editTitle": "编辑合集",
+        "editSuccess": "合集更新成功",
+        "editError": "更新合集失败",
+        "editName": "合集名称",
+        "editDescription": "描述",
+        "editVisibility": "可见性",
+        "detailDescription": "描述",
+        "detailMeta": "元数据",
+        "detailItems": "合集内容",
+        "noItems": "暂无条目",
+        "noDescription": "暂无描述",
+        "itemCount": "{{count}} 个条目",
+        "bookmarkCount": "{{count}} 次收藏",
+        "forkCount": "{{count}} 次复刻"
       },
       "pages": {
         "title": "页面审核",
@@ -395,7 +423,16 @@
         "rejectReasonLabel": "拒绝原因",
         "rejectReasonPlaceholder": "如：内容不完整、违反社区规范等",
         "confirmReject": "确认拒绝",
-        "loadDetailError": "加载失败"
+        "loadDetailError": "加载失败",
+        "unhide": "取消隐藏",
+        "unhideSuccess": "页面已取消隐藏",
+        "reopen": "重新审核",
+        "reopenSuccess": "页面已重新提交审核",
+        "deletePage": "删除",
+        "deleteSuccess": "页面已删除",
+        "deleteConfirmTitle": "确认删除",
+        "deleteConfirmDesc": "此操作不可撤销。确定要删除这个页面吗？",
+        "confirmDelete": "确认删除"
       },
       "categories": {
         "title": "分类管理",
@@ -490,6 +527,25 @@
         "columns": { "reporter": "反馈者", "pageId": "页面ID", "content": "内容", "category": "类别", "rating": "评分", "time": "时间", "actions": "操作" },
         "showing": "显示 {{count}} / {{total}} 条反馈"
       },
+      "ratings": {
+        "title": "评分管理",
+        "subtitle": "管理用户对包和技能的评分",
+        "emptyTitle": "暂无评分数据",
+        "deleteConfirm": "确认删除评分",
+        "deleteConfirmDesc": "确定要删除该评分吗？此操作不可撤销。",
+        "delete": "删除评分",
+        "deleteSuccess": "评分已删除",
+        "deleteError": "删除评分失败",
+        "retry": "重试",
+        "loadError": "加载评分数据失败",
+        "filterAll": "全部",
+        "columns": { "user": "用户", "entity": "评分对象", "score": "评分", "time": "时间", "actions": "操作" },
+        "showing": "显示 {{count}} 条，共 {{total}} 条评分",
+        "justNow": "刚刚",
+        "minutesAgo": "{{count}} 分钟前",
+        "hoursAgo": "{{count}} 小时前",
+        "daysAgo": "{{count}} 天前"
+      },
       "rankings": {
         "title": "榜单管理",
         "subtitle": "查看榜单快照和排行数据，手动触发榜单重建",
@@ -508,10 +564,18 @@
         "buildStatus": { "building": "构建中", "ready": "就绪", "failed": "失败", "expired": "已过期" },
         "columns": { "key": "榜单 Key", "entity": "实体类型", "window": "时间窗口", "scope": "范围", "status": "状态", "items": "条目数", "generated": "生成时间", "actions": "操作" },
         "detailColumns": { "rank": "排名", "title": "标题", "type": "类型", "author": "作者", "score": "评分", "data": "数据", "delta": "变化" },
-        "showingSnapshots": "共 {{count}} 个快照",
+        "showingSnapshots": "共 {{total}} 个快照，第 {{page}}/{{totalPages}} 页",
         "viewItems": "查看条目",
         "retry": "重试",
-        "loadError": "加载榜单失败"
+        "loadError": "加载榜单失败",
+        "delete": "删除",
+        "deleteConfirm": "确认删除",
+        "deleteConfirmDesc": "此操作不可撤销。确定要删除该榜单快照吗？关联的排行条目将被一并移除。",
+        "deleteSuccess": "榜单快照已删除",
+        "deleteError": "删除榜单快照失败",
+        "rebuildConfig": "重建配置",
+        "rebuildConfigDesc": "选择要重建的实体类型和时间窗口",
+        "entityType": "实体类型"
       },
       "operations": {
         "title": "运营位管理",
@@ -544,10 +608,12 @@
         "inactive": "禁用",
         "visibility": { "draft": "草稿", "scheduled": "已排期", "published": "已发布", "archived": "已归档" },
         "showing": "共 {{count}} 个运营位",
-        "form": { "uid": "UID", "name": "名称", "surface": "位置", "slotKey": "标识", "description": "描述", "layoutType": "布局类型", "locale": "区域", "minItems": "最小条目数", "maxItems": "最大条目数", "sortOrder": "排序", "contentType": "内容类型", "contentId": "内容 ID", "title": "标题", "subtitle": "副标题", "imageUrl": "图片地址", "linkUrl": "链接地址", "ctaLabel": "按钮文案", "badgeLabel": "角标", "visibility": "可见性", "isActive": "启用状态" },
+        "form": { "uid": "UID", "name": "名称", "surface": "位置", "slotKey": "标识", "description": "描述", "layoutType": "布局类型", "locale": "区域", "minItems": "最小条目数", "maxItems": "最大条目数", "sortOrder": "排序", "fallbackStrategy": "回退策略", "contentType": "内容类型", "contentId": "内容 ID", "title": "标题", "subtitle": "副标题", "imageUrl": "图片地址", "linkUrl": "链接地址", "targetEntityType": "目标实体类型", "targetEntityId": "目标实体 ID", "targetEntityUid": "目标实体 UID", "startsAt": "开始时间", "endsAt": "结束时间", "ctaLabel": "按钮文案", "badgeLabel": "角标", "visibility": "可见性", "isActive": "启用状态" },
         "layoutTypes": { "list": "列表", "grid": "网格", "carousel": "轮播", "hero": "Hero", "sidebar": "侧边栏" },
+        "fallbackStrategies": { "none": "无回退", "showDefault": "显示默认", "hideSlot": "隐藏槽位" },
         "columns": { "name": "名称", "surface": "Surface", "slotKey": "Slot Key", "layoutType": "布局", "locale": "区域", "status": "状态", "minMax": "条目限制", "actions": "操作" },
         "itemColumns": { "title": "标题", "type": "类型", "target": "目标", "status": "状态", "actions": "操作" },
+        "pagination": { "previous": "上一页", "next": "下一页", "showing": "第 {{current}}/{{total}} 页，共 {{count}} 条" },
         "revisions": {
           "title": "修订历史",
           "button": "修订历史",
@@ -562,14 +628,16 @@
         }
       },
       "logs": {
-        "title": "操作日志",
-        "subtitle": "查看管理员审核操作记录",
-        "emptyTitle": "暂无操作日志",
-        "emptySubtitle": "还没有审核操作记录",
-        "filterEntityType": "实体类型:",
-        "filterAction": "操作:",
+        "title": "审核日志",
+        "subtitle": "追踪所有审核活动",
+        "emptyTitle": "暂无日志",
+        "emptySubtitle": "审核活动将显示在这里",
+        "filterEntityType": "实体类型",
+        "filterAction": "操作",
+        "filterAdminId": "管理员 ID",
+        "filterEntityId": "实体 ID",
         "filterAll": "全部",
-        "showing": "显示 {{count}} / {{total}} 条记录",
+        "showing": "显示 {{count}} / {{total}}",
         "columns": { "admin": "管理员", "action": "操作", "entityType": "实体类型", "entityName": "实体名称", "reason": "原因", "time": "时间" }
       }
     },
@@ -2445,7 +2513,20 @@
       "description": "描述",
       "status": "状态",
       "time": "时间",
-      "actions": "操作"
+      "actions": "操作",
+      "retry": "重试",
+      "unknownReporter": "未知",
+      "noDescription": "-",
+      "showing": "显示 {{count}} / {{total}} 条举报",
+      "viewEntity": "查看",
+      "loadError": "加载举报失败",
+      "reasons": {
+        "spam": "垃圾信息",
+        "inappropriate": "不当内容",
+        "copyright": "版权问题",
+        "security": "安全问题",
+        "other": "其他"
+      }
     }
   },
   "pageEditor": {

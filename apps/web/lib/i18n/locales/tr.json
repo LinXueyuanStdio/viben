@@ -154,6 +154,13 @@
       "openReports": "Açık Raporlar",
       "todayActions": "Bugünkü İşlemler",
       "totalUsers": "Toplam Kullanıcı",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Son Moderasyon",
       "pendingQueue": "Bekleyen Kuyruk",
       "noRecentActivity": "Son aktivite yok",
@@ -168,7 +175,9 @@
         "delete": "sil",
         "warn": "uyar",
         "ban": "yasakla",
-        "unban": "yasağı kaldır"
+        "unban": "yasağı kaldır",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Yorum",
         "collection": "Koleksiyon",
         "user": "Kullanıcı",
-        "report": "Rapor"
+        "report": "Rapor",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {

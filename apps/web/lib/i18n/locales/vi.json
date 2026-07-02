@@ -154,6 +154,13 @@
       "openReports": "Báo cáo mở",
       "todayActions": "Hành động hôm nay",
       "totalUsers": "Tổng người dùng",
+      "totalPublishedPages": "Published Pages",
+      "totalMoments": "Moments",
+      "totalPackages": "Total Packages",
+      "newUsersToday": "New Users (Today)",
+      "newUsersThisWeek": "New Users (Week)",
+      "totalDownloads": "Total Downloads",
+      "totalComments": "Total Comments",
       "recentModeration": "Kiểm duyệt gần đây",
       "pendingQueue": "Hàng đợi chờ xử lý",
       "noRecentActivity": "Không có hoạt động gần đây",
@@ -168,7 +175,9 @@
         "delete": "xóa",
         "warn": "cảnh báo",
         "ban": "cấm",
-        "unban": "bỏ cấm"
+        "unban": "bỏ cấm",
+        "hide": "hide",
+        "unhide": "unhide"
       },
       "entityTypes": {
         "mcp": "MCP",
@@ -176,7 +185,9 @@
         "comment": "Bình luận",
         "collection": "Bộ sưu tập",
         "user": "Người dùng",
-        "report": "Báo cáo"
+        "report": "Báo cáo",
+        "moment": "Moment",
+        "published_page": "Page"
       },
       "packages": {
         "status": {
