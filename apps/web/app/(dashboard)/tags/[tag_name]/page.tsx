@@ -42,14 +42,13 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
       coverUrl: publishedPages.coverUrl,
       authorDisplayName: publishedPages.authorDisplayName,
       authorAvatarUrl: publishedPages.authorAvatarUrl,
+      authorSlug: publishedPages.authorSlug,
       lastPublishedAt: publishedPages.lastPublishedAt,
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
       bookmarkCount: publishedPages.bookmarkCount,
-      userSlug: users.userSlug,
     }).from(publishedPages)
-      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(publishedPages.visibility, "public"),
         eq(publishedPages.moderationStatus, "approved"),
@@ -91,7 +90,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
         bookmarks: p.bookmarkCount,
       },
     },
-    href: `/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
+    href: `/${encodeURIComponent(p.authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }))
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({

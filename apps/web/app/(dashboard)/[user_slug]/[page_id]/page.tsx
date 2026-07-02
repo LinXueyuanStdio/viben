@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import { eq, and, ne, desc } from "drizzle-orm"
 import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
-import { db, publishedPages, users } from "@/lib/db"
+import { db, publishedPages } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
 import { ReadPageClient } from "@/components/pages/read-page-client"
 import { ReadPageShell } from "@/components/pages/read-page-shell"
@@ -284,14 +284,13 @@ async function RecommendationsInjector({
         description: publishedPages.description,
         authorDisplayName: publishedPages.authorDisplayName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
+        authorSlug: publishedPages.authorSlug,
         coverUrl: publishedPages.coverUrl,
         viewCount: publishedPages.viewCount,
         likeCount: publishedPages.likeCount,
         commentCount: publishedPages.commentCount,
-        userSlug: users.userSlug,
       })
       .from(publishedPages)
-      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(
         and(
           eq(publishedPages.visibility, "public"),
@@ -316,7 +315,7 @@ async function RecommendationsInjector({
         commentCount: r.commentCount,
         stats: { views: r.viewCount, likes: r.likeCount },
       } satisfies MiniPageCardData,
-      href: `/${encodeURIComponent(r.userSlug)}/${encodeURIComponent(r.uid)}?tab=read`,
+      href: `/${encodeURIComponent(r.authorSlug)}/${encodeURIComponent(r.uid)}?tab=read`,
     }))
   } catch {
     recommendationEntries = []

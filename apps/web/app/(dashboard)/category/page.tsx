@@ -32,7 +32,7 @@ function timeAgo(date: Date | string | null | undefined): string {
 
 interface PageResult {
   pageId: string
-  userSlug: string
+  authorSlug: string
   title: string
   description: string | null
   authorDisplayName: string | null
