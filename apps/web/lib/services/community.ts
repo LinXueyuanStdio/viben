@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, count, desc, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import {
   communityComments,
@@ -118,24 +119,24 @@ export function isDirectLinkReadablePage(page: typeof publishedPages.$inferSelec
   );
 }
 
-export async function getPublishedPageContext(
-  userSlug: string,
-  pageId: string
-): Promise<PublicPageContext | null> {
-  const author = await db.query.users.findFirst({
-    where: eq(users.userSlug, userSlug),
-  });
+export const getPublishedPageContext = cache(
+  async (userSlug: string, pageId: string): Promise<PublicPageContext | null> => {
+    const page = await db.query.publishedPages.findFirst({
+      where: and(
+        eq(publishedPages.authorSlug, userSlug),
+        eq(publishedPages.uid, pageId),
+      ),
+    })
+    if (!page) return null
 
-  if (!author) return null;
+    const author = await db.query.users.findFirst({
+      where: eq(users.id, page.userId),
+    })
+    if (!author) return null
 
-  const page = await db.query.publishedPages.findFirst({
-    where: and(eq(publishedPages.userId, author.id), eq(publishedPages.uid, pageId)),
-  });
-
-  if (!page) return null;
-
-  return { page, author };
-}
+    return { page, author }
+  }
+)
 
 export function canReadPage(
   page: typeof publishedPages.$inferSelect,
