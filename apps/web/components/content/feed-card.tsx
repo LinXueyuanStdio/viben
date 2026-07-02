@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Eye, MessageCircle, ThumbsUp, Repeat2, Share2, Send, Loader2 } from "lucide-react"
@@ -11,9 +12,11 @@ import type { AttachmentData } from "./attachment"
 import { StatsRow } from "./stats-row"
 import type { StatProps } from "./stats-row"
 import { cn } from "@/lib/utils"
+import { useQuery } from "@tanstack/react-query"
 import { createComment } from "@/lib/api/community"
 import { useToggleLike } from "@/hooks/use-toggle-like"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { timeAgo } from "@/lib/services/moment-mapper"
 
 export interface FeedCardData {
   head: FeedHeadData
@@ -56,6 +59,18 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
   })
 
   const [optimisticComments, setOptimisticComments] = useState(data.actions.comments)
+
+  // Preload latest comment preview
+  const commentPreview = useQuery({
+    queryKey: ["moment-comment-preview", data.actions.momentId],
+    queryFn: async () => {
+      const r = await fetch(`/api/community/comments?entity_type=moment&entity_id=${data.actions.momentId}&limit=1`)
+      const d = await r.json()
+      return (d.comments ?? []) as Array<{ id: string; content: string; author: { display_name: string; user_slug: string; avatar_url: string | null } }>
+    },
+    enabled: optimisticComments > 0 && !!data.actions.momentId,
+    staleTime: 60_000,
+  })
 
   // Inline comment composer
   const [commentOpen, setCommentOpen] = useState(false)
@@ -220,6 +235,15 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
             <Share2 className="size-4" />
           </button>
         </div>
+        {/* Comment preview */}
+        {commentPreview.data && commentPreview.data.length > 0 && (
+          <Link href={data.actions.shareUrl || `/moment/${data.actions.momentId}`} className="block mt-1.5">
+            <div className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2">
+              <span className="font-medium text-foreground">{commentPreview.data[0].author.display_name}</span>
+              {": "}{commentPreview.data[0].content}
+            </div>
+          </Link>
+        )}
         {commentOpen && session && (
           <div className="flex items-center gap-2.5 pt-1">
             <Avatar className="size-[28px] shrink-0">

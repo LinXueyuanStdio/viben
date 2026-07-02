@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { listMoments } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
 import { FeedCard } from "@/components/content/feed-card"
@@ -20,7 +21,9 @@ export async function HomeFeedSection() {
   return (
     <div className="grid gap-2">
       {feedItems.map((feed, i) => (
-        <FeedCard key={i} data={feed} variant="preloaded" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
+        <Link key={i} href={feed.actions.shareUrl || `/moment/${feed.actions.momentId}`} className="block">
+          <FeedCard data={feed} variant="preloaded" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
+        </Link>
       ))}
     </div>
   )
