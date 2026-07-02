@@ -5,17 +5,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, EyeOff, Eye, Trash2, Paperclip, Repeat, FileText } from 'lucide-react';
+import { Loader2, EyeOff, Eye, Trash2, Paperclip, Repeat, FileText, Pin, PinOff, Search, X } from 'lucide-react';
 
 interface Moment {
   id: string; uid: string; kind: string; body: string | null; visibility: string;
   likeCount: number; commentCount: number; repostCount: number; viewCount: number | null;
   attachmentCount: number;
-  isPinned: boolean; createdAt: string; authorId: string; authorName: string | null; authorUsername: string | null;
+  isPinned: boolean; isDeleted: boolean; createdAt: string; authorId: string; authorName: string | null; authorUsername: string | null;
 }
 
 interface MomentAttachment {
@@ -63,10 +64,15 @@ export function MomentManagement() {
 
   const currentKind = searchParams.get('kind') || 'all';
   const currentVisibility = searchParams.get('visibility') || 'all';
+  const currentSearch = searchParams.get('search') || '';
+  const currentIncludeDeleted = searchParams.get('include_deleted') === 'true';
   const currentPage = Number(searchParams.get('page')) || 1;
 
+  // Local search input state (synced to URL on submit)
+  const [searchInput, setSearchInput] = useState(currentSearch);
+
   // Delete confirm
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; action: string; label: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; action: string; label: string; isForce?: boolean } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Detail dialog
@@ -90,7 +96,11 @@ export function MomentManagement() {
   const fetchMoments = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const params = new URLSearchParams({ page: String(currentPage), limit: '20', kind: currentKind, visibility: currentVisibility });
+      const params = new URLSearchParams({
+        page: String(currentPage), limit: '20', kind: currentKind, visibility: currentVisibility,
+      });
+      if (currentSearch) params.set('search', currentSearch);
+      if (currentIncludeDeleted) params.set('include_deleted', 'true');
       const res = await fetch(`/api/admin/moments?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch moments');
       const data = await res.json();
@@ -99,7 +109,7 @@ export function MomentManagement() {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.moments.loadError'));
     } finally { setLoading(false); }
-  }, [currentPage, currentKind, currentVisibility, t]);
+  }, [currentPage, currentKind, currentVisibility, currentSearch, currentIncludeDeleted, t]);
 
   useEffect(() => { fetchMoments(); }, [fetchMoments]);
 
@@ -130,13 +140,19 @@ export function MomentManagement() {
     router.push(`/admin/moments?${params.toString()}`);
   };
 
-  const handleAction = async (id: string, action: 'hide' | 'unhide' | 'delete') => {
+  const handleAction = async (id: string, action: 'hide' | 'unhide' | 'delete' | 'toggle_pin' | 'force_delete') => {
     setActingId(id);
     try {
-      const res = await fetch(`/api/admin/moments/${id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
-      });
-      if (!res.ok) throw new Error(`Failed to ${action} moment`);
+      if (action === 'force_delete') {
+        // Use DELETE endpoint with force=true for hard delete
+        const res = await fetch(`/api/admin/moments/${id}?force=true`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to force delete moment');
+      } else {
+        const res = await fetch(`/api/admin/moments/${id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+        });
+        if (!res.ok) throw new Error(`Failed to ${action} moment`);
+      }
       setDeleteTarget(null);
       fetchMoments();
     } catch (err) {
@@ -144,23 +160,56 @@ export function MomentManagement() {
     } finally { setActingId(null); }
   };
 
-  const confirmAction = (id: string, action: 'hide' | 'unhide' | 'delete') => {
+  const confirmAction = (id: string, action: 'hide' | 'unhide' | 'delete' | 'force_delete') => {
     const labels: Record<string, string> = {
       hide: t('dashboard.admin.moments.hide'),
       unhide: t('dashboard.admin.moments.unhide'),
       delete: t('dashboard.admin.moments.delete'),
+      force_delete: t('dashboard.admin.moments.forceDelete'),
     };
-    setDeleteTarget({ id, action, label: labels[action] });
+    setDeleteTarget({ id, action, label: labels[action], isForce: action === 'force_delete' });
+  };
+
+  const handleSearch = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (searchInput.trim()) {
+      params.set('search', searchInput.trim());
+    } else {
+      params.delete('search');
+    }
+    params.delete('page');
+    router.push(`/admin/moments?${params.toString()}`);
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('search');
+    params.delete('page');
+    router.push(`/admin/moments?${params.toString()}`);
+  };
+
+  const toggleIncludeDeleted = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (currentIncludeDeleted) {
+      params.delete('include_deleted');
+    } else {
+      params.set('include_deleted', 'true');
+    }
+    params.delete('page');
+    router.push(`/admin/moments?${params.toString()}`);
   };
 
   const getDialogTitle = () => {
     if (!deleteTarget) return '';
+    if (deleteTarget.isForce) return t('dashboard.admin.moments.forceDeleteConfirm');
     if (deleteTarget.action === 'delete') return t('dashboard.admin.moments.deleteConfirm');
     return `${t('common.confirm')}${deleteTarget.label}`;
   };
 
   const getDialogDescription = () => {
     if (!deleteTarget) return '';
+    if (deleteTarget.isForce) return t('dashboard.admin.moments.forceDeleteConfirmDesc');
     if (deleteTarget.action === 'delete') return t('dashboard.admin.moments.deleteConfirmDesc');
     return `确定要${deleteTarget.label}此动态吗？`;
   };
@@ -169,6 +218,31 @@ export function MomentManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.moments.title')}</h1><p className="text-muted-foreground">{t('dashboard.admin.moments.subtitle')}</p></div>
+      </div>
+      {/* Search */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('dashboard.admin.moments.searchPlaceholder')}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="pl-8 pr-8"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={handleSearch} disabled={!searchInput.trim()}>
+          {t('dashboard.admin.moments.search')}
+        </Button>
       </div>
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex gap-2">
@@ -189,6 +263,15 @@ export function MomentManagement() {
             </button>
           ))}
         </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={toggleIncludeDeleted}
+            className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${currentIncludeDeleted ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'}`}
+          >
+            {t('dashboard.admin.moments.showDeleted')}
+          </button>
+        </div>
       </div>
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -202,13 +285,18 @@ export function MomentManagement() {
             <thead><tr className="border-b bg-muted/50">
               <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.moments.columns.author')}</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.moments.columns.content')}</th>
               <th className="px-4 py-3 text-left text-sm font-medium">类型</th><th className="px-4 py-3 text-left text-sm font-medium">附件</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.moments.columns.visibility')}</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">互动</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.moments.columns.time')}</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">置顶</th><th className="px-4 py-3 text-left text-sm font-medium">互动</th><th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.moments.columns.time')}</th>
               <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.moments.columns.actions')}</th>
             </tr></thead>
             <tbody>
               {moments.map((m) => (
-                <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => fetchMomentDetail(m.id)}>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{m.authorName || m.authorUsername || '未知'}</td>
+                <tr key={m.id} className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${m.isDeleted ? 'opacity-60' : ''}`} onClick={() => fetchMomentDetail(m.id)}>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      {m.authorName || m.authorUsername || '未知'}
+                      {m.isDeleted && <Badge variant="destructive" className="text-xs">已删除</Badge>}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-sm max-w-[250px] truncate">{m.body?.slice(0, 100) || '-'}</td>
                   <td className="px-4 py-3 text-sm"><Badge variant="outline">{KIND_LABELS[m.kind] || m.kind}</Badge></td>
                   <td className="px-4 py-3 text-sm">
@@ -222,17 +310,45 @@ export function MomentManagement() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{VISIBILITY_LABELS[m.visibility] || m.visibility}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {m.isPinned ? (
+                      <Badge variant="default" className="text-xs gap-1">
+                        <Pin className="h-3 w-3" />{t('dashboard.admin.moments.pinned')}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">❤ {m.likeCount} · 💬 {m.commentCount} · 🔄 {m.repostCount}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{new Date(m.createdAt).toLocaleString('zh-CN')}</td>
                   <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                    {/* Pin/Unpin */}
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={() => handleAction(m.id, 'toggle_pin')}
+                      disabled={actingId === m.id}
+                      title={m.isPinned ? t('dashboard.admin.moments.unpin') : t('dashboard.admin.moments.pin')}
+                    >
+                      {actingId === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                        m.isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />
+                      }
+                    </Button>
+                    {/* Hide/Unhide */}
                     {m.visibility !== 'private' ? (
                       <Button variant="ghost" size="sm" onClick={() => confirmAction(m.id, 'hide')} disabled={actingId === m.id} title={t('dashboard.admin.moments.hide')}><EyeOff className="h-4 w-4" /></Button>
                     ) : (
                       <Button variant="ghost" size="sm" onClick={() => confirmAction(m.id, 'unhide')} disabled={actingId === m.id} title={t('dashboard.admin.moments.unhide')}><Eye className="h-4 w-4" /></Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => confirmAction(m.id, 'delete')} disabled={actingId === m.id} title={t('dashboard.admin.moments.delete')}>
-                      {actingId === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
-                    </Button>
+                    {/* Soft Delete or Force Delete */}
+                    {m.isDeleted ? (
+                      <Button variant="ghost" size="sm" onClick={() => confirmAction(m.id, 'force_delete')} disabled={actingId === m.id} title={t('dashboard.admin.moments.forceDelete')}>
+                        {actingId === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => confirmAction(m.id, 'delete')} disabled={actingId === m.id} title={t('dashboard.admin.moments.delete')}>
+                        {actingId === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                      </Button>
+                    )}
                   </div></td>
                 </tr>
               ))}
@@ -256,8 +372,8 @@ export function MomentManagement() {
           <DialogHeader><DialogTitle>{getDialogTitle()}</DialogTitle><DialogDescription>{getDialogDescription()}</DialogDescription></DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>{t('common.cancel')}</Button>
-            <Button variant={deleteTarget?.action === 'delete' ? 'destructive' : 'default'}
-              onClick={() => deleteTarget && handleAction(deleteTarget.id, deleteTarget.action as 'hide' | 'unhide' | 'delete')}
+            <Button variant={deleteTarget?.action === 'delete' || deleteTarget?.action === 'force_delete' ? 'destructive' : 'default'}
+              onClick={() => deleteTarget && handleAction(deleteTarget.id, deleteTarget.action as 'hide' | 'unhide' | 'delete' | 'force_delete')}
               disabled={actingId === deleteTarget?.id}>
               {actingId === deleteTarget?.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.confirm')}{deleteTarget?.label}
             </Button>
@@ -394,7 +510,11 @@ export function MomentManagement() {
                 ) : (
                   <Button variant="secondary" onClick={() => { handleAction(detailMoment.moment.id, 'unhide'); setDetailMoment(null); }}>{t('dashboard.admin.moments.unhide')}</Button>
                 )}
-                <Button variant="destructive" onClick={() => { confirmAction(detailMoment.moment.id, 'delete'); setDetailMoment(null); }}>{t('dashboard.admin.moments.delete')}</Button>
+                {detailMoment.moment.isDeleted ? (
+                  <Button variant="destructive" onClick={() => { confirmAction(detailMoment.moment.id, 'force_delete'); setDetailMoment(null); }}>{t('dashboard.admin.moments.forceDelete')}</Button>
+                ) : (
+                  <Button variant="destructive" onClick={() => { confirmAction(detailMoment.moment.id, 'delete'); setDetailMoment(null); }}>{t('dashboard.admin.moments.delete')}</Button>
+                )}
               </DialogFooter>
             </>
           ) : (

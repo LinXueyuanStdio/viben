@@ -5,9 +5,12 @@ import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -26,6 +29,7 @@ import {
   FileDigit,
   ShieldCheck,
   Link,
+  Trash2,
 } from 'lucide-react';
 import { formatRelativeTime, formatDate } from '@/lib/utils';
 import type { PackageDetails } from '@/lib/admin/packages';
@@ -47,6 +51,7 @@ interface PackageDetailModalProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onFeature?: (id: string, featured: boolean) => void;
+  onDeleted?: () => void;
 }
 
 export function PackageDetailModal({
@@ -56,6 +61,7 @@ export function PackageDetailModal({
   onApprove,
   onReject,
   onFeature,
+  onDeleted,
 }: PackageDetailModalProps) {
   const { t } = useTranslation();
   const [pkg, setPkg] = useState<PackageDetails | null>(null);
@@ -63,6 +69,8 @@ export function PackageDetailModal({
   const [releasesLoading, setReleasesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const fetchReleases = useCallback(async (entityType: string, entityId: string) => {
     setReleasesLoading(true);
@@ -114,6 +122,27 @@ export function PackageDetailModal({
 
   const handleClose = () => {
     onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!pkg) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/packages/${pkg.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || t('dashboard.admin.packages.detail.deleteError'));
+      }
+      setShowDeleteDialog(false);
+      toast.success(t('dashboard.admin.packages.detail.deleteSuccess', { name: pkg.name }));
+      onDeleted?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.detail.deleteError'));
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const TypeIcon = pkg?.type === 'mcp' ? Package : Sparkles;
@@ -366,48 +395,95 @@ export function PackageDetailModal({
               <Separator />
 
               {/* Actions */}
-              <div className="flex justify-end gap-2">
-                {pkg.status === 'pending' && (
-                  <>
+              <div className="flex justify-between gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {t('dashboard.admin.actions.delete')}
+                </Button>
+                <div className="flex gap-2">
+                  {pkg.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => onReject?.(pkg.id)}
+                      >
+                        {t('dashboard.admin.actions.reject')}
+                      </Button>
+                      <Button onClick={() => onApprove?.(pkg.id)}>{t('dashboard.admin.actions.approve')}</Button>
+                    </>
+                  )}
+                  {pkg.status === 'approved' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => onReject?.(pkg.id)}
+                      >
+                        {t('dashboard.admin.packages.detail.revoke')}
+                      </Button>
+                      <Button onClick={() => onFeature?.(pkg.id, true)}>
+                        {t('dashboard.admin.actions.feature')}
+                      </Button>
+                    </>
+                  )}
+                  {pkg.status === 'featured' && (
                     <Button
                       variant="outline"
-                      onClick={() => onReject?.(pkg.id)}
+                      onClick={() => onFeature?.(pkg.id, false)}
                     >
-                      {t('dashboard.admin.actions.reject')}
+                      {t('dashboard.admin.actions.unfeature')}
                     </Button>
-                    <Button onClick={() => onApprove?.(pkg.id)}>{t('dashboard.admin.actions.approve')}</Button>
-                  </>
-                )}
-                {pkg.status === 'approved' && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => onReject?.(pkg.id)}
-                    >
-                      {t('dashboard.admin.packages.detail.revoke')}
+                  )}
+                  {pkg.status === 'rejected' && (
+                    <Button onClick={() => onApprove?.(pkg.id)}>
+                      {t('dashboard.admin.packages.detail.reopenApprove')}
                     </Button>
-                    <Button onClick={() => onFeature?.(pkg.id, true)}>
-                      {t('dashboard.admin.actions.feature')}
-                    </Button>
-                  </>
-                )}
-                {pkg.status === 'featured' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => onFeature?.(pkg.id, false)}
-                  >
-                    {t('dashboard.admin.actions.unfeature')}
-                  </Button>
-                )}
-                {pkg.status === 'rejected' && (
-                  <Button onClick={() => onApprove?.(pkg.id)}>
-                    {t('dashboard.admin.packages.detail.reopenApprove')}
-                  </Button>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </ScrollArea>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('dashboard.admin.packages.detail.deleteConfirm')}</DialogTitle>
+              <DialogDescription>
+                {t('dashboard.admin.packages.detail.deleteConfirmDesc', { name: pkg?.name ?? '' })}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={isDeleting}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    {t('dashboard.admin.actions.delete')}
+                  </>
+                ) : (
+                  t('dashboard.admin.actions.delete')
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

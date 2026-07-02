@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Eye, Check, X, EyeOff } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Pagination } from '@/components/shared/pagination';
+import { Loader2, Eye, Check, X, EyeOff, RotateCcw, Trash2 } from 'lucide-react';
 
 interface PageForReview {
   id: string;
@@ -52,6 +64,13 @@ interface PageDetail extends PageForReview {
   updateEvents: UpdateEvent[];
 }
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 function formatDateTime(dateStr: string | null) {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleString('zh-CN');
@@ -59,11 +78,17 @@ function formatDateTime(dateStr: string | null) {
 
 export function PageReviewManagement() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [pages, setPages] = useState<PageForReview[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'hidden' | 'all'>('pending');
+
+  // Read page from URL searchParams
+  const currentPage = Number(searchParams.get('page')) || 1;
 
   // Detail dialog state
   const [detailOpen, setDetailOpen] = useState(false);
@@ -75,6 +100,10 @@ export function PageReviewManagement() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectingPageId, setRejectingPageId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
 
   const moderationStatusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     pending: { label: t('dashboard.admin.pages.statusLabels.pending'), variant: 'default' },
@@ -93,20 +122,34 @@ export function PageReviewManagement() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/pages?moderation_status=${statusFilter}`);
+      const params = new URLSearchParams({
+        moderation_status: statusFilter,
+        page: String(currentPage),
+        limit: '20',
+      });
+      const res = await fetch(`/api/admin/pages?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch pages');
       const data = await res.json();
       setPages(data.pages);
+      setPagination(data.pagination || { page: 1, limit: 20, total: data.pages.length, totalPages: 1 });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.pages.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, t]);
+  }, [statusFilter, currentPage, t]);
 
   useEffect(() => {
     fetchPages();
   }, [fetchPages]);
+
+  const handleStatusFilterChange = (s: 'pending' | 'approved' | 'rejected' | 'hidden' | 'all') => {
+    setStatusFilter(s);
+    // Reset to page 1 when filter changes
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('page');
+    router.push(`?${params.toString()}`);
+  };
 
   const fetchDetail = async (pageId: string) => {
     setDetailLoading(true);
@@ -123,7 +166,7 @@ export function PageReviewManagement() {
     }
   };
 
-  const handleModerate = async (pageId: string, status: 'approved' | 'rejected' | 'hidden', reason?: string) => {
+  const handleModerate = async (pageId: string, status: 'approved' | 'rejected' | 'hidden' | 'pending', reason?: string) => {
     setActingId(pageId);
     try {
       const res = await fetch(`/api/admin/pages/${pageId}`, {
@@ -150,10 +193,38 @@ export function PageReviewManagement() {
     }
   };
 
+  const handleDelete = async (pageId: string) => {
+    setActingId(pageId);
+    try {
+      const res = await fetch(`/api/admin/pages/${pageId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete page');
+      }
+
+      setDetailOpen(false);
+      setDeleteDialogOpen(false);
+      setDeletingPageId(null);
+      fetchPages();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboard.admin.pages.actionError'));
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const openRejectDialog = (pageId: string) => {
     setRejectingPageId(pageId);
     setRejectionReason('');
     setRejectDialogOpen(true);
+  };
+
+  const openDeleteDialog = (pageId: string) => {
+    setDeletingPageId(pageId);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -169,7 +240,7 @@ export function PageReviewManagement() {
             <button
               key={s}
               type="button"
-              onClick={() => setStatusFilter(s)}
+              onClick={() => handleStatusFilterChange(s)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 statusFilter === s
                   ? 'bg-primary text-primary-foreground'
@@ -202,102 +273,148 @@ export function PageReviewManagement() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.title')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.author')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.visibility')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.moderationStatus')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.stats')}</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.publishedAt')}</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.pages.columns.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pages.map((page) => {
-                const modConf = moderationStatusConfig[page.moderationStatus] || moderationStatusConfig.pending;
-                return (
-                  <tr key={page.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">
-                      {page.title}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {page.authorName || page.authorUsername || t('dashboard.admin.pages.unknown')}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {visibilityLabels[page.visibility] || page.visibility}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <Badge variant={modConf.variant}>{modConf.label}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {`\u{1F441} ${page.viewCount} · ❤ ${page.likeCount} · \u{1F4AC} ${page.commentCount}`}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                      {formatDateTime(page.lastPublishedAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => fetchDetail(page.id)}
-                          title={t('dashboard.admin.pages.detailTitle')}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {page.moderationStatus === 'pending' && (
-                          <>
+        <>
+          <div className="overflow-hidden rounded-xl border">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.title')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.author')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.visibility')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.moderationStatus')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.stats')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.pages.columns.publishedAt')}</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.pages.columns.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pages.map((page) => {
+                  const modConf = moderationStatusConfig[page.moderationStatus] || moderationStatusConfig.pending;
+                  return (
+                    <tr key={page.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">
+                        {page.title}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {page.authorName || page.authorUsername || t('dashboard.admin.pages.unknown')}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {visibilityLabels[page.visibility] || page.visibility}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <Badge variant={modConf.variant}>{modConf.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {`\u{1F441} ${page.viewCount} · ❤ ${page.likeCount} · \u{1F4AC} ${page.commentCount}`}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                        {formatDateTime(page.lastPublishedAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => fetchDetail(page.id)}
+                            title={t('dashboard.admin.pages.detailTitle')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {page.moderationStatus === 'pending' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleModerate(page.id, 'approved')}
+                                disabled={actingId === page.id}
+                                title={t('dashboard.admin.pages.approve')}
+                              >
+                                {actingId === page.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openRejectDialog(page.id)}
+                                disabled={actingId === page.id}
+                                title={t('dashboard.admin.pages.reject')}
+                              >
+                                <X className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                          {page.moderationStatus === 'approved' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleModerate(page.id, 'hidden')}
+                              disabled={actingId === page.id}
+                              title={t('dashboard.admin.pages.hide')}
+                            >
+                              <EyeOff className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {page.moderationStatus === 'hidden' && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleModerate(page.id, 'approved')}
                               disabled={actingId === page.id}
-                              title={t('dashboard.admin.pages.approve')}
+                              title={t('dashboard.admin.pages.unhide')}
                             >
                               {actingId === page.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Check className="h-4 w-4 text-green-500" />
+                                <Eye className="h-4 w-4 text-green-500" />
                               )}
                             </Button>
+                          )}
+                          {page.moderationStatus === 'rejected' && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => openRejectDialog(page.id)}
+                              onClick={() => handleModerate(page.id, 'pending')}
                               disabled={actingId === page.id}
-                              title={t('dashboard.admin.pages.reject')}
+                              title={t('dashboard.admin.pages.reopen')}
                             >
-                              <X className="h-4 w-4 text-destructive" />
+                              <RotateCcw className="h-4 w-4 text-blue-500" />
                             </Button>
-                          </>
-                        )}
-                        {page.moderationStatus === 'approved' && (
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleModerate(page.id, 'hidden')}
+                            onClick={() => openDeleteDialog(page.id)}
                             disabled={actingId === page.id}
-                            title={t('dashboard.admin.pages.hide')}
+                            title={t('dashboard.admin.pages.deletePage')}
                           >
-                            <EyeOff className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-      <p className="text-sm text-muted-foreground">
-        {t('dashboard.admin.pages.totalCount', { count: pages.length })}
-      </p>
+          {pagination.totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+              />
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            {t('dashboard.admin.pages.showing', { count: pages.length, total: pagination.total })}
+          </p>
+        </>
+      )}
 
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
@@ -435,11 +552,69 @@ export function PageReviewManagement() {
                     </Button>
                   </>
                 )}
-                {selectedPage.moderationStatus !== 'pending' && (
-                  <Button variant="outline" onClick={() => setDetailOpen(false)}>
-                    {t('dashboard.admin.pages.closeDetail')}
-                  </Button>
+                {selectedPage.moderationStatus === 'approved' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleModerate(selectedPage.id, 'hidden')}
+                      disabled={actingId === selectedPage.id}
+                    >
+                      <EyeOff className="h-4 w-4 mr-1" />
+                      {t('dashboard.admin.pages.hide')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => openDeleteDialog(selectedPage.id)}
+                      disabled={actingId === selectedPage.id}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      {t('dashboard.admin.pages.deletePage')}
+                    </Button>
+                  </>
                 )}
+                {selectedPage.moderationStatus === 'hidden' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleModerate(selectedPage.id, 'approved')}
+                      disabled={actingId === selectedPage.id}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      {t('dashboard.admin.pages.unhide')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => openDeleteDialog(selectedPage.id)}
+                      disabled={actingId === selectedPage.id}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      {t('dashboard.admin.pages.deletePage')}
+                    </Button>
+                  </>
+                )}
+                {selectedPage.moderationStatus === 'rejected' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleModerate(selectedPage.id, 'pending')}
+                      disabled={actingId === selectedPage.id}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      {t('dashboard.admin.pages.reopen')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => openDeleteDialog(selectedPage.id)}
+                      disabled={actingId === selectedPage.id}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      {t('dashboard.admin.pages.deletePage')}
+                    </Button>
+                  </>
+                )}
+                <Button variant="secondary" onClick={() => setDetailOpen(false)}>
+                  {t('dashboard.admin.pages.closeDetail')}
+                </Button>
               </DialogFooter>
             </>
           ) : (
@@ -492,6 +667,35 @@ export function PageReviewManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('dashboard.admin.pages.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('dashboard.admin.pages.deleteConfirmDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingPageId) {
+                  handleDelete(deletingPageId);
+                }
+              }}
+              disabled={actingId === deletingPageId}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actingId === deletingPageId ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              {t('dashboard.admin.pages.confirmDelete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

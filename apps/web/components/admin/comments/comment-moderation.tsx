@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -17,6 +18,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+interface CommentUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 interface CommentItem {
   id: string;
   entityType: string;
@@ -24,12 +32,8 @@ interface CommentItem {
   entityName: string;
   content: string;
   createdAt: string;
-  user: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string | null;
-  };
+  updatedAt?: string;
+  user: CommentUser;
 }
 
 interface Pagination {
@@ -62,6 +66,11 @@ function formatRelativeTime(date: Date | string): string {
   return d.toLocaleDateString('zh-CN');
 }
 
+function formatDateTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleString('zh-CN');
+}
+
 export function CommentModeration() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -73,6 +82,14 @@ export function CommentModeration() {
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Detail dialog state
+  const [detailComment, setDetailComment] = useState<CommentItem | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  // Edit mode state
+  const [editContent, setEditContent] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const currentEntityType = searchParams.get('entity_type') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
@@ -120,14 +137,86 @@ export function CommentModeration() {
     try {
       const res = await fetch(`/api/admin/comments/${deleteId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete comment');
+      toast.success(t('dashboard.admin.comments.deleteSuccess'));
+      setDeleteId(null);
+      setDetailComment(null);
       fetchComments();
     } catch {
       toast.error(t('dashboard.admin.comments.deleteError'));
     } finally {
-      setDeleteId(null);
       setDeleting(false);
     }
   };
+
+  // Open detail dialog and fetch full comment
+  const openDetail = useCallback(async (comment: CommentItem) => {
+    setDetailComment(comment);
+    setEditing(false);
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/admin/comments/${comment.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDetailComment(data.comment);
+      }
+    } catch {
+      // Keep the list-level data if detail fetch fails
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const closeDetail = useCallback(() => {
+    setDetailComment(null);
+    setEditing(false);
+    setEditContent('');
+  }, []);
+
+  const startEdit = useCallback(() => {
+    if (detailComment) {
+      setEditContent(detailComment.content);
+      setEditing(true);
+    }
+  }, [detailComment]);
+
+  const cancelEdit = useCallback(() => {
+    setEditing(false);
+    setEditContent('');
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    if (!detailComment || !editContent.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/comments/${detailComment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update comment');
+      }
+      const data = await res.json();
+      toast.success(t('dashboard.admin.comments.editSuccess'));
+      // Merge updated fields into existing detail to preserve user/entityName
+      setDetailComment((prev) =>
+        prev
+          ? {
+              ...prev,
+              content: data.comment.content,
+              updatedAt: data.comment.updatedAt,
+            }
+          : prev
+      );
+      setEditing(false);
+      fetchComments();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('dashboard.admin.comments.editError'));
+    } finally {
+      setSaving(false);
+    }
+  }, [detailComment, editContent, fetchComments, t]);
 
   return (
     <div className="space-y-6">
@@ -181,7 +270,11 @@ export function CommentModeration() {
             </thead>
             <tbody>
               {comments.map((c) => (
-                <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30">
+                <tr
+                  key={c.id}
+                  className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                  onClick={() => openDetail(c)}
+                >
                   <td className="px-4 py-3 text-sm">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
@@ -206,7 +299,7 @@ export function CommentModeration() {
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                     {formatRelativeTime(c.createdAt)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -248,6 +341,7 @@ export function CommentModeration() {
         {t('dashboard.admin.comments.showing', { count: comments.length, total: pagination.total })}
       </p>
 
+      {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
@@ -262,6 +356,108 @@ export function CommentModeration() {
               {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {t('common.confirm')}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comment Detail Dialog */}
+      <Dialog open={!!detailComment} onOpenChange={closeDetail}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{'评论详情'}</DialogTitle>
+          </DialogHeader>
+
+          {detailLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : detailComment ? (
+            <div className="space-y-4">
+              {/* Author Info */}
+              <div className="flex items-center gap-3 border-b pb-4">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={detailComment.user.avatarUrl ?? undefined} />
+                  <AvatarFallback>{getInitials(detailComment.user.displayName)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium">{detailComment.user.displayName}</div>
+                  <div className="text-sm text-muted-foreground">@{detailComment.user.username}</div>
+                </div>
+              </div>
+
+              {/* Entity Info */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">评论对象：</span>
+                <Badge variant="outline">{entityTypeLabels[detailComment.entityType] || detailComment.entityType}</Badge>
+                <span className="text-sm">{detailComment.entityName}</span>
+              </div>
+
+              {/* Comment Content */}
+              <div>
+                <span className="text-sm text-muted-foreground block mb-2">评论内容：</span>
+                {editing ? (
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="min-h-[120px]"
+                    placeholder="编辑评论内容..."
+                  />
+                ) : (
+                  <div className="rounded-md bg-muted/50 p-4 whitespace-pre-wrap text-sm leading-relaxed">
+                    {detailComment.content}
+                  </div>
+                )}
+              </div>
+
+              {/* Timestamps */}
+              <div className="flex flex-col gap-1 text-sm text-muted-foreground border-t pt-4">
+                <div>
+                  创建时间：{formatDateTime(detailComment.createdAt)}
+                </div>
+                {detailComment.updatedAt && (
+                  <div>
+                    更新时间：{formatDateTime(detailComment.updatedAt)}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <div className="flex gap-2">
+              {editing ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={cancelEdit} disabled={saving}>
+                    <X className="h-4 w-4 mr-1" />
+                    取消
+                  </Button>
+                  <Button size="sm" onClick={saveEdit} disabled={saving || !editContent.trim()}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                    保存
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={startEdit}>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    编辑
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (detailComment) {
+                        setDeleteId(detailComment.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    删除
+                  </Button>
+                </>
+              )}
+            </div>
+            <Button variant="outline" onClick={closeDetail}>{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -10,6 +10,7 @@ import {
   DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Trash2, Star } from 'lucide-react';
+import { FeedbackDetailDialog } from './feedback-detail-dialog';
 
 interface Feedback {
   id: string; pageId: string; category: string; rating: number; content: string;
@@ -31,6 +32,7 @@ export function FeedbackManagement() {
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [detailFeedbackId, setDetailFeedbackId] = useState<string | null>(null);
 
   const currentCategory = searchParams.get('category') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
@@ -121,7 +123,7 @@ export function FeedbackManagement() {
             <tbody>
               {feedbacks.map((f) => {
                 const catConf = CATEGORY_CONFIG[f.category] || CATEGORY_CONFIG.other;
-                return (<tr key={f.id} className="border-b last:border-0 hover:bg-muted/30">
+                return (<tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setDetailFeedbackId(f.id)}>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">{f.reporterDisplayName || f.reporterName || t('dashboard.admin.feedbacks.columns.reporter')}</td>
                   <td className="px-4 py-3 text-sm font-mono text-xs max-w-[120px] truncate">{f.pageId.slice(0, 12)}...</td>
                   <td className="px-4 py-3 text-sm"><Badge variant={catConf.variant}>{catConf.label}</Badge></td>
@@ -129,7 +131,7 @@ export function FeedbackManagement() {
                   <td className="px-4 py-3 text-sm max-w-[250px] truncate">{f.content}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{new Date(f.createdAt).toLocaleString('zh-CN')}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setDeleteId(f.id)} disabled={deleting}>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteId(f.id); }} disabled={deleting}>
                       {deleting && deleteId === f.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
                     </Button>
                   </td>
@@ -158,6 +160,12 @@ export function FeedbackManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FeedbackDetailDialog
+        feedbackId={detailFeedbackId}
+        isOpen={!!detailFeedbackId}
+        onClose={() => setDetailFeedbackId(null)}
+      />
     </div>
   );
 }

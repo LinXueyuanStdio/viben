@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ExternalLink } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
 
 interface Report {
@@ -27,35 +29,46 @@ interface Pagination {
   totalPages: number;
 }
 
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  mcp: 'MCP',
-  skill: '技能',
-  comment: '评论',
-  collection: '合集',
-  user: '用户',
-  published_page: '页面',
-};
-
-const REASON_LABELS: Record<string, string> = {
-  spam: '垃圾信息',
-  inappropriate: '不当内容',
-  copyright: '版权问题',
-  security: '安全问题',
-  other: '其他',
-};
-
 const STATUS_CONFIG: Record<
   string,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+  { variant: 'default' | 'secondary' | 'destructive' | 'outline' }
 > = {
-  pending: { label: '待处理', variant: 'default' },
-  resolved: { label: '已处理', variant: 'secondary' },
-  dismissed: { label: '已驳回', variant: 'outline' },
+  pending: { variant: 'default' },
+  resolved: { variant: 'secondary' },
+  dismissed: { variant: 'outline' },
 };
+
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  pending: 'dashboard.adminReports.statusPending',
+  resolved: 'dashboard.adminReports.statusResolved',
+  dismissed: 'dashboard.adminReports.statusDismissed',
+};
+
+/**
+ * Map entity type to admin page URL for "View Content" link.
+ */
+function getEntityViewUrl(entityType: string, entityId: string): string | null {
+  switch (entityType) {
+    case 'mcp':
+    case 'skill':
+      return `/published/${entityId}`;
+    case 'comment':
+      return `/admin/comments`;
+    case 'collection':
+      return `/collections/${entityId}`;
+    case 'user':
+      return `/profile/${entityId}`;
+    case 'published_page':
+      return `/published/${entityId}`;
+    default:
+      return null;
+  }
+}
 
 export function ReportManagement() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
 
   const [reports, setReports] = useState<Report[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -91,12 +104,12 @@ export function ReportManagement() {
       const data = await res.json();
       setReports(data.reports);
       setPagination(data.pagination);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load reports');
+    } catch {
+      setError(t('dashboard.adminReports.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [currentPage, currentStatus]);
+  }, [currentPage, currentStatus, t]);
 
   useEffect(() => {
     fetchReports();
@@ -128,8 +141,8 @@ export function ReportManagement() {
       }
 
       fetchReports();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${action} report`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Failed to ${action} report`);
     } finally {
       setActingId(null);
     }
@@ -140,8 +153,12 @@ export function ReportManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold">举报管理</h1>
-          <p className="text-muted-foreground">查看和处理用户举报</p>
+          <h1 className="font-serif text-2xl font-bold">
+            {t('dashboard.adminReports.title')}
+          </h1>
+          <p className="text-muted-foreground">
+            {t('dashboard.adminReports.subtitle')}
+          </p>
         </div>
         <div className="flex gap-2">
           {(['pending', 'resolved', 'dismissed', 'all'] as const).map((status) => (
@@ -155,7 +172,9 @@ export function ReportManagement() {
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
             >
-              {status === 'all' ? '全部' : STATUS_CONFIG[status]?.label || status}
+              {status === 'all'
+                ? t('dashboard.adminReports.statusAll')
+                : t(STATUS_LABEL_KEYS[status])}
             </button>
           ))}
         </div>
@@ -170,17 +189,22 @@ export function ReportManagement() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-destructive">{error}</p>
           <button
+            type="button"
             onClick={fetchReports}
             className="mt-2 text-sm text-primary hover:underline"
           >
-            重试
+            {t('dashboard.adminReports.retry')}
           </button>
         </div>
       ) : reports.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg text-muted-foreground">暂无举报</p>
+          <p className="text-lg text-muted-foreground">
+            {t('dashboard.adminReports.empty')}
+          </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            {currentStatus === 'pending' ? '没有待处理的举报' : '没有符合条件的举报'}
+            {currentStatus === 'pending'
+              ? t('dashboard.adminReports.emptyPending')
+              : t('dashboard.adminReports.emptyFilter')}
           </p>
         </div>
       ) : (
@@ -188,65 +212,100 @@ export function ReportManagement() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left text-sm font-medium">举报人</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">实体类型</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">实体ID</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">原因</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">描述</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">时间</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.reporter')}
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.entityType')}
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.entityId')}
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.reason')}
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.description')}
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.status')}
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  {t('dashboard.adminReports.time')}
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium">
+                  {t('dashboard.adminReports.actions')}
+                </th>
               </tr>
             </thead>
             <tbody>
               {reports.map((report) => {
                 const statusConf = STATUS_CONFIG[report.status] || STATUS_CONFIG.pending;
+                const statusLabel = t(
+                  STATUS_LABEL_KEYS[report.status] || STATUS_LABEL_KEYS.pending
+                );
+                const entityViewUrl = getEntityViewUrl(report.entityType, report.entityId);
+
                 return (
                   <tr key={report.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm">{report.reporterName || '未知'}</td>
                     <td className="px-4 py-3 text-sm">
-                      {ENTITY_TYPE_LABELS[report.entityType] || report.entityType}
+                      {report.reporterName || t('dashboard.adminReports.unknownReporter')}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {t(`dashboard.admin.entityTypes.${report.entityType}`)}
                     </td>
                     <td className="px-4 py-3 text-sm font-mono text-xs max-w-[120px] truncate">
                       {report.entityId.slice(0, 12)}...
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {REASON_LABELS[report.reason] || report.reason}
+                      {t(`dashboard.adminReports.reasons.${report.reason}`)}
                     </td>
                     <td className="px-4 py-3 text-sm max-w-[200px] truncate">
-                      {report.description || '-'}
+                      {report.description || t('dashboard.adminReports.noDescription')}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <Badge variant={statusConf.variant}>{statusConf.label}</Badge>
+                      <Badge variant={statusConf.variant}>{statusLabel}</Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                       {formatRelativeTime(report.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {report.status === 'pending' && (
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAction(report.id, 'resolve')}
-                            disabled={actingId === report.id}
+                      <div className="flex items-center justify-end gap-2">
+                        {entityViewUrl && (
+                          <Link
+                            href={entityViewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={t('dashboard.adminReports.viewEntity')}
                           >
-                            {actingId === report.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              '处理'
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAction(report.id, 'dismiss')}
-                            disabled={actingId === report.id}
-                          >
-                            驳回
-                          </Button>
-                        </div>
-                      )}
+                            <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                          </Link>
+                        )}
+                        {report.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAction(report.id, 'resolve')}
+                              disabled={actingId === report.id}
+                            >
+                              {actingId === report.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                t('dashboard.adminReports.resolve')
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAction(report.id, 'dismiss')}
+                              disabled={actingId === report.id}
+                            >
+                              {t('dashboard.adminReports.dismiss')}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -282,7 +341,10 @@ export function ReportManagement() {
 
       {/* Summary */}
       <p className="text-sm text-muted-foreground">
-        显示 {reports.length} / {pagination.total} 条举报
+        {t('dashboard.adminReports.showing', {
+          count: reports.length,
+          total: pagination.total,
+        })}
       </p>
     </div>
   );

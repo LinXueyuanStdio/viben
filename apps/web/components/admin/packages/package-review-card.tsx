@@ -12,6 +12,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ModerationBadge } from './moderation-badge';
 import { RejectionModal } from './rejection-modal';
 import {
@@ -22,6 +30,7 @@ import {
   X,
   Star,
   Eye,
+  Trash2,
   Loader2,
 } from 'lucide-react';
 import { formatRelativeTime, cn } from '@/lib/utils';
@@ -44,7 +53,9 @@ export function PackageReviewCard({
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isFeaturing, setIsFeaturing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<PackageStatus>(pkg.status);
 
   const TypeIcon = pkg.type === 'mcp' ? Package : Sparkles;
@@ -123,7 +134,27 @@ export function PackageReviewCard({
     }
   };
 
-  const isLoading = isApproving || isRejecting || isFeaturing;
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/packages/${pkg.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || t('dashboard.admin.packages.card.deleteError'));
+      }
+      setShowDeleteDialog(false);
+      toast.success(t('dashboard.admin.packages.card.deleteSuccess', { name: pkg.name }));
+      onStatusChange?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.card.deleteError'));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isLoading = isApproving || isRejecting || isFeaturing || isDeleting;
 
   return (
     <>
@@ -195,14 +226,26 @@ export function PackageReviewCard({
         </CardContent>
 
         <CardFooter className="border-t pt-4 flex justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onViewDetails(pkg.id)}
-          >
-            <Eye className="mr-1.5 h-4 w-4" />
-            {t('dashboard.admin.packages.card.viewDetails')}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewDetails(pkg.id)}
+            >
+              <Eye className="mr-1.5 h-4 w-4" />
+              {t('dashboard.admin.packages.card.viewDetails')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isLoading}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              {t('dashboard.admin.actions.delete')}
+            </Button>
+          </div>
 
           <div className="flex gap-2">
             {/* Pending: Approve + Reject */}
@@ -316,6 +359,40 @@ export function PackageReviewCard({
         onClose={() => setShowRejectModal(false)}
         onConfirm={handleReject}
       />
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.admin.packages.card.deleteConfirm')}</DialogTitle>
+            <DialogDescription>
+              {t('dashboard.admin.packages.card.deleteConfirmDesc', { name: pkg.name })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  {t('dashboard.admin.actions.delete')}
+                </>
+              ) : (
+                t('dashboard.admin.actions.delete')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

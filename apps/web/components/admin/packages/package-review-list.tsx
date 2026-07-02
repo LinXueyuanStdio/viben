@@ -214,6 +214,10 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
         onApprove={handleApproveFromModal}
         onReject={handleRejectFromModal}
         onFeature={handleFeatureFromModal}
+        onDeleted={() => {
+          setDetailModalId(null);
+          fetchPackages();
+        }}
       />
 
       {/* Reject Modal (from detail modal) */}
