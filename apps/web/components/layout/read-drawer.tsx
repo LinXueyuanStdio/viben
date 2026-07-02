@@ -23,17 +23,17 @@ const loadingSkeleton = (
 
 const LazyPageMeta = dynamic(
   () => import("@/components/content/page-meta").then((m) => ({ default: m.PageMeta })),
-  { ssr: false, loading: () => loadingSkeleton },
+  { loading: () => loadingSkeleton },
 )
 
 const LazyCommentsPanel = dynamic(
   () => import("@/components/content/comments-panel").then((m) => ({ default: m.CommentsPanel })),
-  { ssr: false, loading: () => loadingSkeleton },
+  { loading: () => loadingSkeleton },
 )
 
 const LazyNotesPanel = dynamic(
   () => import("@/components/content/notes-panel").then((m) => ({ default: m.NotesPanel })),
-  { ssr: false, loading: () => loadingSkeleton },
+  { loading: () => loadingSkeleton },
 )
 
 // --- Typed tab interfaces ---

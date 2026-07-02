@@ -589,7 +589,7 @@ export async function ensureCommunityEntity(
       visibility: 'public', status: 'active', title: page.title,
     }).onConflictDoUpdate({
       target: [communityEntities.entityType, communityEntities.entityId],
-      set: { title: page.title },
+      set: { title: page.title, status: 'active', visibility: 'public' },
     }).returning();
     return created;
   }
@@ -604,7 +604,7 @@ export async function ensureCommunityEntity(
       visibility: 'public', status: 'active', title,
     }).onConflictDoUpdate({
       target: [communityEntities.entityType, communityEntities.entityId],
-      set: { title },
+      set: { title, status: 'active', visibility: 'public' },
     }).returning();
     return created;
   }

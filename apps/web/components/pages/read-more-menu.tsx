@@ -8,11 +8,9 @@ import { IconButton } from "@/components/ui/icon-button"
 
 const ReportDialog = dynamic(
   () => import("@/components/content/report-dialog").then(m => ({ default: m.ReportDialog })),
-  { ssr: false }
 )
 const FeedbackDialog = dynamic(
   () => import("@/components/content/feedback-dialog").then(m => ({ default: m.FeedbackDialog })),
-  { ssr: false }
 )
 
 export function ReadMoreMenu({ pageId, userSlug }: { pageId: string; userSlug: string }) {

@@ -130,7 +130,6 @@ function parseChapters(raw: unknown): ParsedChapters {
 const LazyPageSettingsPanel = dynamic(
   () => import("@/components/pages/page-settings-panel").then((m) => ({ default: m.PageSettingsPanel })),
   {
-    ssr: false,
     loading: () => (
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="animate-pulse space-y-4">
