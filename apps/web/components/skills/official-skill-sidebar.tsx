@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Star, User, Shield } from 'lucide-react';
+import { Calendar, Download, Star, User, Shield, Terminal, Copy, Check } from 'lucide-react';
 import { formatCount } from '@/lib/utils/format';
 import { OsIcon } from '@/components/shared/os-icon';
 import type { ClawhubSkillDisplay } from '@/lib/types/clawhub-registry';
@@ -24,15 +26,91 @@ function formatDate(timestamp: number): string {
 
 export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
   const { t } = useTranslation();
+  const installCommand = `claude skill install ${skill.slug}`;
+  const [copied, setCopied] = useState(false);
+
+  const handleInstallCopy = async () => {
+    await navigator.clipboard.writeText(installCommand);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const hasPlatforms = skill.os && skill.os.length > 0;
+  const hasSystems = skill.systems && skill.systems.length > 0;
+  const hasCompatibility = hasPlatforms || hasSystems;
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
+      {/* Install Button - prominent CTA */}
+      <Button
+        className="w-full gap-2"
+        size="lg"
+        onClick={handleInstallCopy}
+      >
+        {copied ? (
+          <>
+            <Check className="h-4 w-4" />
+            {t('common.copied', 'Copied!')}
+          </>
+        ) : (
+          <>
+            <Terminal className="h-4 w-4" />
+            {t('marketplace.installNow', 'Install Now')}
+          </>
+        )}
+      </Button>
+
+      {/* Owner Card - enhanced */}
+      {skill.ownerHandle && (
+        <Card>
+          <CardContent className="pt-6">
+            <a
+              href={`https://clawhub.ai/${skill.ownerHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center gap-3 text-center hover:opacity-80 transition-opacity"
+            >
+              {skill.ownerAvatar ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={skill.ownerAvatar}
+                  alt={skill.ownerName || skill.ownerHandle}
+                  className="h-16 w-16 rounded-full border-2 border-border"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center border-2 border-border">
+                  <User className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+              <div>
+                <p className="text-base font-semibold">
+                  {skill.ownerName || skill.ownerHandle}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  @{skill.ownerHandle}
+                </p>
+              </div>
+            </a>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Info Card - merged Stats + Details */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">{t('marketplace.stats', 'Stats')}</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">{t('marketplace.info', 'Info')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Version */}
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <Badge variant="secondary" className="text-[10px] py-0 px-1.5">v</Badge>
+              {t('marketplace.version', 'Version')}
+            </span>
+            <Badge variant="secondary">{skill.version}</Badge>
+          </div>
+
+          {/* Downloads */}
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Download className="h-4 w-4" />
@@ -41,6 +119,7 @@ export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
             <span className="font-medium">{formatCount(skill.downloads)}</span>
           </div>
 
+          {/* Stars */}
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Star className="h-4 w-4" />
@@ -49,6 +128,7 @@ export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
             <span className="font-medium">{formatCount(skill.stars)}</span>
           </div>
 
+          {/* Installs */}
           {skill.installs > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
@@ -58,15 +138,8 @@ export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
               <span className="font-medium">{formatCount(skill.installs)}</span>
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">{t('marketplace.details', 'Details')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+          {/* Created */}
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
@@ -75,6 +148,7 @@ export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
             <span className="text-xs">{formatDate(skill.createdAt)}</span>
           </div>
 
+          {/* Updated */}
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
@@ -82,95 +156,52 @@ export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
             </span>
             <span className="text-xs">{formatDate(skill.updatedAt)}</span>
           </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <Badge variant="secondary" className="text-[10px]">v</Badge>
-              {t('marketplace.version', 'Version')}
-            </span>
-            <Badge variant="secondary">{skill.version}</Badge>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Owner */}
-      {skill.ownerHandle && (
+      {/* Compatibility Card - merged Platforms + Systems */}
+      {hasCompatibility && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">{t('marketplace.owner', 'Owner')}</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">{t('marketplace.compatibility', 'Compatibility')}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <a
-              href={`https://clawhub.ai/${skill.ownerHandle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              {skill.ownerAvatar ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={skill.ownerAvatar}
-                  alt={skill.ownerName || skill.ownerHandle}
-                  className="h-8 w-8 rounded-full"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                  <User className="h-4 w-4 text-muted-foreground" />
+          <CardContent className="space-y-3">
+            {hasPlatforms && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {t('marketplace.platforms', 'Platforms')}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {skill.os!.map((os) => (
+                    <Badge key={os} variant="outline" className="text-xs gap-1">
+                      <OsIcon os={os} />
+                      {os}
+                    </Badge>
+                  ))}
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {skill.ownerName || skill.ownerHandle}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  @{skill.ownerHandle}
-                </p>
               </div>
-            </a>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Platforms */}
-      {skill.os && skill.os.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">{t('marketplace.platforms', 'Platforms')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {skill.os.map((os) => (
-                <Badge key={os} variant="outline" className="text-xs gap-1">
-                  <OsIcon os={os} />
-                  {os}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Systems */}
-      {skill.systems && skill.systems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">{t('marketplace.systems', 'Systems')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {skill.systems.map((system) => (
-                <Badge key={system} variant="outline" className="text-xs font-mono">
-                  {system}
-                </Badge>
-              ))}
-            </div>
+            )}
+            {hasSystems && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {t('marketplace.systems', 'Systems')}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {skill.systems!.map((system) => (
+                    <Badge key={system} variant="outline" className="text-xs font-mono">
+                      {system}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* Security Status */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-sm">{t('marketplace.security', 'Security')}</CardTitle>
         </CardHeader>
         <CardContent>
@@ -185,9 +216,9 @@ export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {
         </CardContent>
       </Card>
 
-      {/* ClaWHub Link */}
+      {/* Source Link */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-sm">{t('marketplace.source', 'Source')}</CardTitle>
         </CardHeader>
         <CardContent>

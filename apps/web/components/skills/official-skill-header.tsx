@@ -12,6 +12,7 @@ import {
   Terminal,
   Download,
   Star,
+  Pencil,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,13 +50,11 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
   );
 }
 
-
 interface OfficialSkillHeaderProps {
   skill: ClawhubSkillDisplay;
-  content?: string | null;
 }
 
-export function OfficialSkillHeader({ skill, content }: OfficialSkillHeaderProps) {
+export function OfficialSkillHeader({ skill }: OfficialSkillHeaderProps) {
   const { t } = useTranslation();
 
   // Generate install command
@@ -77,12 +76,12 @@ export function OfficialSkillHeader({ skill, content }: OfficialSkillHeaderProps
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             {/* Skill Icon */}
-            <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+            <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
 
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-3xl font-bold">{skill.name}</h1>
                 <SkillSourceBadge source="official" />
                 {skill.isSuspicious && (
@@ -100,52 +99,49 @@ export function OfficialSkillHeader({ skill, content }: OfficialSkillHeaderProps
             </div>
           </div>
 
-          <Badge variant="secondary" className="text-sm">
+          <Badge variant="secondary" className="text-sm shrink-0">
             v{skill.version}
           </Badge>
         </div>
 
-        {/* Skill Slug */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="font-medium">{t('marketplace.skillSlug', 'Slug')}:</span>
-          <code className="bg-muted px-2 py-1 rounded font-mono text-xs">
-            {skill.slug}
-          </code>
-          <CopyButton text={skill.slug} className="h-6 w-6" />
-        </div>
+        {/* Compact info bar: slug + stats + OS badges */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          {/* Slug */}
+          <div className="flex items-center gap-1.5">
+            <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
+              {skill.slug}
+            </code>
+            <CopyButton text={skill.slug} className="h-6 w-6" />
+          </div>
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          {/* Stats */}
           {skill.downloads > 0 && (
             <span className="flex items-center gap-1">
               <Download className="h-4 w-4" />
-              {formatCount(skill.downloads)} downloads
+              {formatCount(skill.downloads)}
             </span>
           )}
           {skill.stars > 0 && (
             <span className="flex items-center gap-1">
               <Star className="h-4 w-4" />
-              {formatCount(skill.stars)} stars
+              {formatCount(skill.stars)}
             </span>
+          )}
+
+          {/* OS Badges */}
+          {skill.os && skill.os.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              {skill.os.map((os) => (
+                <Badge key={os} variant="outline" className="text-xs gap-1">
+                  <OsIcon os={os} className="h-3.5 w-3.5" />
+                  {os}
+                </Badge>
+              ))}
+            </div>
           )}
         </div>
 
-        {/* OS Badges */}
-        {skill.os && skill.os.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {t('marketplace.platforms', 'Platforms')}:
-            </span>
-            {skill.os.map((os) => (
-              <Badge key={os} variant="outline" className="text-xs gap-1">
-                <OsIcon os={os} className="h-4 w-4" />
-                {os}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Links */}
+        {/* Actions: View on ClaWHub + Edit this page */}
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -155,47 +151,57 @@ export function OfficialSkillHeader({ skill, content }: OfficialSkillHeaderProps
             <ExternalLink className="h-4 w-4 mr-2" />
             {t('marketplace.viewOnClawhub', 'View on ClaWHub')}
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open(`https://clawhub.ai/skills/${skill.slug}`, '_blank')}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            {t('marketplace.editThisPage', 'Edit this page')}
+          </Button>
         </div>
       </div>
 
-      {/* Installation */}
+      {/* Installation - dark terminal-style */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
             <Terminal className="h-5 w-5" />
             {t('marketplace.installation', 'Installation')}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-sm bg-muted px-3 py-2 rounded font-mono overflow-x-auto">
+        <CardContent>
+          <div className="rounded-lg bg-zinc-900 dark:bg-zinc-950 border border-zinc-700 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-700">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+              </div>
+              <span className="text-xs text-zinc-400 ml-2 font-mono">Terminal</span>
+            </div>
+            <div className="flex items-center p-3">
+              <span className="text-zinc-400 font-mono text-sm select-none">$ </span>
+              <code className="flex-1 text-sm text-zinc-100 font-mono px-1">
                 {installCommand}
               </code>
-              <CopyButton text={installCommand} className="h-8 w-8 shrink-0" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 shrink-0"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(installCommand);
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t('marketplace.installHint', 'Run this command in your terminal to install the skill.')}
-            </p>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t('marketplace.installHint', 'Run this command in your terminal to install the skill.')}
+          </p>
         </CardContent>
       </Card>
-
-      {/* Content/README */}
-      {content && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('marketplace.readme', 'README')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg overflow-x-auto">
-                {content}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

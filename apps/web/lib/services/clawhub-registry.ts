@@ -17,11 +17,30 @@ import type {
 } from '@/lib/types/clawhub-registry';
 
 const REGISTRY_BASE_URL = 'https://clawhub.ai/api/v1';
+const FETCH_TIMEOUT = 15000; // 15 second timeout
 
 // Simple in-memory cache for server-side
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_SIZE = 100; // Maximum number of cache entries
+
+/**
+ * Fetch with timeout support
+ */
+async function fetchWithTimeout(url: string, init?: RequestInit, timeout = FETCH_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 /**
  * Get cached data or fetch fresh
@@ -54,6 +73,15 @@ async function cachedFetch<T>(
 
   cache.set(key, { data, timestamp: Date.now() });
   return data;
+}
+
+/**
+ * Strip YAML frontmatter from markdown content
+ */
+function stripFrontmatter(content: string): string {
+  // Match YAML frontmatter delimited by --- at the start
+  const frontmatterRegex = /^---\s*\n(?:.*\n)*?---\s*\n/;
+  return content.replace(frontmatterRegex, '');
 }
 
 /**
@@ -127,7 +155,7 @@ export async function fetchClawhubSkills(
   const cacheKey = `clawhub:packages:${url.toString()}`;
 
   const response = await cachedFetch(cacheKey, async () => {
-    const res = await fetch(url.toString(), {
+    const res = await fetchWithTimeout(url.toString(), {
       headers: {
         Accept: 'application/json',
       },
@@ -162,7 +190,7 @@ export async function fetchClawhubSkill(
 
   try {
     const response = await cachedFetch(cacheKey, async () => {
-      const res = await fetch(url.toString(), {
+      const res = await fetchWithTimeout(url.toString(), {
         headers: {
           Accept: 'application/json',
         },
@@ -185,7 +213,18 @@ export async function fetchClawhubSkill(
 }
 
 /**
- * Fetch skill file content
+ * File paths to try when fetching a skill's README/documentation
+ */
+const README_FILE_PATHS = [
+  'README.md',
+  'readme.md',
+  'index.md',
+  'README',
+  'SKILL.md',
+];
+
+/**
+ * Fetch a single file from a skill
  */
 export async function fetchClawhubSkillFile(
   slug: string,
@@ -200,7 +239,7 @@ export async function fetchClawhubSkillFile(
 
   try {
     const content = await cachedFetch(cacheKey, async () => {
-      const res = await fetch(url.toString(), {
+      const res = await fetchWithTimeout(url.toString(), {
         headers: {
           Accept: 'text/plain',
         },
@@ -215,10 +254,33 @@ export async function fetchClawhubSkillFile(
       return res.text();
     });
 
-    return content;
+    if (content !== null) {
+      return stripFrontmatter(content);
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Fetch skill README content by trying multiple file paths in parallel.
+ * Returns the first successfully fetched content, or null if none found.
+ */
+export async function fetchClawhubSkillReadme(slug: string): Promise<string | null> {
+  // Try all file paths in parallel
+  const results = await Promise.all(
+    README_FILE_PATHS.map((path) =>
+      fetchClawhubSkillFile(slug, path).catch(() => null)
+    )
+  );
+
+  // Return the first non-null result
+  for (const content of results) {
+    if (content) return content;
+  }
+
+  return null;
 }
 
 /**
@@ -241,7 +303,7 @@ export async function searchClawhubSkills(
 
   try {
     const response = await cachedFetch(cacheKey, async () => {
-      const res = await fetch(url.toString(), {
+      const res = await fetchWithTimeout(url.toString(), {
         headers: {
           Accept: 'application/json',
         },
