@@ -12,17 +12,41 @@ export function thumbnailUrl(url: string): string {
   return url
 }
 
+/**
+ * 基于标题生成稳定的渐变色封面。
+ * 色调由标题首字符决定，同一标题始终生成相同渐变。
+ */
+export function gradientCover(title: string): string {
+  const hue = title.charCodeAt(0) % 360
+  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
+}
+
 interface CoverProps {
-  src: string
+  /** @deprecated 使用 coverUrl + fallbackTitle 替代 */
+  src?: string
+  /** 纯 URL，组件内部处理 url() 包装 */
+  coverUrl?: string | null
+  /** 无封面时生成渐变的标题 */
+  fallbackTitle?: string
   aspectRatio?: "16/9" | "16/10"
   overlay?: boolean
   children?: ReactNode
   className?: string
 }
 
-export function Cover({ src, aspectRatio = "16/9", overlay = false, children, className }: CoverProps) {
-  // 将 url(...) 中的完整尺寸 URL 替换为缩略图 URL
-  const bg = src.startsWith("url(") ? src.replace(/url\(([^)]+)\)/, (_, url) => `url(${thumbnailUrl(url)})`) : src
+export function Cover({ src, coverUrl, fallbackTitle, aspectRatio = "16/9", overlay = false, children, className }: CoverProps) {
+  let bg: string
+
+  if (coverUrl) {
+    bg = `url(${thumbnailUrl(coverUrl)})`
+  } else if (fallbackTitle) {
+    bg = gradientCover(fallbackTitle)
+  } else if (src) {
+    // 将 url(...) 中的完整尺寸 URL 替换为缩略图 URL
+    bg = src.startsWith("url(") ? src.replace(/url\(([^)]+)\)/, (_, url) => `url(${thumbnailUrl(url)})`) : src
+  } else {
+    bg = gradientCover("")
+  }
 
   return (
     <div
