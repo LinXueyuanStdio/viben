@@ -1,9 +1,11 @@
 "use client"
 
+import { useMemo } from "react"
 import { FeedCard } from "@/components/content/feed-card"
 import type { FeedCardData, FeedCardSession } from "@/components/content/feed-card"
 import { CommentsPanel } from "@/components/content/comments-panel"
-import { useTranslation } from "react-i18next"
+import { BreadcrumbDynamicContext } from "@/components/layout/breadcrumb"
+import type { BreadcrumbContextValue } from "@/components/layout/breadcrumb"
 
 interface MomentDetailClientProps {
   feedData: FeedCardData
@@ -44,16 +46,25 @@ export function MomentDetailClient({
   initialComments,
   initialCommentsNextCursor,
 }: MomentDetailClientProps) {
-  const { t } = useTranslation()
-
   const session: FeedCardSession | null = isAuthenticated && sessionUsername && sessionUserSlug
     ? { username: sessionUsername, userSlug: sessionUserSlug, avatarUrl: sessionAvatarUrl }
     : null
 
+  const breadcrumbLabel = useMemo(() => {
+    const name = feedData.head.name
+    const text = feedData.text.slice(0, 30) + (feedData.text.length > 30 ? "…" : "")
+    return `${name}: ${text}`
+  }, [feedData])
+
+  const breadcrumbValue: BreadcrumbContextValue = useMemo(() => ({
+    labels: { [`/moment/${momentId}`]: { label: breadcrumbLabel } },
+  }), [momentId, breadcrumbLabel])
+
   return (
-    <div className="max-w-[640px] mx-auto grid gap-3 py-4">
-      <FeedCard data={feedData} variant="rich" session={session} />
-      <div className="px-3">
+    <BreadcrumbDynamicContext.Provider value={breadcrumbValue}>
+      <div className="max-w-[640px] mx-auto py-6 space-y-4">
+        <FeedCard data={feedData} variant="rich" session={session} preloadComments={false} collapsed={false} />
+
         <CommentsPanel
           communityEntityId=""
           pageDbId={momentId}
@@ -66,6 +77,6 @@ export function MomentDetailClient({
           initialNextCursor={initialCommentsNextCursor}
         />
       </div>
-    </div>
+    </BreadcrumbDynamicContext.Provider>
   )
 }
