@@ -135,9 +135,11 @@ export default async function HistoryPage() {
           </div>
         )}
         <SectionHead title="阅读队列" />
-        <div className="grid gap-2">
-          <div className="flex items-center gap-2.5 rounded-[10px] border border-border p-2.5">
-            <BookOpen className="size-4 text-muted-foreground shrink-0" />
+        <div className="rounded-[12px] border border-border bg-background overflow-hidden">
+          <div className="flex items-center gap-3 p-3">
+            <div className="flex items-center justify-center size-10 rounded-[10px] bg-primary/10 shrink-0">
+              <BookOpen className="size-[18px] text-primary" />
+            </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold truncate">
                 <T tKey="community.continueReading" fallback="继续阅读" />
@@ -148,6 +150,14 @@ export default async function HistoryPage() {
             </div>
             <Pill>{unreadCount}</Pill>
           </div>
+          {unreadCount > 0 && (
+            <div className="h-1.5 bg-surface-secondary">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-[var(--color-cta,var(--color-primary))] rounded-r-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((unreadCount / (allItems.length || 1)) * 100))}%` }}
+              />
+            </div>
+          )}
         </div>
       </aside>
     </div>
