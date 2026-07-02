@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { db, users, oauthConnections } from '@/lib/db';
+import { uploadImageFromUrl } from '@/lib/media';
 import { setSessionCookie } from '@/lib/auth/cookies';
 import { encryptSession } from '@/lib/auth/jwe';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri } from '@/lib/auth/desktop-redirect';
@@ -267,7 +268,13 @@ export async function GET(request: NextRequest) {
           username: githubUser.login,
           userSlug: normalizeUserSlug(githubUser.login, userId),
           displayName: githubUser.name || githubUser.login,
-          avatarUrl: githubUser.avatar_url,
+          avatarUrl: await uploadImageFromUrl({
+            imageUrl: githubUser.avatar_url,
+            kind: 'avatar',
+            userSlug: normalizeUserSlug(githubUser.login, userId),
+            userId,
+            uid: userId,
+          }) || githubUser.avatar_url,
           githubUsername: githubUser.login,
           role: 'developer',
           emailVerified: true,

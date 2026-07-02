@@ -134,6 +134,9 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
     try {
       const formData = new FormData()
       formData.append("file", file)
+      formData.append("kind", "page_cover")
+      formData.append("user_slug", userSlug)
+      formData.append("uid", uid || autoUid)
       const res = await fetch("/api/media/upload", { method: "POST", body: formData })
       if (!res.ok) throw new Error("Upload failed")
       const data = await res.json()
@@ -197,7 +200,7 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
             formData.append("file", new File([blob], "cover.png", { type: "image/png" }))
             formData.append("kind", "page_cover")
             formData.append("user_slug", userSlug)
-            formData.append("page_id", finalUid)
+            formData.append("uid", finalUid)
             const uploadRes = await fetch("/api/media/upload", { method: "POST", body: formData })
             if (uploadRes.ok) {
               const data = await uploadRes.json()

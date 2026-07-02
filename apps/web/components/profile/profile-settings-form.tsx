@@ -152,8 +152,9 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        // Include kind so the media asset is tagged correctly
         formData.append('kind', 'avatar');
+        formData.append('user_slug', user.userSlug);
+        formData.append('uid', user.id);
 
         const uploadRes = await fetch('/api/media/upload', {
           method: 'POST',

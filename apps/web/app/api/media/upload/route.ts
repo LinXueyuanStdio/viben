@@ -38,15 +38,24 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = file.name.split('.').pop()?.toLowerCase() || file.type.split('/')[1] || 'png';
-    const kind = (formData.get('kind') as string) || 'page_cover';
-    const folder = kind === 'avatar' ? 'avatars' : 'media';
+    const kind = (formData.get('kind') as string) || 'media';
+    const userSlug = (formData.get('user_slug') as string) || session.userSlug;
 
-    // 页面封面用 user_slug/page_id 做 key，保证原始图和缩略图文件名一致
-    const userSlug = (formData.get('user_slug') as string) || null
-    const pageId = (formData.get('page_id') as string) || null
-    const baseName = userSlug && pageId
-      ? `${folder}/${userSlug}/${pageId}_cover`
-      : `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
+    if (!userSlug) {
+      return NextResponse.json({ error: 'user_slug is required' }, { status: 400 });
+    }
+
+    // uid: avatar / page_cover 必传，其余自动生成
+    const rawUid = (formData.get('uid') as string) || null;
+    if ((kind === 'avatar' || kind === 'page_cover') && !rawUid) {
+      return NextResponse.json({ error: 'uid is required for this kind' }, { status: 400 });
+    }
+    const uid = rawUid || crypto.randomUUID();
+
+    // 统一路径：kind/userSlug/{uid}
+    const baseName = kind === 'page_cover'
+      ? `page_cover/${userSlug}/${uid}_cover`
+      : `${kind}/${userSlug}/${uid}`;
     const key = `${baseName}.${ext}`
 
     // 获取原图尺寸

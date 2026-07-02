@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, users, oauthConnections } from '@/lib/db';
+import { uploadImageFromUrl } from '@/lib/media';
 import { encryptSession } from '@/lib/auth/jwe';
 import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
@@ -142,7 +143,13 @@ export async function POST(request: NextRequest) {
           username: githubUser.login,
           userSlug: normalizeUserSlug(githubUser.login, userId),
           displayName: githubUser.name || githubUser.login,
-          avatarUrl: githubUser.avatar_url,
+          avatarUrl: await uploadImageFromUrl({
+            imageUrl: githubUser.avatar_url,
+            kind: 'avatar',
+            userSlug: normalizeUserSlug(githubUser.login, userId),
+            userId,
+            uid: userId,
+          }) || githubUser.avatar_url,
           githubUsername: githubUser.login,
           role: 'developer',
           emailVerified: true,
