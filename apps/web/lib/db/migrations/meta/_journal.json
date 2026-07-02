@@ -29,6 +29,13 @@
       "when": 1782230000000,
       "tag": "0003_web_community",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790000000000,
+      "tag": "0004_fulltext_search",
+      "breakpoints": true
     }
   ]
 }

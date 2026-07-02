@@ -699,7 +699,6 @@ export const publishedPages = pgTable(
     html: text('html').notNull(),
     currentVersion: integer('current_version'),
     categoryId: text('category_id'),
-    coverAssetId: text('cover_asset_id'),
     tags: jsonb('tags').$type<string[]>().default([]).notNull(),
     visibility: text('visibility', {
       enum: ['public', 'unlisted', 'private'],
@@ -732,6 +731,13 @@ export const publishedPages = pgTable(
     authorSlug: text('author_slug').notNull(),
     sidePageUid: text('side_page_uid'),
     chaptersJson: jsonb('chapters_json'),
+    // SEO metadata
+    seoTitle: text('seo_title'),
+    seoDescription: text('seo_description'),
+    seoKeywords: text('seo_keywords'),
+    isDiscoverable: boolean('is_discoverable').default(true).notNull(),
+    // Scheduled publishing
+    scheduledAt: timestamp('scheduled_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
@@ -775,7 +781,6 @@ export const publishedPageVersions = pgTable(
     description: text('description'),
     html: text('html').notNull(),
     categoryId: text('category_id'),
-    coverAssetId: text('cover_asset_id'),
     tags: jsonb('tags').$type<string[]>().default([]).notNull(),
     visibility: text('visibility', {
       enum: ['public', 'unlisted', 'private'],
@@ -1081,7 +1086,7 @@ export const userBrowseHistory = pgTable(
     lastProgress: jsonb('last_progress').$type<Record<string, unknown>>(),
     snapshotTitle: text('snapshot_title'),
     snapshotAuthorUserId: text('snapshot_author_user_id'),
-    snapshotCoverAssetId: text('snapshot_cover_asset_id'),
+    coverUrl: text('cover_url'),
     deletedAt: timestamp('deleted_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -1543,7 +1548,6 @@ export const rankingItems = pgTable(
     userSlug: text('user_slug'),
     pageId: text('page_id'),
     categoryId: text('category_id'),
-    coverAssetId: text('cover_asset_id'),
     tags: jsonb('tags').$type<string[]>().default([]).notNull(),
     publishedAt: timestamp('published_at'),
     lastPublishedAt: timestamp('last_published_at'),
@@ -1618,7 +1622,6 @@ export const operationItems = pgTable(
     title: text('title').notNull(),
     subtitle: text('subtitle'),
     description: text('description'),
-    imageAssetId: text('image_asset_id'),
     imageUrl: text('image_url'),
     ctaLabel: text('cta_label'),
     badgeLabel: text('badge_label'),
