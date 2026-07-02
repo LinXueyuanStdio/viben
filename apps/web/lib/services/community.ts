@@ -844,7 +844,7 @@ export async function recordPageView(params: {
         lastRoute: params.route,
         snapshotTitle: params.context.page.title,
         snapshotAuthorUserId: params.context.author.id,
-        snapshotCoverAssetId: params.context.page.coverAssetId,
+        coverUrl: params.context.page.coverUrl,
       })
       .onConflictDoUpdate({
         target: [userBrowseHistory.userId, userBrowseHistory.entityType, userBrowseHistory.entityId],
@@ -856,7 +856,7 @@ export async function recordPageView(params: {
           lastRoute: params.route,
           snapshotTitle: params.context.page.title,
           snapshotAuthorUserId: params.context.author.id,
-          snapshotCoverAssetId: params.context.page.coverAssetId,
+          coverUrl: params.context.page.coverUrl,
           deletedAt: null,
           updatedAt: sql`now()`,
         },

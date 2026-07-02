@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   onConflictDoNothing: vi.fn(),
   transaction: vi.fn(),
   execute: vi.fn(),
-  findMediaAsset: vi.fn(),
   requireAuth: vi.fn(),
   recordPageUpdateAndNotify: vi.fn(),
 }));
@@ -44,9 +43,6 @@ vi.mock('@/lib/db', () => ({
       },
       publishedPageRecords: {
         findFirst: mocks.findLatestRecord,
-      },
-      mediaAssets: {
-        findFirst: mocks.findMediaAsset,
       },
     },
     insert: vi.fn(() => ({
@@ -98,10 +94,6 @@ vi.mock('@/lib/db', () => ({
     description: 'eventDescription',
     visibility: 'eventVisibility',
   },
-  mediaAssets: {
-    id: 'assetId',
-    ownerUserId: 'assetOwnerUserId',
-  },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -145,10 +137,6 @@ describe('POST /api/pages/publish', () => {
     });
     mocks.onConflictDoUpdate.mockResolvedValue(undefined);
     mocks.onConflictDoNothing.mockResolvedValue(undefined);
-    mocks.findMediaAsset.mockResolvedValue({
-      id: 'asset-1',
-      ownerUserId: 'user-1',
-    });
     mocks.recordPageUpdateAndNotify.mockResolvedValue(undefined);
     mocks.transaction.mockImplementation(async (callback) => callback({
       query: {
@@ -160,9 +148,6 @@ describe('POST /api/pages/publish', () => {
         },
         publishedPageRecords: {
           findFirst: mocks.findLatestRecord,
-        },
-        mediaAssets: {
-          findFirst: mocks.findMediaAsset,
         },
       },
       insert: vi.fn(() => ({
@@ -199,7 +184,7 @@ describe('POST /api/pages/publish', () => {
       html: '<!doctype html><html><body>Demo</body></html>',
       currentVersion: 1,
       categoryId: null,
-      coverAssetId: null,
+      coverUrl: null,
       tags: [],
       visibility: 'public',
       moderationStatus: 'approved',
@@ -216,7 +201,7 @@ describe('POST /api/pages/publish', () => {
         html: '<!doctype html><html><body>Demo</body></html>',
         currentVersion: 1,
         categoryId: null,
-        coverAssetId: null,
+        coverUrl: null,
         tags: [],
         visibility: 'public',
         moderationStatus: 'approved',
@@ -235,7 +220,7 @@ describe('POST /api/pages/publish', () => {
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
       categoryId: null,
-      coverAssetId: null,
+      coverUrl: null,
       tags: [],
       visibility: 'public',
       moderationStatus: 'approved',
@@ -323,7 +308,7 @@ describe('POST /api/pages/publish', () => {
         html: '<html><body>Updated</body></html>',
         currentVersion: 4,
         categoryId: null,
-        coverAssetId: null,
+        coverUrl: null,
         tags: [],
         visibility: 'public',
         moderationStatus: 'approved',
@@ -342,7 +327,7 @@ describe('POST /api/pages/publish', () => {
       description: 'Updated',
       html: '<html><body>Updated</body></html>',
       categoryId: null,
-      coverAssetId: null,
+      coverUrl: null,
       tags: [],
       visibility: 'public',
       moderationStatus: 'approved',
@@ -400,7 +385,7 @@ describe('POST /api/pages/publish', () => {
       html: '<html><body>Bob Demo</body></html>',
       currentVersion: 1,
       categoryId: null,
-      coverAssetId: null,
+      coverUrl: null,
       tags: [],
       visibility: 'public',
       moderationStatus: 'approved',
@@ -422,23 +407,6 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'icon must be an object with string type and value',
     });
-  });
-
-  it('rejects a cover asset that does not belong to the publisher', async () => {
-    mocks.findMediaAsset.mockResolvedValue(null);
-
-    const response = await POST(requestWithBody({
-      uid: 'demo',
-      title: 'Demo',
-      html: '<html><body>Demo</body></html>',
-      cover_asset_id: 'asset-from-another-user',
-    }));
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: 'cover_asset_id is invalid or not owned by the current user',
-    });
-    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it('returns database error details for unexpected publish failures', async () => {

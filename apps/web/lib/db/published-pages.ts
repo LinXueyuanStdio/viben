@@ -26,9 +26,6 @@ export function ensurePublishedPagesTable(): Promise<void> {
       ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "category_id" text
     `);
     await db.execute(sql`
-      ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "cover_asset_id" text
-    `);
-    await db.execute(sql`
       ALTER TABLE "published_pages" ADD COLUMN IF NOT EXISTS "tags" jsonb DEFAULT '[]'::jsonb NOT NULL
     `);
     await db.execute(sql`
@@ -131,9 +128,6 @@ export function ensurePublishedPagesTable(): Promise<void> {
     `);
     await db.execute(sql`
       ALTER TABLE "published_page_versions" ADD COLUMN IF NOT EXISTS "category_id" text
-    `);
-    await db.execute(sql`
-      ALTER TABLE "published_page_versions" ADD COLUMN IF NOT EXISTS "cover_asset_id" text
     `);
     await db.execute(sql`
       ALTER TABLE "published_page_versions" ADD COLUMN IF NOT EXISTS "tags" jsonb DEFAULT '[]'::jsonb NOT NULL
