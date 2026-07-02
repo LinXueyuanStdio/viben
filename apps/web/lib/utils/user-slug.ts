@@ -28,6 +28,9 @@ export const RESERVED_SLUGS = [
   'my-packages',
   'leaderboard',
   'feedback',
+  // Profile sub-routes
+  'followers',
+  'following',
   // Common technical paths
   '_next',
   'favicon',

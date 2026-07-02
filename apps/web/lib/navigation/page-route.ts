@@ -19,6 +19,8 @@ export function isPublishedPageRoute(pathname: string): {
 
   if (isReservedSlug(first)) return { isPage: false }
 
+  if (isReservedSlug(second)) return { isPage: false }
+
   if (!second) return { isPage: false }
 
   return { isPage: true, userSlug: decodeURIComponent(first), pageId: decodeURIComponent(second) }
