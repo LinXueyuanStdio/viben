@@ -86,7 +86,7 @@ export default async function HomePage() {
       title: item.title,
       author: {
         name: item.author_display_name ?? item.user_slug ?? "?",
-        fallbackText: (item.author_display_name ?? item.user_slug)?.[0] ?? "?",
+        fallbackText: (item.author_display_name ?? item.user_slug)[0],
         avatarUrl: item.author_avatar_url ?? undefined,
       },
       timeAgo: timeAgo(item.last_published_at ?? item.published_at),
@@ -102,8 +102,8 @@ export default async function HomePage() {
       coverUrl: p.coverUrl,
       title: p.title,
       author: {
-        name: p.authorDisplayName ?? "?",
-        fallbackText: p.authorDisplayName?.[0] ?? "?",
+        name: p.authorDisplayName ?? p.authorSlug,
+        fallbackText: (p.authorDisplayName ?? p.authorSlug)[0],
         avatarUrl: p.authorAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),
