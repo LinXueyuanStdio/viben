@@ -1,0 +1,33 @@
+name: Refresh Rankings
+
+on:
+  schedule:
+    # Runs hourly at :07 to avoid :00 peak load
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    name: Rebuild ranking snapshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rebuild 1d ranking (最新热度)
+        run: |
+          curl -sf -X POST "${{ secrets.VIBEN_API_URL }}/api/admin/rankings/rebuild" \
+            -H "Authorization: Bearer ${{ secrets.VIBEN_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"entityType":"published_page","timeWindow":"1d"}'
+
+      - name: Rebuild 7d ranking (热门页面)
+        run: |
+          curl -sf -X POST "${{ secrets.VIBEN_API_URL }}/api/admin/rankings/rebuild" \
+            -H "Authorization: Bearer ${{ secrets.VIBEN_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"entityType":"published_page","timeWindow":"7d"}'
+
+      - name: Rebuild 30d ranking (月度精选)
+        run: |
+          curl -sf -X POST "${{ secrets.VIBEN_API_URL }}/api/admin/rankings/rebuild" \
+            -H "Authorization: Bearer ${{ secrets.VIBEN_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"entityType":"published_page","timeWindow":"30d"}'
