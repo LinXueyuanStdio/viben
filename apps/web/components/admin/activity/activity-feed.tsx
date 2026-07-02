@@ -89,6 +89,8 @@ export function ActivityFeed() {
   const [error, setError] = useState<string | null>(null);
 
   const currentEventType = searchParams.get('event_type') || '';
+  const currentStartDate = searchParams.get('start_date') || '';
+  const currentEndDate = searchParams.get('end_date') || '';
   const currentPage = Number(searchParams.get('page')) || 1;
 
   const fetchEvents = useCallback(async () => {
@@ -97,6 +99,8 @@ export function ActivityFeed() {
     try {
       const params = new URLSearchParams({ page: String(currentPage), limit: '20' });
       if (currentEventType) params.set('event_type', currentEventType);
+      if (currentStartDate) params.set('start_date', currentStartDate);
+      if (currentEndDate) params.set('end_date', currentEndDate);
       const res = await fetch(`/api/admin/activity?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch activity events');
       const data = await res.json();
@@ -107,7 +111,7 @@ export function ActivityFeed() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, currentEventType]);
+  }, [currentPage, currentEventType, currentStartDate, currentEndDate]);
 
   useEffect(() => {
     fetchEvents();
@@ -124,10 +128,48 @@ export function ActivityFeed() {
     router.push(`/admin/activity?${params.toString()}`);
   };
 
+  const updateDateFilter = (key: 'start_date' | 'end_date', value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    params.delete('page');
+    router.push(`/admin/activity?${params.toString()}`);
+  };
+
   const setPage = (p: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', String(p));
     router.push(`/admin/activity?${params.toString()}`);
+  };
+
+  const handleEventClick = (event: ActivityEvent) => {
+    const prefix = event.eventType.split('.')[0];
+    const entityId = event.entityId;
+    switch (prefix) {
+      case 'page':
+        router.push(`/admin/pages?id=${entityId}`);
+        break;
+      case 'comment':
+        router.push(`/admin/comments`);
+        break;
+      case 'collection':
+        router.push(`/admin/collections?id=${entityId}`);
+        break;
+      case 'user':
+        router.push(`/admin/users?id=${event.targetUserId || entityId}`);
+        break;
+      case 'package':
+        router.push(`/admin/packages?id=${entityId}`);
+        break;
+      case 'moment':
+        router.push(`/admin/moments?id=${entityId}`);
+        break;
+      default:
+        break;
+    }
   };
 
   const eventTypes = Object.keys(EVENT_TYPE_CONFIG);
@@ -169,6 +211,46 @@ export function ActivityFeed() {
             </button>
           );
         })}
+      </div>
+
+      {/* Date range filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <label htmlFor="activity-start-date" className="text-sm text-muted-foreground shrink-0">
+            开始日期
+          </label>
+          <input
+            id="activity-start-date"
+            type="date"
+            value={currentStartDate}
+            onChange={(e) => updateDateFilter('start_date', e.target.value)}
+            className="rounded-md border bg-background px-3 py-1.5 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="activity-end-date" className="text-sm text-muted-foreground shrink-0">
+            结束日期
+          </label>
+          <input
+            id="activity-end-date"
+            type="date"
+            value={currentEndDate}
+            onChange={(e) => updateDateFilter('end_date', e.target.value)}
+            className="rounded-md border bg-background px-3 py-1.5 text-sm"
+          />
+        </div>
+        {(currentStartDate || currentEndDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              updateDateFilter('start_date', '');
+              updateDateFilter('end_date', '');
+            }}
+            className="rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            清除日期
+          </button>
+        )}
       </div>
 
       {/* Content */}
@@ -218,7 +300,10 @@ export function ActivityFeed() {
                   </div>
 
                   {/* Event card */}
-                  <div className="flex-1 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/30">
+                  <div
+                    className="flex-1 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/30 cursor-pointer"
+                    onClick={() => handleEventClick(event)}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm font-medium truncate">{actorName}</span>

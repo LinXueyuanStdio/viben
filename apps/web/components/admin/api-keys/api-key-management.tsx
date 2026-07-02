@@ -2,8 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogHeader, DialogTitle, DialogFooter,
@@ -41,12 +49,16 @@ export function ApiKeyManagement() {
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
 
+  const currentStatus = searchParams.get('status') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
 
   const fetchKeys = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const params = new URLSearchParams({ page: String(currentPage), limit: '20' });
+      if (currentStatus !== 'all') {
+        params.set('status', currentStatus);
+      }
       const res = await fetch(`/api/admin/api-keys?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch API keys');
       const data = await res.json();
@@ -55,9 +67,20 @@ export function ApiKeyManagement() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load API keys');
     } finally { setLoading(false); }
-  }, [currentPage]);
+  }, [currentPage, currentStatus]);
 
   useEffect(() => { fetchKeys(); }, [fetchKeys]);
+
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value && value !== 'all') {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    params.delete('page');
+    router.push(`/admin/api-keys?${params.toString()}`);
+  };
 
   const setPage = (p: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -69,11 +92,13 @@ export function ApiKeyManagement() {
     if (!revokeId) return;
     setRevoking(true);
     try {
-      await fetch(`/api/admin/api-keys/${revokeId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/api-keys/${revokeId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to revoke API key');
+      toast.success('API 密钥已撤销');
       setRevokeId(null);
       fetchKeys();
     } catch {
-      setError('撤销 API 密钥失败');
+      toast.error('撤销 API 密钥失败');
     } finally { setRevoking(false); }
   };
 
@@ -83,6 +108,19 @@ export function ApiKeyManagement() {
         <div>
           <h1 className="font-serif text-2xl font-bold">API 密钥管理</h1>
           <p className="text-muted-foreground">查看和管理用户 API 密钥</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Select value={currentStatus} onValueChange={(v) => updateFilter('status', v)}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="状态筛选" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部</SelectItem>
+              <SelectItem value="active">有效</SelectItem>
+              <SelectItem value="expired">已过期</SelectItem>
+              <SelectItem value="permanent">永久</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

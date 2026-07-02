@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, Clock } from 'lucide-react';
+import { Loader2, TrendingUp, Clock, Calendar } from 'lucide-react';
 
 interface TopSearch {
   query: string;
@@ -39,11 +39,15 @@ export function SearchAnalytics() {
   const [tab, setTab] = useState<'top' | 'recent'>('top');
 
   const currentPage = Number(searchParams.get('page')) || 1;
+  const startDate = searchParams.get('start_date') || '';
+  const endDate = searchParams.get('end_date') || '';
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const params = new URLSearchParams({ page: String(currentPage), limit: '20' });
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
       const res = await fetch(`/api/admin/search-analytics?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch search analytics');
       const data = await res.json();
@@ -53,13 +57,24 @@ export function SearchAnalytics() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally { setLoading(false); }
-  }, [currentPage]);
+  }, [currentPage, startDate, endDate]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const setPage = (p: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', String(p));
+    router.push(`/admin/search-analytics?${params.toString()}`);
+  };
+
+  const setDateFilter = (key: 'start_date' | 'end_date', value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    params.set('page', '1');
     router.push(`/admin/search-analytics?${params.toString()}`);
   };
 
@@ -70,6 +85,40 @@ export function SearchAnalytics() {
       <div>
         <h1 className="font-serif text-2xl font-bold">搜索分析</h1>
         <p className="text-muted-foreground">查看用户搜索趋势和热门查询</p>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="flex items-center gap-3 rounded-lg border p-3 bg-card">
+        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+        <label className="text-sm text-muted-foreground shrink-0">日期范围</label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setDateFilter('start_date', e.target.value)}
+          className="rounded-md border bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <span className="text-sm text-muted-foreground">至</span>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setDateFilter('end_date', e.target.value)}
+          className="rounded-md border bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {(startDate || endDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete('start_date');
+              params.delete('end_date');
+              params.set('page', '1');
+              router.push(`/admin/search-analytics?${params.toString()}`);
+            }}
+            className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            清除
+          </button>
+        )}
       </div>
 
       {/* Tabs */}

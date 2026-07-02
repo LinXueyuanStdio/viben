@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Pagination } from '@/components/shared/pagination';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Pencil, Trash2, Star, ShieldOff } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Star, ShieldOff, Search } from 'lucide-react';
+import { useDebouncedCallback } from 'use-debounce';
 
 interface Topic {
   id: string;
@@ -32,16 +34,26 @@ interface Topic {
   updatedAt: string;
 }
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export function TopicManagement() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const currentFilter = searchParams.get('filter') || 'all';
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const currentSearch = searchParams.get('search') || '';
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,6 +69,9 @@ export function TopicManagement() {
   const [formDescription, setFormDescription] = useState('');
   const [formIsFeatured, setFormIsFeatured] = useState(false);
 
+  // Search state
+  const [searchValue, setSearchValue] = useState(currentSearch);
+
   const filterLabels: Record<string, string> = {
     all: t('dashboard.admin.comments.filterAll'),
     featured: t('dashboard.admin.topics.featured'),
@@ -67,16 +82,25 @@ export function TopicManagement() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/topics?filter=${currentFilter}`);
+      const params = new URLSearchParams({
+        filter: currentFilter,
+        page: String(currentPage),
+        limit: '20',
+      });
+      if (currentSearch) {
+        params.set('search', currentSearch);
+      }
+      const res = await fetch(`/api/admin/topics?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch topics');
       const data = await res.json();
       setTopics(data.topics);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.topics.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [currentFilter, t]);
+  }, [currentFilter, currentPage, currentSearch, t]);
 
   useEffect(() => { fetchTopics(); }, [fetchTopics]);
 
@@ -84,7 +108,25 @@ export function TopicManagement() {
     const params = new URLSearchParams(searchParams.toString());
     if (f && f !== 'all') params.set('filter', f);
     else params.delete('filter');
+    params.delete('page');
     router.push(`/admin/topics?${params.toString()}`);
+  };
+
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set('search', value);
+    } else {
+      params.delete('search');
+    }
+    params.delete('page');
+    router.push(`/admin/topics?${params.toString()}`);
+  }, 300);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    debouncedSearch(value);
   };
 
   const openCreateDialog = () => {
@@ -174,6 +216,19 @@ export function TopicManagement() {
           <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.topics.title')}</h1>
           <p className="text-muted-foreground">{t('dashboard.admin.topics.subtitle')}</p>
         </div>
+        <Button onClick={openCreateDialog}>{t('dashboard.admin.topics.create')}</Button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="搜索话题名称或 slug..."
+            value={searchValue}
+            onChange={handleSearchChange}
+            className="pl-9"
+          />
+        </div>
         <div className="flex gap-2">
           {(['all', 'featured', 'blocked'] as const).map((f) => (
             <button
@@ -187,7 +242,6 @@ export function TopicManagement() {
               {filterLabels[f]}
             </button>
           ))}
-          <Button onClick={openCreateDialog}>{t('dashboard.admin.topics.create')}</Button>
         </div>
       </div>
 
@@ -251,7 +305,11 @@ export function TopicManagement() {
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground">共 {topics.length} 个话题</p>
+      {pagination.totalPages > 1 && (
+        <Pagination currentPage={pagination.page} totalPages={pagination.totalPages} />
+      )}
+
+      <p className="text-sm text-muted-foreground">显示 {topics.length} / {pagination.total} 个话题</p>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

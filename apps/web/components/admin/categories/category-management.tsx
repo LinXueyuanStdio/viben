@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Pagination } from '@/components/shared/pagination';
+import { Loader2, Pencil, Trash2, Search } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -41,6 +42,19 @@ export function CategoryManagement() {
   const [error, setError] = useState<string | null>(null);
 
   const currentStatus = searchParams.get('status') || 'all';
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const currentSearch = searchParams.get('search') || '';
+
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
+
+  // Search with debounce
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,26 +80,45 @@ export function CategoryManagement() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/categories?status=${currentStatus}`);
+      const params = new URLSearchParams();
+      params.set('status', currentStatus);
+      params.set('page', String(currentPage));
+      params.set('limit', '20');
+      if (currentSearch) params.set('search', currentSearch);
+      const res = await fetch(`/api/admin/categories?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch categories');
       const data = await res.json();
       setCategories(data.categories);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.categories.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [currentStatus, t]);
+  }, [currentStatus, currentPage, currentSearch, t]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
   const updateFilter = (status: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
-    else params.delete('status');
+    if (currentSearch) params.set('search', currentSearch);
     router.push(`/admin/categories?${params.toString()}`);
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchInput(value);
+    // Clear previous debounce
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Set debounce
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (currentStatus !== 'all') params.set('status', currentStatus);
+      if (value) params.set('search', value);
+      router.push(`/admin/categories?${params.toString()}`);
+    }, 300);
   };
 
   const openCreateDialog = () => {
@@ -153,11 +186,14 @@ export function CategoryManagement() {
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/categories/${deleteId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete category');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete category');
+      }
       setDeleteId(null);
       fetchCategories();
-    } catch {
-      setError(t('dashboard.admin.categories.actionError'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboard.admin.categories.actionError'));
     } finally {
       setDeleting(false);
     }
@@ -166,27 +202,40 @@ export function CategoryManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.categories.title')}</h1>
-          <p className="text-muted-foreground">{t('dashboard.admin.categories.subtitle')}</p>
-        </div>
-        <div className="flex gap-2">
-          {(['all', 'active', 'inactive'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => updateFilter(s)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                currentStatus === s
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              {filterLabels[s]}
-            </button>
-          ))}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-serif text-2xl font-bold">{t('dashboard.admin.categories.title')}</h1>
+            <p className="text-muted-foreground">{t('dashboard.admin.categories.subtitle')}</p>
+          </div>
           <Button onClick={openCreateDialog}>{t('dashboard.admin.categories.create')}</Button>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="搜索分类名称或 slug..."
+              value={searchInput}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex gap-2">
+            {(['all', 'active', 'inactive'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => updateFilter(s)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  currentStatus === s
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                }`}
+              >
+                {filterLabels[s]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -251,9 +300,14 @@ export function CategoryManagement() {
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        共 {categories.length} 个分类
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          共 {pagination.total} 个分类
+        </p>
+        {pagination.totalPages > 1 && (
+          <Pagination currentPage={currentPage} totalPages={pagination.totalPages} />
+        )}
+      </div>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

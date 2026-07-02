@@ -2,23 +2,43 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Eye, Users, ThumbsUp, MessageSquare, Share2, TrendingUp } from 'lucide-react';
+import {
+  Loader2,
+  Eye,
+  Users,
+  ThumbsUp,
+  MessageSquare,
+  Share2,
+  TrendingUp,
+  BookOpen,
+  Bookmark,
+  RefreshCw,
+  Bell,
+} from 'lucide-react';
 
 interface DailyStat {
   statDate: string;
   viewCount: number;
   uniqueViewerCount: number;
+  readCount: number;
   likeCount: number;
+  bookmarkCount: number;
   commentCount: number;
   shareCount: number;
+  repostCount: number;
+  subscriberCount: number;
 }
 
 interface Summary {
   totalViews: number;
   totalUniqueViewers: number;
+  totalReads: number;
   totalLikes: number;
+  totalBookmarks: number;
   totalComments: number;
   totalShares: number;
+  totalReposts: number;
+  totalSubscribers: number;
 }
 
 interface TopEntity {
@@ -26,9 +46,13 @@ interface TopEntity {
   entityId: string;
   totalViews: number;
   totalUniqueViewers: number;
+  totalReads: number;
   totalLikes: number;
+  totalBookmarks: number;
   totalComments: number;
   totalShares: number;
+  totalReposts: number;
+  totalSubscribers: number;
 }
 
 interface AnalyticsData {
@@ -60,6 +84,13 @@ const RANGE_OPTIONS = [
   { value: '7d' as const, label: '最近 7 天' },
   { value: '30d' as const, label: '最近 30 天' },
   { value: 'all' as const, label: '全部' },
+];
+
+const ENTITY_TYPE_OPTIONS = [
+  { value: '', label: '全部类型' },
+  { value: 'published_page', label: '发布页' },
+  { value: 'mcp_package', label: 'MCP 包' },
+  { value: 'skill_package', label: 'Skill 包' },
 ];
 
 export function AnalyticsDashboard() {
@@ -102,6 +133,16 @@ export function AnalyticsDashboard() {
     router.push(`/admin/analytics?${params.toString()}`);
   };
 
+  const setEntityType = (entityType: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (entityType) {
+      params.set('entity_type', entityType);
+    } else {
+      params.delete('entity_type');
+    }
+    router.push(`/admin/analytics?${params.toString()}`);
+  };
+
   // Bar chart scaling
   const maxDailyViews =
     data?.dailyStats && data.dailyStats.length > 0
@@ -133,6 +174,25 @@ export function AnalyticsDashboard() {
         </div>
       </div>
 
+      {/* Entity Type Filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">内容类型：</span>
+        {ENTITY_TYPE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setEntityType(opt.value)}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              currentEntityType === opt.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -151,7 +211,7 @@ export function AnalyticsDashboard() {
       ) : data ? (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             <div className="rounded-xl border bg-card p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Eye className="h-4 w-4" />
@@ -168,10 +228,24 @@ export function AnalyticsDashboard() {
             </div>
             <div className="rounded-xl border bg-card p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-xs font-medium">阅读量</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalReads)}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <ThumbsUp className="h-4 w-4" />
                 <span className="text-xs font-medium">点赞</span>
               </div>
               <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalLikes)}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Bookmark className="h-4 w-4" />
+                <span className="text-xs font-medium">收藏</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalBookmarks)}</p>
             </div>
             <div className="rounded-xl border bg-card p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -186,6 +260,20 @@ export function AnalyticsDashboard() {
                 <span className="text-xs font-medium">分享</span>
               </div>
               <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalShares)}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <RefreshCw className="h-4 w-4" />
+                <span className="text-xs font-medium">转发</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalReposts)}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Bell className="h-4 w-4" />
+                <span className="text-xs font-medium">订阅</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(data.summary.totalSubscribers)}</p>
             </div>
           </div>
 
@@ -245,7 +333,9 @@ export function AnalyticsDashboard() {
                     <th className="px-4 py-3 text-left text-xs font-medium">ID</th>
                     <th className="px-4 py-3 text-right text-xs font-medium">浏览量</th>
                     <th className="px-4 py-3 text-right text-xs font-medium">独立访客</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">阅读</th>
                     <th className="px-4 py-3 text-right text-xs font-medium">点赞</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium">收藏</th>
                     <th className="px-4 py-3 text-right text-xs font-medium">评论</th>
                     <th className="px-4 py-3 text-right text-xs font-medium">分享</th>
                   </tr>
@@ -253,7 +343,7 @@ export function AnalyticsDashboard() {
                 <tbody>
                   {data.topEntities.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                         暂无数据
                       </td>
                     </tr>
@@ -277,7 +367,13 @@ export function AnalyticsDashboard() {
                           {formatNumber(entity.totalUniqueViewers)}
                         </td>
                         <td className="px-4 py-3 text-sm text-right">
+                          {formatNumber(entity.totalReads)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
                           {formatNumber(entity.totalLikes)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          {formatNumber(entity.totalBookmarks)}
                         </td>
                         <td className="px-4 py-3 text-sm text-right">
                           {formatNumber(entity.totalComments)}

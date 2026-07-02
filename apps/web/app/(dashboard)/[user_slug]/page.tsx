@@ -31,17 +31,14 @@ interface PageRow {
   bookmarkCount: number
   authorName: string | null
   authorAvatarUrl: string | null
-  /** Author's userSlug, available when the query joins with users table */
-  authorUserSlug?: string | null
+  authorSlug: string
 }
 
 function mapPageToCard(
   p: PageRow,
-  fallbackSlug: string,
   fallbackDisplayName: string,
   fallbackAvatarUrl: string | null | undefined,
 ): { card: PageCardData; href: string } {
-  const authorSlug = p.authorUserSlug ?? fallbackSlug
   const authorName = p.authorName ?? fallbackDisplayName
   return {
     card: {
@@ -61,7 +58,7 @@ function mapPageToCard(
         bookmarks: p.bookmarkCount,
       },
     } satisfies PageCardData,
-    href: `/${encodeURIComponent(authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
+    href: `/${encodeURIComponent(p.authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
   }
 }
 
@@ -137,6 +134,7 @@ export default async function UserSlugPage({
     bookmarkCount: publishedPages.bookmarkCount,
     authorName: publishedPages.authorName,
     authorAvatarUrl: publishedPages.authorAvatarUrl,
+    authorSlug: publishedPages.authorSlug,
   }
 
   const [
@@ -175,11 +173,10 @@ export default async function UserSlugPage({
       .where(eq(collections.ownerId, user.id))
       .orderBy(desc(collections.updatedAt))
       .limit(20),
-    db.select({ ...pageColumns, authorUserSlug: users.userSlug })
+    db.select(pageColumns)
       .from(communityReactions)
       .innerJoin(communityEntities, eq(communityEntities.id, communityReactions.communityEntityId))
       .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
-      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(communityReactions.userId, user.id),
         eq(communityReactions.reactionType, "like"),
@@ -190,11 +187,10 @@ export default async function UserSlugPage({
       ))
       .orderBy(desc(communityReactions.createdAt))
       .limit(20),
-    db.select({ ...pageColumns, authorUserSlug: users.userSlug })
+    db.select(pageColumns)
       .from(communityBookmarks)
       .innerJoin(communityEntities, eq(communityEntities.id, communityBookmarks.communityEntityId))
       .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
-      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(communityBookmarks.userId, user.id),
         eq(communityEntities.entityType, "published_page"),
@@ -224,11 +220,11 @@ export default async function UserSlugPage({
       .limit(1),
   ])
 
-  const pageCards = authorPages.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
-  const pinnedCards = pinnedPageRows.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
+  const pageCards = authorPages.map((p) => mapPageToCard(p, displayName, avatarUrl))
+  const pinnedCards = pinnedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
   const readmePage = profileReadmePage[0]
-  const likedCards = likedPageRows.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
-  const favoritedCards = favoritedPageRows.map((p) => mapPageToCard(p, slug, displayName, avatarUrl))
+  const likedCards = likedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
+  const favoritedCards = favoritedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
 
   const feedCards: FeedCardData[] = authorMoments.map((m) =>
     mapMomentRowToFeedCard(m, {

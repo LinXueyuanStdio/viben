@@ -34,7 +34,7 @@ interface OperationSlot {
 
 interface OperationItem {
   id: string; uid: string; slotId: string; itemType: string;
-  targetEntityType: string | null; targetEntityId: string | null; targetUrl: string | null;
+  targetEntityType: string | null; targetEntityId: string | null; targetEntityUid: string | null; targetUrl: string | null;
   title: string; subtitle: string | null; description: string | null;
   imageUrl: string | null; ctaLabel: string | null; badgeLabel: string | null;
   locale: string; startsAt: string | null; endsAt: string | null;
@@ -95,9 +95,19 @@ export function OperationManagement() {
   const [itemImageUrl, setItemImageUrl] = useState('');
   const [itemCtaLabel, setItemCtaLabel] = useState('');
   const [itemBadgeLabel, setItemBadgeLabel] = useState('');
+  const [itemLocale, setItemLocale] = useState('default');
+  const [itemStartsAt, setItemStartsAt] = useState('');
+  const [itemEndsAt, setItemEndsAt] = useState('');
+  const [itemTargetEntityType, setItemTargetEntityType] = useState('');
+  const [itemTargetEntityId, setItemTargetEntityId] = useState('');
+  const [itemTargetEntityUid, setItemTargetEntityUid] = useState('');
   const [itemSortOrder, setItemSortOrder] = useState(0);
   const [itemIsActive, setItemIsActive] = useState(true);
   const [itemVisibility, setItemVisibility] = useState<'draft' | 'scheduled' | 'published' | 'archived'>('draft');
+
+  // Pagination
+  const ITEMS_PAGE_SIZE = 10;
+  const [itemsPage, setItemsPage] = useState(1);
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'slot' | 'item'; id: string; label: string } | null>(null);
@@ -197,6 +207,7 @@ export function OperationManagement() {
   // Items
   const fetchItems = async (slot: OperationSlot) => {
     setItemsLoading(true);
+    setItemsPage(1);
     try {
       const res = await fetch(`/api/admin/operations/slots/${slot.id}/items`);
       if (!res.ok) throw new Error('Failed to fetch items');
@@ -225,6 +236,8 @@ export function OperationManagement() {
     setEditingItem(null);
     setItemUid(''); setItemType(''); setItemTargetUrl(''); setItemTitle(''); setItemSubtitle('');
     setItemDescription(''); setItemImageUrl(''); setItemCtaLabel(''); setItemBadgeLabel('');
+    setItemLocale('default'); setItemStartsAt(''); setItemEndsAt('');
+    setItemTargetEntityType(''); setItemTargetEntityId(''); setItemTargetEntityUid('');
     setItemSortOrder(items.length); setItemIsActive(true); setItemVisibility('draft');
     setItemDialogOpen(true);
   };
@@ -234,6 +247,9 @@ export function OperationManagement() {
     setItemUid(item.uid); setItemType(item.itemType); setItemTargetUrl(item.targetUrl ?? '');
     setItemTitle(item.title); setItemSubtitle(item.subtitle ?? ''); setItemDescription(item.description ?? '');
     setItemImageUrl(item.imageUrl ?? ''); setItemCtaLabel(item.ctaLabel ?? ''); setItemBadgeLabel(item.badgeLabel ?? '');
+    setItemLocale(item.locale); setItemStartsAt(item.startsAt ? new Date(item.startsAt).toISOString().slice(0, 16) : '');
+    setItemEndsAt(item.endsAt ? new Date(item.endsAt).toISOString().slice(0, 16) : '');
+    setItemTargetEntityType(item.targetEntityType ?? ''); setItemTargetEntityId(item.targetEntityId ?? ''); setItemTargetEntityUid(item.targetEntityUid ?? '');
     setItemSortOrder(item.sortOrder); setItemIsActive(item.isActive); setItemVisibility(item.visibility);
     setItemDialogOpen(true);
   };
@@ -242,9 +258,14 @@ export function OperationManagement() {
     if (!selectedSlot && !editingItem) return;
     setSaving(true);
     try {
-      const body = { uid: itemUid, item_type: itemType, target_url: itemTargetUrl || null,
+      const body = { uid: itemUid, item_type: itemType,
+        target_entity_type: itemTargetEntityType || null,
+        target_entity_id: itemTargetEntityId || null,
+        target_entity_uid: itemTargetEntityUid || null,
+        target_url: itemTargetUrl || null,
         title: itemTitle, subtitle: itemSubtitle || null, description: itemDescription || null,
         image_url: itemImageUrl || null, cta_label: itemCtaLabel || null, badge_label: itemBadgeLabel || null,
+        locale: itemLocale, starts_at: itemStartsAt || null, ends_at: itemEndsAt || null,
         sort_order: itemSortOrder, is_active: itemIsActive, visibility: itemVisibility };
       const res = editingItem
         ? await fetch(`/api/admin/operations/items/${editingItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -295,22 +316,41 @@ export function OperationManagement() {
                 <th className="px-4 py-3 text-right text-sm font-medium">{t('dashboard.admin.operations.itemColumns.actions')}</th>
               </tr></thead>
               <tbody>
-                {items.map((item) => {
-                  const visConf = VISIBILITY_CONFIG[item.visibility] || VISIBILITY_CONFIG.draft;
-                  return (<tr key={item.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.sortOrder}</td>
-                    <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">{item.title}{item.badgeLabel && <Badge variant="secondary" className="ml-2">{item.badgeLabel}</Badge>}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.itemType}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-[150px] truncate">{item.targetUrl || item.targetEntityId || '-'}</td>
-                    <td className="px-4 py-3 text-sm"><div className="flex gap-1"><Badge variant={visConf.variant}>{visConf.label}</Badge>{!item.isActive && <Badge variant="secondary">{t('dashboard.admin.operations.inactive')}</Badge>}</div></td>
-                    <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openItemEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ type: 'item', id: item.id, label: item.title })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div></td>
-                  </tr>);
-                })}
+                {(() => {
+                  const totalPages = Math.ceil(items.length / ITEMS_PAGE_SIZE);
+                  const safePage = Math.min(itemsPage, Math.max(1, totalPages));
+                  const startIdx = (safePage - 1) * ITEMS_PAGE_SIZE;
+                  const pageItems = items.slice(startIdx, startIdx + ITEMS_PAGE_SIZE);
+                  return pageItems.map((item) => {
+                    const visConf = VISIBILITY_CONFIG[item.visibility] || VISIBILITY_CONFIG.draft;
+                    return (<tr key={item.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{item.sortOrder}</td>
+                      <td className="px-4 py-3 text-sm font-medium max-w-[200px] truncate">{item.title}{item.badgeLabel && <Badge variant="secondary" className="ml-2">{item.badgeLabel}</Badge>}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{item.itemType}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground max-w-[150px] truncate">{item.targetUrl || item.targetEntityId || '-'}</td>
+                      <td className="px-4 py-3 text-sm"><div className="flex gap-1"><Badge variant={visConf.variant}>{visConf.label}</Badge>{!item.isActive && <Badge variant="secondary">{t('dashboard.admin.operations.inactive')}</Badge>}</div></td>
+                      <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openItemEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ type: 'item', id: item.id, label: item.title })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div></td>
+                    </tr>);
+                  });
+                })()}
               </tbody>
             </table>
+            {(() => {
+              const totalPages = Math.ceil(items.length / ITEMS_PAGE_SIZE);
+              if (totalPages <= 1) return null;
+              return (
+                <div className="flex items-center justify-between border-t px-4 py-3">
+                  <p className="text-sm text-muted-foreground">{t('dashboard.admin.operations.pagination.showing', { current: itemsPage, total: totalPages, count: items.length })}</p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled={itemsPage <= 1} onClick={() => setItemsPage((p) => Math.max(1, p - 1))}>{t('dashboard.admin.operations.pagination.previous')}</Button>
+                    <Button variant="outline" size="sm" disabled={itemsPage >= totalPages} onClick={() => setItemsPage((p) => Math.min(totalPages, p + 1))}>{t('dashboard.admin.operations.pagination.next')}</Button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
         {/* Item Dialog */}
@@ -327,6 +367,18 @@ export function OperationManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label htmlFor="itemTargetUrl">{t('dashboard.admin.operations.form.linkUrl')}</Label><Input id="itemTargetUrl" value={itemTargetUrl} onChange={(e) => setItemTargetUrl(e.target.value)} placeholder={t('common.optional')} /></div>
                 <div className="space-y-2"><Label htmlFor="itemImageUrl">{t('dashboard.admin.operations.form.imageUrl')}</Label><Input id="itemImageUrl" value={itemImageUrl} onChange={(e) => setItemImageUrl(e.target.value)} placeholder={t('common.optional')} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label htmlFor="itemLocale">{t('dashboard.admin.operations.form.locale')}</Label><Input id="itemLocale" value={itemLocale} onChange={(e) => setItemLocale(e.target.value)} placeholder="zh-CN, en-US" /></div>
+                <div className="space-y-2"><Label htmlFor="itemTargetEntityType">{t('dashboard.admin.operations.form.targetEntityType')}</Label><Input id="itemTargetEntityType" value={itemTargetEntityType} onChange={(e) => setItemTargetEntityType(e.target.value)} placeholder={t('common.optional')} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label htmlFor="itemTargetEntityId">{t('dashboard.admin.operations.form.targetEntityId')}</Label><Input id="itemTargetEntityId" value={itemTargetEntityId} onChange={(e) => setItemTargetEntityId(e.target.value)} placeholder={t('common.optional')} /></div>
+                <div className="space-y-2"><Label htmlFor="itemTargetEntityUid">{t('dashboard.admin.operations.form.targetEntityUid')}</Label><Input id="itemTargetEntityUid" value={itemTargetEntityUid} onChange={(e) => setItemTargetEntityUid(e.target.value)} placeholder={t('common.optional')} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label htmlFor="itemStartsAt">{t('dashboard.admin.operations.form.startsAt')}</Label><Input id="itemStartsAt" type="datetime-local" value={itemStartsAt} onChange={(e) => setItemStartsAt(e.target.value)} /></div>
+                <div className="space-y-2"><Label htmlFor="itemEndsAt">{t('dashboard.admin.operations.form.endsAt')}</Label><Input id="itemEndsAt" type="datetime-local" value={itemEndsAt} onChange={(e) => setItemEndsAt(e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label htmlFor="itemCtaLabel">{t('dashboard.admin.operations.form.ctaLabel')}</Label><Input id="itemCtaLabel" value={itemCtaLabel} onChange={(e) => setItemCtaLabel(e.target.value)} placeholder={t('common.optional')} /></div>
@@ -428,6 +480,10 @@ export function OperationManagement() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label htmlFor="minItems">{t('dashboard.admin.operations.form.minItems')}</Label><Input id="minItems" type="number" value={formMinItems} onChange={(e) => setFormMinItems(Number(e.target.value))} /></div>
               <div className="space-y-2"><Label htmlFor="maxItems">{t('dashboard.admin.operations.form.maxItems')}</Label><Input id="maxItems" type="number" value={formMaxItems} onChange={(e) => setFormMaxItems(Number(e.target.value))} /></div>
+            </div>
+            <div className="space-y-2"><Label htmlFor="fallbackStrategy">{t('dashboard.admin.operations.form.fallbackStrategy')}</Label>
+              <Select value={formFallbackStrategy} onValueChange={setFormFallbackStrategy}><SelectTrigger id="fallbackStrategy"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="none">{t('dashboard.admin.operations.fallbackStrategies.none')}</SelectItem><SelectItem value="show_default">{t('dashboard.admin.operations.fallbackStrategies.showDefault')}</SelectItem><SelectItem value="hide_slot">{t('dashboard.admin.operations.fallbackStrategies.hideSlot')}</SelectItem></SelectContent></Select>
             </div>
             <div className="flex items-center justify-between"><Label htmlFor="slotIsActive">{t('dashboard.admin.operations.form.isActive')}</Label><Switch id="slotIsActive" checked={formIsActive} onCheckedChange={setFormIsActive} /></div>
           </div>

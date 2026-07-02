@@ -1,14 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Notification {
   id: string; type: string; title: string; body: string | null;
@@ -47,12 +55,24 @@ export function NotificationManagement() {
   const [deleting, setDeleting] = useState(false);
 
   const currentReadStatus = searchParams.get('read_status') || 'all';
+  const currentType = searchParams.get('type') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
+
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>();
+    for (const item of items) {
+      types.add(item.type);
+    }
+    return Array.from(types).sort();
+  }, [items]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const params = new URLSearchParams({ page: String(currentPage), limit: '20', read_status: currentReadStatus });
+      if (currentType !== 'all') {
+        params.set('type', currentType);
+      }
       const res = await fetch(`/api/admin/notifications?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch notifications');
       const data = await res.json();
@@ -61,13 +81,13 @@ export function NotificationManagement() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications');
     } finally { setLoading(false); }
-  }, [currentPage, currentReadStatus]);
+  }, [currentPage, currentReadStatus, currentType]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const updateFilter = (status: string) => {
+  const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (status !== 'all') params.set('read_status', status); else params.delete('read_status');
+    if (value !== 'all') params.set(key, value); else params.delete(key);
     params.delete('page');
     router.push(`/admin/notifications?${params.toString()}`);
   };
@@ -82,11 +102,13 @@ export function NotificationManagement() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      await fetch(`/api/admin/notifications/${deleteId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/notifications/${deleteId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete notification');
+      toast.success('通知已删除');
       setDeleteId(null);
       fetchItems();
     } catch {
-      setError('删除通知失败');
+      toast.error('删除通知失败');
     } finally { setDeleting(false); }
   };
 
@@ -95,8 +117,19 @@ export function NotificationManagement() {
       <div className="flex items-center justify-between">
         <div><h1 className="font-serif text-2xl font-bold">通知管理</h1><p className="text-muted-foreground">查看系统通知记录</p></div>
         <div className="flex gap-2">
+          <Select value={currentType} onValueChange={(v) => updateFilter('type', v)}>
+            <SelectTrigger className="h-9 w-[140px]">
+              <SelectValue placeholder="所有类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">所有类型</SelectItem>
+              {availableTypes.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {(['all', 'unread', 'read'] as const).map((s) => (
-            <button key={s} type="button" onClick={() => updateFilter(s)}
+            <button key={s} type="button" onClick={() => updateFilter('read_status', s)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${currentReadStatus === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'}`}>
               {s === 'all' ? '全部' : s === 'unread' ? '未读' : '已读'}
             </button>
@@ -155,7 +188,7 @@ export function NotificationManagement() {
       )}
       <p className="text-sm text-muted-foreground">显示 {items.length} / {pagination.total} 条通知</p>
 
-      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <Dialog open={!!deleteId} onOpenChange={() => { if (!deleting) setDeleteId(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>确认删除</DialogTitle><DialogDescription>此操作不可撤销。确定要删除此通知吗？</DialogDescription></DialogHeader>
           <DialogFooter>

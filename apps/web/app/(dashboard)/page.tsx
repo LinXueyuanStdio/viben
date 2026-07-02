@@ -8,7 +8,7 @@ import { HomeFeedSection } from "@/components/home/home-feed-section"
 import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
 import { listRanking } from "@/lib/services/community"
-import { db, publishedPages, users } from "@/lib/db"
+import { db, publishedPages } from "@/lib/db"
 import { desc, eq, and } from "drizzle-orm"
 import type { HeroSlideData } from "@/components/content/hero-carousel"
 import type { PageCardData } from "@/components/content/page-card"
@@ -73,12 +73,11 @@ export default async function HomePage() {
         coverUrl: publishedPages.coverUrl,
         authorName: publishedPages.authorName,
         authorAvatarUrl: publishedPages.authorAvatarUrl,
+        authorSlug: publishedPages.authorSlug,
         lastPublishedAt: publishedPages.lastPublishedAt,
         viewCount: publishedPages.viewCount,
         commentCount: publishedPages.commentCount,
-        userSlug: users.userSlug,
       }).from(publishedPages)
-        .innerJoin(users, eq(users.id, publishedPages.userId))
         .where(and(
           eq(publishedPages.visibility, "public"),
           eq(publishedPages.moderationStatus, "approved")
@@ -132,7 +131,7 @@ export default async function HomePage() {
 
     recommendedEntries = latestPages.map((p, i) => ({
       data: recommendedPages[i],
-      href: `/${encodeURIComponent(p.userSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
+      href: `/${encodeURIComponent(p.authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
     }))
   } catch (error) {
     console.error("[Home] Failed to fetch page data:", error)

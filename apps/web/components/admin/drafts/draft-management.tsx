@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2, Clock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, Trash2, Clock, Eye, Search as SearchIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -16,6 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Pagination } from '@/components/shared/pagination';
+import { useDebouncedCallback } from 'use-debounce';
+import { formatDate } from '@/lib/utils';
 
 interface DraftItem {
   id: string;
@@ -32,7 +38,22 @@ interface DraftItem {
   };
 }
 
-interface Pagination {
+interface DraftDetail {
+  id: string;
+  packageType: string;
+  data: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+}
+
+interface PaginationInfo {
   page: number;
   limit: number;
   total: number;
@@ -72,14 +93,19 @@ export function DraftManagement() {
   const { t } = useTranslation();
 
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DraftItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<string | null>(null);
+  const [detailData, setDetailData] = useState<DraftDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const currentPackageType = searchParams.get('package_type') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
+  const currentSearch = searchParams.get('search') || '';
+  const [searchValue, setSearchValue] = useState(currentSearch);
 
   const packageTypeLabels: Record<string, string> = {
     mcp: 'MCP',
@@ -95,6 +121,9 @@ export function DraftManagement() {
         limit: '20',
         package_type: currentPackageType,
       });
+      if (currentSearch) {
+        params.set('search', currentSearch);
+      }
       const res = await fetch(`/api/admin/drafts?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch drafts');
       const data = await res.json();
@@ -105,7 +134,7 @@ export function DraftManagement() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, currentPackageType]);
+  }, [currentPage, currentPackageType, currentSearch]);
 
   useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
 
@@ -115,6 +144,42 @@ export function DraftManagement() {
     else params.delete(key);
     params.delete('page');
     router.push(`/admin/drafts?${params.toString()}`);
+  };
+
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set('search', value);
+    } else {
+      params.delete('search');
+    }
+    params.delete('page');
+    router.push(`/admin/drafts?${params.toString()}`);
+  }, 300);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    debouncedSearch(value);
+  };
+
+  const fetchDraftDetail = async (id: string) => {
+    setDetailTarget(id);
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/admin/drafts/${id}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || '获取草稿详情失败');
+      }
+      const data = await res.json();
+      setDetailData(data.draft);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '加载草稿详情失败');
+      setDetailTarget(null);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -135,7 +200,7 @@ export function DraftManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold">草稿管理</h1>
           <p className="text-muted-foreground">管理用户未发布的草稿数据</p>
@@ -156,6 +221,16 @@ export function DraftManagement() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="relative max-w-sm">
+        <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="按用户名或昵称搜索..."
+          value={searchValue}
+          onChange={handleSearchChange}
+          className="pl-9"
+        />
       </div>
 
       {loading ? (
@@ -215,14 +290,24 @@ export function DraftManagement() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteTarget(d)}
-                      title="删除草稿"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => fetchDraftDetail(d.id)}
+                        title="查看详情"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteTarget(d)}
+                        title="删除草稿"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -232,29 +317,90 @@ export function DraftManagement() {
       )}
 
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => {
-            const params = new URLSearchParams(searchParams.toString());
-            params.set('page', String(page));
-            return (
-              <button
-                key={page}
-                type="button"
-                onClick={() => router.push(`/admin/drafts?${params.toString()}`)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  page === currentPage ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                }`}
-              >
-                {page}
-              </button>
-            );
-          })}
+        <div className="mt-6">
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+          />
         </div>
       )}
 
       <p className="text-sm text-muted-foreground">
         显示 {drafts.length} 条，共 {pagination.total} 条草稿
       </p>
+
+      <Dialog open={!!detailTarget} onOpenChange={() => { setDetailTarget(null); setDetailData(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>草稿详情</DialogTitle>
+          </DialogHeader>
+
+          {detailLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {detailData && !detailLoading && (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-6 pr-4">
+                {/* User Info */}
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={detailData.user.avatarUrl ?? undefined} />
+                    <AvatarFallback>{getInitials(detailData.user.displayName)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{detailData.user.displayName}</p>
+                    <p className="text-sm text-muted-foreground">@{detailData.user.username}</p>
+                  </div>
+                  <Badge variant="outline" className="ml-auto">
+                    {packageTypeLabels[detailData.packageType] || detailData.packageType}
+                  </Badge>
+                </div>
+
+                <Separator />
+
+                {/* Timestamps */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">创建时间：</span>
+                    <span>{formatDate(detailData.createdAt)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">更新时间：</span>
+                    <span>{formatDate(detailData.updatedAt)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">过期时间：</span>
+                    <span className={isExpired(detailData.expiresAt) ? 'text-destructive' : ''}>
+                      {formatDate(detailData.expiresAt)}
+                    </span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Data Fields */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">草稿数据</h4>
+                  {detailData.data && typeof detailData.data === 'object' && Object.keys(detailData.data).length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="rounded-lg border p-3">
+                        <pre className="text-xs whitespace-pre-wrap break-words font-mono">
+                          {JSON.stringify(detailData.data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">无数据</p>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent>
