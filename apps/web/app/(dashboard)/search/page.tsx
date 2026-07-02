@@ -2,9 +2,10 @@ import { Suspense } from "react"
 import { SearchPageContent } from "@/components/search/search-page-content"
 import { searchPages, getSearchFilterCounts, logSearchQuery, getPopularTags, getPopularPages } from "@/lib/services/search"
 import { getSession } from "@/lib/auth/cookies"
+import { timeAgo } from "@/lib/services/moment-mapper"
 import { T } from "@/components/content/i18n-text"
 import type { SearchFilter } from "@/lib/services/search"
-import type { SearchResultData } from "@/components/search/search-result-card"
+import type { PageCardData } from "@/components/content/page-card"
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string; filter?: string; page?: string }>
@@ -28,6 +29,7 @@ async function SearchContent({ searchParams }: SearchPageProps) {
       <SearchPageContent
         query=""
         results={[]}
+        resultUrls={[]}
         filters={[]}
         activeFilter={""}
         popularTags={popularTags}
@@ -49,20 +51,26 @@ async function SearchContent({ searchParams }: SearchPageProps) {
     console.error("[Search] Failed to log search query:", err)
   })
 
-  const results: SearchResultData[] = pages.map((p) => ({
-    id: p.id,
-    type: "page" as const,
+  const results: PageCardData[] = pages.map((p) => ({
+    coverUrl: p.coverUrl,
     title: p.title,
     description: p.snippet ? stripHtml(p.snippet) : (p.description ?? ""),
-    author: { name: p.authorDisplayName || p.authorSlug, avatar: p.authorAvatarUrl ?? undefined },
+    author: {
+      name: p.authorDisplayName || p.authorSlug,
+      avatarUrl: p.authorAvatarUrl ?? undefined,
+    },
+    timeAgo: timeAgo(p.lastPublishedAt),
     stats: {
       views: p.viewCount,
       likes: p.likeCount,
       comments: p.commentCount,
+      bookmarks: p.bookmarkCount,
     },
-    url: `/${encodeURIComponent(p.authorSlug)}/${p.uid}?tab=read`,
-    coverUrl: p.coverUrl ?? undefined,
+    isAuthenticated: !!session,
+    pageDbId: p.id,
   }))
+
+  const resultUrls = results.map((_, i) => `/${encodeURIComponent(pages[i].authorSlug)}/${pages[i].uid}?tab=read`)
 
   const filters = filterCounts.map((f) => ({
     label: f.label,
@@ -70,17 +78,16 @@ async function SearchContent({ searchParams }: SearchPageProps) {
     value: f.value,
   }))
 
-  const totalPages = Math.max(1, Math.ceil(filterCounts.find(f => f.value === (resolvedFilter === "pages" ? "pages" : ""))?.count ?? 0 / limit))
   const hasMore = offset + limit < (filterCounts.find(f => f.value === (resolvedFilter === "pages" ? "pages" : ""))?.count ?? 0)
 
   return (
     <SearchPageContent
       query={query}
       results={results}
+      resultUrls={resultUrls}
       filters={filters}
       activeFilter={filter ?? ""}
       currentPage={pageNum}
-      totalPages={totalPages}
       hasMore={hasMore}
     />
   )
