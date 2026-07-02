@@ -54,7 +54,7 @@ export function CategoryManagement() {
 
   // Search with debounce
   const [searchInput, setSearchInput] = useState(currentSearch);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
