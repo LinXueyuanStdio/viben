@@ -486,6 +486,188 @@ export async function reorderCollectionItems(
 }
 
 // ============================================
+// Batch Operations
+// ============================================
+
+export interface ReorderItem {
+  itemId: string;
+  position: number;
+}
+
+/**
+ * Reorder items by explicit position values.
+ */
+export async function reorderCollectionItemsByPosition(
+  collectionId: string,
+  userId: string,
+  items: ReorderItem[]
+): Promise<boolean> {
+  const collection = await db.query.collections.findFirst({
+    where: eq(collections.id, collectionId),
+  });
+
+  if (!collection || collection.ownerId !== userId) {
+    return false;
+  }
+
+  for (const { itemId, position } of items) {
+    await db
+      .update(collectionItems)
+      .set({ position })
+      .where(
+        and(
+          eq(collectionItems.collectionId, collectionId),
+          eq(collectionItems.itemId, itemId)
+        )
+      );
+  }
+
+  return true;
+}
+
+/**
+ * Batch remove items from a collection.
+ */
+export async function batchRemoveItemsFromCollection(
+  collectionId: string,
+  userId: string,
+  itemIds: string[]
+): Promise<boolean> {
+  const collection = await db.query.collections.findFirst({
+    where: eq(collections.id, collectionId),
+  });
+
+  if (!collection || collection.ownerId !== userId) {
+    return false;
+  }
+
+  if (itemIds.length === 0) return true;
+
+  const itemsToDelete = await db.query.collectionItems.findMany({
+    where: and(
+      eq(collectionItems.collectionId, collectionId),
+      // Use inArray for multiple itemIds
+    ),
+    columns: { id: true, itemId: true },
+  });
+
+  const itemIdSet = new Set(itemIds);
+  const idsToDelete = itemsToDelete
+    .filter((item) => itemIdSet.has(item.itemId))
+    .map((item) => item.id);
+
+  if (idsToDelete.length > 0) {
+    for (const id of idsToDelete) {
+      await db
+        .delete(collectionItems)
+        .where(eq(collectionItems.id, id));
+    }
+  }
+
+  // Update item count
+  await db
+    .update(collections)
+    .set({
+      itemCount: Math.max(0, collection.itemCount - idsToDelete.length),
+    })
+    .where(eq(collections.id, collectionId));
+
+  return true;
+}
+
+/**
+ * Move items from one collection to another.
+ */
+export async function moveItemsToCollection(
+  sourceCollectionId: string,
+  userId: string,
+  itemIds: string[],
+  targetCollectionId: string
+): Promise<boolean> {
+  // Verify ownership of source collection
+  const source = await db.query.collections.findFirst({
+    where: eq(collections.id, sourceCollectionId),
+  });
+
+  if (!source || source.ownerId !== userId) {
+    return false;
+  }
+
+  // Verify ownership of target collection
+  const target = await db.query.collections.findFirst({
+    where: eq(collections.id, targetCollectionId),
+  });
+
+  if (!target || target.ownerId !== userId) {
+    return false;
+  }
+
+  if (itemIds.length === 0) return true;
+
+  // Get items to move
+  const itemsToMove = await db.query.collectionItems.findMany({
+    where: eq(collectionItems.collectionId, sourceCollectionId),
+  });
+
+  const itemIdSet = new Set(itemIds);
+  const movingItems = itemsToMove.filter((item) => itemIdSet.has(item.itemId));
+
+  // Get next position in target collection
+  const [maxResult] = await db
+    .select({ maxPos: max(collectionItems.position) })
+    .from(collectionItems)
+    .where(eq(collectionItems.collectionId, targetCollectionId));
+
+  let position = (maxResult?.maxPos ?? -1) + 1;
+
+  // Insert into target collection, skip duplicates
+  for (const item of movingItems) {
+    const existingInTarget = await db.query.collectionItems.findFirst({
+      where: and(
+        eq(collectionItems.collectionId, targetCollectionId),
+        eq(collectionItems.itemId, item.itemId)
+      ),
+    });
+
+    if (!existingInTarget) {
+      await db.insert(collectionItems).values({
+        collectionId: targetCollectionId,
+        itemId: item.itemId,
+        itemType: item.itemType,
+        note: item.note,
+        position,
+      });
+      position++;
+    }
+  }
+
+  // Remove from source
+  for (const item of movingItems) {
+    await db
+      .delete(collectionItems)
+      .where(eq(collectionItems.id, item.id));
+  }
+
+  // Update item counts
+  const movedCount = movingItems.length;
+  await db
+    .update(collections)
+    .set({ itemCount: Math.max(0, source.itemCount - movedCount) })
+    .where(eq(collections.id, sourceCollectionId));
+
+  // Count actual new items in target (some might be duplicates)
+  const targetItems = await db.query.collectionItems.findMany({
+    where: eq(collectionItems.collectionId, targetCollectionId),
+  });
+  await db
+    .update(collections)
+    .set({ itemCount: targetItems.length })
+    .where(eq(collections.id, targetCollectionId));
+
+  return true;
+}
+
+// ============================================
 // Fork Collection
 // ============================================
 

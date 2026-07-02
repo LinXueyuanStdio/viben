@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { addItemToCollection, reorderCollectionItems } from '@/lib/services/collections';
+import { addItemToCollection, reorderCollectionItems, batchRemoveItemsFromCollection } from '@/lib/services/collections';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -14,6 +14,10 @@ const addItemSchema = z.object({
 });
 
 const reorderSchema = z.object({
+  itemIds: z.array(z.string()),
+});
+
+const batchDeleteSchema = z.object({
   itemIds: z.array(z.string()),
 });
 
@@ -92,6 +96,50 @@ export async function PATCH(
     console.error('Failed to reorder collection items:', error);
     return NextResponse.json(
       { error: 'Failed to reorder collection items' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  try {
+    const session = await getSession();
+    if (!session?.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const parsed = batchDeleteSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const success = await batchRemoveItemsFromCollection(
+      id,
+      session.userId,
+      parsed.data.itemIds
+    );
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Collection not found or not authorized' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to batch remove items from collection:', error);
+    return NextResponse.json(
+      { error: 'Failed to remove items' },
       { status: 500 }
     );
   }
