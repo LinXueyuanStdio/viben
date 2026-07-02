@@ -29,7 +29,7 @@ export default async function LeaderboardPage() {
     acc[tab.key] = rawItems.map((item) => ({
       card: {
         rank: item.rank,
-        cover: gradientCover(item.title),
+        cover: item.cover_url ? `url(${item.cover_url})` : gradientCover(item.title),
         title: item.title,
         description: item.description ?? "",
         delta: item.delta ?? "—",

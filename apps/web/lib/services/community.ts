@@ -780,12 +780,13 @@ export async function listCommunityBookmarks(params: {
 
   const visibleRows = rows.slice(0, params.limit);
   return {
-    items: visibleRows.map(({ favorite, entity }) => ({
+    items: visibleRows.map(({ favorite, entity, page }) => ({
       id: favorite.id,
       entity_type: entity.entityType,
       entity_id: entity.entityId,
       title: entity.title,
       canonical_path: entity.canonicalPath,
+      cover_url: (page as { coverUrl: string | null } | undefined)?.coverUrl ?? null,
       created_at: favorite.createdAt.toISOString(),
     })),
     next_cursor:
@@ -1876,7 +1877,7 @@ export async function listRanking(params: {
       page_id: page.uid,
       read_url: `/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}?tab=read`,
       category_id: page.categoryId,
-      cover_url: null,
+      cover_url: page.coverUrl,
       tags: page.tags,
       published_at: page.publishedAt.toISOString(),
       last_published_at: page.lastPublishedAt.toISOString(),

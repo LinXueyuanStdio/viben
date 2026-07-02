@@ -91,7 +91,7 @@ export default async function HomePage() {
     heroSlides = rankingItems.slice(0, 4).map((item, i) => ({
       title: item.title,
       subtitle: item.description ?? "",
-      image: "",
+      image: item.cover_url ?? "",
       ...HERO_COLORS[i % HERO_COLORS.length],
       stats: {
         views: item.view_count ?? 0,
@@ -101,7 +101,7 @@ export default async function HomePage() {
     }))
 
     featuredPages = rankingItems.slice(0, 3).map((item) => ({
-      cover: gradientCover(item.title),
+      cover: item.cover_url ? `url(${item.cover_url})` : gradientCover(item.title),
       title: item.title,
       author: {
         name: item.author_display_name ?? item.user_slug ?? "?",
