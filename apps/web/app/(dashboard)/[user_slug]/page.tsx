@@ -4,12 +4,13 @@ import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks } from "@/lib/db"
+import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks, userFollows } from "@/lib/db"
 import { eq, desc, and, count, inArray } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { EmptyState, T } from "@/components/content/i18n-text"
 import { CollectionCard } from "@/components/collections/collection-card"
+import { FollowButton } from "@/components/content/follow-button"
 import Link from "next/link"
 import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
@@ -119,6 +120,24 @@ export default async function UserSlugPage({
   const isOwnProfile = session?.userId === user.id
   const displayName = user.displayName ?? "?"
   const avatarUrl = user.avatarUrl
+
+  // Check if current user is following this profile user
+  let isFollowing = false
+  if (session && !isOwnProfile) {
+    const followRecord = await db.query.userFollows.findFirst({
+      where: and(
+        eq(userFollows.followerUserId, session.userId),
+        eq(userFollows.followeeUserId, user.id),
+      ),
+    })
+    isFollowing = !!followRecord
+  }
+
+  // Count how many users this profile user is following
+  const followingCountResult = await db
+    .select({ count: count() })
+    .from(userFollows)
+    .where(eq(userFollows.followerUserId, user.id))
 
   // Columns to select from publishedPages in joined queries
   const pageColumns = {
@@ -337,16 +356,31 @@ export default async function UserSlugPage({
 
               {/* Stats */}
               <div className="flex items-center gap-3">
-                <div className="flex items-baseline gap-1">
+                <Link href={`/${encodeURIComponent(user.userSlug)}/followers`} className="flex items-baseline gap-1 hover:underline">
                   <span className="text-base font-bold tabular-nums">{user.followersCount}</span>
                   <span className="text-[13px] text-muted-foreground">关注者</span>
-                </div>
+                </Link>
+                <span className="text-muted-foreground/30">·</span>
+                <Link href={`/${encodeURIComponent(user.userSlug)}/following`} className="flex items-baseline gap-1 hover:underline">
+                  <span className="text-base font-bold tabular-nums">{followingCountResult[0]?.count ?? 0}</span>
+                  <span className="text-[13px] text-muted-foreground">正在关注</span>
+                </Link>
                 <span className="text-muted-foreground/30">·</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-base font-bold tabular-nums">{pageCountResult[0]?.count ?? 0}</span>
                   <span className="text-[13px] text-muted-foreground">页面</span>
                 </div>
               </div>
+
+              {/* Follow button (shown when viewing someone else's profile) */}
+              {!isOwnProfile && session && (
+                <FollowButton
+                  userSlug={user.userSlug}
+                  currentUserSlug={session.userSlug}
+                  initialFollowing={isFollowing}
+                  className="w-full"
+                />
+              )}
 
               {/* Edit profile */}
               {isOwnProfile && (

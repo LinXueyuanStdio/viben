@@ -73,6 +73,7 @@ export default async function HomePage() {
       title: item.title,
       subtitle: item.description ?? "",
       coverUrl: item.cover_url,
+      href: item.read_url ?? undefined,
       ...HERO_COLORS[i % HERO_COLORS.length],
       stats: {
         views: item.view_count ?? 0,

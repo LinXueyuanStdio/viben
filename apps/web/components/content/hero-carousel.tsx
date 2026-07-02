@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useTranslation } from "react-i18next"
+import Link from "next/link"
 import { ChevronLeft, ChevronRight, Eye, ThumbsUp, MessageCircle } from "lucide-react"
 import { IconButton } from "@/components/ui/icon-button"
 import { StatsRow } from "./stats-row"
@@ -15,6 +16,7 @@ export interface HeroSlideData {
   bg1: string
   bg2: string
   accent: string
+  href?: string
   stats?: {
     views: number
     likes: number
@@ -67,17 +69,23 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
     <div className={cn("relative overflow-hidden rounded-[12px]", className)}>
       {/* Cover */}
       <div
-        className="relative aspect-[21/9] min-h-[320px] dark:brightness-75 dark:contrast-125"
+        className="relative aspect-[21/9] min-h-[320px] dark:brightness-75 dark:contrast-125 bg-center bg-cover bg-no-repeat"
         style={{
-          background: slide.coverUrl
-            ? `linear-gradient(135deg, ${slide.bg1}, ${slide.bg2}), url(${slide.coverUrl}) center/cover`
+          backgroundImage: slide.coverUrl
+            ? `url(${slide.coverUrl})`
             : `linear-gradient(135deg, ${slide.bg1}, ${slide.bg2})`,
         }}
       >
+        {/* Clickable link */}
+        {slide.href && (
+          <Link href={slide.href} className="absolute inset-0" aria-label={slide.title}>
+            <span className="sr-only">{slide.title}</span>
+          </Link>
+        )}
         {/* Caption */}
-        <div className="absolute inset-x-0 bottom-0 p-6"
+        <div className="absolute inset-x-0 bottom-0 p-6 pointer-events-none"
           style={{
-            background: `linear-gradient(transparent, ${slide.bg1})`,
+            background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)",
           }}
         >
           <h1 className="text-white font-['Lexend'] text-[clamp(24px,3vw,32px)] leading-[1.08] font-bold mb-2">
@@ -114,7 +122,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
       <IconButton
         label={t("community.previousSlide")}
         size="compact"
-        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0"
+        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0 z-20"
         onClick={prev}
       >
         <ChevronLeft className="size-5" />
@@ -122,7 +130,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
       <IconButton
         label={t("community.nextSlide")}
         size="compact"
-        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0"
+        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0 z-20"
         onClick={next}
       >
         <ChevronRight className="size-5" />

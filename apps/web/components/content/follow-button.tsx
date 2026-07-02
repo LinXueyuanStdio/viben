@@ -9,11 +9,13 @@ interface FollowButtonProps {
   userSlug: string
   className?: string
   currentUserSlug?: string
+  /** 服务端传入的初始关注状态 */
+  initialFollowing?: boolean
 }
 
-export function FollowButton({ userSlug, className, currentUserSlug }: FollowButtonProps) {
+export function FollowButton({ userSlug, className, currentUserSlug, initialFollowing = false }: FollowButtonProps) {
   const { t } = useTranslation()
-  const [following, setFollowing] = useState(false)
+  const [following, setFollowing] = useState(initialFollowing)
   const [loading, setLoading] = useState(false)
 
   // 不能关注自己
