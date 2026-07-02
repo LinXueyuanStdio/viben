@@ -10,11 +10,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, activityEvents, users } from '@/lib/db';
-import { desc, eq, count, and, aliasedTable, type SQL } from 'drizzle-orm';
+import { desc, eq, count, and, gte, lte, aliasedTable, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listActivityQuerySchema = z.object({
   event_type: z.string().optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(20),
 });
@@ -31,6 +33,12 @@ export async function GET(request: NextRequest) {
     const conditions: SQL[] = [];
     if (query.event_type) {
       conditions.push(eq(activityEvents.eventType, query.event_type));
+    }
+    if (query.start_date) {
+      conditions.push(gte(activityEvents.createdAt, new Date(query.start_date)));
+    }
+    if (query.end_date) {
+      conditions.push(lte(activityEvents.createdAt, new Date(query.end_date)));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

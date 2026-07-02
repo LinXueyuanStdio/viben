@@ -78,9 +78,13 @@ export async function GET(request: NextRequest) {
         statDate: entityStatsDaily.statDate,
         viewCount: sql<number>`COALESCE(SUM(${entityStatsDaily.viewCount}), 0)`.mapWith(Number),
         uniqueViewerCount: sql<number>`COALESCE(SUM(${entityStatsDaily.uniqueViewerCount}), 0)`.mapWith(Number),
+        readCount: sql<number>`COALESCE(SUM(${entityStatsDaily.readCount}), 0)`.mapWith(Number),
         likeCount: sql<number>`COALESCE(SUM(${entityStatsDaily.likeCount}), 0)`.mapWith(Number),
+        bookmarkCount: sql<number>`COALESCE(SUM(${entityStatsDaily.bookmarkCount}), 0)`.mapWith(Number),
         commentCount: sql<number>`COALESCE(SUM(${entityStatsDaily.commentCount}), 0)`.mapWith(Number),
         shareCount: sql<number>`COALESCE(SUM(${entityStatsDaily.shareCount}), 0)`.mapWith(Number),
+        repostCount: sql<number>`COALESCE(SUM(${entityStatsDaily.repostCount}), 0)`.mapWith(Number),
+        subscriberCount: sql<number>`COALESCE(SUM(${entityStatsDaily.subscriberCount}), 0)`.mapWith(Number),
       })
       .from(entityStatsDaily)
       .where(whereClause)
@@ -92,9 +96,13 @@ export async function GET(request: NextRequest) {
       .select({
         totalViews: sql<number>`COALESCE(SUM(${entityStatsDaily.viewCount}), 0)`.mapWith(Number),
         totalUniqueViewers: sql<number>`COALESCE(SUM(${entityStatsDaily.uniqueViewerCount}), 0)`.mapWith(Number),
+        totalReads: sql<number>`COALESCE(SUM(${entityStatsDaily.readCount}), 0)`.mapWith(Number),
         totalLikes: sql<number>`COALESCE(SUM(${entityStatsDaily.likeCount}), 0)`.mapWith(Number),
+        totalBookmarks: sql<number>`COALESCE(SUM(${entityStatsDaily.bookmarkCount}), 0)`.mapWith(Number),
         totalComments: sql<number>`COALESCE(SUM(${entityStatsDaily.commentCount}), 0)`.mapWith(Number),
         totalShares: sql<number>`COALESCE(SUM(${entityStatsDaily.shareCount}), 0)`.mapWith(Number),
+        totalReposts: sql<number>`COALESCE(SUM(${entityStatsDaily.repostCount}), 0)`.mapWith(Number),
+        totalSubscribers: sql<number>`COALESCE(SUM(${entityStatsDaily.subscriberCount}), 0)`.mapWith(Number),
       })
       .from(entityStatsDaily)
       .where(whereClause);
@@ -106,9 +114,13 @@ export async function GET(request: NextRequest) {
         entityId: entityStatsDaily.entityId,
         totalViews: sql<number>`SUM(${entityStatsDaily.viewCount})`.mapWith(Number),
         totalUniqueViewers: sql<number>`SUM(${entityStatsDaily.uniqueViewerCount})`.mapWith(Number),
+        totalReads: sql<number>`SUM(${entityStatsDaily.readCount})`.mapWith(Number),
         totalLikes: sql<number>`SUM(${entityStatsDaily.likeCount})`.mapWith(Number),
+        totalBookmarks: sql<number>`SUM(${entityStatsDaily.bookmarkCount})`.mapWith(Number),
         totalComments: sql<number>`SUM(${entityStatsDaily.commentCount})`.mapWith(Number),
         totalShares: sql<number>`SUM(${entityStatsDaily.shareCount})`.mapWith(Number),
+        totalReposts: sql<number>`SUM(${entityStatsDaily.repostCount})`.mapWith(Number),
+        totalSubscribers: sql<number>`SUM(${entityStatsDaily.subscriberCount})`.mapWith(Number),
       })
       .from(entityStatsDaily)
       .where(whereClause)
@@ -120,9 +132,13 @@ export async function GET(request: NextRequest) {
       summary: summary ?? {
         totalViews: 0,
         totalUniqueViewers: 0,
+        totalReads: 0,
         totalLikes: 0,
+        totalBookmarks: 0,
         totalComments: 0,
         totalShares: 0,
+        totalReposts: 0,
+        totalSubscribers: 0,
       },
       dailyStats,
       topEntities,

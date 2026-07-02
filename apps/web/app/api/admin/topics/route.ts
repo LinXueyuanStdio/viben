@@ -1,7 +1,7 @@
 /**
  * Admin Topics API
  *
- * GET /api/admin/topics - List topics
+ * GET /api/admin/topics - List topics (with pagination, search, and filter)
  * POST /api/admin/topics - Create a new topic
  */
 
@@ -9,11 +9,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, momentTopics } from '@/lib/db';
-import { eq, desc, and, type SQL } from 'drizzle-orm';
+import { eq, desc, and, or, like, count, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listTopicsQuerySchema = z.object({
   filter: z.enum(['all', 'featured', 'blocked']).default('all'),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  search: z.string().optional(),
 });
 
 const createTopicSchema = z.object({
@@ -32,22 +35,46 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams.entries())
     );
 
+    const { page, limit, search, filter } = query;
+    const offset = (page - 1) * limit;
+
     const conditions: SQL[] = [];
-    if (query.filter === 'featured') {
+    if (filter === 'featured') {
       conditions.push(eq(momentTopics.isFeatured, true));
-    } else if (query.filter === 'blocked') {
+    } else if (filter === 'blocked') {
       conditions.push(eq(momentTopics.isBlocked, true));
+    }
+    if (search) {
+      const searchPattern = `%${search}%`;
+      conditions.push(
+        or(
+          like(momentTopics.displayName, searchPattern),
+          like(momentTopics.slug, searchPattern)
+        )!
+      );
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(momentTopics)
+      .where(whereClause);
+
+    const total = totalResult?.count ?? 0;
 
     const topics = await db
       .select()
       .from(momentTopics)
       .where(whereClause)
-      .orderBy(desc(momentTopics.momentCount), desc(momentTopics.lastMomentAt));
+      .orderBy(desc(momentTopics.momentCount), desc(momentTopics.lastMomentAt))
+      .limit(limit)
+      .offset(offset);
 
-    return NextResponse.json({ topics });
+    return NextResponse.json({
+      topics,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

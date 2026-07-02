@@ -9,11 +9,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, pageCategories } from '@/lib/db';
-import { eq, asc, and, type SQL } from 'drizzle-orm';
+import { eq, asc, and, ilike, or, count, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listCategoriesQuerySchema = z.object({
   status: z.enum(['all', 'active', 'inactive']).default('all'),
+  search: z.string().max(200).optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(50).default(20),
 });
 
 const createCategorySchema = z.object({
@@ -40,16 +43,42 @@ export async function GET(request: NextRequest) {
     } else if (query.status === 'inactive') {
       conditions.push(eq(pageCategories.isActive, false));
     }
+    if (query.search) {
+      const searchPattern = `%${query.search}%`;
+      conditions.push(
+        or(
+          ilike(pageCategories.name, searchPattern),
+          ilike(pageCategories.slug, searchPattern),
+        )!
+      );
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const offset = (query.page - 1) * query.limit;
+
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(pageCategories)
+      .where(whereClause);
+    const total = totalResult?.count ?? 0;
 
     const categories = await db
       .select()
       .from(pageCategories)
       .where(whereClause)
-      .orderBy(asc(pageCategories.sortOrder), asc(pageCategories.name));
+      .orderBy(asc(pageCategories.sortOrder), asc(pageCategories.name))
+      .limit(query.limit)
+      .offset(offset);
 
-    return NextResponse.json({ categories });
+    return NextResponse.json({
+      categories,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

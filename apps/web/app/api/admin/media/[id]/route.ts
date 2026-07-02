@@ -32,7 +32,7 @@ export async function DELETE(
 
     await createModerationLog({
       adminId: session.userId,
-      entityType: 'comment' as const,
+      entityType: 'media_asset' as const,
       entityId: id,
       action: 'delete',
       reason: `Deleted media asset of kind "${asset.kind}" from source "${asset.source}"`,

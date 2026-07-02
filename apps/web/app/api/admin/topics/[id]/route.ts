@@ -1,6 +1,7 @@
 /**
  * Admin Topics [id] API
  *
+ * GET /api/admin/topics/[id] - Get a single topic
  * PATCH /api/admin/topics/[id] - Update a topic
  * DELETE /api/admin/topics/[id] - Delete a topic
  */
@@ -19,6 +20,34 @@ const updateTopicSchema = z.object({
   is_featured: z.boolean().optional(),
   is_blocked: z.boolean().optional(),
 });
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requirePermission(request, 'topics.manage');
+
+    const { id } = await params;
+
+    const [topic] = await db
+      .select()
+      .from(momentTopics)
+      .where(eq(momentTopics.id, id));
+
+    if (!topic) {
+      return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ topic });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('Get topic error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: NextRequest,

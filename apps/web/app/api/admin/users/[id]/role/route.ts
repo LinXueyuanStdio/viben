@@ -97,12 +97,11 @@ export async function PATCH(
       .where(eq(users.id, id));
 
     // Log the action
-    const isAdminAssign = adminRoles.includes(role);
     await db.insert(moderationLogs).values({
       adminId: session.userId,
       entityType: 'user',
       entityId: id,
-      action: isAdminAssign ? 'unban' : 'ban',
+      action: 'role_change',
       reason: reason || `Role changed from ${targetUser.role} to ${role}`,
       metadata: {
         previousRole: targetUser.role,

@@ -6,6 +6,7 @@ import {
   publishedPageRecords,
   publishedPages,
   publishedPageVersions,
+  users,
 } from '@/lib/db';
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
@@ -89,6 +90,17 @@ export async function POST(request: NextRequest) {
     const normalizedImportance = importance === 'major' ? 'major' : 'normal';
 
     await ensurePublishedPagesTable();
+
+    // Fetch user info for denormalized author fields
+    const author = await db.query.users.findFirst({
+      where: eq(users.id, session.userId),
+      columns: {
+        displayName: true,
+        avatarUrl: true,
+      },
+    });
+    const authorName = author?.displayName ?? session.username;
+    const authorAvatarUrl = author?.avatarUrl ?? session.avatarUrl ?? null;
 
     if (normalizedCoverAssetId) {
       const coverAsset = await db.query.mediaAssets.findFirst({
@@ -191,6 +203,8 @@ export async function POST(request: NextRequest) {
         uid,
         userId: session.userId,
         authorSlug: session.userSlug,
+        authorName,
+        authorAvatarUrl,
         title,
         icon: icon ?? null,
         description: description ?? null,
@@ -220,6 +234,8 @@ export async function POST(request: NextRequest) {
           visibility: normalizedVisibility,
           moderationStatus: 'approved',
           authorSlug: session.userSlug,
+          authorName,
+          authorAvatarUrl,
           lastPublishedAt: sql`now()`,
           versionCount: nextVersion,
           updatedAt: sql`now()`,

@@ -7,7 +7,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
-import { getSession } from '@/lib/auth';
 import { db, apiKeys } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
@@ -17,7 +16,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requirePermission(request, 'users.ban');
+    const session = await requirePermission(request, 'users.view');
     const { id } = await params;
 
     const [key] = await db
@@ -25,14 +24,18 @@ export async function DELETE(
       .from(apiKeys)
       .where(eq(apiKeys.id, id));
 
+    if (!key) {
+      return NextResponse.json({ error: 'API key not found' }, { status: 404 });
+    }
+
     await db.delete(apiKeys).where(eq(apiKeys.id, id));
 
-    if (key && session.userId) {
+    if (session.userId) {
       await createModerationLog({
         adminId: session.userId,
         entityType: 'user',
         entityId: key.userId,
-        action: 'warn',
+        action: 'delete',
         reason: `Revoked API key: ${key.name}`,
       });
     }

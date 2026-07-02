@@ -8,13 +8,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, drafts, users } from '@/lib/db';
-import { eq, desc, count, and, type SQL } from 'drizzle-orm';
+import { eq, desc, count, and, or, like, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listDraftsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   package_type: z.enum(['mcp', 'skill', 'all']).default('all'),
+  search: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -26,20 +27,29 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams.entries())
     );
 
-    const { page, limit, package_type } = query;
+    const { page, limit, package_type, search } = query;
     const offset = (page - 1) * limit;
 
     const conditions: SQL[] = [];
     if (package_type !== 'all') {
       conditions.push(eq(drafts.packageType, package_type));
     }
+    if (search) {
+      const searchTerm: string = search;
+      const searchCondition = or(
+        like(users.username, `%${searchTerm}%`),
+        like(users.displayName, `%${searchTerm}%`)
+      );
+      conditions.push(searchCondition!);
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [totalResult] = await db
+    const baseCountQuery = db
       .select({ count: count() })
       .from(drafts)
-      .where(whereClause);
+      .innerJoin(users, eq(drafts.userId, users.id));
+    const [totalResult] = await (whereClause ? baseCountQuery.where(whereClause) : baseCountQuery);
 
     const total = totalResult?.count ?? 0;
 

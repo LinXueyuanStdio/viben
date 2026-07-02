@@ -1,6 +1,7 @@
 /**
  * Admin Categories [id] API
  *
+ * GET /api/admin/categories/[id] - Get a single category
  * PATCH /api/admin/categories/[id] - Update a category
  * DELETE /api/admin/categories/[id] - Delete a category
  */
@@ -8,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
-import { db, pageCategories } from '@/lib/db';
+import { db, pageCategories, publishedPages } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -20,6 +21,34 @@ const updateCategorySchema = z.object({
   sort_order: z.coerce.number().int().min(0).optional(),
   is_active: z.boolean().optional(),
 });
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requirePermission(_request, 'categories.manage');
+
+    const { id } = await params;
+
+    const [category] = await db
+      .select()
+      .from(pageCategories)
+      .where(eq(pageCategories.id, id));
+
+    if (!category) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ category });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('Get category error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -74,6 +103,20 @@ export async function DELETE(
     await requirePermission(request, 'categories.manage');
 
     const { id } = await params;
+
+    // Check if any published pages reference this category
+    const [referencedPages] = await db
+      .select({ id: publishedPages.id })
+      .from(publishedPages)
+      .where(eq(publishedPages.categoryId, id))
+      .limit(1);
+
+    if (referencedPages) {
+      return NextResponse.json(
+        { error: '该分类下存在已发布页面，无法删除。请先移除或修改相关页面的分类。' },
+        { status: 409 }
+      );
+    }
 
     await db.delete(pageCategories).where(eq(pageCategories.id, id));
 

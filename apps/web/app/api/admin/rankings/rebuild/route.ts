@@ -20,8 +20,8 @@ import { z } from 'zod';
 // ============================================
 
 const rebuildRankingSchema = z.object({
-  entityType: z.enum(['published_page']).default('published_page'),
-  timeWindow: z.enum(['7d', '30d', 'all']).default('7d'),
+  entityType: z.enum(['published_page', 'mcp_package', 'skill_package']).default('published_page'),
+  timeWindow: z.enum(['1d', '7d', '30d', 'all']).default('7d'),
 });
 
 // ============================================
@@ -118,6 +118,9 @@ export async function POST(request: NextRequest) {
     const sourceUntil = now;
 
     switch (timeWindow) {
+      case '1d':
+        sourceFrom = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+        break;
       case '7d':
         sourceFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
@@ -127,6 +130,13 @@ export async function POST(request: NextRequest) {
       case 'all':
         sourceFrom = null;
         break;
+    }
+
+    if (entityType !== 'published_page') {
+      return NextResponse.json(
+        { error: `Entity type "${entityType}" is not yet supported for ranking rebuilds. Only "published_page" is currently available.` },
+        { status: 400 }
+      );
     }
 
     const rankingKey = `${entityType}_${timeWindow}`;

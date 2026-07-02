@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
       const searchPattern = `%${search}%`;
       const searchCondition = or(
         like(users.username, searchPattern),
-        like(users.email, searchPattern)
+        like(users.email, searchPattern),
+        like(users.displayName, searchPattern)
       );
       if (searchCondition) {
         conditions.push(searchCondition);
