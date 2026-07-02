@@ -27,6 +27,8 @@ export {
   getPackageDetails,
   updateMcpPackageStatus,
   updateSkillPackageStatus,
+  deleteMcpPackage,
+  deleteSkillPackage,
   getPackageType,
   getPackageStatus,
   getPackageName,

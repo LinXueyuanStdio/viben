@@ -17,7 +17,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requirePermission(request, 'content.delete');
+    const session = await requirePermission(request, 'content.moderate');
     const { id } = await params;
 
     // Decode composite key: userId__entityType__entityId

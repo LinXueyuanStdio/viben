@@ -2,7 +2,8 @@
  * Admin Pages [id] API
  *
  * GET /api/admin/pages/[id] - Get page detail for review
- * PATCH /api/admin/pages/[id] - Moderate a page (approve/reject/hide)
+ * PATCH /api/admin/pages/[id] - Moderate a page (approve/reject/hide/unhide/reopen)
+ * DELETE /api/admin/pages/[id] - Delete a page
  */
 
 import { NextResponse } from 'next/server';
@@ -16,7 +17,7 @@ import type { ModerationAction } from '@/lib/types/admin';
 import { z } from 'zod';
 
 const moderatePageSchema = z.object({
-  moderation_status: z.enum(['approved', 'rejected', 'hidden']),
+  moderation_status: z.enum(['approved', 'rejected', 'hidden', 'pending']),
   rejection_reason: z.string().max(500).optional(),
 });
 
@@ -115,18 +116,22 @@ export async function PATCH(
 
     // Log the moderation action
     if (session?.userId) {
-      const actionMap: Record<string, ModerationAction> = {
+      const actionMap: Partial<Record<string, ModerationAction>> = {
         approved: 'approve',
         rejected: 'reject',
         hidden: 'hide',
+        // 'pending' (reopen) has no corresponding ModerationAction, skip logging
       };
-      await createModerationLog({
-        adminId: session.userId,
-        entityType: 'published_page',
-        entityId: id,
-        action: actionMap[data.moderation_status] || 'reject',
-        reason: data.rejection_reason || `Page ${data.moderation_status}`,
-      });
+      const action = actionMap[data.moderation_status];
+      if (action) {
+        await createModerationLog({
+          adminId: session.userId,
+          entityType: 'published_page',
+          entityId: id,
+          action,
+          reason: data.rejection_reason || `Page ${data.moderation_status}`,
+        });
+      }
     }
 
     return NextResponse.json({ success: true });
@@ -141,6 +146,44 @@ export async function PATCH(
       );
     }
     console.error('Moderate page error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await requirePermission(request, 'pages.review');
+
+    const { id } = await params;
+
+    const [page] = await db
+      .select({ id: publishedPages.id, title: publishedPages.title })
+      .from(publishedPages)
+      .where(eq(publishedPages.id, id));
+
+    if (!page) {
+      return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+    }
+
+    await db.delete(publishedPages).where(eq(publishedPages.id, id));
+
+    await createModerationLog({
+      adminId: session.userId,
+      entityType: 'published_page',
+      entityId: id,
+      action: 'delete',
+      reason: `Deleted page: ${page.title}`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error('Delete page error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

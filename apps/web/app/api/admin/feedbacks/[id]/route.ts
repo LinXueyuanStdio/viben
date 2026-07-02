@@ -10,6 +10,7 @@ import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, feedbacks, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
+import { createModerationLog } from '@/lib/admin/logs';
 
 export async function GET(
   request: NextRequest,
@@ -54,10 +55,26 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(request, 'feedbacks.resolve');
+    const session = await requirePermission(request, 'feedbacks.resolve');
     const { id } = await params;
 
+    const feedback = await db.query.feedbacks.findFirst({
+      where: eq(feedbacks.id, id),
+    });
+
+    if (!feedback) {
+      return NextResponse.json({ error: 'Feedback not found' }, { status: 404 });
+    }
+
     await db.delete(feedbacks).where(eq(feedbacks.id, id));
+
+    await createModerationLog({
+      adminId: session.userId,
+      entityType: 'feedback',
+      entityId: id,
+      action: 'delete',
+      reason: `Deleted feedback: ${feedback.content.slice(0, 100)}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

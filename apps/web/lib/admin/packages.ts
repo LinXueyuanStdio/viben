@@ -459,6 +459,26 @@ export async function updateSkillPackageStatus(
 }
 
 // ============================================
+// Hard Delete Package
+// ============================================
+
+/**
+ * Hard delete an MCP package from the database.
+ * This permanently removes the package record.
+ */
+export async function deleteMcpPackage(id: string): Promise<void> {
+  await db.delete(mcpPackages).where(eq(mcpPackages.id, id));
+}
+
+/**
+ * Hard delete a Skill package from the database.
+ * This permanently removes the package record.
+ */
+export async function deleteSkillPackage(id: string): Promise<void> {
+  await db.delete(skillPackages).where(eq(skillPackages.id, id));
+}
+
+// ============================================
 // Helper Functions
 // ============================================
 

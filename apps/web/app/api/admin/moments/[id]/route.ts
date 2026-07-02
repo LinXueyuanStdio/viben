@@ -2,8 +2,8 @@
  * Admin Moments [id] API
  *
  * GET /api/admin/moments/[id] - Get moment detail (with attachments and repost chain)
- * PATCH /api/admin/moments/[id] - Hide/unhide a moment
- * DELETE /api/admin/moments/[id] - Soft-delete a moment
+ * PATCH /api/admin/moments/[id] - Hide/unhide/toggle_pin/delete a moment
+ * DELETE /api/admin/moments/[id] - Soft-delete a moment (or hard delete with ?force=true)
  */
 
 import { NextResponse } from 'next/server';
@@ -150,7 +150,7 @@ export async function GET(
 }
 
 const updateMomentSchema = z.object({
-  action: z.enum(['hide', 'unhide', 'delete']),
+  action: z.enum(['hide', 'unhide', 'delete', 'toggle_pin']),
 });
 
 export async function PATCH(
@@ -178,14 +178,27 @@ export async function PATCH(
         .update(moments)
         .set({ visibility: 'public' })
         .where(eq(moments.id, id));
+    } else if (action === 'toggle_pin') {
+      // Toggle isPinned: fetch current value first, then flip
+      const [current] = await db
+        .select({ isPinned: moments.isPinned })
+        .from(moments)
+        .where(eq(moments.id, id));
+      if (!current) {
+        return NextResponse.json({ error: 'Moment not found' }, { status: 404 });
+      }
+      await db
+        .update(moments)
+        .set({ isPinned: !current.isPinned })
+        .where(eq(moments.id, id));
     }
 
     await createModerationLog({
       adminId: session.userId,
       entityType: 'moment',
       entityId: id,
-      action: action === 'delete' ? 'delete' : action === 'hide' ? 'hide' : 'unhide',
-      reason: `Moment ${action}d`,
+      action: action === 'delete' ? 'delete' : action === 'hide' ? 'hide' : action === 'unhide' ? 'unhide' : 'feature',
+      reason: `Moment ${action === 'toggle_pin' ? 'pin toggled' : `${action}d`}`,
     });
 
     return NextResponse.json({ success: true });
@@ -212,17 +225,34 @@ export async function DELETE(
     const session = await requirePermission(request, 'content.delete');
     const { id } = await params;
 
-    await db
-      .update(moments)
-      .set({ isDeleted: true, deletedAt: new Date() })
-      .where(eq(moments.id, id));
+    const searchParams = request.nextUrl.searchParams;
+    const force = searchParams.get('force') === 'true' || searchParams.get('force') === '1';
+
+    if (force) {
+      // Hard delete: remove the moment row (cascades to attachments and topic items)
+      // Clean up reposts referencing this moment
+      await db.delete(reposts).where(eq(reposts.momentId, id));
+      // Clean up other moments that reposted this one
+      await db
+        .update(moments)
+        .set({ repostOfMomentId: null })
+        .where(eq(moments.repostOfMomentId, id));
+      // Delete the moment itself
+      await db.delete(moments).where(eq(moments.id, id));
+    } else {
+      // Soft delete
+      await db
+        .update(moments)
+        .set({ isDeleted: true, deletedAt: new Date() })
+        .where(eq(moments.id, id));
+    }
 
     await createModerationLog({
       adminId: session.userId,
       entityType: 'moment',
       entityId: id,
       action: 'delete',
-      reason: 'Moment deleted by admin',
+      reason: force ? 'Moment permanently deleted by admin' : 'Moment deleted by admin',
     });
 
     return NextResponse.json({ success: true });
