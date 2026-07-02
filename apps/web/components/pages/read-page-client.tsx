@@ -1,15 +1,12 @@
 "use client"
 
-import React, { useMemo } from "react"
+import { useMemo } from "react"
+import dynamic from "next/dynamic"
 import { User } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { PageMeta } from "@/components/content/page-meta"
 import type { PageMetaData } from "@/components/content/page-meta"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import { ReadDrawer } from "@/components/layout/read-drawer"
-import { NotesPanel } from "@/components/content/notes-panel"
-import { CommentsPanel } from "@/components/content/comments-panel"
-import { PageSettingsPanel } from "@/components/pages/page-settings-panel"
 import { BreadcrumbDynamicContext } from "@/components/layout/breadcrumb"
 import type { BreadcrumbContextValue } from "@/components/layout/breadcrumb"
 
@@ -127,6 +124,24 @@ function parseChapters(raw: unknown): ParsedChapters {
 
   return { chapters: [] }
 }
+
+// --- Lazy PageSettingsPanel ---
+
+const LazyPageSettingsPanel = dynamic(
+  () => import("@/components/pages/page-settings-panel").then((m) => ({ default: m.PageSettingsPanel })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 rounded bg-muted" />
+          <div className="h-4 w-full rounded bg-muted" />
+          <div className="h-4 w-3/4 rounded bg-muted" />
+        </div>
+      </div>
+    ),
+  },
+)
 
 // --- Main Component ---
 
@@ -250,45 +265,6 @@ export function ReadPageClient({
     pageId,
   }
 
-  const detailsTab = useMemo(() => (
-    <PageMeta
-      data={pageMeta}
-      currentUserSlug={sessionUserSlug}
-    />
-  ), [pageMeta, sessionUserSlug])
-
-  const commentsTab = useMemo(() => (
-    <CommentsPanel
-      communityEntityId={communityEntityId}
-      pageDbId={pageDbId}
-      isAuthenticated={isAuthenticated}
-      sessionUsername={sessionUsername}
-      sessionAvatarUrl={sessionAvatarUrl}
-      sessionUserId={sessionUserId}
-      initialComments={initialComments}
-      initialNextCursor={initialCommentsNextCursor}
-    />
-  ), [communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialCommentsNextCursor])
-
-  const notesTab = useMemo(() => <NotesPanel pageId={pageUid} />, [pageUid])
-
-  const settingsTab = useMemo(() => (
-    <PageSettingsPanel
-      userSlug={userSlug}
-      pageId={pageId}
-      pageTitle={pageTitle}
-      pageDescription={pageDescription ?? ""}
-      pageUid={pageUid}
-      pageTags={pageTags}
-      pageVisibility={pageVisibility}
-      pagePublishedAt={pagePublishedAt}
-      pageHtml={pageHtml}
-      pageViewCount={pageViewCount}
-      pageLikeCount={pageLikeCount}
-      pageCommentCount={pageCommentCount}
-    />
-  ), [userSlug, pageId, pageTitle, pageDescription, pageUid, pageTags, pageVisibility, pagePublishedAt, pageHtml, pageViewCount, pageLikeCount, pageCommentCount])
-
   const breadcrumbContextValue: BreadcrumbContextValue = {
     labels: {
       [`/${userSlug}`]: { label: authorDisplayName, icon: User, href: `/${userSlug}` },
@@ -300,9 +276,9 @@ export function ReadPageClient({
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
       <ReadDrawer
         tabs={[
-          { value: "details", label: t("community.read"), content: detailsTab },
-          { value: "comments", label: t("community.comments"), badge: pageCommentCount, content: commentsTab },
-          { value: "notes", label: t("community.notes"), content: notesTab },
+          { value: "details", label: t("community.read"), type: "meta" as const, pageMeta, currentUserSlug: sessionUserSlug },
+          { value: "comments", label: t("community.comments"), badge: pageCommentCount, type: "comments" as const, communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialNextCursor: initialCommentsNextCursor },
+          { value: "notes", label: t("community.notes"), type: "notes" as const, pageId: pageUid },
         ]}
         defaultTab={activeTab === "settings" && isAuthor ? "details" : "details"}
       />
@@ -318,7 +294,20 @@ export function ReadPageClient({
           }}
         >
           <div className="max-w-2xl mx-auto px-4 py-8">
-            {settingsTab}
+            <LazyPageSettingsPanel
+              userSlug={userSlug}
+              pageId={pageId}
+              pageTitle={pageTitle}
+              pageDescription={pageDescription ?? ""}
+              pageUid={pageUid}
+              pageTags={pageTags}
+              pageVisibility={pageVisibility}
+              pagePublishedAt={pagePublishedAt}
+              pageHtml={pageHtml}
+              pageViewCount={pageViewCount}
+              pageLikeCount={pageLikeCount}
+              pageCommentCount={pageCommentCount}
+            />
           </div>
         </div>
       ) : (

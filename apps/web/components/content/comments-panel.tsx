@@ -32,7 +32,7 @@ function renderMentionText(text: string): React.ReactNode {
 
 // --- Types ---
 
-interface CommunityComment {
+export interface CommunityComment {
   id: string
   content: string
   created_at: string
