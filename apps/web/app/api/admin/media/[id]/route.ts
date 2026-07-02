@@ -7,7 +7,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
-import { getSession } from '@/lib/auth';
 import { db, mediaAssets } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
