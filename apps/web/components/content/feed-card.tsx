@@ -46,9 +46,11 @@ interface FeedCardProps {
   className?: string
   session?: FeedCardSession | null
   onAction?: (action: string) => void
+  preloadComments?: boolean
+  collapsed?: boolean
 }
 
-export function FeedCard({ data, variant = "preloaded", className, session, onAction }: FeedCardProps) {
+export function FeedCard({ data, variant = "preloaded", className, session, onAction, preloadComments = true, collapsed = true }: FeedCardProps) {
   const { t } = useTranslation()
 
   const like = useToggleLike({
@@ -68,7 +70,7 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
       const d = await r.json()
       return (d.comments ?? []) as Array<{ id: string; content: string; author: { display_name: string; user_slug: string; avatar_url: string | null } }>
     },
-    enabled: optimisticComments > 0 && !!data.actions.momentId,
+    enabled: preloadComments && optimisticComments > 0 && !!data.actions.momentId,
     staleTime: 60_000,
   })
 
@@ -207,9 +209,22 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
     )}>
       <FeedHead data={head} />
       <div className="ml-[42px] space-y-[9px]">
-        <p className="text-foreground leading-relaxed text-[15px]">
-          {text}
-        </p>
+        <div className="relative">
+          <p className={cn(
+            "text-foreground leading-relaxed text-[15px]",
+            collapsed && "line-clamp-3",
+          )}>
+            {text}
+          </p>
+          {collapsed && text.length > 150 && (
+            <Link
+              href={actions.shareUrl || `/moment/${actions.momentId}`}
+              className="inline-block mt-0.5 text-[13px] text-primary hover:underline font-medium"
+            >
+              {t("community.expandMore")}
+            </Link>
+          )}
+        </div>
         {quote && (
           <blockquote className="border-l-[2px] border-primary/20 rounded-r-md px-3 py-1.5 text-[13px] text-muted-foreground italic">
             {quote}
