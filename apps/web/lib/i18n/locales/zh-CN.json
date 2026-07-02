@@ -230,7 +230,8 @@
         "unban": "解封",
         "hide": "隐藏",
         "unhide": "取消隐藏",
-        "role_change": "角色变更"
+        "role_change": "角色变更",
+        "revoke": "撤销"
       },
       "entityTypes": {
         "mcp": "MCP",

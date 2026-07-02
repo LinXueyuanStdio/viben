@@ -231,7 +231,8 @@
         "unban": "unban",
         "hide": "hide",
         "unhide": "unhide",
-        "role_change": "role change"
+        "role_change": "role change",
+        "revoke": "revoke"
       },
       "entityTypes": {
         "mcp": "MCP",
