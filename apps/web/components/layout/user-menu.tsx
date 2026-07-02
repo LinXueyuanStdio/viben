@@ -3,7 +3,7 @@
 import { useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileText, LogOut, Settings, Star, ThumbsUp, User } from "lucide-react"
+import { FileText, LogOut, Settings, Star, ThumbsUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,7 +27,8 @@ function Spacer() {
 export function UserMenu({ session }: UserMenuProps) {
   const { t } = useTranslation()
   const router = useRouter()
-  const initials = session.username.slice(0, 2).toUpperCase()
+  const displayLabel = session.displayName || session.userSlug
+  const initials = displayLabel.slice(0, 2).toUpperCase()
 
   const handleLogout = useCallback(async () => {
     try {
@@ -44,24 +45,24 @@ export function UserMenu({ session }: UserMenuProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={session.avatarUrl} alt={session.username} />
+            <AvatarImage src={session.avatarUrl} alt={displayLabel} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
-        {/* Header: avatar + userSlug + username */}
+        {/* Header: avatar + displayName + userSlug */}
         <div className="flex items-center gap-3 px-2 py-2">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={session.avatarUrl} alt={session.username} />
+            <AvatarImage src={session.avatarUrl} alt={displayLabel} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col min-w-0">
+            <p className="text-sm font-medium leading-tight truncate">
+              {displayLabel}
+            </p>
             <p className="text-sm text-muted-foreground leading-tight truncate">
               @{session.userSlug}
-            </p>
-            <p className="text-sm font-medium leading-tight truncate">
-              {session.username}
             </p>
           </div>
         </div>

@@ -5,14 +5,12 @@ import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Home,
   Grid3X3,
   TrendingUp,
-  MessageSquare,
   Search,
+  MessageSquare,
   Bell,
   Clock,
   Package,
@@ -22,7 +20,6 @@ import {
   LayoutDashboard,
   Upload,
   PackageSearch,
-  LogIn,
   Bookmark,
   Key,
   Users,
@@ -58,9 +55,7 @@ const browseNavigation = [
   { nameKey: 'nav.category', href: '/category', icon: Grid3X3 },
   { nameKey: 'nav.leaderboard', href: '/leaderboard', icon: TrendingUp },
   { nameKey: 'nav.moment', href: '/moment', icon: MessageSquare },
-  { nameKey: 'nav.tags', href: '/tags', icon: Grid3X3 },
   { nameKey: 'nav.author', href: '/author', icon: Users },
-  { nameKey: 'nav.search', href: '/search', icon: Search },
 ];
 
 // "记录" section - personal records, visible only when logged in
@@ -99,14 +94,6 @@ function isAdminRole(role: string): boolean {
   return ADMIN_ROLES.includes(role as UserRole);
 }
 
-function getInitials(name: string): string {
-  const parts = name.split(' ');
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
-
 export function Sidebar({
   collapsed,
   session,
@@ -116,12 +103,8 @@ export function Sidebar({
   const pathname = usePathname();
 
   const userRole = session?.role;
-  const username = session?.username;
-  const email = session?.email;
-  const avatarUrl = session?.avatarUrl;
 
   const isLoggedIn = Boolean(userRole);
-  const userSlug = session?.userSlug;
   const showAdmin = userRole && isAdminRole(userRole);
 
   // Admin navigation organized by functional workflow
@@ -390,45 +373,6 @@ export function Sidebar({
           </>
         )}
       </nav>
-
-      {/* Bottom Area */}
-      <div className="border-t p-4">
-        {/* User Section */}
-        {isLoggedIn && username ? (
-          <Link
-            href={userSlug ? `/${encodeURIComponent(userSlug)}` : "#"}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-lg p-2',
-              'text-left transition-colors duration-200',
-              'hover:bg-muted',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              userSlug && pathname === `/${userSlug}` && 'bg-primary/10'
-            )}
-          >
-            <Avatar className="h-8 w-8">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={username} />}
-              <AvatarFallback className="text-xs">
-                {getInitials(username)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{username}</p>
-              {email && (
-                <p className="truncate text-xs text-muted-foreground">
-                  {email}
-                </p>
-              )}
-            </div>
-          </Link>
-        ) : (
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/login">
-              <LogIn className="mr-2 h-4 w-4" />
-              {t('auth.signIn')}
-            </Link>
-          </Button>
-        )}
-      </div>
     </aside>
   );
 }
