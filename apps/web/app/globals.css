@@ -299,3 +299,19 @@
 .animate-cost-rise {
   animation: cost-rise 2s ease-in-out infinite alternate;
 }
+
+/* ===== VibenTabs active state ===== */
+/* Tailwind v4's data-[state=active]: variant is unreliable inside CVA.
+   Define active styles via explicit [data-state] selectors instead. */
+
+.viben-trigger-default[data-state="active"] {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.viben-trigger-pill[data-state="active"],
+.viben-trigger-drawer[data-state="active"] {
+  background: var(--color-surface-secondary);
+  color: var(--color-foreground);
+}

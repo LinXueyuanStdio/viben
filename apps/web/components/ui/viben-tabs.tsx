@@ -36,14 +36,16 @@ VibenTabsList.displayName = "VibenTabsList"
 
 // ===== VibenTabsTrigger =====
 
+// Active-state styles are defined in viben-tabs.css via [data-state="active"] selectors
+// (Tailwind v4's data-[state=active]: variant is unreliable inside CVA — see CLAUDE.md)
 const tabsTriggerVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground",
   {
     variants: {
       variant: {
-        default: "rounded-md px-3 py-1 text-sm min-h-9 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-        pill: "rounded-full px-4 py-1.5 text-sm min-w-[92px] data-[state=active]:bg-surface-secondary data-[state=active]:text-foreground",
-        drawer: "rounded-full px-3 py-1 text-xs min-w-[78px] min-h-[34px] data-[state=active]:bg-surface-secondary data-[state=active]:text-foreground",
+        default: "viben-trigger-default rounded-md px-3 py-1 text-sm min-h-9",
+        pill: "viben-trigger-pill rounded-full px-4 py-1.5 text-sm min-w-[92px]",
+        drawer: "viben-trigger-drawer rounded-full px-3 py-1 text-xs min-w-[78px] min-h-[34px]",
       },
     },
     defaultVariants: { variant: "default" },
