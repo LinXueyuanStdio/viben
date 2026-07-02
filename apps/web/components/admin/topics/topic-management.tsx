@@ -19,6 +19,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Pencil, Trash2, Star, ShieldOff, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDebouncedCallback } from 'use-debounce';
 
 interface Topic {
@@ -62,6 +63,7 @@ export function TopicManagement() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Form state
   const [formSlug, setFormSlug] = useState('');
@@ -149,6 +151,7 @@ export function TopicManagement() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const body = {
         slug: formSlug,
@@ -168,9 +171,12 @@ export function TopicManagement() {
         throw new Error(data.error || 'Failed to save topic');
       }
       setDialogOpen(false);
+      toast.success(editingTopic ? t('dashboard.admin.topics.updateSuccess') : t('dashboard.admin.topics.createSuccess'));
       fetchTopics();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.actionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.topics.actionError');
+      setSaveError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -187,8 +193,11 @@ export function TopicManagement() {
       });
       if (!res.ok) throw new Error('Failed to update topic');
       fetchTopics();
+      toast.success(t('dashboard.admin.topics.toggleSuccess'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.actionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.topics.actionError');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setTogglingId(null);
     }
@@ -204,9 +213,12 @@ export function TopicManagement() {
         throw new Error(data.error || 'Failed to delete topic');
       }
       setDeleteId(null);
+      toast.success(t('dashboard.admin.topics.deleteSuccess'));
       fetchTopics();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.actionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.topics.actionError');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setDeleting(false);
     }
@@ -324,6 +336,7 @@ export function TopicManagement() {
             <div className="space-y-2"><Label htmlFor="description">{t('dashboard.admin.topics.form.description')}</Label><Textarea id="description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('dashboard.admin.topics.form.description') + '（可选）'} rows={3} /></div>
             <div className="flex items-center justify-between"><Label htmlFor="isFeatured">{t('dashboard.admin.topics.feature')}</Label><Switch id="isFeatured" checked={formIsFeatured} onCheckedChange={setFormIsFeatured} /></div>
           </div>
+          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !formDisplayName || !formSlug}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}</Button>

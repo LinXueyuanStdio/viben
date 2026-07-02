@@ -11,6 +11,7 @@ import {
   DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, EyeOff, Eye, Trash2, Paperclip, Repeat, FileText, Pin, PinOff, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Moment {
   id: string; uid: string; kind: string; body: string | null; visibility: string;
@@ -121,7 +122,7 @@ export function MomentManagement() {
       const data = await res.json();
       setDetailMoment(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load moment detail');
+      toast.error(err instanceof Error ? err.message : 'Failed to load moment detail');
     } finally {
       setDetailLoading(false);
     }
@@ -153,10 +154,27 @@ export function MomentManagement() {
         });
         if (!res.ok) throw new Error(`Failed to ${action} moment`);
       }
+
+      // Show success toast
+      if (action === 'toggle_pin') {
+        const moment = moments.find(m => m.id === id);
+        const key = moment?.isPinned ? 'unpinSuccess' : 'pinSuccess';
+        toast.success(t(`dashboard.admin.moments.${key}`));
+      } else if (action === 'force_delete') {
+        toast.success(t('dashboard.admin.moments.forceDeleteSuccess'));
+      } else {
+        const successKeyMap: Record<string, string> = {
+          hide: 'hideSuccess',
+          unhide: 'unhideSuccess',
+          delete: 'deleteSuccess',
+        };
+        toast.success(t(`dashboard.admin.moments.${successKeyMap[action]}`));
+      }
+
       setDeleteTarget(null);
       fetchMoments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.moments.actionError'));
+      toast.error(err instanceof Error ? err.message : t('dashboard.admin.moments.actionError'));
     } finally { setActingId(null); }
   };
 

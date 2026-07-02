@@ -467,6 +467,7 @@
         "deleteSuccess": "话题删除成功",
         "createSuccess": "话题创建成功",
         "updateSuccess": "话题更新成功",
+        "toggleSuccess": "话题更新成功",
         "actionError": "更新话题失败",
         "featured": "已精选",
         "blocked": "已屏蔽",
@@ -519,6 +520,9 @@
         "pin": "置顶",
         "unpin": "取消置顶",
         "pinned": "已置顶",
+        "pinSuccess": "动态已置顶",
+        "unpinSuccess": "动态已取消置顶",
+        "forceDeleteSuccess": "动态已永久删除",
         "showDeleted": "显示已删除"
       },
       "feedbacks": {
@@ -609,6 +613,7 @@
         "deleteItem": "删除条目",
         "deleteItemError": "删除条目失败",
         "deleteItemConfirm": "此操作不可撤销。确定要删除这个条目吗？",
+        "deleteItemSuccess": "条目删除成功",
         "itemCreateSuccess": "条目创建成功",
         "itemUpdateSuccess": "条目更新成功",
         "itemActionError": "保存条目失败",
@@ -2529,6 +2534,8 @@
       "noDescription": "-",
       "showing": "显示 {{count}} / {{total}} 条举报",
       "viewEntity": "查看",
+      "resolveSuccess": "举报已处理",
+      "dismissSuccess": "举报已驳回",
       "loadError": "加载举报失败",
       "reasons": {
         "spam": "垃圾信息",

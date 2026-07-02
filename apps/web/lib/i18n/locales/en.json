@@ -468,6 +468,7 @@
         "deleteSuccess": "Topic deleted",
         "createSuccess": "Topic created",
         "updateSuccess": "Topic updated",
+        "toggleSuccess": "Topic updated",
         "actionError": "Failed to update topic",
         "featured": "Featured",
         "blocked": "Blocked",
@@ -520,6 +521,9 @@
         "pin": "Pin",
         "unpin": "Unpin",
         "pinned": "Pinned",
+        "pinSuccess": "Moment pinned",
+        "unpinSuccess": "Moment unpinned",
+        "forceDeleteSuccess": "Moment permanently deleted",
         "showDeleted": "Show Deleted"
       },
       "feedbacks": {
@@ -610,6 +614,7 @@
         "deleteItem": "Delete Item",
         "deleteItemError": "Failed to delete item",
         "deleteItemConfirm": "This action cannot be undone. Are you sure you want to delete this item?",
+        "deleteItemSuccess": "Item deleted",
         "itemCreateSuccess": "Item created",
         "itemUpdateSuccess": "Item updated",
         "itemActionError": "Failed to save item",
@@ -2530,6 +2535,8 @@
       "noDescription": "-",
       "showing": "Showing {{count}} / {{total}} reports",
       "viewEntity": "View",
+      "resolveSuccess": "Report resolved",
+      "dismissSuccess": "Report dismissed",
       "loadError": "Failed to load reports",
       "reasons": {
         "spam": "Spam",

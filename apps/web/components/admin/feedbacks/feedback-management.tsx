@@ -10,6 +10,7 @@ import {
   DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Trash2, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import { FeedbackDetailDialog } from './feedback-detail-dialog';
 
 interface Feedback {
@@ -77,10 +78,12 @@ export function FeedbackManagement() {
     setDeleting(true);
     try {
       await fetch(`/api/admin/feedbacks/${deleteId}`, { method: 'DELETE' });
+      toast.success(t('dashboard.admin.feedbacks.deleteSuccess'));
       setDeleteId(null);
       fetchFeedbacks();
     } catch {
-      setError(t('dashboard.admin.feedbacks.deleteError'));
+      toast.error(t('dashboard.admin.feedbacks.deleteError'));
+      setDeleteId(null);
     } finally { setDeleting(false); }
   };
 

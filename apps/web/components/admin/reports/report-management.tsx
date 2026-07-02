@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatRelativeTime } from '@/lib/utils';
 
 interface Report {
@@ -140,9 +141,15 @@ export function ReportManagement() {
         throw new Error(data.error || `Failed to ${action} report`);
       }
 
+      const successKeyMap: Record<string, string> = {
+        resolve: 'resolveSuccess',
+        dismiss: 'dismissSuccess',
+      };
+      toast.success(t(`dashboard.adminReports.${successKeyMap[action]}`));
+
       fetchReports();
     } catch (e) {
-      setError(e instanceof Error ? e.message : `Failed to ${action} report`);
+      toast.error(e instanceof Error ? e.message : `Failed to ${action} report`);
     } finally {
       setActingId(null);
     }

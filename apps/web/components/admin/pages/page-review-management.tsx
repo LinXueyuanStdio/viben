@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Pagination } from '@/components/shared/pagination';
 import { Loader2, Eye, Check, X, EyeOff, RotateCcw, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PageForReview {
   id: string;
@@ -183,11 +184,19 @@ export function PageReviewManagement() {
         throw new Error(data.error || `Failed to ${status} page`);
       }
 
+      const successKeyMap: Record<string, string> = {
+        approved: 'approveSuccess',
+        rejected: 'rejectSuccess',
+        hidden: 'hideSuccess',
+        pending: 'reopenSuccess',
+      };
+      toast.success(t(`dashboard.admin.pages.${successKeyMap[status] || 'approveSuccess'}`));
+
       setDetailOpen(false);
       setRejectDialogOpen(false);
       fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.pages.actionError'));
+      toast.error(err instanceof Error ? err.message : t('dashboard.admin.pages.actionError'));
     } finally {
       setActingId(null);
     }
@@ -205,12 +214,14 @@ export function PageReviewManagement() {
         throw new Error(data.error || 'Failed to delete page');
       }
 
+      toast.success(t('dashboard.admin.pages.deleteSuccess'));
+
       setDetailOpen(false);
       setDeleteDialogOpen(false);
       setDeletingPageId(null);
       fetchPages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.pages.actionError'));
+      toast.error(err instanceof Error ? err.message : t('dashboard.admin.pages.actionError'));
     } finally {
       setActingId(null);
     }

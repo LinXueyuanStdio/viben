@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Pencil, Trash2, ArrowLeft, Plus, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface OperationSlot {
   id: string; uid: string; surface: string; slotKey: string; name: string;
@@ -59,6 +60,7 @@ export function OperationManagement() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Slot dialog
   const [slotDialogOpen, setSlotDialogOpen] = useState(false);
@@ -156,9 +158,10 @@ export function OperationManagement() {
 
   const handleSlotSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const body = { uid: formUid, surface: formSurface, slot_key: formSlotKey, name: formName,
-        description: formDescription || null, layout_type: formLayoutType, locale: formLocale,
+        description: formDescription || undefined, layout_type: formLayoutType, locale: formLocale,
         min_items: formMinItems, max_items: formMaxItems, sort_order: formSortOrder,
         is_active: formIsActive, fallback_strategy: formFallbackStrategy };
       const res = editingSlot
@@ -166,9 +169,12 @@ export function OperationManagement() {
         : await fetch('/api/admin/operations/slots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to save slot'); }
       setSlotDialogOpen(false);
+      toast.success(editingSlot ? t('dashboard.admin.operations.updateSuccess') : t('dashboard.admin.operations.createSuccess'));
       fetchSlots();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.operations.actionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.operations.actionError');
+      setSaveError(msg);
+      toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -179,13 +185,17 @@ export function OperationManagement() {
       if (deleteTarget.type === 'slot') {
         await fetch(`/api/admin/operations/slots/${deleteTarget.id}`, { method: 'DELETE' });
         fetchSlots();
+        toast.success(t('dashboard.admin.operations.deleteSuccess'));
       } else {
         await fetch(`/api/admin/operations/items/${deleteTarget.id}`, { method: 'DELETE' });
         if (selectedSlot) fetchItems(selectedSlot);
+        toast.success(t('dashboard.admin.operations.deleteItemSuccess'));
       }
       setDeleteTarget(null);
-    } catch {
-      setError(deleteTarget.type === 'slot' ? t('dashboard.admin.operations.actionError') : t('dashboard.admin.operations.deleteItemError'));
+    } catch (err) {
+      const msg = deleteTarget.type === 'slot' ? t('dashboard.admin.operations.actionError') : t('dashboard.admin.operations.deleteItemError');
+      setError(msg);
+      toast.error(msg);
     } finally { setDeleting(false); }
   };
 
@@ -256,24 +266,28 @@ export function OperationManagement() {
   const handleItemSave = async () => {
     if (!selectedSlot && !editingItem) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const body = { uid: itemUid, item_type: itemType,
-        target_entity_type: itemTargetEntityType || null,
-        target_entity_id: itemTargetEntityId || null,
-        target_entity_uid: itemTargetEntityUid || null,
-        target_url: itemTargetUrl || null,
-        title: itemTitle, subtitle: itemSubtitle || null, description: itemDescription || null,
-        image_url: itemImageUrl || null, cta_label: itemCtaLabel || null, badge_label: itemBadgeLabel || null,
-        locale: itemLocale, starts_at: itemStartsAt || null, ends_at: itemEndsAt || null,
+        target_entity_type: itemTargetEntityType || undefined,
+        target_entity_id: itemTargetEntityId || undefined,
+        target_entity_uid: itemTargetEntityUid || undefined,
+        target_url: itemTargetUrl || undefined,
+        title: itemTitle, subtitle: itemSubtitle || undefined, description: itemDescription || undefined,
+        image_url: itemImageUrl || undefined, cta_label: itemCtaLabel || undefined, badge_label: itemBadgeLabel || undefined,
+        locale: itemLocale, starts_at: itemStartsAt || undefined, ends_at: itemEndsAt || undefined,
         sort_order: itemSortOrder, is_active: itemIsActive, visibility: itemVisibility };
       const res = editingItem
         ? await fetch(`/api/admin/operations/items/${editingItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         : await fetch(`/api/admin/operations/slots/${selectedSlot!.id}/items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to save item'); }
       setItemDialogOpen(false);
+      toast.success(editingItem ? t('dashboard.admin.operations.itemUpdateSuccess') : t('dashboard.admin.operations.itemCreateSuccess'));
       if (selectedSlot) fetchItems(selectedSlot);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.operations.itemActionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.operations.itemActionError');
+      setSaveError(msg);
+      toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -398,6 +412,7 @@ export function OperationManagement() {
                 <div className="flex items-center justify-between pt-6"><Label htmlFor="itemIsActive">{t('dashboard.admin.operations.active')}</Label><Switch id="itemIsActive" checked={itemIsActive} onCheckedChange={setItemIsActive} /></div>
               </div>
             </div>
+            {saveError && <p className="text-sm text-destructive">{saveError}</p>}
             <DialogFooter>
               <Button variant="outline" onClick={() => setItemDialogOpen(false)}>{t('common.cancel')}</Button>
               <Button onClick={handleItemSave} disabled={saving || !itemUid || !itemType || !itemTitle}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}</Button>
@@ -486,6 +501,7 @@ export function OperationManagement() {
             </div>
             <div className="flex items-center justify-between"><Label htmlFor="slotIsActive">{t('dashboard.admin.operations.form.isActive')}</Label><Switch id="slotIsActive" checked={formIsActive} onCheckedChange={setFormIsActive} /></div>
           </div>
+          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSlotDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSlotSave} disabled={saving || !formUid || !formSurface || !formSlotKey || !formName}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}</Button>

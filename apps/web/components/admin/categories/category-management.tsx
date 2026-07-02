@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Pagination } from '@/components/shared/pagination';
 import { Loader2, Pencil, Trash2, Search } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Category {
   id: string;
@@ -178,9 +179,12 @@ export function CategoryManagement() {
 
       setDialogOpen(false);
       setSaveError(null);
+      toast.success(editingCategory ? t('dashboard.admin.categories.updateSuccess') : t('dashboard.admin.categories.createSuccess'));
       fetchCategories();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : t('dashboard.admin.categories.actionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.categories.actionError');
+      setSaveError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -196,9 +200,12 @@ export function CategoryManagement() {
         throw new Error(data.error || 'Failed to delete category');
       }
       setDeleteId(null);
+      toast.success(t('dashboard.admin.categories.deleteSuccess'));
       fetchCategories();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboard.admin.categories.actionError'));
+      const msg = err instanceof Error ? err.message : t('dashboard.admin.categories.actionError');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setDeleting(false);
     }
