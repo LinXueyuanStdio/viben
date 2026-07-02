@@ -58,7 +58,9 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   const session = await getSession()
 
   // T1: Blocking — page context + permission check
+  const t_start = Date.now()
   const ctx = await getPublishedPageContext(user_slug, page_id)
+  const t_t1 = Date.now()
   if (!ctx || !canReadPage(ctx.page, session)) {
     notFound()
   }
@@ -84,6 +86,15 @@ export default async function PagePage({ params, searchParams }: PageProps) {
     } catch (error) {
       console.error("Failed to record page view:", error)
     }
+  })
+
+  after(async () => {
+    console.log("[perf] page_server", JSON.stringify({
+      t1_ms: t_t1 - t_start,
+      page_id: `${user_slug}/${page_id}`,
+      is_public: ctx.page.visibility === "public",
+      has_side_page: !!ctx.page.sidePageUid,
+    }))
   })
 
   return (

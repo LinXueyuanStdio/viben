@@ -20,6 +20,8 @@ export async function GET(
 
   const needsHtml = fields === 'html' || fields === 'all';
 
+  const t_start = Date.now();
+
   const columns = {
     id: publishedPages.id,
     uid: publishedPages.uid,
@@ -53,6 +55,8 @@ export async function GET(
       ),
     )
     .limit(1);
+
+  const t_db = Date.now();
 
   if (!rows.length || !canReadPage(rows[0] as any, session)) {
     return NextResponse.json(
@@ -104,6 +108,17 @@ export async function GET(
   );
   response.headers.set('Vary', 'Cookie, Accept-Encoding');
   response.headers.set('ETag', `"${p.uid}"`);
+
+  const t_total = Date.now() - t_start
+  const cache_status = request.headers.get("x-vercel-cache") ?? "MISS"
+
+  console.log("[perf] api_read", JSON.stringify({
+    db_ms: t_db - t_start,
+    total_ms: t_total,
+    cache_status,
+    fields,
+    page_id: `${user_slug}/${page_id}`,
+  }))
 
   return response;
 }
