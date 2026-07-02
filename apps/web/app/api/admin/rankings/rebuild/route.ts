@@ -42,7 +42,6 @@ interface PageForRanking {
   description: string | null;
   userId: string;
   categoryId: string | null;
-  coverAssetId: string | null;
   tags: string[];
   publishedAt: Date;
   lastPublishedAt: Date;
@@ -152,7 +151,6 @@ export async function POST(request: NextRequest) {
         description: publishedPages.description,
         userId: publishedPages.userId,
         categoryId: publishedPages.categoryId,
-        coverAssetId: publishedPages.coverAssetId,
         tags: publishedPages.tags,
         publishedAt: publishedPages.publishedAt,
         lastPublishedAt: publishedPages.lastPublishedAt,
@@ -193,7 +191,6 @@ export async function POST(request: NextRequest) {
       description: page.description,
       userId: page.userId,
       categoryId: page.categoryId,
-      coverAssetId: page.coverAssetId,
       tags: page.tags,
       publishedAt: page.publishedAt,
       lastPublishedAt: page.lastPublishedAt,

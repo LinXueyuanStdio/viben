@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatRelativeTime } from '@/lib/utils';
+import { BatchActionsBar } from '@/components/admin/batch-actions-bar';
+import type { BatchAction } from '@/components/admin/batch-actions-bar';
+import { cn } from '@/lib/utils';
 
 interface Report {
   id: string;
@@ -82,6 +85,10 @@ export function ReportManagement() {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
 
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+
   const currentStatus = searchParams.get('status') || 'pending';
   const currentPage = Number(searchParams.get('page')) || 1;
 
@@ -105,6 +112,7 @@ export function ReportManagement() {
       const data = await res.json();
       setReports(data.reports);
       setPagination(data.pagination);
+      setSelectedIds(new Set());
     } catch {
       setError(t('dashboard.adminReports.loadError'));
     } finally {
@@ -155,6 +163,87 @@ export function ReportManagement() {
     }
   };
 
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(reports.map((r) => r.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Batch actions
+  const batchActions: BatchAction[] = [
+    {
+      key: 'resolve',
+      label: '批量标记已解决',
+      variant: 'default',
+      requireConfirm: true,
+      confirmTitle: '批量标记已解决',
+      confirmDescription: `确定要将选中的 ${selectedIds.size} 个举报标记为已解决吗？`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/reports/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'resolve', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch resolve failed');
+          toast.success(`已标记 ${data.affected} 个举报为已解决`);
+          deselectAll();
+          fetchReports();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量操作失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+    {
+      key: 'dismiss',
+      label: '批量忽略',
+      variant: 'ghost',
+      requireConfirm: true,
+      confirmTitle: '批量忽略举报',
+      confirmDescription: `确定要忽略选中的 ${selectedIds.size} 个举报吗？`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/reports/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'dismiss', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch dismiss failed');
+          toast.success(`已忽略 ${data.affected} 个举报`);
+          deselectAll();
+          fetchReports();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量操作失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -186,6 +275,16 @@ export function ReportManagement() {
           ))}
         </div>
       </div>
+
+      {/* Batch Actions Bar */}
+      <BatchActionsBar
+        selectedCount={selectedIds.size}
+        totalCount={reports.length}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        actions={batchActions}
+        loading={batchLoading}
+      />
 
       {/* Content */}
       {loading ? (
@@ -219,6 +318,20 @@ export function ReportManagement() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                    checked={selectedIds.size === reports.length && reports.length > 0}
+                    onChange={() => {
+                      if (selectedIds.size === reports.length) {
+                        deselectAll();
+                      } else {
+                        selectAll();
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium">
                   {t('dashboard.adminReports.reporter')}
                 </th>
@@ -252,9 +365,24 @@ export function ReportManagement() {
                   STATUS_LABEL_KEYS[report.status] || STATUS_LABEL_KEYS.pending
                 );
                 const entityViewUrl = getEntityViewUrl(report.entityType, report.entityId);
+                const isSelected = selectedIds.has(report.id);
 
                 return (
-                  <tr key={report.id} className="border-b last:border-0 hover:bg-muted/30">
+                  <tr
+                    key={report.id}
+                    className={cn(
+                      'border-b last:border-0 hover:bg-muted/30',
+                      isSelected && 'bg-primary/5'
+                    )}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(report.id)}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-sm">
                       {report.reporterName || t('dashboard.adminReports.unknownReporter')}
                     </td>

@@ -14,7 +14,10 @@ import { Pagination } from '@/components/shared/pagination';
 import { UserTable } from './user-table';
 import { UserDetailDialog } from './user-detail-dialog';
 import { FollowNetworkDialog } from './follow-network-dialog';
+import { BatchActionsBar } from '@/components/admin/batch-actions-bar';
+import type { BatchAction } from '@/components/admin/batch-actions-bar';
 import { Loader2, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDebouncedCallback } from 'use-debounce';
 
 interface User {
@@ -65,6 +68,10 @@ export function UserManagement({
   const [followNetworkUserId, setFollowNetworkUserId] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState(currentSearch);
 
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -93,6 +100,7 @@ export function UserManagement({
       const data = await res.json();
       setUsers(data.users);
       setPagination(data.pagination);
+      setSelectedIds(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
@@ -227,6 +235,115 @@ export function UserManagement({
     setFollowNetworkUserId(userId);
   };
 
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(users.map((u) => u.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Batch actions
+  const batchActions: BatchAction[] = [
+    {
+      key: 'ban',
+      label: '批量封禁',
+      variant: 'destructive',
+      requireConfirm: true,
+      confirmTitle: '批量封禁用户',
+      confirmDescription: `确定要封禁选中的 ${selectedIds.size} 位用户吗？封禁后他们将无法登录。`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/users/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ban', ids, reason: '批量封禁' }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch ban failed');
+          toast.success(`已封禁 ${data.affected} 位用户`);
+          deselectAll();
+          fetchUsers();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量封禁失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+    {
+      key: 'unban',
+      label: '批量解封',
+      variant: 'default',
+      requireConfirm: true,
+      confirmTitle: '批量解封用户',
+      confirmDescription: `确定要解封选中的 ${selectedIds.size} 位用户吗？`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/users/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'unban', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch unban failed');
+          toast.success(`已解封 ${data.affected} 位用户`);
+          deselectAll();
+          fetchUsers();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量解封失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+    {
+      key: 'delete',
+      label: '批量删除',
+      variant: 'destructive',
+      requireConfirm: true,
+      confirmTitle: '批量删除用户',
+      confirmDescription: `确定要永久删除选中的 ${selectedIds.size} 位用户吗？此操作不可撤销。`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/users/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch delete failed');
+          toast.success(`已删除 ${data.affected} 位用户`);
+          deselectAll();
+          fetchUsers();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量删除失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -269,6 +386,16 @@ export function UserManagement({
         </div>
       </div>
 
+      {/* Batch Actions Bar */}
+      <BatchActionsBar
+        selectedCount={selectedIds.size}
+        totalCount={users.length}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        actions={batchActions}
+        loading={batchLoading}
+      />
+
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -293,6 +420,10 @@ export function UserManagement({
           <UserTable
             users={users}
             currentUserRole={currentUserRole}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onSelectAll={selectAll}
+            onDeselectAll={deselectAll}
             onRoleUpdate={handleRoleUpdate}
             onBan={handleBan}
             onUnban={handleUnban}

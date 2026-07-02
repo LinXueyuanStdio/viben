@@ -17,6 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { BatchActionsBar } from '@/components/admin/batch-actions-bar';
+import type { BatchAction } from '@/components/admin/batch-actions-bar';
+import { cn } from '@/lib/utils';
 
 interface CommentUser {
   id: string;
@@ -83,6 +86,10 @@ export function CommentModeration() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+
   // Detail dialog state
   const [detailComment, setDetailComment] = useState<CommentItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -114,6 +121,7 @@ export function CommentModeration() {
       const data = await res.json();
       setComments(data.comments);
       setPagination(data.pagination);
+      setSelectedIds(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : t('dashboard.admin.comments.loadError'));
     } finally {
@@ -147,6 +155,59 @@ export function CommentModeration() {
       setDeleting(false);
     }
   };
+
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(comments.map((c) => c.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Batch actions
+  const batchActions: BatchAction[] = [
+    {
+      key: 'delete',
+      label: '批量删除',
+      variant: 'destructive',
+      requireConfirm: true,
+      confirmTitle: '批量删除评论',
+      confirmDescription: `确定要删除选中的 ${selectedIds.size} 条评论吗？此操作不可撤销。`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/comments/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch delete failed');
+          toast.success(`已删除 ${data.affected} 条评论`);
+          deselectAll();
+          fetchComments();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量删除失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+  ];
 
   // Open detail dialog and fetch full comment
   const openDetail = useCallback(async (comment: CommentItem) => {
@@ -243,6 +304,16 @@ export function CommentModeration() {
         </div>
       </div>
 
+      {/* Batch Actions Bar */}
+      <BatchActionsBar
+        selectedCount={selectedIds.size}
+        totalCount={comments.length}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        actions={batchActions}
+        loading={batchLoading}
+      />
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -261,6 +332,20 @@ export function CommentModeration() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                    checked={selectedIds.size === comments.length && comments.length > 0}
+                    onChange={() => {
+                      if (selectedIds.size === comments.length) {
+                        deselectAll();
+                      } else {
+                        selectAll();
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.user')}</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.content')}</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.admin.comments.columns.entity')}</th>
@@ -269,48 +354,62 @@ export function CommentModeration() {
               </tr>
             </thead>
             <tbody>
-              {comments.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                  onClick={() => openDetail(c)}
-                >
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={c.user.avatarUrl ?? undefined} />
-                        <AvatarFallback className="text-xs">{getInitials(c.user.displayName)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <span className="font-medium">{c.user.displayName}</span>
-                        <span className="text-muted-foreground ml-1">@{c.user.username}</span>
+              {comments.map((c) => {
+                const isSelected = selectedIds.has(c.id);
+                return (
+                  <tr
+                    key={c.id}
+                    className={cn(
+                      'border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors',
+                      isSelected && 'bg-primary/5'
+                    )}
+                    onClick={() => openDetail(c)}
+                  >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(c.id)}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={c.user.avatarUrl ?? undefined} />
+                          <AvatarFallback className="text-xs">{getInitials(c.user.displayName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <span className="font-medium">{c.user.displayName}</span>
+                          <span className="text-muted-foreground ml-1">@{c.user.username}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm max-w-[300px] truncate">
-                    {c.content.length > 80 ? `${c.content.slice(0, 80)}...` : c.content}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="flex items-center gap-1">
-                      <Badge variant="outline">{entityTypeLabels[c.entityType] || c.entityType}</Badge>
-                      <span className="text-muted-foreground">{c.entityName}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                    {formatRelativeTime(c.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteId(c.id)}
-                      title={t('dashboard.admin.comments.delete')}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-sm max-w-[300px] truncate">
+                      {c.content.length > 80 ? `${c.content.slice(0, 80)}...` : c.content}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="flex items-center gap-1">
+                        <Badge variant="outline">{entityTypeLabels[c.entityType] || c.entityType}</Badge>
+                        <span className="text-muted-foreground">{c.entityName}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                      {formatRelativeTime(c.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteId(c.id)}
+                        title={t('dashboard.admin.comments.delete')}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

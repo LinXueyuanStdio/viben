@@ -20,8 +20,10 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Pagination } from '@/components/shared/pagination';
+import { BatchActionsBar } from '@/components/admin/batch-actions-bar';
+import type { BatchAction } from '@/components/admin/batch-actions-bar';
 import { useDebouncedCallback } from 'use-debounce';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 
 interface DraftItem {
   id: string;
@@ -102,6 +104,10 @@ export function DraftManagement() {
   const [detailData, setDetailData] = useState<DraftDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+
   const currentPackageType = searchParams.get('package_type') || 'all';
   const currentPage = Number(searchParams.get('page')) || 1;
   const currentSearch = searchParams.get('search') || '';
@@ -129,6 +135,7 @@ export function DraftManagement() {
       const data = await res.json();
       setDrafts(data.drafts);
       setPagination(data.pagination);
+      setSelectedIds(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载草稿数据失败');
     } finally {
@@ -198,6 +205,59 @@ export function DraftManagement() {
     }
   };
 
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(drafts.map((d) => d.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Batch actions
+  const batchActions: BatchAction[] = [
+    {
+      key: 'delete',
+      label: '批量删除',
+      variant: 'destructive',
+      requireConfirm: true,
+      confirmTitle: '批量删除草稿',
+      confirmDescription: `确定要删除选中的 ${selectedIds.size} 个草稿吗？此操作不可撤销。`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/drafts/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch delete failed');
+          toast.success(`已删除 ${data.affected} 个草稿`);
+          deselectAll();
+          fetchDrafts();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量删除失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -233,6 +293,16 @@ export function DraftManagement() {
         />
       </div>
 
+      {/* Batch Actions Bar */}
+      <BatchActionsBar
+        selectedCount={selectedIds.size}
+        totalCount={drafts.length}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        actions={batchActions}
+        loading={batchLoading}
+      />
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -251,6 +321,20 @@ export function DraftManagement() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                    checked={selectedIds.size === drafts.length && drafts.length > 0}
+                    onChange={() => {
+                      if (selectedIds.size === drafts.length) {
+                        deselectAll();
+                      } else {
+                        selectAll();
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium">用户</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">类型</th>
                 <th className="px-4 py-3 text-left text-sm font-medium">数据预览</th>
@@ -260,57 +344,74 @@ export function DraftManagement() {
               </tr>
             </thead>
             <tbody>
-              {drafts.map((d) => (
-                <tr key={d.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={d.user.avatarUrl ?? undefined} />
-                        <AvatarFallback className="text-xs">{getInitials(d.user.displayName)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <span className="font-medium">{d.user.displayName}</span>
-                        <span className="text-muted-foreground ml-1">@{d.user.username}</span>
+              {drafts.map((d) => {
+                const isSelected = selectedIds.has(d.id);
+                return (
+                  <tr
+                    key={d.id}
+                    className={cn(
+                      'border-b last:border-0 hover:bg-muted/30',
+                      isSelected && 'bg-primary/5'
+                    )}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(d.id)}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={d.user.avatarUrl ?? undefined} />
+                          <AvatarFallback className="text-xs">{getInitials(d.user.displayName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <span className="font-medium">{d.user.displayName}</span>
+                          <span className="text-muted-foreground ml-1">@{d.user.username}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <Badge variant="outline">{packageTypeLabels[d.packageType] || d.packageType}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm max-w-[250px] truncate text-muted-foreground">
-                    {d.dataPreview}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                    {formatRelativeTime(d.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">
-                    <span className={`flex items-center gap-1 ${isExpired(d.expiresAt) ? 'text-destructive' : 'text-muted-foreground'}`}>
-                      <Clock className="h-3 w-3" />
-                      {isExpired(d.expiresAt) ? '已过期' : formatRelativeTime(d.expiresAt)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => fetchDraftDetail(d.id)}
-                        title="查看详情"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteTarget(d)}
-                        title="删除草稿"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <Badge variant="outline">{packageTypeLabels[d.packageType] || d.packageType}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm max-w-[250px] truncate text-muted-foreground">
+                      {d.dataPreview}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                      {formatRelativeTime(d.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      <span className={`flex items-center gap-1 ${isExpired(d.expiresAt) ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        <Clock className="h-3 w-3" />
+                        {isExpired(d.expiresAt) ? '已过期' : formatRelativeTime(d.expiresAt)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => fetchDraftDetail(d.id)}
+                          title="查看详情"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteTarget(d)}
+                          title="删除草稿"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

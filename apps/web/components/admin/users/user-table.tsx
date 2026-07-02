@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Loader2, AlertTriangle, Ban, CheckCircle, Eye, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -48,6 +49,10 @@ interface User {
 interface UserTableProps {
   users: User[];
   currentUserRole: string;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
   onRoleUpdate: (userId: string, newRole: string) => Promise<{ success: boolean; error?: string }>;
   onBan: (userId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
   onUnban: (userId: string) => Promise<{ success: boolean; error?: string }>;
@@ -92,7 +97,20 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban, onWarn, onViewDetail, onViewFollowNetwork }: UserTableProps) {
+export function UserTable({
+  users,
+  currentUserRole,
+  selectedIds,
+  onToggleSelect,
+  onSelectAll,
+  onDeselectAll,
+  onRoleUpdate,
+  onBan,
+  onUnban,
+  onWarn,
+  onViewDetail,
+  onViewFollowNetwork,
+}: UserTableProps) {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [banDialog, setBanDialog] = useState<{ userId: string; username: string } | null>(null);
   const [warnDialog, setWarnDialog] = useState<{ userId: string; username: string } | null>(null);
@@ -193,12 +211,28 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
     }
   };
 
+  const allSelected = users.length > 0 && selectedIds.size === users.length;
+
   return (
     <>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                  checked={allSelected}
+                  onChange={() => {
+                    if (allSelected) {
+                      onDeselectAll();
+                    } else {
+                      onSelectAll();
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead className="w-[250px]">用户</TableHead>
               <TableHead>角色</TableHead>
               <TableHead>状态</TableHead>
@@ -208,126 +242,137 @@ export function UserTable({ users, currentUserRole, onRoleUpdate, onBan, onUnban
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatarUrl ?? undefined} />
-                      <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{user.displayName}</span>
-                      <span className="text-sm text-muted-foreground">
-                        @{user.username}
-                      </span>
+            {users.map((user) => {
+              const isSelected = selectedIds.has(user.id);
+              return (
+                <TableRow key={user.id} className={cn(isSelected && 'bg-primary/5')}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-muted-foreground/30 cursor-pointer accent-primary"
+                      checked={isSelected}
+                      onChange={() => onToggleSelect(user.id)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatarUrl ?? undefined} />
+                        <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{user.displayName}</span>
+                        <span className="text-sm text-muted-foreground">
+                          @{user.username}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className={ROLE_COLORS[user.role] || ''}
-                  >
-                    {ROLE_LABELS[user.role] || user.role}
-                  </Badge>
-                </TableCell>
-                <TableCell>{getStatusBadge(user)}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(user.createdAt)}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(user.lastLoginAt)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {/* Detail button */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="查看详情"
-                      onClick={() => onViewDetail(user.id)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={ROLE_COLORS[user.role] || ''}
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-
-                    {/* Follow network button */}
-                    {onViewFollowNetwork && (
+                      {ROLE_LABELS[user.role] || user.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(user)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(user.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(user.lastLoginAt)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {/* Detail button */}
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="关注网络"
-                        onClick={() => onViewFollowNetwork(user.id)}
+                        title="查看详情"
+                        onClick={() => onViewDetail(user.id)}
                       >
-                        <Users className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </Button>
-                    )}
 
-                    {user.role !== 'super_admin' && getAvailableRoles(user.role).length > 0 && (
-                      updatingUserId === user.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Select
-                          value={user.role}
-                          onValueChange={(value) => handleRoleChange(user.id, value)}
-                        >
-                          <SelectTrigger className="w-[100px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getAvailableRoles(user.role).map((r) => (
-                              <SelectItem key={r} value={r}>
-                                {ROLE_LABELS[r]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )
-                    )}
-
-                    {!isAdminRole(user.role) && !user.bannedAt && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="警告"
-                        onClick={() => {
-                          setWarnDialog({ userId: user.id, username: user.username });
-                          setReason('');
-                        }}
-                      >
-                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                      </Button>
-                    )}
-
-                    {user.role !== 'super_admin' && (
-                      user.bannedAt ? (
+                      {/* Follow network button */}
+                      {onViewFollowNetwork && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="解封"
-                          onClick={() => handleUnban(user.id)}
-                          disabled={acting}
+                          title="关注网络"
+                          onClick={() => onViewFollowNetwork(user.id)}
                         >
-                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <Users className="h-4 w-4" />
                         </Button>
-                      ) : (
+                      )}
+
+                      {user.role !== 'super_admin' && getAvailableRoles(user.role).length > 0 && (
+                        updatingUserId === user.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Select
+                            value={user.role}
+                            onValueChange={(value) => handleRoleChange(user.id, value)}
+                          >
+                            <SelectTrigger className="w-[100px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailableRoles(user.role).map((r) => (
+                                <SelectItem key={r} value={r}>
+                                  {ROLE_LABELS[r]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
+                      )}
+
+                      {!isAdminRole(user.role) && !user.bannedAt && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="封禁"
+                          title="警告"
                           onClick={() => {
-                            setBanDialog({ userId: user.id, username: user.username });
+                            setWarnDialog({ userId: user.id, username: user.username });
                             setReason('');
                           }}
                         >
-                          <Ban className="h-4 w-4 text-red-500" />
+                          <AlertTriangle className="h-4 w-4 text-yellow-500" />
                         </Button>
-                      )
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                      )}
+
+                      {user.role !== 'super_admin' && (
+                        user.bannedAt ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="解封"
+                            onClick={() => handleUnban(user.id)}
+                            disabled={acting}
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="封禁"
+                            onClick={() => {
+                              setBanDialog({ userId: user.id, username: user.username });
+                              setReason('');
+                            }}
+                          >
+                            <Ban className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

@@ -7,9 +7,12 @@ import { PackageReviewCard } from './package-review-card';
 import { PackageDetailModal } from './package-detail-modal';
 import { RejectionModal } from './rejection-modal';
 import { Pagination } from '@/components/shared/pagination';
+import { BatchActionsBar } from '@/components/admin/batch-actions-bar';
+import type { BatchAction } from '@/components/admin/batch-actions-bar';
 import { Loader2, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PackageForReview, ListPackagesResult } from '@/lib/admin/packages';
+import { cn } from '@/lib/utils';
 
 interface PackageReviewListProps {
   type: 'all' | 'mcp' | 'skill';
@@ -33,6 +36,10 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
   // Modal states
   const [detailModalId, setDetailModalId] = useState<string | null>(null);
   const [rejectModalPackage, setRejectModalPackage] = useState<PackageForReview | null>(null);
+
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const currentPage = Number(searchParams.get('page')) || 1;
   const currentSort = searchParams.get('sort') || 'oldest';
@@ -63,6 +70,8 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
       const data: ListPackagesResult = await res.json();
       setPackages(data.packages);
       setPagination(data.pagination);
+      // Clear selection on page change
+      setSelectedIds(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load packages');
     } finally {
@@ -73,6 +82,27 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
   useEffect(() => {
     fetchPackages();
   }, [fetchPackages]);
+
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(packages.map((p) => p.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
 
   const handleViewDetails = (id: string) => {
     setDetailModalId(id);
@@ -144,6 +174,91 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
     }
   };
 
+  // Batch actions
+  const batchActions: BatchAction[] = [
+    {
+      key: 'approve',
+      label: '批量审批',
+      variant: 'default',
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/packages/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'approve', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch approve failed');
+          toast.success(`已审批 ${data.affected} 个包`);
+          deselectAll();
+          fetchPackages();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量审批失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+    {
+      key: 'reject',
+      label: '批量拒绝',
+      variant: 'destructive',
+      requireConfirm: true,
+      confirmTitle: '批量拒绝包',
+      confirmDescription: `确定要拒绝选中的 ${selectedIds.size} 个包吗？此操作不可撤销。`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/packages/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'reject', ids, reason: '批量拒绝' }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch reject failed');
+          toast.success(`已拒绝 ${data.affected} 个包`);
+          deselectAll();
+          fetchPackages();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量拒绝失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+    {
+      key: 'delete',
+      label: '批量删除',
+      variant: 'destructive',
+      requireConfirm: true,
+      confirmTitle: '批量删除包',
+      confirmDescription: `确定要删除选中的 ${selectedIds.size} 个包吗？此操作将永久删除且不可撤销。`,
+      onAction: async () => {
+        setBatchLoading(true);
+        try {
+          const ids = [...selectedIds];
+          const res = await fetch('/api/admin/packages/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', ids }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Batch delete failed');
+          toast.success(`已删除 ${data.affected} 个包`);
+          deselectAll();
+          fetchPackages();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '批量删除失败');
+        } finally {
+          setBatchLoading(false);
+        }
+      },
+    },
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -183,16 +298,73 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
   return (
     <>
       <div className="space-y-4">
+        {/* Batch Actions Bar */}
+        <BatchActionsBar
+          selectedCount={selectedIds.size}
+          totalCount={packages.length}
+          onSelectAll={selectAll}
+          onDeselectAll={deselectAll}
+          actions={batchActions}
+          loading={batchLoading}
+        />
+
         {/* Package Grid */}
         <div className="grid gap-4 md:grid-cols-2">
-          {packages.map((pkg) => (
-            <PackageReviewCard
-              key={pkg.id}
-              package={pkg}
-              onViewDetails={handleViewDetails}
-              onStatusChange={fetchPackages}
-            />
-          ))}
+          {packages.map((pkg) => {
+            const isSelected = selectedIds.has(pkg.id);
+            return (
+              <div key={pkg.id} className="relative group">
+                {/* Selection checkbox overlay */}
+                <div
+                  className={cn(
+                    'absolute top-2 left-2 z-10 flex items-center justify-center',
+                    'w-6 h-6 rounded border-2 transition-colors cursor-pointer',
+                    isSelected
+                      ? 'bg-primary border-primary'
+                      : 'border-muted-foreground/30 bg-background/80 opacity-0 group-hover:opacity-100',
+                    selectedIds.size > 0 && !isSelected && 'opacity-70'
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleSelect(pkg.id);
+                  }}
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleSelect(pkg.id);
+                    }
+                  }}
+                >
+                  {isSelected && (
+                    <svg
+                      className="h-4 w-4 text-primary-foreground"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    'transition-all duration-200',
+                    isSelected && 'ring-2 ring-primary rounded-lg'
+                  )}
+                >
+                  <PackageReviewCard
+                    package={pkg}
+                    onViewDetails={handleViewDetails}
+                    onStatusChange={fetchPackages}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Pagination */}
