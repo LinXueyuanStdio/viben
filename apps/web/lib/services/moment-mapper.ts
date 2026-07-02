@@ -10,11 +10,6 @@ export const FEED_KIND_MAP: Record<string, FeedKind> = {
   system: "更新",
 }
 
-export function gradientCover(title: string): string {
-  const hue = title.charCodeAt(0) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
-}
-
 export function timeAgo(date: Date | string | null | undefined): string {
   if (!date) return ""
   const d = new Date(date)
@@ -33,7 +28,6 @@ export function timeAgo(date: Date | string | null | undefined): string {
 
 export interface MapMomentOptions {
   timeFormatter?: (date: string) => string
-  gradientFn?: (title: string) => string
 }
 
 /**
@@ -45,7 +39,6 @@ export function mapRichMomentToFeedCard(
   options?: MapMomentOptions,
 ): FeedCardData {
   const fmt = options?.timeFormatter ?? timeAgo
-  const gfn = options?.gradientFn ?? gradientCover
   const firstAttachment = item.attachments?.[0]
 
   return {
@@ -63,9 +56,7 @@ export function mapRichMomentToFeedCard(
     quote: item.moment.quote_text ?? undefined,
     attachment: firstAttachment
       ? {
-          cover: firstAttachment.cover_url
-            ? `url(${firstAttachment.cover_url})`
-            : gfn(firstAttachment.title ?? ""),
+          coverUrl: firstAttachment.cover_url,
           title: firstAttachment.title ?? "",
           authorDisplayName: firstAttachment.author_name_snapshot ?? "",
           timeAgo: "",
@@ -89,7 +80,6 @@ export function mapRichMomentToFeedCard(
 
 export interface MapMomentRowOptions {
   timeFormatter?: (date: Date | string) => string
-  gradientFn?: (title: string) => string
 }
 
 export interface MomentAttachmentData {
@@ -118,7 +108,6 @@ export function mapMomentRowToFeedCard(
   options?: MapMomentRowOptions & { attachments?: MomentAttachmentData[] },
 ): FeedCardData {
   const fmt = options?.timeFormatter ?? timeAgo
-  const gfn = options?.gradientFn ?? gradientCover
   const firstAttachment = options?.attachments?.[0]
 
   return {
@@ -136,9 +125,7 @@ export function mapMomentRowToFeedCard(
     quote: row.quoteText ?? undefined,
     attachment: firstAttachment
       ? {
-          cover: firstAttachment.cover_url
-            ? `url(${firstAttachment.cover_url})`
-            : gfn(firstAttachment.title),
+          coverUrl: firstAttachment.cover_url,
           title: firstAttachment.title,
           authorDisplayName: firstAttachment.author_name ?? "",
           timeAgo: "",

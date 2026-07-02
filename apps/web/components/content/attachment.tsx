@@ -8,7 +8,7 @@ import type { StatProps } from "./stats-row"
 import { cn } from "@/lib/utils"
 
 export interface AttachmentData {
-  cover: string
+  coverUrl?: string | null
   title: string
   description?: string
   authorDisplayName: string
@@ -27,7 +27,7 @@ interface AttachmentProps {
 
 export function Attachment({ data, onRemove, className }: AttachmentProps) {
   const { t } = useTranslation()
-  const { cover, title, authorDisplayName, timeAgo, stats } = data
+  const { coverUrl, title, authorDisplayName, timeAgo, stats } = data
 
   const coverStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
@@ -40,7 +40,7 @@ export function Attachment({ data, onRemove, className }: AttachmentProps) {
       "hover:border-primary transition-colors duration-150",
       className
     )}>
-      <Cover src={cover} aspectRatio="16/9" overlay>
+      <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/9" overlay>
         <StatsRow stats={coverStats} className="text-white [&_svg]:text-white [&_span]:text-white" />
       </Cover>
       <div className="grid gap-[7px] p-2.5">

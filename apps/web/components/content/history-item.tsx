@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 export type HistorySource = "首页" | "动态" | "榜单" | "PDF" | "搜索" | "合集"
 
 export interface HistoryItemData {
-  cover: string
+  coverUrl?: string | null
   title: string
   author: string
   chapter: string
@@ -24,7 +24,7 @@ interface HistoryItemProps {
 }
 
 export function HistoryItem({ data, href, className }: HistoryItemProps) {
-  const { cover, title, author, chapter, source, timeAgo, progress, progressLabel } = data
+  const { coverUrl, title, author, chapter, source, timeAgo, progress, progressLabel } = data
 
   return (
     <Link
@@ -36,7 +36,7 @@ export function HistoryItem({ data, href, className }: HistoryItemProps) {
       )}
       style={{ gridTemplateColumns: "104px minmax(0, 1fr)" }}
     >
-      <Cover src={cover} aspectRatio="16/9" overlay className="rounded-none min-h-[92px]" />
+      <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/9" overlay className="rounded-none min-h-[92px]" />
       <div className="grid gap-1.5 p-2.5">
         <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
         <div className="flex items-center justify-between gap-2 text-[12.5px] text-muted-foreground">

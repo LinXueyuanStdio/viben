@@ -16,7 +16,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 export interface PageCardData {
-  cover: string
+  coverUrl?: string | null
   title: string
   description?: string
   author: {
@@ -116,7 +116,7 @@ function MoreMenu({ pageId }: { pageId?: string }) {
 export function PageCard({ data, variant = "default", href, className, hideAuthor }: PageCardProps) {
   const router = useRouter()
   const { t } = useTranslation()
-  const { cover, title, description, author, timeAgo, stats } = data
+  const { coverUrl, title, description, author, timeAgo, stats } = data
 
   const like = useToggleLike({
     entityType: "published_page",
@@ -206,7 +206,8 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
       )}
     >
       <Cover
-        src={cover}
+        coverUrl={coverUrl}
+        fallbackTitle={title}
         aspectRatio="16/9"
         overlay={variant === "home"}
       >

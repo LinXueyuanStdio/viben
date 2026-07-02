@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 
 export interface RankItemData {
   rank: number
-  cover: string
+  coverUrl?: string | null
   title: string
   description: string
   delta: string
@@ -32,7 +32,7 @@ interface RankItemProps {
 }
 
 export function RankItem({ data, href, className }: RankItemProps) {
-  const { rank, cover, title, description, delta, author, stats, score, scoreLabel } = data
+  const { rank, coverUrl, title, description, delta, author, stats, score, scoreLabel } = data
 
   return (
     <Link
@@ -50,7 +50,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
       </div>
 
       {/* Cover */}
-      <Cover src={cover} aspectRatio="16/10" className="rounded-[9px]" />
+      <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/10" className="rounded-[9px]" />
 
       {/* Body */}
       <div className="grid gap-[7px]">

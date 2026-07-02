@@ -22,11 +22,7 @@ export function gradientCover(title: string): string {
 }
 
 interface CoverProps {
-  /** @deprecated 使用 coverUrl + fallbackTitle 替代 */
-  src?: string
-  /** 纯 URL，组件内部处理 url() 包装 */
   coverUrl?: string | null
-  /** 无封面时生成渐变的标题 */
   fallbackTitle?: string
   aspectRatio?: "16/9" | "16/10"
   overlay?: boolean
@@ -34,19 +30,17 @@ interface CoverProps {
   className?: string
 }
 
-export function Cover({ src, coverUrl, fallbackTitle, aspectRatio = "16/9", overlay = false, children, className }: CoverProps) {
-  let bg: string
-
-  if (coverUrl) {
-    bg = `url(${thumbnailUrl(coverUrl)})`
-  } else if (fallbackTitle) {
-    bg = gradientCover(fallbackTitle)
-  } else if (src) {
-    // 将 url(...) 中的完整尺寸 URL 替换为缩略图 URL
-    bg = src.startsWith("url(") ? src.replace(/url\(([^)]+)\)/, (_, url) => `url(${thumbnailUrl(url)})`) : src
-  } else {
-    bg = gradientCover("")
-  }
+export function Cover({
+  coverUrl,
+  fallbackTitle,
+  aspectRatio = "16/9",
+  overlay = false,
+  children,
+  className,
+}: CoverProps) {
+  const bg: string = coverUrl
+    ? `url(${thumbnailUrl(coverUrl)})`
+    : gradientCover(fallbackTitle ?? "")
 
   return (
     <div

@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
 export interface MiniPageCardData {
-  cover: string
+  coverUrl?: string | null
   title: string
   description: string
   authorDisplayName: string
@@ -27,7 +27,7 @@ interface MiniPageCardProps {
 }
 
 export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
-  const { cover, title, description, authorDisplayName, authorAvatarUrl, authorFallbackText, commentCount, stats } = data
+  const { coverUrl, title, description, authorDisplayName, authorAvatarUrl, authorFallbackText, commentCount, stats } = data
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
@@ -45,7 +45,7 @@ export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
       )}
       style={{ gridTemplateColumns: "92px 1fr" }}
     >
-      <Cover src={cover} aspectRatio="16/9" className="rounded-[7px]" />
+      <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/9" className="rounded-[7px]" />
       <div className="grid gap-0.5 min-w-0">
         <strong className="text-[14px] font-bold truncate">{title}</strong>
         <p className="text-[13px] text-muted-foreground truncate">{description}</p>
