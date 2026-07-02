@@ -1,9 +1,9 @@
-import { db, moments } from "@/lib/db"
-import { eq, desc, and } from "drizzle-orm"
+import { db, moments, momentAttachments } from "@/lib/db"
+import { eq, desc, and, inArray } from "drizzle-orm"
 import { FeedCard } from "@/components/content/feed-card"
 import { EmptyState } from "@/components/content/i18n-text"
 import type { FeedCardData } from "@/components/content/feed-card"
-import { mapMomentRowToFeedCard } from "@/lib/services/moment-mapper"
+import { mapMomentRowToFeedCard, type MomentAttachmentData } from "@/lib/services/moment-mapper"
 import type { FeedCardSession } from "@/components/content/feed-card"
 
 interface ProfileMomentsProps {
@@ -16,6 +16,7 @@ interface ProfileMomentsProps {
 
 export async function ProfileMoments({ userId, userSlug, displayName, avatarUrl, session }: ProfileMomentsProps) {
   let authorMoments: typeof moments.$inferSelect[] = []
+  let attachmentsMap = new Map<string, MomentAttachmentData[]>()
 
   try {
     authorMoments = await db.select().from(moments)
@@ -26,6 +27,34 @@ export async function ProfileMoments({ userId, userSlug, displayName, avatarUrl,
       ))
       .orderBy(desc(moments.createdAt))
       .limit(10)
+
+    // Fetch attachments for these moments
+    if (authorMoments.length > 0) {
+      const momentIds = authorMoments.map((m) => m.id)
+      const attachmentRows = await db.select({
+        momentId: momentAttachments.momentId,
+        coverUrl: momentAttachments.coverUrlSnapshot,
+        title: momentAttachments.titleSnapshot,
+        authorName: momentAttachments.authorNameSnapshot,
+        viewCount: momentAttachments.viewCountSnapshot,
+        commentCount: momentAttachments.commentCountSnapshot,
+      })
+        .from(momentAttachments)
+        .where(inArray(momentAttachments.momentId, momentIds))
+        .orderBy(momentAttachments.sortOrder)
+
+      for (const a of attachmentRows) {
+        const list = attachmentsMap.get(a.momentId) ?? []
+        list.push({
+          cover_url: a.coverUrl,
+          title: a.title,
+          author_name: a.authorName,
+          view_count: a.viewCount,
+          comment_count: a.commentCount,
+        })
+        attachmentsMap.set(a.momentId, list)
+      }
+    }
   } catch (error) {
     console.error("[Profile] Failed to fetch moments:", error)
   }
@@ -35,7 +64,9 @@ export async function ProfileMoments({ userId, userSlug, displayName, avatarUrl,
   }
 
   const feedCards: FeedCardData[] = authorMoments.map((m) =>
-    mapMomentRowToFeedCard(m, { displayName, userSlug, avatarUrl }),
+    mapMomentRowToFeedCard(m, { displayName, userSlug, avatarUrl }, {
+      attachments: attachmentsMap.get(m.id),
+    }),
   )
 
   return (

@@ -4,8 +4,8 @@ import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments, collections, communityReactions, communityEntities, communityBookmarks } from "@/lib/db"
-import { eq, desc, and, count } from "drizzle-orm"
+import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks } from "@/lib/db"
+import { eq, desc, and, count, inArray } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { EmptyState, T } from "@/components/content/i18n-text"
@@ -16,7 +16,7 @@ import type { PageCardData } from "@/components/content/page-card"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { Metadata } from "next"
-import { mapMomentRowToFeedCard, gradientCover, timeAgo } from "@/lib/services/moment-mapper"
+import { mapMomentRowToFeedCard, gradientCover, timeAgo, type MomentAttachmentData } from "@/lib/services/moment-mapper"
 
 /** Minimal shared shape between full publishedPages row and joined query results */
 interface PageRow {
@@ -220,6 +220,35 @@ export default async function UserSlugPage({
       .limit(1),
   ])
 
+  // Fetch attachments for author moments (for cover images)
+  let attachmentsMap = new Map<string, MomentAttachmentData[]>()
+  if (authorMoments.length > 0) {
+    const momentIds = authorMoments.map((m) => m.id)
+    const attachmentRows = await db.select({
+      momentId: momentAttachments.momentId,
+      coverUrl: momentAttachments.coverUrlSnapshot,
+      title: momentAttachments.titleSnapshot,
+      authorName: momentAttachments.authorNameSnapshot,
+      viewCount: momentAttachments.viewCountSnapshot,
+      commentCount: momentAttachments.commentCountSnapshot,
+    })
+      .from(momentAttachments)
+      .where(inArray(momentAttachments.momentId, momentIds))
+      .orderBy(momentAttachments.sortOrder)
+
+    for (const a of attachmentRows) {
+      const list = attachmentsMap.get(a.momentId) ?? []
+      list.push({
+        cover_url: a.coverUrl,
+        title: a.title,
+        author_name: a.authorName,
+        view_count: a.viewCount,
+        comment_count: a.commentCount,
+      })
+      attachmentsMap.set(a.momentId, list)
+    }
+  }
+
   const pageCards = authorPages.map((p) => mapPageToCard(p, displayName, avatarUrl))
   const pinnedCards = pinnedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
   const readmePage = profileReadmePage[0]
@@ -231,6 +260,8 @@ export default async function UserSlugPage({
       displayName: user.displayName,
       userSlug: user.userSlug,
       avatarUrl: user.avatarUrl,
+    }, {
+      attachments: attachmentsMap.get(m.id),
     }),
   )
 

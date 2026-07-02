@@ -89,13 +89,24 @@ export function mapRichMomentToFeedCard(
 
 export interface MapMomentRowOptions {
   timeFormatter?: (date: Date | string) => string
+  gradientFn?: (title: string) => string
+}
+
+export interface MomentAttachmentData {
+  cover_url: string | null
+  title: string
+  author_name: string | null
+  view_count: number | null
+  comment_count: number | null
 }
 
 /**
  * Maps a direct Drizzle `moments` row to FeedCardData.
  * Used where only the moments table is queried directly
  * (profile-moments-section, [user_slug] page).
- * Lacks attachment data and viewer_state.
+ *
+ * Accepts optional attachment data so caller can provide
+ * cover images when available.
  */
 export function mapMomentRowToFeedCard(
   row: Moment,
@@ -104,9 +115,11 @@ export function mapMomentRowToFeedCard(
     userSlug: string
     avatarUrl: string | null
   },
-  options?: MapMomentRowOptions,
+  options?: MapMomentRowOptions & { attachments?: MomentAttachmentData[] },
 ): FeedCardData {
   const fmt = options?.timeFormatter ?? timeAgo
+  const gfn = options?.gradientFn ?? gradientCover
+  const firstAttachment = options?.attachments?.[0]
 
   return {
     head: {
@@ -121,6 +134,20 @@ export function mapMomentRowToFeedCard(
     },
     text: row.body ?? "",
     quote: row.quoteText ?? undefined,
+    attachment: firstAttachment
+      ? {
+          cover: firstAttachment.cover_url
+            ? `url(${firstAttachment.cover_url})`
+            : gfn(firstAttachment.title),
+          title: firstAttachment.title,
+          authorDisplayName: firstAttachment.author_name ?? "",
+          timeAgo: "",
+          stats: {
+            views: firstAttachment.view_count ?? 0,
+            comments: firstAttachment.comment_count ?? 0,
+          },
+        }
+      : undefined,
     actions: {
       views: row.viewCount ?? 0,
       likes: row.likeCount,
