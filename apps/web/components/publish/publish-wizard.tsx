@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,17 @@ import { PackageTypeStep } from './steps/package-type-step';
 import { MetadataStep } from './steps/metadata-step';
 import { UploadStep } from './steps/upload-step';
 import { ReviewStep } from './steps/review-step';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAutoSave } from '@/hooks/use-auto-save';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export type PackageType = 'mcp' | 'skill';
 
@@ -36,6 +45,13 @@ export interface PublishWizardState {
   packageType: PackageType | null;
   metadata: PackageMetadata;
   file: File | null;
+}
+
+/** Shape persisted in localStorage (file is omitted — not serializable) */
+interface PublishWizardDraft {
+  step: number;
+  packageType: PackageType | null;
+  metadata: PackageMetadata;
 }
 
 const STEP_KEYS = ['packageType', 'metadata', 'upload', 'review'] as const;
@@ -69,6 +85,78 @@ export function PublishWizard({ initialType }: PublishWizardProps) {
     file: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Draft restoration
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const draftHandledRef = useRef(false);
+
+  // Build draft key
+  const draftKey = useMemo(
+    () => `publish-wizard:${initialType ?? 'any'}`,
+    [initialType],
+  );
+
+  // Build draft data (omit non-serializable File)
+  const draftData = useMemo<PublishWizardDraft>(() => ({
+    step: state.step,
+    packageType: state.packageType,
+    metadata: state.metadata,
+  }), [state.step, state.packageType, state.metadata]);
+
+  const hasChanges = useMemo(() => {
+    return (
+      state.packageType !== null ||
+      state.metadata.name !== '' ||
+      state.metadata.description !== '' ||
+      state.file !== null
+    );
+  }, [state]);
+
+  const { saved, saving, restoreDraft, clearDraft, hasDraft } = useAutoSave<PublishWizardDraft>({
+    key: draftKey,
+    data: draftData,
+    debounceMs: 3000,
+    enabled: hasChanges,
+  });
+
+  // Check for existing draft on mount
+  useEffect(() => {
+    if (draftHandledRef.current) return;
+    draftHandledRef.current = true;
+    if (!initialType && hasDraft()) {
+      setShowDraftDialog(true);
+    }
+  }, [initialType, hasDraft]);
+
+  const handleRestoreDraft = useCallback(() => {
+    const draft = restoreDraft();
+    if (draft) {
+      setState((prev) => ({
+        ...prev,
+        step: draft.step,
+        packageType: draft.packageType,
+        metadata: draft.metadata,
+      }));
+      toast.success(t('publish.toast.draftRestored', '草稿已恢复'));
+    }
+    setShowDraftDialog(false);
+  }, [restoreDraft, t]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    setShowDraftDialog(false);
+  }, [clearDraft]);
+
+  // beforeunload protection
+  useEffect(() => {
+    if (!hasChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasChanges]);
 
   const progress = ((state.step + 1) / STEP_KEYS.length) * 100;
 
@@ -174,6 +262,8 @@ export function PublishWizard({ initialType }: PublishWizardProps) {
         }
       }
 
+      // Clear draft on success
+      clearDraft();
       toast.success(t('publish.toast.publishSuccess'));
       const routePrefix = state.packageType === 'mcp' ? 'mcp-market' : 'skill-market';
       router.push(`/${routePrefix}/${pkg.id}`);
@@ -229,6 +319,29 @@ export function PublishWizard({ initialType }: PublishWizardProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
+      {/* Draft restoration dialog */}
+      <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              {t('publish.wizard.draftFoundTitle', '未保存的草稿')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('publish.wizard.draftFoundDescription', '检测到之前未完成的发布流程。是否恢复草稿？')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDiscardDraft}>
+              {t('publish.wizard.discardDraft', '丢弃草稿')}
+            </Button>
+            <Button onClick={handleRestoreDraft}>
+              {t('publish.wizard.restoreDraft', '恢复草稿')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Progress */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
@@ -257,17 +370,26 @@ export function PublishWizard({ initialType }: PublishWizardProps) {
           {t('publish.wizard.back')}
         </Button>
 
-        {state.step === STEP_KEYS.length - 1 ? (
-          <Button onClick={handleSubmit} disabled={!canGoNext() || isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('publish.wizard.publishPackage')}
-          </Button>
-        ) : (
-          <Button onClick={handleNext} disabled={!canGoNext()}>
-            {t('publish.wizard.next')}
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Auto-save status */}
+          {hasChanges && (
+            <span className={`text-[11px] ${saving ? 'text-amber-500' : saved ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+              {saving ? t('publish.wizard.saving', '保存中...') : saved ? t('publish.wizard.saved', '已保存') : ''}
+            </span>
+          )}
+
+          {state.step === STEP_KEYS.length - 1 ? (
+            <Button onClick={handleSubmit} disabled={!canGoNext() || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('publish.wizard.publishPackage')}
+            </Button>
+          ) : (
+            <Button onClick={handleNext} disabled={!canGoNext()}>
+              {t('publish.wizard.next')}
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
