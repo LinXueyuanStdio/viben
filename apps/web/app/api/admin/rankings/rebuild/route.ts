@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, rankingSnapshots, rankingItems, publishedPages } from '@/lib/db';
-import { eq, and, gte, lte, desc, count, type SQL } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { z } from 'zod';
 
 // ============================================
@@ -142,16 +142,9 @@ export async function POST(request: NextRequest) {
     const rankingKey = entityType;
     const algorithmVersion = '1.0.0';
 
-    // Query published pages for scoring
-    const conditions: SQL[] = [
-      eq(publishedPages.moderationStatus, 'approved'),
-      eq(publishedPages.visibility, 'public'),
-    ];
-    if (sourceFrom) {
-      conditions.push(gte(publishedPages.publishedAt, sourceFrom));
-    }
-    conditions.push(lte(publishedPages.publishedAt, sourceUntil));
-
+    // Query published pages for scoring.
+    // Time window is used for decay calculation only — all public/approved pages
+    // are eligible so older content with strong engagement can still rank.
     const pages = await db
       .select({
         id: publishedPages.id,
@@ -172,7 +165,12 @@ export async function POST(request: NextRequest) {
         authorAvatarUrl: publishedPages.authorAvatarUrl,
       })
       .from(publishedPages)
-      .where(and(...conditions))
+      .where(
+        and(
+          eq(publishedPages.moderationStatus, 'approved'),
+          eq(publishedPages.visibility, 'public'),
+        )
+      )
       .orderBy(desc(publishedPages.publishedAt));
 
     // Score and rank pages
