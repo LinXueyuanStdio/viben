@@ -33,6 +33,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://avatars.githubusercontent.com" crossOrigin="anonymous" />
+      </head>
       <body className={`${inter.variable} ${crimsonPro.variable} font-sans`}>
         <ThemeProvider
           attribute="class"
