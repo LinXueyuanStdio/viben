@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,36 +11,30 @@ import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { registerFormSchema } from '@/lib/validations/user';
 import type { RegisterFormInput } from '@/lib/validations/user';
 
-
 export function RegisterForm() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isValid },
-  } = useForm<RegisterFormInput>({
-    resolver: zodResolver(registerFormSchema),
-    mode: 'onChange',
-  });
-
-  const passwordValue = watch('password', '');
-
   function getStrength() {
-    if (!passwordValue) return { label: '', level: 0, color: '' };
+    if (!password) return { label: '', level: 0, color: '' };
     let score = 0;
-    if (passwordValue.length >= 8) score++;
-    if (passwordValue.length >= 12) score++;
-    if (/[A-Z]/.test(passwordValue)) score++;
-    if (/[a-z]/.test(passwordValue)) score++;
-    if (/[0-9]/.test(passwordValue)) score++;
-    if (/[^A-Za-z0-9]/.test(passwordValue)) score++;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
 
     if (score <= 2) return { label: t('auth.passwordWeak'), level: 1, color: 'bg-red-500' };
     if (score <= 4) return { label: t('auth.passwordMedium'), level: 2, color: 'bg-yellow-500' };
@@ -51,7 +43,28 @@ export function RegisterForm() {
 
   const strength = getStrength();
 
-  async function onSubmit(data: RegisterFormInput) {
+  function validate(): RegisterFormInput | null {
+    const result = registerFormSchema.safeParse({
+      email, username, displayName, password, confirmPassword, agreeToTerms,
+    });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path[0] as string;
+        if (!errors[path]) errors[path] = issue.message;
+      }
+      setFieldErrors(errors);
+      return null;
+    }
+    setFieldErrors({});
+    return result.data;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const data = validate();
+    if (!data) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -83,8 +96,16 @@ export function RegisterForm() {
     }
   }
 
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+    }
+  }
+
+  const isValid = email.trim() && username.trim() && password && confirmPassword && agreeToTerms;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -98,11 +119,12 @@ export function RegisterForm() {
           type="email"
           autoComplete="email"
           placeholder={t('auth.emailPlaceholder')}
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
           disabled={isLoading}
-          {...register('email')}
         />
-        {errors.email && (
-          <p className="text-xs text-destructive">{errors.email.message}</p>
+        {fieldErrors.email && (
+          <p className="text-xs text-destructive">{fieldErrors.email}</p>
         )}
       </div>
 
@@ -113,14 +135,15 @@ export function RegisterForm() {
           type="text"
           autoComplete="username"
           placeholder={t('auth.usernamePlaceholder')}
+          value={username}
+          onChange={(e) => { setUsername(e.target.value); clearFieldError('username'); }}
           disabled={isLoading}
-          {...register('username')}
         />
         <p className="text-xs text-muted-foreground">
           {t('auth.usernameHint')}
         </p>
-        {errors.username && (
-          <p className="text-xs text-destructive">{errors.username.message}</p>
+        {fieldErrors.username && (
+          <p className="text-xs text-destructive">{fieldErrors.username}</p>
         )}
       </div>
 
@@ -131,11 +154,12 @@ export function RegisterForm() {
           type="text"
           autoComplete="name"
           placeholder={t('auth.displayNamePlaceholder')}
+          value={displayName}
+          onChange={(e) => { setDisplayName(e.target.value); clearFieldError('displayName'); }}
           disabled={isLoading}
-          {...register('displayName')}
         />
-        {errors.displayName && (
-          <p className="text-xs text-destructive">{errors.displayName.message}</p>
+        {fieldErrors.displayName && (
+          <p className="text-xs text-destructive">{fieldErrors.displayName}</p>
         )}
       </div>
 
@@ -146,8 +170,9 @@ export function RegisterForm() {
             id="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
             disabled={isLoading}
-            {...register('password')}
           />
           <Button
             type="button"
@@ -164,7 +189,7 @@ export function RegisterForm() {
             )}
           </Button>
         </div>
-        {passwordValue && (
+        {password && (
           <div className="space-y-1">
             <div className="flex gap-1">
               <div className={`h-1 flex-1 rounded ${strength.level >= 1 ? strength.color : 'bg-border'}`} />
@@ -176,8 +201,8 @@ export function RegisterForm() {
             </p>
           </div>
         )}
-        {errors.password && (
-          <p className="text-xs text-destructive">{errors.password.message}</p>
+        {fieldErrors.password && (
+          <p className="text-xs text-destructive">{fieldErrors.password}</p>
         )}
       </div>
 
@@ -188,8 +213,9 @@ export function RegisterForm() {
             id="confirmPassword"
             type={showConfirmPassword ? 'text' : 'password'}
             autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError('confirmPassword'); }}
             disabled={isLoading}
-            {...register('confirmPassword')}
           />
           <Button
             type="button"
@@ -206,8 +232,8 @@ export function RegisterForm() {
             )}
           </Button>
         </div>
-        {errors.confirmPassword && (
-          <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+        {fieldErrors.confirmPassword && (
+          <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
         )}
       </div>
 
@@ -216,8 +242,9 @@ export function RegisterForm() {
           type="checkbox"
           id="agreeToTerms"
           className="mt-1 h-4 w-4 rounded accent-primary"
+          checked={agreeToTerms}
+          onChange={(e) => { setAgreeToTerms(e.target.checked); clearFieldError('agreeToTerms'); }}
           disabled={isLoading}
-          {...register('agreeToTerms')}
         />
         <Label htmlFor="agreeToTerms" className="text-sm font-normal leading-tight">
           {t('auth.agreeToTerms')}{' '}
@@ -226,8 +253,8 @@ export function RegisterForm() {
           </Link>
         </Label>
       </div>
-      {errors.agreeToTerms && (
-        <p className="text-xs text-destructive">{errors.agreeToTerms.message}</p>
+      {fieldErrors.agreeToTerms && (
+        <p className="text-xs text-destructive">{fieldErrors.agreeToTerms}</p>
       )}
 
       <Button type="submit" className="w-full" disabled={isLoading || !isValid}>

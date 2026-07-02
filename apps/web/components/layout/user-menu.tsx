@@ -2,7 +2,6 @@
 
 import { useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { FileText, Star, ThumbsUp, Globe, Monitor, Sun, Moon } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
@@ -41,7 +40,6 @@ const THEME_OPTIONS = [
 
 export function UserMenu({ session }: UserMenuProps) {
   const { t } = useTranslation()
-  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const displayLabel = session.displayName || session.userSlug
   const initials = displayLabel.slice(0, 2).toUpperCase()
@@ -55,9 +53,9 @@ export function UserMenu({ session }: UserMenuProps) {
     } catch {
       // ignore network errors
     }
-    router.push("/")
-    router.refresh()
-  }, [router])
+    // Force full page reload to clear all client state
+    window.location.href = "/"
+  }, [])
 
   const handleLanguageChange = useCallback((langCode: string) => {
     changeLanguage(langCode)
@@ -180,12 +178,7 @@ export function UserMenu({ session }: UserMenuProps) {
         <DropdownMenuSeparator />
 
         {/* Logout */}
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault()
-            handleLogout()
-          }}
-        >
+        <DropdownMenuItem onSelect={() => handleLogout()}>
           <Spacer />
           {t("auth.signOut")}
         </DropdownMenuItem>

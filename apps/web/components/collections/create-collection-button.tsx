@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,11 +29,15 @@ const createSchema = z.object({
     .min(1, 'Slug is required')
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
-  description: z.string().max(500).optional(),
+  description: z.string().max(500).optional().or(z.literal('')),
   isPublic: z.boolean(),
 });
 
 type CreateValues = z.infer<typeof createSchema>;
+
+function getDefaultState() {
+  return { name: '', slug: '', description: '', isPublic: true };
+}
 
 export function CreateCollectionButton() {
   const { t } = useTranslation('collections');
@@ -43,33 +45,55 @@ export function CreateCollectionButton() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const form = useForm<CreateValues>({
-    resolver: zodResolver(createSchema as any),
-    defaultValues: {
-      name: '',
-      slug: '',
-      description: '',
-      isPublic: true,
-    },
-  });
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [description, setDescription] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
 
-  const watchedName = form.watch('name');
+  function resetForm() {
+    setName('');
+    setSlug('');
+    setDescription('');
+    setIsPublic(true);
+    setSlugManuallyEdited(false);
+    setFieldErrors({});
+  }
 
   // Auto-generate slug from name if not manually edited
   useEffect(() => {
-    if (!slugManuallyEdited && watchedName) {
-      const generatedSlug = slugify(watchedName);
-      form.setValue('slug', generatedSlug, { shouldValidate: false });
+    if (!slugManuallyEdited && name) {
+      setSlug(slugify(name));
     }
-  }, [watchedName, slugManuallyEdited, form]);
+  }, [name, slugManuallyEdited]);
 
-  function handleSlugChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setSlugManuallyEdited(true);
-    form.setValue('slug', e.target.value, { shouldValidate: true });
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+    }
   }
 
-  async function onSubmit(data: CreateValues) {
+  function validate(): CreateValues | null {
+    const result = createSchema.safeParse({ name, slug, description, isPublic });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path[0] as string;
+        if (!errors[path]) errors[path] = issue.message;
+      }
+      setFieldErrors(errors);
+      return null;
+    }
+    setFieldErrors({});
+    return result.data;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const data = validate();
+    if (!data) return;
+
     setIsLoading(true);
 
     try {
@@ -87,8 +111,7 @@ export function CreateCollectionButton() {
       const { collection } = await response.json();
       toast.success(t('createdSuccess'));
       setOpen(false);
-      form.reset();
-      setSlugManuallyEdited(false);
+      resetForm();
       router.push(`/collections/${collection.id}`);
       router.refresh();
     } catch (error) {
@@ -100,10 +123,7 @@ export function CreateCollectionButton() {
 
   function handleOpenChange(isOpen: boolean) {
     setOpen(isOpen);
-    if (!isOpen) {
-      form.reset();
-      setSlugManuallyEdited(false);
-    }
+    if (!isOpen) resetForm();
   }
 
   return (
@@ -115,12 +135,10 @@ export function CreateCollectionButton() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t('createCollection')}</DialogTitle>
-            <DialogDescription>
-              {t('createCollectionDesc')}
-            </DialogDescription>
+            <DialogDescription>{t('createCollectionDesc')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -129,13 +147,10 @@ export function CreateCollectionButton() {
               <Input
                 id="name"
                 placeholder={t('namePlaceholder')}
-                {...form.register('name')}
+                value={name}
+                onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
               />
-              {form.formState.errors.name && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.name.message}
-                </p>
-              )}
+              {fieldErrors.name && <p className="text-sm text-destructive">{fieldErrors.name}</p>}
             </div>
 
             <div className="space-y-2">
@@ -143,17 +158,11 @@ export function CreateCollectionButton() {
               <Input
                 id="slug"
                 placeholder={t('slugPlaceholder')}
-                value={form.watch('slug')}
-                onChange={handleSlugChange}
+                value={slug}
+                onChange={(e) => { setSlugManuallyEdited(true); setSlug(e.target.value); clearFieldError('slug'); }}
               />
-              <p className="text-xs text-muted-foreground">
-                {t('slugDescription')}
-              </p>
-              {form.formState.errors.slug && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.slug.message}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">{t('slugDescription')}</p>
+              {fieldErrors.slug && <p className="text-sm text-destructive">{fieldErrors.slug}</p>}
             </div>
 
             <div className="space-y-2">
@@ -161,21 +170,17 @@ export function CreateCollectionButton() {
               <Textarea
                 id="description"
                 placeholder={t('descriptionPlaceholder')}
-                {...form.register('description')}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>{t('public')}</Label>
-                <p className="text-xs text-muted-foreground">
-                  {t('publicDescription')}
-                </p>
+                <p className="text-xs text-muted-foreground">{t('publicDescription')}</p>
               </div>
-              <Switch
-                checked={form.watch('isPublic')}
-                onCheckedChange={(checked) => form.setValue('isPublic', checked)}
-              />
+              <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             </div>
           </div>
 

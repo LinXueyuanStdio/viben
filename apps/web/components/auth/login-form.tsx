@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,17 +14,26 @@ import type { LoginInput } from '@/lib/validations/user';
 export function LoginForm() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
-    mode: 'onChange',
-  });
+  function validate(): LoginInput | null {
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path[0] as string;
+        if (!errors[path]) errors[path] = issue.message;
+      }
+      setFieldErrors(errors);
+      return null;
+    }
+    setFieldErrors({});
+    return result.data;
+  }
 
   function getRedirectPath(): string | null {
     if (typeof window === 'undefined') return null;
@@ -37,7 +44,11 @@ export function LoginForm() {
     return null;
   }
 
-  async function onSubmit(data: LoginInput) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const data = validate();
+    if (!data) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -65,8 +76,10 @@ export function LoginForm() {
     }
   }
 
+  const isValid = email.trim() && password.trim();
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -80,11 +93,12 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           placeholder={t('auth.emailPlaceholder')}
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(prev => { const n = {...prev}; delete n.email; return n }); }}
           disabled={isLoading}
-          {...register('email')}
         />
-        {errors.email && (
-          <p className="text-xs text-destructive">{errors.email.message}</p>
+        {fieldErrors.email && (
+          <p className="text-xs text-destructive">{fieldErrors.email}</p>
         )}
       </div>
 
@@ -102,11 +116,12 @@ export function LoginForm() {
           id="password"
           type="password"
           autoComplete="current-password"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(prev => { const n = {...prev}; delete n.password; return n }); }}
           disabled={isLoading}
-          {...register('password')}
         />
-        {errors.password && (
-          <p className="text-xs text-destructive">{errors.password.message}</p>
+        {fieldErrors.password && (
+          <p className="text-xs text-destructive">{fieldErrors.password}</p>
         )}
       </div>
 

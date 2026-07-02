@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,34 +16,24 @@ export function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isValid },
-  } = useForm<ResetPasswordInput>({
-    resolver: zodResolver(resetPasswordSchema),
-    mode: 'onChange',
-    defaultValues: { token },
-  });
-
-  const passwordValue = watch('password', '');
-
   function getStrength() {
-    if (!passwordValue) return { label: '', level: 0, color: '' };
+    if (!password) return { label: '', level: 0, color: '' };
     let score = 0;
-    if (passwordValue.length >= 8) score++;
-    if (passwordValue.length >= 12) score++;
-    if (/[A-Z]/.test(passwordValue)) score++;
-    if (/[a-z]/.test(passwordValue)) score++;
-    if (/[0-9]/.test(passwordValue)) score++;
-    if (/[^A-Za-z0-9]/.test(passwordValue)) score++;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
 
     if (score <= 2) return { label: t('auth.passwordWeak'), level: 1, color: 'bg-red-500' };
     if (score <= 4) return { label: t('auth.passwordMedium'), level: 2, color: 'bg-yellow-500' };
@@ -54,7 +42,26 @@ export function ResetPasswordForm() {
 
   const strength = getStrength();
 
-  async function onSubmit(data: ResetPasswordInput) {
+  function validate(): ResetPasswordInput | null {
+    const result = resetPasswordSchema.safeParse({ token, password, confirmPassword });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path[0] as string;
+        if (!errors[path]) errors[path] = issue.message;
+      }
+      setFieldErrors(errors);
+      return null;
+    }
+    setFieldErrors({});
+    return result.data;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const data = validate();
+    if (!data) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -83,6 +90,12 @@ export function ResetPasswordForm() {
     }
   }
 
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+    }
+  }
+
   if (success) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 text-center space-y-4">
@@ -105,15 +118,15 @@ export function ResetPasswordForm() {
     );
   }
 
+  const isValid = password && confirmPassword;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
-
-      <input type="hidden" {...register('token')} />
 
       <div className="space-y-2">
         <Label htmlFor="password">{t('auth.newPassword')}</Label>
@@ -123,8 +136,9 @@ export function ResetPasswordForm() {
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             placeholder={t('auth.passwordPlaceholder')}
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
             disabled={isLoading}
-            {...register('password')}
           />
           <Button
             type="button"
@@ -141,7 +155,7 @@ export function ResetPasswordForm() {
             )}
           </Button>
         </div>
-        {passwordValue && (
+        {password && (
           <div className="space-y-1">
             <div className="flex gap-1">
               <div className={`h-1 flex-1 rounded ${strength.level >= 1 ? strength.color : 'bg-border'}`} />
@@ -153,8 +167,8 @@ export function ResetPasswordForm() {
             </p>
           </div>
         )}
-        {errors.password && (
-          <p className="text-xs text-destructive">{errors.password.message}</p>
+        {fieldErrors.password && (
+          <p className="text-xs text-destructive">{fieldErrors.password}</p>
         )}
       </div>
 
@@ -165,8 +179,9 @@ export function ResetPasswordForm() {
             id="confirmPassword"
             type={showConfirmPassword ? 'text' : 'password'}
             autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError('confirmPassword'); }}
             disabled={isLoading}
-            {...register('confirmPassword')}
           />
           <Button
             type="button"
@@ -183,8 +198,8 @@ export function ResetPasswordForm() {
             )}
           </Button>
         </div>
-        {errors.confirmPassword && (
-          <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+        {fieldErrors.confirmPassword && (
+          <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
         )}
       </div>
 
