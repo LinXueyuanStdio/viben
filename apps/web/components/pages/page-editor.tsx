@@ -66,7 +66,19 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const uploadBackoffRef = useRef({ attempts: 0, cooldownUntil: 0 })
   const [collection, setCollection] = useState<CollectionSelectorValue | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewWrapperRef = useRef<HTMLDivElement>(null)
   const previewIframeRef = useRef<HTMLIFrameElement>(null)
+  const [previewScale, setPreviewScale] = useState(1)
+
+  useEffect(() => {
+    const el = previewWrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      setPreviewScale(el.clientWidth / 1200)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Auto-slugify from title when not manually edited
   const autoUid = useMemo(() => slugify(title), [title])
@@ -399,14 +411,20 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
           </div>
           <div className="space-y-2">
             <Label>{t("pageEditor.previewLabel")}</Label>
-            <div className="overflow-hidden rounded-md border border-border bg-card">
+            <div
+              ref={previewWrapperRef}
+              className="overflow-hidden rounded-md border border-border bg-card"
+              style={{ aspectRatio: "1200/630" }}
+            >
               <iframe
                 ref={previewIframeRef}
                 title="Preview"
-                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,sans-serif;line-height:1.6;padding:1rem;color:#333;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}pre{overflow-x:auto;background:#f5f5f5;padding:1rem;border-radius:4px}code{font-size:0.9em}</style></head><body>${previewHtml}</body></html>`}
+                width={1200}
+                height={630}
+                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=1200,initial-scale=1"><style>body{font-family:system-ui,sans-serif;line-height:1.6;padding:1rem;color:#333;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}pre{overflow-x:auto;background:#f5f5f5;padding:1rem;border-radius:4px}code{font-size:0.9em}</style></head><body>${previewHtml}</body></html>`}
                 sandbox="allow-same-origin"
-                className="w-full border-0"
-                style={{ aspectRatio: "1200/630" }}
+                className="border-0"
+                style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}
               />
             </div>
           </div>

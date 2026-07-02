@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
+import { thumbnailUrl } from "@/components/content/cover"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { IconButton } from "@/components/ui/icon-button"
@@ -118,7 +119,7 @@ export function NavPopover({
                       className="aspect-square rounded-lg bg-cover bg-center"
                       style={
                         item.thumb
-                          ? { backgroundImage: `url(${item.thumb})` }
+                          ? { backgroundImage: `url(${thumbnailUrl(item.thumb)})` }
                           : { background: "linear-gradient(135deg, var(--primary), var(--accent))" }
                       }
                     />

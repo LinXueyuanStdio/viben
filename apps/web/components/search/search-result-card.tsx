@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next"
 import Link from "next/link"
 import { Eye, ThumbsUp, MessageSquare } from "lucide-react"
+import { thumbnailUrl } from "@/components/content/cover"
 import { cn } from "@/lib/utils/index"
 
 export interface SearchResultData {
@@ -35,7 +36,7 @@ export function SearchResultCard({ data }: { data: SearchResultData }) {
         className="rounded-[9px] bg-cover bg-center min-h-[80px]"
         style={
           data.coverUrl
-            ? { backgroundImage: `url(${data.coverUrl})` }
+            ? { backgroundImage: `url(${thumbnailUrl(data.coverUrl)})` }
             : { background: "linear-gradient(135deg, var(--primary), var(--accent))" }
         }
       />

@@ -11,7 +11,7 @@ export async function captureHtmlCover(el: HTMLElement): Promise<Blob | null> {
     const dataUrl = await toPng(el, {
       width: COVER_WIDTH,
       height: COVER_HEIGHT,
-      pixelRatio: 2,
+      pixelRatio: 1,
     })
     const res = await fetch(dataUrl)
     return await res.blob()
