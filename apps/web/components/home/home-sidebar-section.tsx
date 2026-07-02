@@ -25,9 +25,9 @@ export async function HomeSidebarSection() {
     ])
 
     authorCards = topAuthors.map((u) => ({
-      fallbackText: u.displayName?.[0] ?? "?",
+      fallbackText: u.displayName ?? u.userSlug,
       avatarUrl: u.avatarUrl ?? undefined,
-      name: u.displayName ?? "?",
+      name: u.displayName ?? u.userSlug,
       handle: `@${u.userSlug}`,
       userSlug: u.userSlug,
       description: u.bio ?? "",

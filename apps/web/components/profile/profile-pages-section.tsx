@@ -42,8 +42,7 @@ export async function ProfilePages({ userId, userSlug, displayName, avatarUrl }:
       title: p.title,
       description: p.description ?? undefined,
       author: {
-        name: p.authorDisplayName ?? displayName ?? "?",
-        fallbackText: p.authorDisplayName?.[0] ?? displayName?.[0] ?? "?",
+        name: p.authorDisplayName ?? displayName ?? userSlug,
         avatarUrl: p.authorAvatarUrl ?? avatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),

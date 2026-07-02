@@ -29,8 +29,7 @@ export default async function LeaderboardPage() {
         description: item.description ?? "",
         delta: item.delta ?? "—",
         author: {
-          name: item.author_display_name ?? item.user_slug ?? "?",
-          fallbackText: (item.author_display_name ?? item.user_slug)?.[0] ?? "?",
+          name: item.author_display_name ?? item.user_slug,
           avatarUrl: item.author_avatar_url ?? undefined,
         },
         stats: {

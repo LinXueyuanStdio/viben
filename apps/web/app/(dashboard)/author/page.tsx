@@ -34,7 +34,7 @@ export default async function AuthorListPage() {
     : null
 
   const initialAuthors: AuthorCardData[] = items.map((u) => ({
-    fallbackText: u.displayName?.[0] ?? "?",
+    fallbackText: u.displayName ?? u.userSlug,
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,

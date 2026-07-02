@@ -39,7 +39,7 @@ function mapPageToCard(
   fallbackDisplayName: string,
   fallbackAvatarUrl: string | null | undefined,
 ): { card: PageCardData; href: string } {
-  const authorDisplayName = p.authorDisplayName ?? fallbackDisplayName
+  const authorDisplayName = p.authorDisplayName ?? fallbackDisplayName ?? p.authorSlug
   return {
     card: {
       coverUrl: p.coverUrl,
@@ -47,7 +47,6 @@ function mapPageToCard(
       description: p.description ?? undefined,
       author: {
         name: authorDisplayName,
-        fallbackText: authorDisplayName[0] ?? fallbackDisplayName[0] ?? "?",
         avatarUrl: p.authorAvatarUrl ?? fallbackAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),

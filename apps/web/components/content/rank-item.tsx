@@ -13,7 +13,6 @@ export interface RankItemData {
   delta: string
   author: {
     name: string
-    fallbackText: string
     avatarUrl?: string
   }
   stats: {

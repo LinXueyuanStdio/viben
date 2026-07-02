@@ -33,7 +33,7 @@ async function SearchContent({ searchParams }: SearchPageProps) {
     type: "page" as const,
     title: p.title,
     description: p.description ?? "",
-    author: { name: p.authorDisplayName ?? p.authorSlug },
+    author: { name: p.authorDisplayName || p.authorSlug, avatar: p.authorAvatarUrl ?? undefined },
     stats: {
       views: p.viewCount,
       likes: p.likeCount,

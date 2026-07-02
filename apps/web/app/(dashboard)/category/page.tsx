@@ -67,8 +67,7 @@ export default async function CategoryPage() {
         title: row.title,
         description: row.description ?? undefined,
         author: {
-          name: row.authorDisplayName ?? row.authorSlug,
-          fallbackText: (row.authorDisplayName ?? row.authorSlug)[0],
+          name: row.authorDisplayName || row.authorSlug,
           avatarUrl: row.authorAvatarUrl ?? undefined,
         },
         timeAgo: timeAgo(row.lastPublishedAt),
@@ -89,7 +88,7 @@ export default async function CategoryPage() {
   }
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({
-    fallbackText: u.displayName?.[0] ?? "?",
+    fallbackText: u.displayName ?? u.userSlug,
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,

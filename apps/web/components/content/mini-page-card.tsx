@@ -12,7 +12,6 @@ export interface MiniPageCardData {
   description: string
   authorDisplayName: string
   authorAvatarUrl?: string
-  authorFallbackText?: string
   commentCount?: number
   stats: {
     views: number
@@ -27,7 +26,7 @@ interface MiniPageCardProps {
 }
 
 export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
-  const { coverUrl, title, description, authorDisplayName, authorAvatarUrl, authorFallbackText, commentCount, stats } = data
+  const { coverUrl, title, description, authorDisplayName, authorAvatarUrl, commentCount, stats } = data
 
   const detailStats: StatProps[] = [
     { icon: Eye, value: stats.views, format: true },
@@ -54,7 +53,7 @@ export function MiniPageCard({ data, href, className }: MiniPageCardProps) {
             <div className="flex items-center gap-1 min-w-0">
               <Avatar className="size-[14px] shrink-0">
                 <AvatarImage src={authorAvatarUrl} />
-                <AvatarFallback className="text-[8px] leading-none">{authorFallbackText ?? authorDisplayName[0]}</AvatarFallback>
+                <AvatarFallback className="text-[8px] leading-none">{authorDisplayName}</AvatarFallback>
               </Avatar>
               <span className="text-[12px] text-muted-foreground truncate">{authorDisplayName}</span>
             </div>

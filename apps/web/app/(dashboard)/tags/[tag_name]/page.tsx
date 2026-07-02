@@ -58,8 +58,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
       title: p.title,
       description: p.description ?? undefined,
       author: {
-        name: p.authorDisplayName ?? p.authorSlug,
-        fallbackText: (p.authorDisplayName ?? p.authorSlug)[0],
+        name: p.authorDisplayName || p.authorSlug,
         avatarUrl: p.authorAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),
@@ -74,7 +73,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
   }))
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({
-    fallbackText: u.displayName?.[0] ?? "?",
+    fallbackText: u.displayName ?? u.userSlug,
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,

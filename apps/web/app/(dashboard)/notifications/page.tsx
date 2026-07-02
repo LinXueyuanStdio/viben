@@ -103,7 +103,7 @@ export default async function NotificationsPage() {
   }
 
   const authorCards: AuthorCardData[] = topAuthors.map((u) => ({
-    fallbackText: u.displayName?.[0] ?? "?",
+    fallbackText: u.displayName ?? u.userSlug,
     avatarUrl: u.avatarUrl ?? undefined,
     name: u.displayName,
     handle: `@${u.userSlug}`,

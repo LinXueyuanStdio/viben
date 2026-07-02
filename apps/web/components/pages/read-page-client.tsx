@@ -216,7 +216,6 @@ export function ReadPageClient({
   const pageMeta: PageMetaData = {
     author: {
       name: authorDisplayName,
-      fallbackText: authorDisplayName?.[0] ?? "?",
       avatarUrl: authorAvatarUrl ?? undefined,
       userSlug: userSlug,
       followerCount: authorFollowersCount,

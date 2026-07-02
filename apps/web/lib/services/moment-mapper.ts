@@ -43,9 +43,9 @@ export function mapRichMomentToFeedCard(
 
   return {
     head: {
-      fallbackText: item.author.display_name?.[0] ?? "?",
+      fallbackText: item.author.display_name ?? item.author.user_slug,
       avatarUrl: item.author.avatar_url ?? undefined,
-      name: item.author.display_name ?? "?",
+      name: item.author.display_name ?? item.author.user_slug,
       handle: `@${item.author.user_slug}`,
       userSlug: item.author.user_slug,
       kind: FEED_KIND_MAP[item.moment.kind] ?? "发布",
@@ -112,9 +112,9 @@ export function mapMomentRowToFeedCard(
 
   return {
     head: {
-      fallbackText: author.displayName?.[0] ?? "?",
+      fallbackText: author.displayName ?? author.userSlug,
       avatarUrl: author.avatarUrl ?? undefined,
-      name: author.displayName ?? "?",
+      name: author.displayName ?? author.userSlug,
       handle: `@${author.userSlug}`,
       userSlug: author.userSlug,
       kind: FEED_KIND_MAP[row.kind] ?? "发布",

@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     items: items.map((u) => ({
-      fallbackText: u.displayName?.[0] ?? "?",
+      fallbackText: u.displayName ?? u.userSlug,
       avatarUrl: u.avatarUrl ?? null,
       name: u.displayName,
       handle: `@${u.userSlug}`,

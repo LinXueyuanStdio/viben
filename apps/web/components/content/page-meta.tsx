@@ -20,7 +20,6 @@ import { useToggleBookmark } from "@/hooks/use-toggle-bookmark"
 export interface PageMetaData {
   author: {
     name: string
-    fallbackText: string
     avatarUrl?: string
     userSlug: string
     followerCount: number
@@ -169,7 +168,7 @@ export const PageMeta = React.memo(function PageMeta({ data, defaultExpanded = f
         <Link href={`/${encodeURIComponent(author.userSlug)}`} className="shrink-0">
           <Avatar className="size-[34px]">
             <AvatarImage src={author.avatarUrl} alt={author.name} />
-            <AvatarFallback>{author.fallbackText}</AvatarFallback>
+            <AvatarFallback>{author.name}</AvatarFallback>
           </Avatar>
         </Link>
         <Link href={`/${encodeURIComponent(author.userSlug)}`} className="grid gap-[3px] min-w-0 hover:opacity-80 transition-opacity">

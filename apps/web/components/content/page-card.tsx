@@ -21,7 +21,6 @@ export interface PageCardData {
   description?: string
   author: {
     name: string
-    fallbackText: string
     avatarUrl?: string
   }
   timeAgo: string

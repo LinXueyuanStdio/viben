@@ -4,18 +4,17 @@ import type { StatProps } from "./stats-row"
 import { StatsRow } from "./stats-row"
 
 interface MetaAuthorProps {
-  fallbackText: string
   avatarUrl?: string
   name: string
   className?: string
 }
 
-function MetaAuthor({ fallbackText, avatarUrl, name, className }: MetaAuthorProps) {
+function MetaAuthor({ avatarUrl, name, className }: MetaAuthorProps) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 min-w-0", className)}>
       <Avatar className="size-[28px] shrink-0">
         <AvatarImage src={avatarUrl} alt={name} />
-        <AvatarFallback>{fallbackText}</AvatarFallback>
+        <AvatarFallback>{name}</AvatarFallback>
       </Avatar>
       <span className="text-[13px] font-bold truncate">{name}</span>
     </span>
