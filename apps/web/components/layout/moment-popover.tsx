@@ -20,7 +20,26 @@ interface MomentPage {
 
 export function MomentPopover() {
   const { t } = useTranslation()
+  const [newCount, setNewCount] = React.useState(0)
   const scrollRef = React.useRef<HTMLDivElement>(null)
+
+  // 3s 延迟加载新动态计数
+  React.useEffect(() => {
+    const lastVisit = localStorage.getItem("viben-moment-last-visit")
+    const timer = setTimeout(() => {
+      fetch("/api/moments?feed_type=latest&limit=1")
+        .then((r) => r.json())
+        .then((d) => {
+          const items = (d.items ?? []) as MomentFeedItem[]
+          if (items.length > 0) {
+            const latest = new Date(items[0].moment.created_at).getTime()
+            if (lastVisit && latest > Number(lastVisit)) setNewCount(1)
+          }
+        })
+        .catch(() => {})
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const fetchPage = React.useCallback(async (cursor: string | null) => {
     const params = new URLSearchParams({ feed_type: "latest", limit: "8" })
@@ -48,6 +67,7 @@ export function MomentPopover() {
       label={t("nav.moment", "动态")}
       title={t("nav.moment", "动态")}
       viewAllHref="/moment"
+      count={newCount}
       onFirstOpen={loadFirst}
     >
       {!loaded ? (
