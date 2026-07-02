@@ -107,6 +107,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
             authorAvatarUrl: ctx.page.authorAvatarUrl ?? ctx.author.avatarUrl,
             pageDbId: ctx.page.id,
             communityEntityId: communityEntity.id,
+            pageUid: ctx.page.uid,
             visibility: ctx.page.visibility,
           }),
         }}

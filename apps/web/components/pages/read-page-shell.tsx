@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { useScriptData } from "@/hooks/use-script-data"
+import { usePrefetchDrawerTabs } from "@/hooks/use-prefetch-drawer-tabs"
 
 declare global {
   interface Window {
@@ -50,6 +52,14 @@ export function ReadPageShell({
     }
   }, [hasSidePage, userSlug, pageId])
 
+  // Prefetch drawer tab data on idle
+  const pageMeta = useScriptData<{ pageDbId: string; communityEntityId: string; pageUid: string }>("viben-page-meta")
+  usePrefetchDrawerTabs({
+    communityEntityId: pageMeta?.communityEntityId ?? "",
+    pageDbId: pageMeta?.pageDbId ?? "",
+    pageUid: pageMeta?.pageUid ?? "",
+  })
+
   const handleTabChange = React.useCallback(
     (value: string) => {
       setActiveTab(value)
@@ -58,8 +68,6 @@ export function ReadPageShell({
     },
     [router, pathname],
   )
-
-  // TODO Phase 8: usePrefetchDrawerTabs(userSlug, pageId)
 
   return <>{children}</>
 }
