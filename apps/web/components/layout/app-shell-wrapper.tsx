@@ -47,6 +47,7 @@ export function AppShellWrapper({ children }: AppShellWrapperProps) {
           userId: user.id,
           username: user.username,
           userSlug: user.userSlug,
+          displayName: user.displayName,
           email: user.email,
           role: user.role,
           avatarUrl: user.avatarUrl,
