@@ -1,52 +1,55 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { forgotPasswordSchema } from '@/lib/validations/user';
-import type { ForgotPasswordInput } from '@/lib/validations/user';
 
 export function ForgotPasswordForm() {
   const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<ForgotPasswordInput>({
-    resolver: zodResolver(forgotPasswordSchema),
-    mode: 'onChange',
-  });
+  function validate(): boolean {
+    const result = forgotPasswordSchema.safeParse({ email });
+    if (!result.success) {
+      setFieldError(result.error.issues[0]?.message ?? t('auth.invalidEmail'));
+      return false;
+    }
+    setFieldError(null);
+    return true;
+  }
 
-  async function onSubmit(data: ForgotPasswordInput) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+
     setIsLoading(true);
-    setError(null);
+    setServerError(null);
 
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email }),
+        body: JSON.stringify({ email }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || t('auth.somethingWentWrong'));
+        setServerError(result.error || t('auth.somethingWentWrong'));
         return;
       }
 
       setSubmitted(true);
     } catch {
-      setError(t('auth.somethingWentWrong'));
+      setServerError(t('auth.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
@@ -67,10 +70,10 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      {error && (
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      {serverError && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
+          {serverError}
         </div>
       )}
 
@@ -81,15 +84,19 @@ export function ForgotPasswordForm() {
           type="email"
           autoComplete="email"
           placeholder={t('auth.emailPlaceholder')}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (fieldError) setFieldError(null);
+          }}
           disabled={isLoading}
-          {...register('email')}
         />
-        {errors.email && (
-          <p className="text-xs text-destructive">{errors.email.message}</p>
+        {fieldError && (
+          <p className="text-xs text-destructive">{fieldError}</p>
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading || !isValid}>
+      <Button type="submit" className="w-full" disabled={isLoading || !email.trim()}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {t('auth.sendResetLink')}
       </Button>
