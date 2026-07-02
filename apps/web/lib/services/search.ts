@@ -1,5 +1,5 @@
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm"
-import { db, publishedPages, searchQueries, users } from "@/lib/db"
+import { db, publishedPages, searchQueries } from "@/lib/db"
 
 /** Log a search query */
 export async function logSearchQuery(
@@ -58,16 +58,15 @@ export async function searchPages(query: string) {
       description: publishedPages.description,
       authorDisplayName: publishedPages.authorDisplayName,
       authorAvatarUrl: publishedPages.authorAvatarUrl,
+      authorSlug: publishedPages.authorSlug,
       coverUrl: publishedPages.coverUrl,
       viewCount: publishedPages.viewCount,
       likeCount: publishedPages.likeCount,
       commentCount: publishedPages.commentCount,
       bookmarkCount: publishedPages.bookmarkCount,
       lastPublishedAt: publishedPages.lastPublishedAt,
-      userSlug: users.userSlug,
     })
     .from(publishedPages)
-    .leftJoin(users, eq(users.id, publishedPages.userId))
     .where(and(
       eq(publishedPages.visibility, "public"),
       eq(publishedPages.moderationStatus, "approved"),

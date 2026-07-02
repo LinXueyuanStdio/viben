@@ -33,13 +33,13 @@ async function SearchContent({ searchParams }: SearchPageProps) {
     type: "page" as const,
     title: p.title,
     description: p.description ?? "",
-    author: { name: p.authorDisplayName ?? "?" },
+    author: { name: p.authorDisplayName ?? p.authorSlug },
     stats: {
       views: p.viewCount,
       likes: p.likeCount,
       comments: p.commentCount,
     },
-    url: `/${p.userSlug ? encodeURIComponent(p.userSlug) : ""}/${p.uid}?tab=read`,
+    url: `/${encodeURIComponent(p.authorSlug)}/${p.uid}?tab=read`,
     coverUrl: p.coverUrl ?? undefined,
   }))
 

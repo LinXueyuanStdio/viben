@@ -58,8 +58,8 @@ export default async function TagPage({ params }: { params: Promise<{ tag_name: 
       title: p.title,
       description: p.description ?? undefined,
       author: {
-        name: p.authorDisplayName ?? "?",
-        fallbackText: p.authorDisplayName?.[0] ?? "?",
+        name: p.authorDisplayName ?? p.authorSlug,
+        fallbackText: (p.authorDisplayName ?? p.authorSlug)[0],
         avatarUrl: p.authorAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),

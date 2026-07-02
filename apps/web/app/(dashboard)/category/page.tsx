@@ -67,8 +67,8 @@ export default async function CategoryPage() {
         title: row.title,
         description: row.description ?? undefined,
         author: {
-          name: row.authorDisplayName ?? "?",
-          fallbackText: row.authorDisplayName?.[0] ?? "?",
+          name: row.authorDisplayName ?? row.authorSlug,
+          fallbackText: (row.authorDisplayName ?? row.authorSlug)[0],
           avatarUrl: row.authorAvatarUrl ?? undefined,
         },
         timeAgo: timeAgo(row.lastPublishedAt),
