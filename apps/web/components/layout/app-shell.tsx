@@ -67,6 +67,7 @@ export function AppShell({
         <Topbar
           session={session}
           onToggleSidebar={toggleSidebar}
+          sidebarCollapsed={sidebarCollapsed}
         />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar

@@ -28,6 +28,7 @@ import type { Session } from "@/lib/auth/types"
 interface TopbarProps {
   session: Session | null
   onToggleSidebar: () => void
+  sidebarCollapsed?: boolean
   centerContent?: React.ReactNode
   rightContent?: React.ReactNode
 }
@@ -44,6 +45,7 @@ function getPageMeta(): { hasSidePage?: boolean } | null {
 export function Topbar({
   session,
   onToggleSidebar,
+  sidebarCollapsed = false,
   centerContent,
   rightContent,
 }: TopbarProps) {
@@ -167,13 +169,34 @@ export function Topbar({
         }}
       >
         {/* ===== Left ===== */}
-        <div className="flex items-center gap-2 min-w-0">
-          {/* 侧边栏切换按钮 */}
-          <IconButton size="compact" label={t("community.toggleSidebar")} onClick={onToggleSidebar}>
-            <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 4h12M3 9h12M3 14h12" />
+        <div className="flex items-center gap-0 min-w-0">
+          {/* 侧边栏切换按钮 — 动画汉堡图标 */}
+          <button
+            aria-label={t("community.toggleSidebar")}
+            onClick={onToggleSidebar}
+            className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+          >
+            <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              {/* top line → rotates to top of X */}
+              <path
+                className="transition-all duration-300 ease-out"
+                d={sidebarCollapsed ? "M3 5h12" : "M4 4l10 10"}
+                style={{ transformOrigin: sidebarCollapsed ? "9px 5px" : "9px 9px" }}
+              />
+              {/* middle line → fades out */}
+              <path
+                className="transition-all duration-200 ease-out"
+                d="M3 9h12"
+                style={{ opacity: sidebarCollapsed ? 1 : 0, transform: sidebarCollapsed ? "scaleX(1)" : "scaleX(0)" }}
+              />
+              {/* bottom line → rotates to bottom of X */}
+              <path
+                className="transition-all duration-300 ease-out"
+                d={sidebarCollapsed ? "M3 13h12" : "M4 14l10-10"}
+                style={{ transformOrigin: sidebarCollapsed ? "9px 13px" : "9px 9px" }}
+              />
             </svg>
-          </IconButton>
+          </button>
 
           {/* 面包屑 */}
           <BreadcrumbNav variant={isRead ? "read" : "global"} />
