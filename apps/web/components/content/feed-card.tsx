@@ -253,10 +253,10 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
           </div>
         )}
         <div className={cn(
-          "mt-[5px]",
-          inFeed ? "flex items-center justify-between" : "flex justify-center"
+          "flex items-center mt-[5px]",
+          inFeed && "justify-between"
         )}>
-          <StatsRow stats={actionStats} className={!inFeed ? "justify-center gap-8" : undefined} />
+          <StatsRow stats={actionStats} />
           {inFeed && (
             <button
               className="inline-flex items-center justify-center size-[28px] rounded-[8px] hover:bg-surface-secondary text-muted-foreground transition-colors"
