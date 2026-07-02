@@ -199,11 +199,14 @@ export function TopicManagement() {
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/topics/${deleteId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete topic');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete topic');
+      }
       setDeleteId(null);
       fetchTopics();
-    } catch {
-      setError(t('dashboard.admin.topics.actionError'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboard.admin.topics.actionError'));
     } finally {
       setDeleting(false);
     }

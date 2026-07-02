@@ -196,7 +196,7 @@ export function ApiKeyManagement() {
       )}
       <p className="text-sm text-muted-foreground">显示 {keys.length} / {pagination.total} 个 API 密钥</p>
 
-      <Dialog open={!!revokeId} onOpenChange={() => setRevokeId(null)}>
+      <Dialog open={!!revokeId} onOpenChange={() => { if (!revoking) setRevokeId(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>确认撤销</DialogTitle><DialogDescription>此操作将立即撤销该 API 密钥，用户将无法再使用它进行认证。此操作不可撤销。</DialogDescription></DialogHeader>
           <DialogFooter>

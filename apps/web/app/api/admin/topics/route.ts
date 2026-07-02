@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, momentTopics } from '@/lib/db';
-import { eq, desc, and, or, like, count, type SQL } from 'drizzle-orm';
+import { eq, desc, and, or, ilike, count, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 const listTopicsQuerySchema = z.object({
@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
       const searchPattern = `%${search}%`;
       conditions.push(
         or(
-          like(momentTopics.displayName, searchPattern),
-          like(momentTopics.slug, searchPattern)
+          ilike(momentTopics.displayName, searchPattern),
+          ilike(momentTopics.slug, searchPattern)
         )!
       );
     }
