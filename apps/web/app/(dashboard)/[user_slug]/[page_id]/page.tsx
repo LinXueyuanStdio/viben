@@ -1,12 +1,15 @@
 import { after } from "next/server"
+import { Suspense } from "react"
 import { eq, and, ne, desc } from "drizzle-orm"
 import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
 import { db, publishedPages, users } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
 import { ReadPageClient } from "@/components/pages/read-page-client"
+import { ReadPageShell } from "@/components/pages/read-page-shell"
 import type { Metadata } from "next"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
+import type { Session } from "@/lib/auth/types"
 
 interface PageProps {
   params: Promise<{ user_slug: string; page_id: string }>
@@ -54,6 +57,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   const activeTab = tab ?? "read"
   const session = await getSession()
 
+  // T1: Blocking — page context + permission check
   const ctx = await getPublishedPageContext(user_slug, page_id)
   if (!ctx || !canReadPage(ctx.page, session)) {
     notFound()
@@ -65,21 +69,8 @@ export default async function PagePage({ params, searchParams }: PageProps) {
     redirect(`/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}?tab=read`)
   }
 
-  const summary = await getCommunitySummary("published_page", ctx.page.id, session)
-  const viewerHasReacted = summary?.viewer.has_reacted ?? false
-  const viewerHasBookmarked = summary?.viewer.has_bookmarked ?? false
-
-  // Ensure community entity exists for comments
+  // Ensure community entity exists (lightweight upsert, needed for ReadPageClient prop)
   const communityEntity = await ensureCommunityEntityForPage(ctx)
-
-  // Prefetch initial comments
-  const initialComments = await listCommunityComments({
-    entityType: "published_page",
-    entityId: ctx.page.id,
-    parentCommentId: null,
-    limit: 20,
-    session,
-  })
 
   // Record page view (fire-and-forget via after())
   after(async () => {
@@ -95,9 +86,184 @@ export default async function PagePage({ params, searchParams }: PageProps) {
     }
   })
 
-  // Fetch recommendations (same category or same author pages, with author detail)
+  return (
+    <ReadPageShell
+      userSlug={user_slug}
+      pageId={page_id}
+      hasSidePage={!!ctx.page.sidePageUid}
+      activeTab={activeTab}
+    >
+      {/* Page meta for Topbar (read on client by window.__viben_page_meta via ReadPageShell) */}
+      <script
+        id="viben-page-meta"
+        type="application/json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            hasSidePage: !!ctx.page.sidePageUid,
+            userSlug: user_slug,
+            pageId: page_id,
+            pageTitle: ctx.page.title,
+            authorName: ctx.page.authorDisplayName ?? ctx.author.displayName,
+            authorAvatarUrl: ctx.page.authorAvatarUrl ?? ctx.author.avatarUrl,
+            pageDbId: ctx.page.id,
+            communityEntityId: communityEntity.id,
+            visibility: ctx.page.visibility,
+          }),
+        }}
+      />
+
+      <ReadPageClient
+        userSlug={user_slug}
+        pageId={page_id}
+        pageHtml={ctx.page.html}
+        pageTitle={ctx.page.title}
+        pageDescription={ctx.page.description}
+        pageUid={ctx.page.uid}
+        pageViewCount={ctx.page.viewCount}
+        pageBookmarkCount={ctx.page.bookmarkCount}
+        pageLikeCount={ctx.page.likeCount}
+        pageCommentCount={ctx.page.commentCount}
+        pageShareCount={ctx.page.shareCount}
+        pagePublishedAt={ctx.page.publishedAt}
+        pageTags={(ctx.page.tags as string[]) ?? []}
+        pageCoverUrl={ctx.page.coverUrl ?? undefined}
+        pageChaptersJson={ctx.page.chaptersJson ?? undefined}
+        pageSidePageUid={ctx.page.sidePageUid ?? undefined}
+        pageVisibility={ctx.page.visibility}
+        authorDisplayName={ctx.author.displayName}
+        authorAvatarUrl={ctx.author.avatarUrl}
+        authorFollowersCount={ctx.author.followersCount}
+        isAuthenticated={!!session}
+        sessionUsername={session?.username}
+        sessionAvatarUrl={session?.avatarUrl}
+        sessionUserSlug={session?.userSlug}
+        sessionUserId={session?.userId}
+        communityEntityId={communityEntity.id}
+        pageDbId={ctx.page.id}
+        // T2/T3 data: defaults — real data streams via Suspense and is bridged
+        // to the client via injected <script> tags. Phase 6 will switch
+        // ReadPageClient to read from useScriptData instead of props.
+        viewerHasReacted={false}
+        viewerHasBookmarked={false}
+        initialComments={[]}
+        initialCommentsNextCursor={null}
+        recommendationEntries={[]}
+        activeTab={activeTab}
+        isAuthor={isAuthor}
+      />
+
+      {/* T2: Community summary — streams after T1, doesn't block page render */}
+      <Suspense fallback={null}>
+        <CommunitySummaryInjector
+          pageId={ctx.page.id}
+          pageUid={ctx.page.uid}
+          userSlug={ctx.author.userSlug}
+          session={session}
+        />
+      </Suspense>
+
+      {/* T3: Initial comments — streams after T2 */}
+      <Suspense fallback={null}>
+        <InitialCommentsInjector pageId={ctx.page.id} session={session} />
+      </Suspense>
+
+      {/* T3: Recommendations — streams after T2 */}
+      <Suspense fallback={null}>
+        <RecommendationsInjector
+          pageId={ctx.page.id}
+          categoryId={ctx.page.categoryId}
+          authorUserId={ctx.author.id}
+        />
+      </Suspense>
+    </ReadPageShell>
+  )
+}
+
+// --- Async injector components (server-side, streamed via Suspense) ---
+
+async function CommunitySummaryInjector({
+  pageId,
+  pageUid,
+  userSlug,
+  session,
+}: {
+  pageId: string
+  pageUid: string
+  userSlug: string
+  session: Session | null
+}) {
+  const summary = await getCommunitySummary("published_page", pageId, session)
+
+  // Ensure community entity exists for this page (idempotent upsert)
+  let communityEntityId = pageId
+  try {
+    const entity = await ensureCommunityEntityForPage({
+      page: { id: pageId, uid: pageUid, userId: session?.userId ?? "", visibility: "public", title: "" } as any,
+      author: { userSlug } as any,
+    })
+    communityEntityId = entity.id
+  } catch {
+    // Silently fail — the page body already ensured the entity
+  }
+
+  return (
+    <script
+      id="viben-community-summary"
+      type="application/json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          viewerHasReacted: summary?.viewer.has_reacted ?? false,
+          viewerHasBookmarked: summary?.viewer.has_bookmarked ?? false,
+          communityEntityId,
+          likeCount: summary?.entity.reactions_count ?? 0,
+          bookmarkCount: summary?.entity.bookmarks_count ?? 0,
+        }),
+      }}
+    />
+  )
+}
+
+async function InitialCommentsInjector({
+  pageId,
+  session,
+}: {
+  pageId: string
+  session: Session | null
+}) {
+  const result = await listCommunityComments({
+    entityType: "published_page",
+    entityId: pageId,
+    parentCommentId: null,
+    limit: 20,
+    session,
+  })
+
+  return (
+    <script
+      id="viben-initial-comments"
+      type="application/json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          comments: result.comments,
+          nextCursor: result.next_cursor,
+        }),
+      }}
+    />
+  )
+}
+
+async function RecommendationsInjector({
+  pageId,
+  categoryId,
+  authorUserId,
+}: {
+  pageId: string
+  categoryId: string | null
+  authorUserId: string
+}) {
   type RecEntry = { data: MiniPageCardData; href: string }
   let recommendationEntries: RecEntry[] = []
+
   try {
     const relatedRows = await db
       .select({
@@ -118,14 +284,15 @@ export default async function PagePage({ params, searchParams }: PageProps) {
         and(
           eq(publishedPages.visibility, "public"),
           eq(publishedPages.moderationStatus, "approved"),
-          ne(publishedPages.id, ctx.page.id),
-          ctx.page.categoryId
-            ? eq(publishedPages.categoryId, ctx.page.categoryId)
-            : eq(publishedPages.userId, ctx.author.id)
+          ne(publishedPages.id, pageId),
+          categoryId
+            ? eq(publishedPages.categoryId, categoryId)
+            : eq(publishedPages.userId, authorUserId)
         )
       )
       .orderBy(desc(publishedPages.viewCount))
       .limit(3)
+
     recommendationEntries = relatedRows.map((r) => ({
       data: {
         cover: r.coverUrl ? `url(${r.coverUrl})` : gradientCover(r.title),
@@ -144,41 +311,12 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   }
 
   return (
-    <ReadPageClient
-      userSlug={user_slug}
-      pageId={page_id}
-      pageHtml={ctx.page.html}
-      pageTitle={ctx.page.title}
-      pageDescription={ctx.page.description}
-      pageUid={ctx.page.uid}
-      pageViewCount={ctx.page.viewCount}
-      pageBookmarkCount={ctx.page.bookmarkCount}
-      pageLikeCount={ctx.page.likeCount}
-      pageCommentCount={ctx.page.commentCount}
-      pageShareCount={ctx.page.shareCount}
-      pagePublishedAt={ctx.page.publishedAt}
-      pageTags={(ctx.page.tags as string[]) ?? []}
-      pageCoverUrl={ctx.page.coverUrl ?? undefined}
-      pageChaptersJson={ctx.page.chaptersJson ?? undefined}
-      pageSidePageUid={ctx.page.sidePageUid ?? undefined}
-      pageVisibility={ctx.page.visibility}
-      authorDisplayName={ctx.author.displayName}
-      authorAvatarUrl={ctx.author.avatarUrl}
-      authorFollowersCount={ctx.author.followersCount}
-      isAuthenticated={!!session}
-      sessionUsername={session?.username}
-      sessionAvatarUrl={session?.avatarUrl}
-      sessionUserSlug={session?.userSlug}
-      sessionUserId={session?.userId}
-      viewerHasReacted={viewerHasReacted}
-      viewerHasBookmarked={viewerHasBookmarked}
-      communityEntityId={communityEntity.id}
-      pageDbId={ctx.page.id}
-      initialComments={initialComments.comments}
-      initialCommentsNextCursor={initialComments.next_cursor}
-      recommendationEntries={recommendationEntries}
-      activeTab={activeTab}
-      isAuthor={isAuthor}
+    <script
+      id="viben-recommendations"
+      type="application/json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({ recommendationEntries }),
+      }}
     />
   )
 }
