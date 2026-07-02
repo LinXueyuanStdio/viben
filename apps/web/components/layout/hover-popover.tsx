@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { IconButton } from "@/components/ui/icon-button"
+import { cn } from "@/lib/utils"
 import { timeAgo } from "@/lib/services/moment-mapper"
 import type { LucideIcon } from "lucide-react"
 
@@ -96,7 +97,7 @@ interface HoverPopoverProps {
   title: string
   viewAllHref: string
   viewAllLabel?: string
-  badge?: React.ReactNode
+  count?: number
   onFirstOpen?: () => void
   children: React.ReactNode
 }
@@ -107,10 +108,11 @@ export function HoverPopover({
   title,
   viewAllHref,
   viewAllLabel = "查看全部",
-  badge,
+  count,
   onFirstOpen,
   children,
 }: HoverPopoverProps) {
+  const router = useRouter()
   const { open, setOpen, onEnter, onLeave, onContentEnter } = useHoverTimer()
   const hasOpened = React.useRef(false)
 
@@ -121,19 +123,31 @@ export function HoverPopover({
     }
   }, [open, onFirstOpen])
 
+  const handleClick = React.useCallback(() => {
+    router.push(viewAllHref)
+  }, [router, viewAllHref])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span
+        <button
+          onClick={handleClick}
           onMouseEnter={onEnter}
           onMouseLeave={onLeave}
-          className="relative inline-flex"
+          aria-label={label}
+          className={cn(
+            "relative inline-flex items-center justify-center size-[38px] rounded-[9px]",
+            "text-muted-foreground hover:bg-surface-secondary hover:text-foreground",
+            "transition-colors duration-150 cursor-pointer"
+          )}
         >
-          <IconButton size="default" label={label}>
-            <Icon className="h-[18px] w-[18px]" />
-          </IconButton>
-          {badge}
-        </span>
+          <Icon className="size-[18px]" />
+          {count != null && count > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-[10px] font-bold text-white leading-none">
+              {count > 99 ? "99+" : count}
+            </span>
+          )}
+        </button>
       </PopoverTrigger>
       <PopoverContent
         className="w-[min(360px,calc(100vw-28px))] p-2.5"

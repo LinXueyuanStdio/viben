@@ -37,7 +37,7 @@ export function NotificationPopover() {
         .then((r) => r.json())
         .then((d) => setUnreadCount(d.unread_count ?? 0))
         .catch(() => {})
-    }, 2000)
+    }, 3000)
     return () => clearTimeout(timer)
   }, [])
 
@@ -70,19 +70,13 @@ export function NotificationPopover() {
     return "/notifications"
   }
 
-  const badge = unreadCount > 0 ? (
-    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground leading-none">
-      {unreadCount > 99 ? "99+" : unreadCount}
-    </span>
-  ) : null
-
   return (
     <HoverPopover
       icon={Bell}
       label={t("community.notifications")}
       title={`${t("community.notifications")}${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ""}`}
       viewAllHref="/notifications"
-      badge={badge}
+      count={unreadCount}
       onFirstOpen={loadFirst}
     >
       {!loaded ? (
