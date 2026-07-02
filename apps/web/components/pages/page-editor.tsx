@@ -196,6 +196,8 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
             const formData = new FormData()
             formData.append("file", new File([blob], "cover.png", { type: "image/png" }))
             formData.append("kind", "page_cover")
+            formData.append("user_slug", userSlug)
+            formData.append("page_id", finalUid)
             const uploadRes = await fetch("/api/media/upload", { method: "POST", body: formData })
             if (uploadRes.ok) {
               const data = await uploadRes.json()

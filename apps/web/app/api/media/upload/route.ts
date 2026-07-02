@@ -40,7 +40,14 @@ export async function POST(request: NextRequest) {
     const ext = file.name.split('.').pop()?.toLowerCase() || file.type.split('/')[1] || 'png';
     const kind = (formData.get('kind') as string) || 'page_cover';
     const folder = kind === 'avatar' ? 'avatars' : 'media';
-    const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+
+    // 页面封面用 user_slug/page_id 做 key，保证原始图和缩略图文件名一致
+    const userSlug = (formData.get('user_slug') as string) || null
+    const pageId = (formData.get('page_id') as string) || null
+    const baseName = userSlug && pageId
+      ? `${folder}/${userSlug}/${pageId}_cover`
+      : `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
+    const key = `${baseName}.${ext}`
 
     // 获取原图尺寸
     const metadata = await sharp(buffer).metadata();
@@ -57,7 +64,7 @@ export async function POST(request: NextRequest) {
     // 生成缩略图（400px 宽，保持比例，不放大）
     let thumbnailUrl: string | null = null;
     try {
-      const thumbKey = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}_thumb.${ext}`;
+      const thumbKey = `${baseName}_thumb.${ext}`
       const thumbBuffer = await sharp(buffer)
         .resize(400, undefined, { withoutEnlargement: true })
         .toFormat(file.type === 'image/png' ? 'png' : 'jpeg', file.type === 'image/png' ? {} : { quality: 85 })
