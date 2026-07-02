@@ -510,7 +510,16 @@
         "repostFailure": "Failure reason",
         "repostUpstream": "Upstream",
         "repostDownstream": "Downstream",
-        "attachmentTypes": { "published_page": "Page", "collection": "Collection", "mcp": "MCP", "skill": "Skill", "media": "Media" }
+        "attachmentTypes": { "published_page": "Page", "collection": "Collection", "mcp": "MCP", "skill": "Skill", "media": "Media" },
+        "searchPlaceholder": "Search moment content or UID...",
+        "search": "Search",
+        "forceDelete": "Permanently Delete",
+        "forceDeleteConfirm": "Confirm Permanent Deletion",
+        "forceDeleteConfirmDesc": "This action will permanently delete this moment and all associated data (attachments, repost records, etc.). It cannot be undone. Are you sure you want to continue?",
+        "pin": "Pin",
+        "unpin": "Unpin",
+        "pinned": "Pinned",
+        "showDeleted": "Show Deleted"
       },
       "feedbacks": {
         "title": "Feedback Management",

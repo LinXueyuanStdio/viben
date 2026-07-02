@@ -509,7 +509,16 @@
         "repostFailure": "转发失败原因",
         "repostUpstream": "上游",
         "repostDownstream": "下游",
-        "attachmentTypes": { "published_page": "页面", "collection": "合集", "mcp": "MCP", "skill": "技能", "media": "媒体" }
+        "attachmentTypes": { "published_page": "页面", "collection": "合集", "mcp": "MCP", "skill": "技能", "media": "媒体" },
+        "searchPlaceholder": "搜索动态内容或UID...",
+        "search": "搜索",
+        "forceDelete": "永久删除",
+        "forceDeleteConfirm": "确认永久删除",
+        "forceDeleteConfirmDesc": "此操作将永久删除该动态及其所有关联数据（附件、转发记录等），不可恢复。确定要继续吗？",
+        "pin": "置顶",
+        "unpin": "取消置顶",
+        "pinned": "已置顶",
+        "showDeleted": "显示已删除"
       },
       "feedbacks": {
         "title": "反馈管理",
