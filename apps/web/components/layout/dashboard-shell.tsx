@@ -34,6 +34,6 @@ const AppShellWrapper = dynamic(
   }
 )
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
-  return <AppShellWrapper>{children}</AppShellWrapper>
+export function DashboardShell({ children, isLoggedIn }: { children: React.ReactNode; isLoggedIn?: boolean }) {
+  return <AppShellWrapper isLoggedIn={isLoggedIn}>{children}</AppShellWrapper>
 }

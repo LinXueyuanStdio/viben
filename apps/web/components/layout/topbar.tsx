@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Bell, Clock, Maximize2, FileText, Columns2, PanelRight, Settings } from "lucide-react"
+import { Maximize2, FileText, Columns2, PanelRight, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { getTopbarMode } from "./topbar-mode"
@@ -12,15 +13,15 @@ import { useDrawer } from "./drawer-context"
 import { useTopbarSlots } from "./topbar-slots"
 import { BreadcrumbNav } from "./breadcrumb"
 import { GlobalSearch } from "./global-search"
-import { NavPopover } from "./nav-popover"
+import { NotificationPopover } from "./notification-popover"
+import { MomentPopover } from "./moment-popover"
+import { HistoryPopover } from "./history-popover"
 import { IconButton } from "@/components/ui/icon-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
 import { CreateDropdown } from "./create-dropdown"
 import { ReadMoreMenu } from "@/components/pages/read-more-menu"
 import { HeaderAuthButtons } from "./header-auth-buttons"
-import { ThemeToggle } from "./theme-toggle"
-import { LanguageSwitcher } from "./language-switcher"
 import type { Session } from "@/lib/auth/types"
 
 interface TopbarProps {
@@ -28,11 +29,6 @@ interface TopbarProps {
   onToggleSidebar: () => void
   centerContent?: React.ReactNode
   rightContent?: React.ReactNode
-  // NavPopover + GlobalSearch 数据
-  notificationItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
-  historyItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
-  hotSearches?: Array<{ query: string; count: number }>
-  recentSearches?: string[]
 }
 
 // hasSidePage: 从服务端注入的 <script id="viben-page-meta"> 同步读取
@@ -49,10 +45,6 @@ export function Topbar({
   onToggleSidebar,
   centerContent,
   rightContent,
-  notificationItems = [],
-  historyItems = [],
-  hotSearches = [],
-  recentSearches = [],
 }: TopbarProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -94,32 +86,25 @@ export function Topbar({
     }
   }, [router, pathname])
 
-  // 客户端按需加载搜索数据（避免阻塞服务端布局渲染）
+  // 客户端按需加载搜索数据（搜索框聚焦时才请求，避免阻塞首屏渲染）
   const [lazyHotSearches, setLazyHotSearches] = React.useState<Array<{ query: string; count: number }>>([])
   const [lazyRecentSearches, setLazyRecentSearches] = React.useState<string[]>([])
+  const searchDataLoadedRef = React.useRef(false)
 
-  React.useEffect(() => {
-    // 如果布局已提供数据则跳过
-    if (hotSearches.length > 0 && recentSearches.length > 0) return
-
+  const loadSearchData = React.useCallback(() => {
+    if (searchDataLoadedRef.current) return
+    searchDataLoadedRef.current = true
     const abort = new AbortController()
     Promise.all([
-      hotSearches.length === 0
-        ? fetch("/api/search/hot?limit=8", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => [])
-        : Promise.resolve(hotSearches),
-      recentSearches.length === 0 && session
+      fetch("/api/search/hot?limit=8", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => []),
+      session
         ? fetch("/api/search/recent?limit=5", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => [])
-        : Promise.resolve(recentSearches),
+        : Promise.resolve([]),
     ]).then(([hot, recent]) => {
       setLazyHotSearches(hot)
       setLazyRecentSearches(recent)
     }).catch(() => {})
-
-    return () => abort.abort()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const effectiveHotSearches = hotSearches.length > 0 ? hotSearches : lazyHotSearches
-  const effectiveRecentSearches = recentSearches.length > 0 ? recentSearches : lazyRecentSearches
+  }, [session])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
   // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
@@ -218,8 +203,9 @@ export function Topbar({
             )
           ) : (
             <GlobalSearch
-              recentSearches={effectiveRecentSearches}
-              hotSearches={effectiveHotSearches}
+              recentSearches={lazyRecentSearches}
+              hotSearches={lazyHotSearches}
+              onFocus={loadSearchData}
             />
           )}
         </div>
@@ -242,26 +228,12 @@ export function Topbar({
           ) : (
             <>
               {/* 默认模式操作 */}
-              {session && <CreateDropdown />}
-              <LanguageSwitcher />
-              <ThemeToggle />
               {session ? (
                 <>
-                  <NavPopover
-                    icon={Bell}
-                    label={t("community.notifications")}
-                    badge={2}
-                    title={t("community.feed")}
-                    items={notificationItems}
-                    moreLabel={t("community.loadMoreMoments")}
-                  />
-                  <NavPopover
-                    icon={Clock}
-                    label={t("community.history")}
-                    title={t("community.history")}
-                    items={historyItems}
-                    moreLabel={t("community.viewAllHistory")}
-                  />
+                  <CreateDropdown />
+                  <MomentPopover />
+                  <NotificationPopover />
+                  <HistoryPopover />
                   <UserMenu session={session} />
                 </>
               ) : (

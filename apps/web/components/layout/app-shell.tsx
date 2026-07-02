@@ -32,21 +32,12 @@ interface AppShellProps {
   children: React.ReactNode
   session: Session | null
   adminStats?: { pendingPackagesCount: number }
-  // NavPopover + GlobalSearch 数据
-  notificationItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
-  historyItems?: Array<{ title: string; subtitle: string; href: string; thumb: string }>
-  hotSearches?: Array<{ query: string; count: number }>
-  recentSearches?: string[]
 }
 
 export function AppShell({
   children,
   session,
   adminStats,
-  notificationItems = [],
-  historyItems = [],
-  hotSearches = [],
-  recentSearches = [],
 }: AppShellProps) {
   const pathname = usePathname()
   const isRead = isPublishedPageRoute(pathname).isPage
@@ -76,10 +67,6 @@ export function AppShell({
         <Topbar
           session={session}
           onToggleSidebar={toggleSidebar}
-          notificationItems={notificationItems}
-          historyItems={historyItems}
-          hotSearches={hotSearches}
-          recentSearches={recentSearches}
         />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar

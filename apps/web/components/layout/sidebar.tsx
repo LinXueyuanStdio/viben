@@ -58,12 +58,6 @@ const browseNavigation = [
   { nameKey: 'nav.author', href: '/author', icon: Users },
 ];
 
-// "记录" section - personal records, visible only when logged in
-const recordsNavigation = [
-  { nameKey: 'nav.notifications', href: '/notifications', icon: Bell },
-  { nameKey: 'nav.history', href: '/history', icon: Clock },
-];
-
 // "创作者" section - publishing and analytics
 const creatorNavigation = [
   { nameKey: 'nav.publish', href: '/publish', icon: Upload },
@@ -226,36 +220,6 @@ export function Sidebar({
             </Link>
           );
         })}
-
-        {/* Records Section — Only visible to logged-in users */}
-        {isLoggedIn && (
-          <>
-            <div className="my-4 border-t" />
-            <div className="px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('nav.records', '记录')}
-              </span>
-            </div>
-            {recordsNavigation.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {t(item.nameKey)}
-                </Link>
-              );
-            })}
-          </>
-        )}
 
         {/* My Section - Only visible to logged-in users */}
         {isLoggedIn && (

@@ -3,8 +3,9 @@
 import { useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileText, LogOut, Settings, Star, ThumbsUp } from "lucide-react"
+import { FileText, Star, ThumbsUp, Globe, Monitor, Sun, Moon } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,8 +13,16 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
+import { LANGUAGES, getLanguageByCode, changeLanguage, getCurrentLanguage } from "@/lib/i18n"
 import type { Session } from "@/lib/auth/types"
 
 interface UserMenuProps {
@@ -24,11 +33,21 @@ function Spacer() {
   return <span className="mr-2 h-4 w-4 shrink-0" />
 }
 
+const THEME_OPTIONS = [
+  { value: "system", label: "跟随系统", icon: Monitor },
+  { value: "light", label: "亮色", icon: Sun },
+  { value: "dark", label: "暗色", icon: Moon },
+] as const
+
 export function UserMenu({ session }: UserMenuProps) {
   const { t } = useTranslation()
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const displayLabel = session.displayName || session.userSlug
   const initials = displayLabel.slice(0, 2).toUpperCase()
+
+  const currentLang = getCurrentLanguage()
+  const currentLanguage = getLanguageByCode(currentLang)
 
   const handleLogout = useCallback(async () => {
     try {
@@ -39,6 +58,10 @@ export function UserMenu({ session }: UserMenuProps) {
     router.push("/")
     router.refresh()
   }, [router])
+
+  const handleLanguageChange = useCallback((langCode: string) => {
+    changeLanguage(langCode)
+  }, [])
 
   return (
     <DropdownMenu>
@@ -97,7 +120,56 @@ export function UserMenu({ session }: UserMenuProps) {
 
         <DropdownMenuSeparator />
 
-        {/* Section 2: Settings */}
+        {/* Theme segmented control */}
+        <div className="px-2 py-1">
+          <div className="flex items-center rounded-lg bg-surface-secondary p-0.5">
+            {THEME_OPTIONS.map((opt) => {
+              const isActive = theme === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setTheme(opt.value)}
+                  className={cn(
+                    "flex-1 inline-flex flex-col items-center justify-center gap-0.5 py-2 rounded-[7px] text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <opt.icon className="h-3.5 w-3.5" />
+                  <span>{opt.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Language submenu */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="flex items-center">
+            <Globe className="mr-2 h-4 w-4 shrink-0" />
+            <span>语言</span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {currentLanguage?.nativeName ?? currentLang}
+            </span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-48">
+            <ScrollArea className="max-h-[320px]">
+              <DropdownMenuRadioGroup
+                value={currentLang}
+                onValueChange={handleLanguageChange}
+              >
+                {LANGUAGES.map((lang) => (
+                  <DropdownMenuRadioItem key={lang.code} value={lang.code}>
+                    {lang.nativeName}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </ScrollArea>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {/* Settings */}
         <DropdownMenuItem asChild>
           <Link href="/settings">
             <Spacer />
@@ -107,7 +179,7 @@ export function UserMenu({ session }: UserMenuProps) {
 
         <DropdownMenuSeparator />
 
-        {/* Section 3: Logout */}
+        {/* Logout */}
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault()

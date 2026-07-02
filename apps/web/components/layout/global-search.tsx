@@ -12,12 +12,14 @@ interface GlobalSearchProps {
   recentSearches: string[]
   onRemoveRecent?: (query: string) => void
   hotSearches: { query: string; count: number }[]
+  onFocus?: () => void
 }
 
 export function GlobalSearch({
   recentSearches = [],
   onRemoveRecent,
   hotSearches = [],
+  onFocus,
 }: GlobalSearchProps) {
   const { t } = useTranslation()
   const router = useRouter()
@@ -52,7 +54,7 @@ export function GlobalSearch({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => setOpen(true)}
+            onFocus={() => { setOpen(true); onFocus?.() }}
             placeholder={t("community.searchPlaceholder")}
             className="flex-1 border-0 outline-none bg-transparent text-foreground font-inherit text-[15px] placeholder:text-muted-foreground"
           />

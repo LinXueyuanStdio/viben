@@ -1,9 +1,11 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell"
+import { getSession } from "@/lib/auth/cookies"
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <DashboardShell>{children}</DashboardShell>
+  const session = await getSession()
+  return <DashboardShell isLoggedIn={!!session}>{children}</DashboardShell>
 }
