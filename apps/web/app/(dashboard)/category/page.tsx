@@ -53,7 +53,7 @@ export default async function CategoryPage() {
     db.select().from(pageCategories).where(eq(pageCategories.isActive, true)).orderBy(asc(pageCategories.sortOrder)),
     db.select({
       pageId: publishedPages.uid,
-      userSlug: users.userSlug,
+      authorSlug: publishedPages.authorSlug,
       title: publishedPages.title,
       description: publishedPages.description,
       authorDisplayName: publishedPages.authorDisplayName,
@@ -66,7 +66,6 @@ export default async function CategoryPage() {
       bookmarkCount: publishedPages.bookmarkCount,
       categoryId: publishedPages.categoryId,
     }).from(publishedPages)
-      .innerJoin(users, eq(users.id, publishedPages.userId))
       .where(and(
         eq(publishedPages.visibility, "public"),
         eq(publishedPages.moderationStatus, "approved")
@@ -100,7 +99,7 @@ export default async function CategoryPage() {
           bookmarks: row.bookmarkCount,
         },
       },
-      href: `/${encodeURIComponent(row.userSlug)}/${encodeURIComponent(row.pageId)}?tab=read`,
+      href: `/${encodeURIComponent(row.authorSlug)}/${encodeURIComponent(row.pageId)}?tab=read`,
     })
   }
 
