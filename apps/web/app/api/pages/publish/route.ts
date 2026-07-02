@@ -99,9 +99,10 @@ export async function POST(request: NextRequest) {
         avatarUrl: true,
       },
     });
-    const authorName = author?.displayName ?? session.username;
+    const authorDisplayName = author?.displayName ?? session.username;
     const authorAvatarUrl = author?.avatarUrl ?? session.avatarUrl ?? null;
 
+    let coverUrl: string | null = null;
     if (normalizedCoverAssetId) {
       const coverAsset = await db.query.mediaAssets.findFirst({
         where: and(
@@ -116,6 +117,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      coverUrl = coverAsset.url;
     }
 
     const latestVersion = await db.query.publishedPageVersions.findFirst({
@@ -202,9 +205,6 @@ export async function POST(request: NextRequest) {
       .values({
         uid,
         userId: session.userId,
-        authorSlug: session.userSlug,
-        authorName,
-        authorAvatarUrl,
         title,
         icon: icon ?? null,
         description: description ?? null,
@@ -212,9 +212,13 @@ export async function POST(request: NextRequest) {
         currentVersion: nextVersion,
         categoryId: typeof categoryId === 'string' ? categoryId : null,
         coverAssetId: normalizedCoverAssetId,
+        coverUrl,
         tags: normalizedTags,
         visibility: normalizedVisibility,
         moderationStatus: 'approved',
+        authorSlug: session.userSlug,
+        authorDisplayName,
+        authorAvatarUrl,
         publishedAt: sql`now()`,
         lastPublishedAt: sql`now()`,
         versionCount: nextVersion,
@@ -230,11 +234,12 @@ export async function POST(request: NextRequest) {
           currentVersion: nextVersion,
           categoryId: typeof categoryId === 'string' ? categoryId : null,
           coverAssetId: normalizedCoverAssetId,
+          coverUrl,
           tags: normalizedTags,
           visibility: normalizedVisibility,
           moderationStatus: 'approved',
           authorSlug: session.userSlug,
-          authorName,
+          authorDisplayName,
           authorAvatarUrl,
           lastPublishedAt: sql`now()`,
           versionCount: nextVersion,
@@ -290,6 +295,7 @@ export async function POST(request: NextRequest) {
       html,
       categoryId: typeof categoryId === 'string' ? categoryId : null,
       coverAssetId: normalizedCoverAssetId,
+      coverUrl,
       tags: normalizedTags,
       visibility: normalizedVisibility,
       moderationStatus: 'approved',

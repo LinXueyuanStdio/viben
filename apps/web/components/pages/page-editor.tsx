@@ -63,9 +63,9 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const uploadBackoffRef = useRef({ attempts: 0, cooldownUntil: 0 })
   const [collection, setCollection] = useState<CollectionSelectorValue | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const previewIframeRef = useRef<HTMLIFrameElement>(null)
 
   // Auto-slugify from title when not manually edited
   const autoUid = useMemo(() => slugify(title), [title])
@@ -97,6 +97,16 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
   }, [displayedUid])
 
   const handleCoverUpload = useCallback(async (file: File) => {
+    const now = Date.now()
+    const backoff = uploadBackoffRef.current
+
+    // Exponential backoff: block if in cooldown
+    if (now < backoff.cooldownUntil) {
+      const wait = Math.ceil((backoff.cooldownUntil - now) / 1000)
+      toast.error(`请等待 ${wait} 秒后再上传`)
+      return
+    }
+
     const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
     const MAX_SIZE = 10 * 1024 * 1024
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -116,8 +126,16 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
       const data = await res.json()
       setCoverUrl(data.url)
       setCoverAssetId(data.asset_id)
+      // Exponential backoff on every upload to prevent rapid re-uploads
+      const attempts = backoff.attempts + 1
+      const delay = Math.pow(2, attempts) * 1000
+      uploadBackoffRef.current = { attempts, cooldownUntil: Date.now() + delay }
     } catch {
-      toast.error("Cover upload failed")
+      // Exponential backoff on failure too
+      const attempts = backoff.attempts + 1
+      const delay = Math.pow(2, attempts) * 1000
+      uploadBackoffRef.current = { attempts, cooldownUntil: Date.now() + delay }
+      toast.error(`上传失败，请 ${Math.ceil(delay / 1000)} 秒后重试`)
     } finally {
       setIsUploading(false)
     }
@@ -156,10 +174,11 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
     if (!htmlContent.trim()) { toast.error(t("pageEditor.contentRequired")); return }
     setIsSubmitting(true)
     try {
+      // 自动封面：未上传封面时从 HTML 内容截图
       let finalCoverAssetId = coverAssetId
-      if (!finalCoverAssetId && previewIframeRef.current?.contentDocument?.body) {
+      if (!finalCoverAssetId && htmlContent.trim()) {
         try {
-          const blob = await captureHtmlCover(previewIframeRef.current.contentDocument.body)
+          const blob = await captureHtmlCover(htmlContent)
           if (blob) {
             const formData = new FormData()
             formData.append("file", new File([blob], "cover.png", { type: "image/png" }))
@@ -381,10 +400,9 @@ export function PageEditor({ userSlug, initialData }: PageEditorProps) {
             <Label>{t("pageEditor.previewLabel")}</Label>
             <div className="overflow-hidden rounded-md border border-border bg-background">
               <iframe
-                ref={previewIframeRef}
                 title="Preview"
                 srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,sans-serif;line-height:1.6;padding:1rem;color:#333;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}pre{overflow-x:auto;background:#f5f5f5;padding:1rem;border-radius:4px}code{font-size:0.9em}</style></head><body>${previewHtml}</body></html>`}
-                sandbox="allow-same-origin"
+                sandbox=""
                 className="h-[400px] w-full border-0"
               />
             </div>
