@@ -230,8 +230,12 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
               <span className="inline-flex items-center gap-1.5 min-w-0 text-[13px] text-muted-foreground">
                 <CircleUser className="size-[18px] shrink-0" />
                 <span className="font-bold truncate">{author.name}</span>
-                <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
-                <span className="shrink-0">{timeAgo}</span>
+                {timeAgo ? (
+                  <>
+                    <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
+                    <span className="shrink-0">{timeAgo}</span>
+                  </>
+                ) : null}
               </span>
               <MoreMenu pageId={pageId} />
             </div>

@@ -76,6 +76,7 @@ export default async function HomePage() {
         authorSlug: publishedPages.authorSlug,
         lastPublishedAt: publishedPages.lastPublishedAt,
         viewCount: publishedPages.viewCount,
+        likeCount: publishedPages.likeCount,
         commentCount: publishedPages.commentCount,
       }).from(publishedPages)
         .where(and(
@@ -108,8 +109,8 @@ export default async function HomePage() {
         fallbackText: (item.author_display_name ?? item.user_slug)?.[0] ?? "?",
         avatarUrl: item.author_avatar_url ?? undefined,
       },
-      timeAgo: timeAgo(null),
-      stats: { views: item.view_count ?? 0, comments: item.comment_count ?? 0 },
+      timeAgo: timeAgo(item.last_published_at ?? item.published_at),
+      stats: { views: item.view_count ?? 0, likes: item.like_count ?? 0, comments: item.comment_count ?? 0 },
     }))
 
     rankingItemsReadUrls = rankingItems.slice(0, 3).map((item) => ({
@@ -126,7 +127,7 @@ export default async function HomePage() {
         avatarUrl: p.authorAvatarUrl ?? undefined,
       },
       timeAgo: timeAgo(p.lastPublishedAt),
-      stats: { views: p.viewCount, comments: p.commentCount },
+      stats: { views: p.viewCount, likes: p.likeCount, comments: p.commentCount },
     }))
 
     recommendedEntries = latestPages.map((p, i) => ({
