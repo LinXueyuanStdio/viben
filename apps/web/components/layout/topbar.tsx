@@ -58,7 +58,7 @@ export function Topbar({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const mode = getTopbarMode(pathname, searchParams)
+  const mode = getTopbarMode(pathname)
   const { toggle: toggleDrawer } = useDrawer()
 
   // URL 同步判定阅读模式（0ms，不等任何异步数据）
@@ -77,7 +77,7 @@ export function Topbar({
   const [immersive, setImmersive] = React.useState(false)
 
   // 阅读模式：仅通过 URL 判定
-  const isRead = isReadPageFromUrl || mode === "read"
+  const isRead = isReadPageFromUrl
 
   // Derive active tab from URL param (read→"page", settings→"settings")
   const tabParam = searchParams.get("tab")

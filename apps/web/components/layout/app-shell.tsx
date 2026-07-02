@@ -2,11 +2,10 @@
 
 import * as React from "react"
 import { createContext, useContext } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider } from "./drawer-context"
-import { getTopbarMode } from "./topbar-mode"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
@@ -50,9 +49,7 @@ export function AppShell({
   recentSearches = [],
 }: AppShellProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const isRead = getTopbarMode(pathname, searchParams) === "read"
-    || isPublishedPageRoute(pathname).isPage
+  const isRead = isPublishedPageRoute(pathname).isPage
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window === "undefined") return false
