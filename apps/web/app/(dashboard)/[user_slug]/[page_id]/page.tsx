@@ -46,11 +46,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-function gradientCover(title: string): string {
-  const hue = title.charCodeAt(0) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
-}
-
 export default async function PagePage({ params, searchParams }: PageProps) {
   const { user_slug, page_id } = await params
   const { tab } = await searchParams
@@ -306,7 +301,7 @@ async function RecommendationsInjector({
 
     recommendationEntries = relatedRows.map((r) => ({
       data: {
-        cover: r.coverUrl ? `url(${r.coverUrl})` : gradientCover(r.title),
+        coverUrl: r.coverUrl,
         title: r.title,
         description: r.description ?? "",
         authorDisplayName: r.authorDisplayName ?? "?",

@@ -11,11 +11,6 @@ const RANK_TABS = [
   { key: "月度精选", timeWindow: "30d", label: "月度精选" },
 ]
 
-function gradientCover(title: string): string {
-  const hue = title.charCodeAt(0) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
-}
-
 export default async function LeaderboardPage() {
   // Fetch all 3 rankings in parallel
   const rankings = await Promise.all(
@@ -29,7 +24,7 @@ export default async function LeaderboardPage() {
     acc[tab.key] = rawItems.map((item) => ({
       card: {
         rank: item.rank,
-        cover: item.cover_url ? `url(${item.cover_url})` : gradientCover(item.title),
+        coverUrl: item.cover_url,
         title: item.title,
         description: item.description ?? "",
         delta: item.delta ?? "—",

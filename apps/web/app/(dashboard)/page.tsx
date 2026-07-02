@@ -8,6 +8,7 @@ import { HomeFeedSection } from "@/components/home/home-feed-section"
 import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
 import { listRanking } from "@/lib/services/community"
+import { timeAgo } from "@/lib/services/moment-mapper"
 import { db, publishedPages } from "@/lib/db"
 import { desc, eq, and } from "drizzle-orm"
 import type { HeroSlideData } from "@/components/content/hero-carousel"
@@ -27,27 +28,6 @@ export const metadata: Metadata = {
     title: "Viben - 创作 · 分享 · 连接",
     description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
   },
-}
-
-function gradientCover(title: string): string {
-  const hue = title.charCodeAt(0) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,35%), hsl(${(hue + 30) % 360},50%,45%))`
-}
-
-function timeAgo(date: Date | string | null | undefined): string {
-  if (!date) return ""
-  const d = new Date(date)
-  const diff = Date.now() - d.getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "刚刚"
-  if (mins < 60) return `${mins}分钟前`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}小时前`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}天前`
-  if (days < 30) return `${Math.floor(days / 7)}周前`
-  if (days < 365) return `${Math.floor(days / 30)}个月前`
-  return `${Math.floor(days / 365)}年前`
 }
 
 const HERO_COLORS = [
@@ -92,7 +72,7 @@ export default async function HomePage() {
     heroSlides = rankingItems.slice(0, 4).map((item, i) => ({
       title: item.title,
       subtitle: item.description ?? "",
-      image: item.cover_url ?? "",
+      coverUrl: item.cover_url,
       ...HERO_COLORS[i % HERO_COLORS.length],
       stats: {
         views: item.view_count ?? 0,
@@ -102,7 +82,7 @@ export default async function HomePage() {
     }))
 
     featuredPages = rankingItems.slice(0, 3).map((item) => ({
-      cover: item.cover_url ? `url(${item.cover_url})` : gradientCover(item.title),
+      coverUrl: item.cover_url,
       title: item.title,
       author: {
         name: item.author_display_name ?? item.user_slug ?? "?",
@@ -119,7 +99,7 @@ export default async function HomePage() {
     }))
 
     const recommendedPages: PageCardData[] = latestPages.map((p) => ({
-      cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
+      coverUrl: p.coverUrl,
       title: p.title,
       author: {
         name: p.authorDisplayName ?? "?",

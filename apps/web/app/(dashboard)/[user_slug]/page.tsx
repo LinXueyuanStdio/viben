@@ -16,7 +16,7 @@ import type { PageCardData } from "@/components/content/page-card"
 import type { FeedCardData } from "@/components/content/feed-card"
 import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { Metadata } from "next"
-import { mapMomentRowToFeedCard, gradientCover, timeAgo, type MomentAttachmentData } from "@/lib/services/moment-mapper"
+import { mapMomentRowToFeedCard, timeAgo, type MomentAttachmentData } from "@/lib/services/moment-mapper"
 
 /** Minimal shared shape between full publishedPages row and joined query results */
 interface PageRow {
@@ -42,7 +42,7 @@ function mapPageToCard(
   const authorDisplayName = p.authorDisplayName ?? fallbackDisplayName
   return {
     card: {
-      cover: p.coverUrl ? `url(${p.coverUrl})` : gradientCover(p.title),
+      coverUrl: p.coverUrl,
       title: p.title,
       description: p.description ?? undefined,
       author: {
