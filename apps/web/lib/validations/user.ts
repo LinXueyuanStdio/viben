@@ -19,10 +19,42 @@ export const registerSchema = z.object({
   displayName: z.string().min(1).max(100),
 });
 
+export const registerFormSchema = registerSchema
+  .extend({
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    agreeToTerms: z.literal(true, {
+      message: 'You must agree to the terms of service',
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type RegisterFormInput = z.infer<typeof registerFormSchema>;
+
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, 'Token is required'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const updateProfileSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),

@@ -1,24 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { registerFormSchema } from '@/lib/validations/user';
-import type { RegisterFormInput } from '@/lib/validations/user';
+import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { resetPasswordSchema } from '@/lib/validations/user';
+import type { ResetPasswordInput } from '@/lib/validations/user';
 
-
-export function RegisterForm() {
+export function ResetPasswordForm() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') ?? '';
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -27,9 +29,10 @@ export function RegisterForm() {
     handleSubmit,
     watch,
     formState: { errors, isValid },
-  } = useForm<RegisterFormInput>({
-    resolver: zodResolver(registerFormSchema),
+  } = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
     mode: 'onChange',
+    defaultValues: { token },
   });
 
   const passwordValue = watch('password', '');
@@ -51,20 +54,15 @@ export function RegisterForm() {
 
   const strength = getStrength();
 
-  async function onSubmit(data: RegisterFormInput) {
+  async function onSubmit(data: ResetPasswordInput) {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
-          username: data.username,
-          displayName: data.displayName,
-          password: data.password,
-        }),
+        body: JSON.stringify(data),
       });
 
       const result = await response.json();
@@ -74,13 +72,37 @@ export function RegisterForm() {
         return;
       }
 
-      router.push('/mcp-market');
-      router.refresh();
+      setSuccess(true);
+      setTimeout(() => {
+        router.push('/login');
+      }, 3000);
     } catch {
       setError(t('auth.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (success) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6 text-center space-y-4">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+        <div>
+          <h3 className="text-lg font-semibold">{t('auth.passwordResetSuccess')}</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            {t('auth.passwordResetRedirect')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="rounded-md bg-destructive/10 p-4 text-center text-sm text-destructive">
+        {t('auth.invalidResetToken')}
+      </div>
+    );
   }
 
   return (
@@ -91,61 +113,16 @@ export function RegisterForm() {
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="email">{t('auth.email')}</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder={t('auth.emailPlaceholder')}
-          disabled={isLoading}
-          {...register('email')}
-        />
-        {errors.email && (
-          <p className="text-xs text-destructive">{errors.email.message}</p>
-        )}
-      </div>
+      <input type="hidden" {...register('token')} />
 
       <div className="space-y-2">
-        <Label htmlFor="username">{t('auth.username')}</Label>
-        <Input
-          id="username"
-          type="text"
-          autoComplete="username"
-          placeholder={t('auth.usernamePlaceholder')}
-          disabled={isLoading}
-          {...register('username')}
-        />
-        <p className="text-xs text-muted-foreground">
-          {t('auth.usernameHint')}
-        </p>
-        {errors.username && (
-          <p className="text-xs text-destructive">{errors.username.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="displayName">{t('auth.displayName')}</Label>
-        <Input
-          id="displayName"
-          type="text"
-          autoComplete="name"
-          placeholder={t('auth.displayNamePlaceholder')}
-          disabled={isLoading}
-          {...register('displayName')}
-        />
-        {errors.displayName && (
-          <p className="text-xs text-destructive">{errors.displayName.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">{t('auth.password')}</Label>
+        <Label htmlFor="password">{t('auth.newPassword')}</Label>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
+            placeholder={t('auth.passwordPlaceholder')}
             disabled={isLoading}
             {...register('password')}
           />
@@ -211,28 +188,9 @@ export function RegisterForm() {
         )}
       </div>
 
-      <div className="flex items-start gap-2">
-        <input
-          type="checkbox"
-          id="agreeToTerms"
-          className="mt-1 h-4 w-4 rounded accent-primary"
-          disabled={isLoading}
-          {...register('agreeToTerms')}
-        />
-        <Label htmlFor="agreeToTerms" className="text-sm font-normal leading-tight">
-          {t('auth.agreeToTerms')}{' '}
-          <Link href="/terms" className="text-primary hover:underline">
-            {t('auth.termsOfService')}
-          </Link>
-        </Label>
-      </div>
-      {errors.agreeToTerms && (
-        <p className="text-xs text-destructive">{errors.agreeToTerms.message}</p>
-      )}
-
       <Button type="submit" className="w-full" disabled={isLoading || !isValid}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {t('auth.createAccount')}
+        {t('auth.resetPassword')}
       </Button>
     </form>
   );

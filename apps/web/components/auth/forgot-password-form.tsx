@@ -1,51 +1,40 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
-import { loginSchema } from '@/lib/validations/user';
-import type { LoginInput } from '@/lib/validations/user';
+import { Loader2, CheckCircle2 } from 'lucide-react';
+import { forgotPasswordSchema } from '@/lib/validations/user';
+import type { ForgotPasswordInput } from '@/lib/validations/user';
 
-export function LoginForm() {
+export function ForgotPasswordForm() {
   const { t } = useTranslation();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isValid },
-  } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<ForgotPasswordInput>({
+    resolver: zodResolver(forgotPasswordSchema),
     mode: 'onChange',
   });
 
-  function getRedirectPath(): string | null {
-    if (typeof window === 'undefined') return null;
-    const redirect = new URLSearchParams(window.location.search).get('redirect');
-    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
-      return redirect;
-    }
-    return null;
-  }
-
-  async function onSubmit(data: LoginInput) {
+  async function onSubmit(data: ForgotPasswordInput) {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email: data.email }),
       });
 
       const result = await response.json();
@@ -55,14 +44,26 @@ export function LoginForm() {
         return;
       }
 
-      const redirectTo = getRedirectPath();
-      router.push(redirectTo ?? '/');
-      router.refresh();
+      setSubmitted(true);
     } catch {
       setError(t('auth.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (submitted) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6 text-center space-y-4">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+        <div>
+          <h3 className="text-lg font-semibold">{t('auth.checkYourEmail')}</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            {t('auth.checkYourEmailDescription')}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -88,31 +89,9 @@ export function LoginForm() {
         )}
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="password">{t('auth.password')}</Label>
-          <Link
-            href="/forgot-password"
-            className="text-xs text-primary hover:underline"
-          >
-            {t('auth.forgotPassword')}
-          </Link>
-        </div>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          disabled={isLoading}
-          {...register('password')}
-        />
-        {errors.password && (
-          <p className="text-xs text-destructive">{errors.password.message}</p>
-        )}
-      </div>
-
       <Button type="submit" className="w-full" disabled={isLoading || !isValid}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {t('auth.signIn')}
+        {t('auth.sendResetLink')}
       </Button>
     </form>
   );
