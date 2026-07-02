@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { Eye, MessageCircle, Bookmark, ThumbsUp, MoreHorizontal, Flag, MessageSquare, CircleUser } from "lucide-react"
+import { Clock, Eye, MessageCircle, Bookmark, ThumbsUp, MoreHorizontal, Flag, MessageSquare, CircleUser } from "lucide-react"
 import { Cover } from "./cover"
 import { MetaRow } from "./meta-row"
 import { StatsRow } from "./stats-row"
@@ -42,6 +42,7 @@ interface PageCardProps {
   href: string
   className?: string
   hideAuthor?: boolean
+  timeIcon?: boolean
 }
 
 function extractPageUid(href: string): string | undefined {
@@ -112,7 +113,7 @@ function MoreMenu({ pageId }: { pageId?: string }) {
   )
 }
 
-export function PageCard({ data, variant = "default", href, className, hideAuthor }: PageCardProps) {
+export function PageCard({ data, variant = "default", href, className, hideAuthor, timeIcon }: PageCardProps) {
   const router = useRouter()
   const { t } = useTranslation()
   const { coverUrl, title, description, author, timeAgo, stats } = data
@@ -233,6 +234,7 @@ export function PageCard({ data, variant = "default", href, className, hideAutho
                 {timeAgo ? (
                   <>
                     <span className="inline-block size-[3px] rounded-full bg-[#9bb8c2] dark:bg-muted-foreground/40 shrink-0" />
+                    {timeIcon && <Clock className="size-3.5 shrink-0" />}
                     <span className="shrink-0">{timeAgo}</span>
                   </>
                 ) : null}
