@@ -3,8 +3,11 @@
 import { useReportWebVitals } from "next/web-vitals"
 import { usePathname } from "next/navigation"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
+import { usePageTracking } from "@/hooks/use-page-tracking"
 
 export function WebVitalsReporter() {
+  usePageTracking()
+
   const pathname = usePathname()
   const { isPage } = isPublishedPageRoute(pathname)
 

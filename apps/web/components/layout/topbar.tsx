@@ -8,6 +8,8 @@ import { Maximize2, FileText, Columns2, PanelRight, Settings } from "lucide-reac
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { trackAnalytics } from "@/lib/analytics/track"
+import { trackEngagement } from "@/lib/analytics/behavior"
+import { setUserSlug } from "@/lib/analytics/behavior"
 import { getTopbarMode } from "./topbar-mode"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { useDrawer } from "./drawer-context"
@@ -83,6 +85,7 @@ export function Topbar({
 
   const handleReadTabChange = React.useCallback((value: string) => {
     trackAnalytics("read_tab_switch", { tab: value })
+    trackEngagement("tab_switch", { tab: value, page_id: urlPageId })
     if (value === "settings") {
       router.replace(`${pathname}?tab=settings`, { scroll: false })
     } else {
@@ -109,6 +112,11 @@ export function Topbar({
       setLazyRecentSearches(recent)
     }).catch(() => {})
   }, [session])
+
+  // 同步 user_slug 到行为追踪
+  React.useEffect(() => {
+    setUserSlug(session?.userSlug ?? null)
+  }, [session?.userSlug])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
   // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
@@ -137,6 +145,7 @@ export function Topbar({
       if (e.key === "Escape") {
         setImmersive(false)
         trackAnalytics("immersive_exit")
+        trackEngagement("immersive_toggle", { action: "exit", page_id: urlPageId })
       }
     }
     window.addEventListener("keydown", handleKey)
@@ -244,10 +253,10 @@ export function Topbar({
             rightContent ?? topbarSlots?.rightContent ?? (
               <>
                 {/* 阅读模式操作 */}
-                <IconButton size="compact" label={t("community.expandDetails")} onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}>
+                <IconButton size="compact" label={t("community.expandDetails")} onClick={() => { toggleDrawer(); trackAnalytics("drawer_open"); trackEngagement("drawer_toggle", { action: "open", page_id: urlPageId }) }}>
                   <PanelRight className="h-4 w-4" />
                 </IconButton>
-                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => { setImmersive(true); trackAnalytics("immersive_enter") }}>
+                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => { setImmersive(true); trackAnalytics("immersive_enter"); trackEngagement("immersive_toggle", { action: "enter", page_id: urlPageId }) }}>
                   <Maximize2 className="h-4 w-4" />
                 </IconButton>
                 <ReadMoreMenu pageId={urlPageId ?? ""} userSlug={urlUserSlug ?? ""} />
