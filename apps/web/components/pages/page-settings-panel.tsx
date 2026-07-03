@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react"
 
+import { DeletePageDialog } from "./delete-page-dialog"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -84,6 +85,7 @@ interface PageSettingsPanelProps {
   pageSeoDescription?: string | null
   pageSeoKeywords?: string | null
   pageIsDiscoverable?: boolean
+  pageDbId: string
   className?: string
 }
 
@@ -143,6 +145,7 @@ interface PublishActionRowProps {
   label: string
   onClick?: () => void
   trailing?: ReactNode
+  destructive?: boolean
 }
 
 function PublishActionRow({
@@ -150,15 +153,33 @@ function PublishActionRow({
   label,
   onClick,
   trailing = <ChevronRight className="h-4 w-4 text-muted-foreground" />,
+  destructive = false,
 }: PublishActionRowProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+      className={cn(
+        "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors",
+        destructive
+          ? "hover:bg-destructive/10"
+          : "hover:bg-muted",
+      )}
     >
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 text-foreground">{label}</span>
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0",
+          destructive ? "text-destructive" : "text-muted-foreground",
+        )}
+      />
+      <span
+        className={cn(
+          "min-w-0 flex-1",
+          destructive ? "text-destructive font-medium" : "text-foreground",
+        )}
+      >
+        {label}
+      </span>
       {trailing}
     </button>
   )
@@ -185,6 +206,7 @@ export function PageSettingsPanel({
   pageSeoDescription,
   pageSeoKeywords,
   pageIsDiscoverable,
+  pageDbId,
   className,
 }: PageSettingsPanelProps) {
   const { t } = useTranslation()
@@ -225,6 +247,10 @@ export function PageSettingsPanel({
   // Rollback confirmation dialog
   const [rollbackDialogOpen, setRollbackDialogOpen] = useState(false)
   const [rollbackTarget, setRollbackTarget] = useState<PublishHistoryRecord | null>(null)
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Derived
   const readUrl = `/${encodeURIComponent(userSlug)}/${encodeURIComponent(pageUid)}?tab=read`
@@ -449,6 +475,28 @@ export function PageSettingsPanel({
   }
 
   // ==========================================================================
+  // Delete handler
+  // ==========================================================================
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/pages/${pageDbId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error?.message || t("community.deleteFailed"))
+      }
+      setDeleteDialogOpen(false)
+      toast.success(t("community.pageDeleted"))
+      router.push(`/${encodeURIComponent(userSlug)}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("community.deleteFailed"))
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [pageDbId, userSlug, router, t])
+
+  // ==========================================================================
   // Helper: diff stats
   // ==========================================================================
 
@@ -611,6 +659,18 @@ export function PageSettingsPanel({
                       "Open in browser",
                     )}
                     onClick={handleOpenPublishedPage}
+                    trailing={null}
+                  />
+                </div>
+                <div className="border-t border-border" />
+
+                {/* Delete Page */}
+                <div className="space-y-1">
+                  <PublishActionRow
+                    icon={AlertTriangle}
+                    label={t("community.deletePage", "Delete page")}
+                    onClick={() => setDeleteDialogOpen(true)}
+                    destructive
                     trailing={null}
                   />
                 </div>
@@ -980,6 +1040,15 @@ export function PageSettingsPanel({
           {t("pageEditor.settingsEditPage")}
         </Button>
       </section>
+
+      {/* Delete Page Confirmation Dialog */}
+      <DeletePageDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        pageId={pageId}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
 
       {/* Version Diff Dialog */}
       <Dialog open={diffViewOpen} onOpenChange={setDiffViewOpen}>

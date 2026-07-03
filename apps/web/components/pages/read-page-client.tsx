@@ -318,6 +318,7 @@ export function ReadPageClient({
               pageSeoDescription={pageSeoDescription}
               pageSeoKeywords={pageSeoKeywords}
               pageIsDiscoverable={pageIsDiscoverable}
+              pageDbId={pageDbId}
             />
           </div>
         </div>
