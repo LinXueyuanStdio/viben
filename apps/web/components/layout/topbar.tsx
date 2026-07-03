@@ -197,7 +197,10 @@ export function Topbar({
         className={cn(
           "relative h-full mx-auto flex items-center",
           isRead
-            ? "w-full px-4 grid gap-3"
+            ? cn(
+                "w-full grid gap-3",
+                isMobile ? "px-3" : "px-4"
+              )
             : cn(
                 "grid gap-3",
                 isMobile
