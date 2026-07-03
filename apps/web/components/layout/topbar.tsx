@@ -187,7 +187,9 @@ export function Topbar({
         )}
         style={{
           gridTemplateColumns: isRead
-            ? "minmax(430px, 1.45fr) minmax(160px, 260px) auto"
+            ? isMobile
+              ? "auto 1fr auto"
+              : "minmax(430px, 1.45fr) minmax(160px, 260px) auto"
             : isMobile
               ? "auto 1fr auto"
               : "minmax(180px, 1fr) minmax(260px, 520px) minmax(180px, 1fr)",
