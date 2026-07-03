@@ -228,8 +228,8 @@ export function FeedCard({ data, variant = "preloaded", className, session, onAc
       variant === "rich" && "grid gap-[9px]",
       className
     )}>
-      <FeedHead data={head} shareText={`${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`} shareUrl={data.actions.shareUrl} />
-      <div className="ml-[42px] space-y-[9px]">
+      <FeedHead data={head} shareText={`${data.head.name}: ${data.text.slice(0, 60)}${data.text.length > 60 ? "..." : ""}`} shareUrl={data.actions.shareUrl} large={inFeed} />
+      <div className="space-y-[9px]">
         <div className="relative">
           <p className={cn(
             "text-foreground leading-relaxed text-[15px]",

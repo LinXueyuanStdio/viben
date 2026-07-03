@@ -27,14 +27,15 @@ interface FeedHeadProps {
   className?: string
   shareText?: string
   shareUrl?: string
+  large?: boolean
 }
 
-export function FeedHead({ data, className, shareText, shareUrl }: FeedHeadProps) {
+export function FeedHead({ data, className, shareText, shareUrl, large = false }: FeedHeadProps) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const { fallbackText, avatarUrl, name, handle, userSlug, timeAgo, source } = data
+  const { fallbackText, avatarUrl, name, userSlug, timeAgo, source } = data
   const authorHref = `/${encodeURIComponent(userSlug)}`
 
   // Close menu on outside click
@@ -69,26 +70,22 @@ export function FeedHead({ data, className, shareText, shareUrl }: FeedHeadProps
   const toggleMenu = () => setMenuOpen((prev) => !prev)
 
   return (
-    <div className={cn("grid grid-cols-[auto_1fr_auto] gap-[9px] items-center", className)}>
+    <div className={cn("grid grid-cols-[auto_1fr_auto] gap-[9px] items-start", className)}>
       <Link href={authorHref} className="shrink-0">
-        <Avatar className="size-[34px]">
+        <Avatar className={large ? "size-[40px]" : "size-[34px]"}>
           <AvatarImage src={avatarUrl} alt={name} />
           <AvatarFallback>{fallbackText}</AvatarFallback>
         </Avatar>
       </Link>
       <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <Link href={authorHref} className="font-bold text-sm truncate hover:underline">
-            {name}
-          </Link>
-        </div>
-        <div className="text-[13px] text-muted-foreground truncate">
-          {handle}
-          <span className="mx-[7px]">·</span>
+        <Link href={authorHref} className="font-bold text-sm truncate hover:underline">
+          {name}
+        </Link>
+        <div className="text-[13px] text-muted-foreground truncate flex items-center gap-1.5">
           {timeAgo}
           {source && (
             <>
-              <span className="mx-[7px]">·</span>
+              <span>·</span>
               {t("community.fromSource", { source })}
             </>
           )}
