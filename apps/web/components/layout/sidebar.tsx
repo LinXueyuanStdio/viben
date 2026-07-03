@@ -213,22 +213,6 @@ export function Sidebar({
           willChange: "transform",
         }}
       >
-        {/* Close button — mobile only */}
-        {isMobile && (
-          <div className="flex items-center justify-end p-2">
-            <button
-              onClick={onClose}
-              className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
-              aria-label="Close sidebar"
-            >
-              <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M4 4l10 10" />
-                <path d="M14 4l-10 10" />
-              </svg>
-            </button>
-          </div>
-        )}
-
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {/* Browse Section — always visible */}

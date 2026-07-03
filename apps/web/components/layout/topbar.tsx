@@ -13,6 +13,7 @@ import { setUserSlug } from "@/lib/analytics/behavior"
 import { getTopbarMode } from "./topbar-mode"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { useDrawer } from "./drawer-context"
+import { useAppShell } from "./app-shell"
 import { useTopbarSlots } from "./topbar-slots"
 import { BreadcrumbNav } from "./breadcrumb"
 import { GlobalSearch } from "./global-search"
@@ -61,6 +62,7 @@ export function Topbar({
   const router = useRouter()
   const mode = getTopbarMode(pathname)
   const { toggle: toggleDrawer } = useDrawer()
+  const { sidebarOpen, closeSidebar } = useAppShell()
 
   // URL 同步判定阅读模式（0ms，不等任何异步数据）
   const { isPage: isReadPageFromUrl, userSlug: urlUserSlug, pageId: urlPageId } =
@@ -158,6 +160,9 @@ export function Topbar({
 
   if (mode === "landing") return null
 
+  // 汉堡按钮状态: 桌面端 sidebarCollapsed → 汉堡; 移动端 !sidebarOpen → 汉堡
+  const hamburgerClosed = isMobile ? !sidebarOpen : sidebarCollapsed
+
   return (
     <header
       className={cn(
@@ -190,45 +195,34 @@ export function Topbar({
       >
         {/* ===== Left ===== */}
         <div className="flex items-center gap-0 min-w-0">
-          {/* 侧边栏切换按钮 — 动画汉堡图标 */}
+          {/* 侧边栏切换按钮 — 动画汉堡图标（桌面+移动端共用） */}
           <button
             aria-label={t("community.toggleSidebar")}
             onClick={() => {
               if (isMobile) {
-                onOpenSidebar?.()
+                sidebarOpen ? closeSidebar() : onOpenSidebar?.()
               } else {
                 onToggleSidebar()
               }
             }}
             className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
           >
-            {/* 汉堡图标 SVG — 移动端始终显示汉堡，桌面端根据 collapsed 动画 */}
             <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              {isMobile ? (
-                <>
-                  <path d="M3 5h12" />
-                  <path d="M3 9h12" />
-                  <path d="M3 13h12" />
-                </>
-              ) : (
-                <>
-                  <path
-                    className="transition-all duration-300 ease-out"
-                    d={sidebarCollapsed ? "M3 5h12" : "M4 4l10 10"}
-                    style={{ transformOrigin: sidebarCollapsed ? "9px 5px" : "9px 9px" }}
-                  />
-                  <path
-                    className="transition-all duration-200 ease-out"
-                    d="M3 9h12"
-                    style={{ opacity: sidebarCollapsed ? 1 : 0, transform: sidebarCollapsed ? "scaleX(1)" : "scaleX(0)" }}
-                  />
-                  <path
-                    className="transition-all duration-300 ease-out"
-                    d={sidebarCollapsed ? "M3 13h12" : "M4 14l10-10"}
-                    style={{ transformOrigin: sidebarCollapsed ? "9px 13px" : "9px 9px" }}
-                  />
-                </>
-              )}
+              <path
+                className="transition-all duration-300 ease-out"
+                d={hamburgerClosed ? "M3 5h12" : "M4 4l10 10"}
+                style={{ transformOrigin: hamburgerClosed ? "9px 5px" : "9px 9px" }}
+              />
+              <path
+                className="transition-all duration-200 ease-out"
+                d="M3 9h12"
+                style={{ opacity: hamburgerClosed ? 1 : 0, transform: hamburgerClosed ? "scaleX(1)" : "scaleX(0)" }}
+              />
+              <path
+                className="transition-all duration-300 ease-out"
+                d={hamburgerClosed ? "M3 13h12" : "M4 14l10-10"}
+                style={{ transformOrigin: hamburgerClosed ? "9px 13px" : "9px 9px" }}
+              />
             </svg>
           </button>
 
