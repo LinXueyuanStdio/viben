@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useTranslation } from "react-i18next"
+import { useTranslation, Trans } from "react-i18next"
 import { AlertTriangle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,7 +76,11 @@ export function DeletePageDialog({
           {/* Confirm input */}
           <div className="grid gap-1.5">
             <label className="text-sm font-medium text-foreground">
-              {t("community.deleteTypePageId", { pageId })}
+              <Trans
+                i18nKey="community.deleteTypePageId"
+                values={{ pageId }}
+                components={{ strong: <strong className="font-semibold text-foreground" /> }}
+              />
             </label>
             <Input
               value={confirmInput}
