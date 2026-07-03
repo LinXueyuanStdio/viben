@@ -95,7 +95,7 @@ export function Topbar({
     } else {
       router.replace(`${pathname}?tab=read`, { scroll: false })
     }
-  }, [router, pathname])
+  }, [router, pathname, urlPageId])
 
   // 客户端按需加载搜索数据（搜索框聚焦时才请求，避免阻塞首屏渲染）
   const [lazyHotSearches, setLazyHotSearches] = React.useState<Array<{ query: string; count: number }>>([])
@@ -154,7 +154,7 @@ export function Topbar({
     }
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
-  }, [immersive])
+  }, [immersive, urlPageId])
 
   if (mode === "landing") return null
 

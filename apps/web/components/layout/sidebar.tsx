@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -173,14 +174,44 @@ export function Sidebar({
 
   const visible = isMobile ? open : !collapsed
 
+  // Body scroll lock + Escape key when mobile sidebar is open
+  React.useEffect(() => {
+    if (!isMobile || !open) return
+    document.body.style.overflow = "hidden"
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handleKey)
+    return () => {
+      document.body.style.overflow = ""
+      window.removeEventListener("keydown", handleKey)
+    }
+  }, [isMobile, open, onClose])
+
   return (
     <>
+      {/* Backdrop — always rendered, CSS-controlled visibility */}
+      <div
+        className={cn(
+          "fixed inset-0 z-40 transition-opacity duration-180",
+          isMobile && open
+            ? "opacity-100 pointer-events-auto bg-black/40"
+            : "opacity-0 pointer-events-none"
+        )}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-transform duration-200 ease-out",
+          "fixed left-0 z-50 flex flex-col border-r bg-background",
           "w-[var(--sidebar-w)]",
+          "transition-transform duration-[220ms] ease-out",
           visible ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{
+          top: "var(--nav-h, 56px)",
+          height: "calc(100vh - var(--nav-h, 56px))",
+          willChange: "transform",
+        }}
       >
         {/* Close button — mobile only */}
         {isMobile && (

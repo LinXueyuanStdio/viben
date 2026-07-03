@@ -66,9 +66,10 @@ export function AppShell({
   }, [])
 
   // ---- desktop sidebar ----
+  // Default: collapsed. Only when user explicitly expands sidebar does localStorage store "false".
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem("viben-sidebar-collapsed") === "true"
+    if (typeof window === "undefined") return true
+    return localStorage.getItem("viben-sidebar-collapsed") !== "false"
   })
 
   const toggleSidebar = React.useCallback(() => {
@@ -89,6 +90,10 @@ export function AppShell({
   React.useEffect(() => {
     setSidebarOpen(false)
   }, [pathname])
+
+  // Desktop: sidebar is fixed overlay — main content needs left margin when expanded.
+  // The margin transitions in sync with the sidebar's transform (both 200ms ease-out).
+  const desktopSidebarVisible = !isMobile && !sidebarCollapsed
 
   const contextValue = React.useMemo<AppShellContextType>(
     () => ({
@@ -115,7 +120,9 @@ export function AppShell({
             onOpenSidebar={openSidebar}
           />
           <div className="relative flex-1 overflow-hidden">
-            {/* Sidebar — always fixed overlay */}
+            {/* Sidebar — fixed overlay on all breakpoints.
+                Desktop: margin-left on main compensates so content is not overlapped.
+                Mobile: backdrop + overlay pattern, no margin. */}
             <Sidebar
               collapsed={sidebarCollapsed}
               session={session}
@@ -124,17 +131,11 @@ export function AppShell({
               open={sidebarOpen}
               onClose={closeSidebar}
             />
-            {/* Backdrop for mobile overlay (desktop never shows backdrop) */}
-            {isMobile && sidebarOpen && (
-              <div
-                className="fixed inset-0 z-40 bg-black/40"
-                onClick={closeSidebar}
-                aria-hidden="true"
-              />
-            )}
             <main
               className={cn(
                 "h-full",
+                "transition-[margin] duration-200 ease-out",
+                desktopSidebarVisible && "ml-[var(--sidebar-w)]",
                 isRead ? "overflow-hidden" : "overflow-y-auto"
               )}
             >
