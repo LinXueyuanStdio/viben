@@ -564,6 +564,7 @@
     "signUpTitle": "Account aanmaken",
     "signUpDescription": "Aan de slag met Viben",
     "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
     "orContinueWith": "or continue with email",
     "email": "Email",
     "emailPlaceholder": "name@example.com",

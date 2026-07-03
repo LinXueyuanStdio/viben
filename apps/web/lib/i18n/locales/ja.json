@@ -564,6 +564,7 @@
     "signUpTitle": "アカウントを作成",
     "signUpDescription": "Viben を始めましょう",
     "continueWithGitHub": "GitHubでログイン",
+    "continueWithGoogle": "Googleでログイン",
     "orContinueWith": "またはメールで続ける",
     "email": "メールアドレス",
     "emailPlaceholder": "name@example.com",

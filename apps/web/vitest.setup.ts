@@ -10,4 +10,6 @@ process.env.JWE_SECRET = '12345678901234567890123456789012';
 process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 process.env.GITHUB_CLIENT_ID = 'test-github-client-id';
 process.env.GITHUB_CLIENT_SECRET = 'test-github-client-secret';
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
 process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';

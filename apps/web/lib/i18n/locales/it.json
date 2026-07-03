@@ -564,6 +564,7 @@
     "signUpTitle": "Crea un account",
     "signUpDescription": "Inizia con Viben",
     "continueWithGitHub": "Continua con GitHub",
+    "continueWithGoogle": "Continua con Google",
     "orContinueWith": "o continua con email",
     "email": "Email",
     "emailPlaceholder": "nome@esempio.com",

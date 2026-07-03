@@ -945,6 +945,7 @@
     "signUpTitle": "创建账户",
     "signUpDescription": "开始使用微本",
     "continueWithGitHub": "使用 GitHub 登录",
+    "continueWithGoogle": "使用 Google 登录",
     "orContinueWith": "或使用邮箱登录",
     "email": "邮箱",
     "emailPlaceholder": "you@example.com",

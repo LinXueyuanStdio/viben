@@ -946,6 +946,7 @@
     "signUpTitle": "Create an account",
     "signUpDescription": "Get started with Viben",
     "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
     "orContinueWith": "Or continue with email",
     "email": "Email",
     "emailPlaceholder": "you@example.com",

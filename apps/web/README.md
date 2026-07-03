@@ -146,6 +146,8 @@ cp .env.example .env.local
 | `ENCRYPTION_KEY` | 32 字节的数据加密密钥 |
 | `NEXT_PUBLIC_GITHUB_CLIENT_ID` | GitHub OAuth 客户端 ID |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth 客户端密钥 |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth 客户端 ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 客户端密钥 |
 
 ### 可选变量
 

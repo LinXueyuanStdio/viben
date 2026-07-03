@@ -12,18 +12,22 @@ import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
 import { eq, and } from 'drizzle-orm';
 
-interface GitHubUser {
-  id: number;
-  login: string;
-  name: string | null;
-  email: string | null;
-  avatar_url: string;
+interface GoogleUser {
+  id: string;
+  email: string;
+  verified_email: boolean;
+  name: string;
+  given_name: string;
+  family_name: string;
+  picture: string;
 }
 
-interface GitHubEmail {
-  email: string;
-  primary: boolean;
-  verified: boolean;
+interface GoogleTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
+  id_token: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
   const desktopRedirectUri = cookieStore.get('oauth_redirect_uri')?.value;
   const webRedirect = cookieStore.get('oauth_web_redirect')?.value;
 
-  console.info('[OAuth][GitHub] callback received', {
+  console.info('[OAuth][Google] callback received', {
     hasCode: Boolean(code),
     stateMatch: state === storedState,
     isDesktop: isAllowedDesktopRedirectUri(desktopRedirectUri),
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest) {
   cookieStore.delete('oauth_web_redirect');
 
   if (!code || !state || state !== storedState) {
-    console.warn('[OAuth][GitHub] state validation failed', {
+    console.warn('[OAuth][Google] state validation failed', {
       hasCode: Boolean(code),
       hasState: Boolean(state),
       hasStoredState: Boolean(storedState),
@@ -63,52 +67,47 @@ export async function GET(request: NextRequest) {
   try {
     // Exchange code for token
     const tokenResponse = await fetch(
-      'https://github.com/login/oauth/access_token',
+      'https://oauth2.googleapis.com/token',
       {
         method: 'POST',
         headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
-          client_id: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID,
-          client_secret: process.env.GITHUB_CLIENT_SECRET,
+        body: new URLSearchParams({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
           code,
+          grant_type: 'authorization_code',
+          redirect_uri: `${appUrl}/api/auth/google/callback`,
         }),
       }
     );
 
-    const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
+    const tokenData: GoogleTokenResponse = await tokenResponse.json();
 
-    if (!accessToken) {
-      console.error('No access token received:', tokenData);
+    if (!tokenData.access_token) {
+      console.error('[OAuth][Google] no access token received:', tokenData);
       return NextResponse.redirect(`${appUrl}/login?error=no_token`);
     }
 
     // Get user info
-    const userResponse = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const githubUser: GitHubUser = await userResponse.json();
+    const userResponse = await fetch(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      }
+    );
+    const googleUser: GoogleUser = await userResponse.json();
 
-    // Get email
-    const emailResponse = await fetch('https://api.github.com/user/emails', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const emails: GitHubEmail[] = await emailResponse.json();
-    const primaryEmail =
-      emails.find((e) => e.primary)?.email || githubUser.email;
-
-    if (!primaryEmail) {
+    if (!googleUser.email) {
       return NextResponse.redirect(`${appUrl}/login?error=no_email`);
     }
 
     // Find existing OAuth connection
     const existingConnection = await db.query.oauthConnections.findFirst({
       where: and(
-        eq(oauthConnections.provider, 'github'),
-        eq(oauthConnections.providerId, String(githubUser.id))
+        eq(oauthConnections.provider, 'google'),
+        eq(oauthConnections.providerId, String(googleUser.id))
       ),
       with: { user: true },
     });
@@ -119,14 +118,14 @@ export async function GET(request: NextRequest) {
       // Update access token
       await db
         .update(oauthConnections)
-        .set({ accessToken })
+        .set({ accessToken: tokenData.access_token })
         .where(eq(oauthConnections.id, existingConnection.id));
 
       user = existingConnection.user;
     } else {
       // Check if user with this email exists
       const existingUser = await db.query.users.findFirst({
-        where: eq(users.email, primaryEmail),
+        where: eq(users.email, googleUser.email),
       });
 
       if (existingUser) {
@@ -134,28 +133,30 @@ export async function GET(request: NextRequest) {
         await db.insert(oauthConnections).values({
           id: generateId(),
           userId: existingUser.id,
-          provider: 'github',
-          providerId: String(githubUser.id),
-          accessToken,
+          provider: 'google',
+          providerId: String(googleUser.id),
+          accessToken: tokenData.access_token,
         });
         user = existingUser;
       } else {
         // Create new user
         const userId = generateId();
+        // Use email prefix as base username, given_name as fallback
+        const baseUsername = googleUser.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '');
+
         await db.insert(users).values({
           id: userId,
-          email: primaryEmail,
-          username: githubUser.login,
-          userSlug: normalizeUserSlug(githubUser.login, userId),
-          displayName: githubUser.name || githubUser.login,
+          email: googleUser.email,
+          username: baseUsername,
+          userSlug: normalizeUserSlug(baseUsername, userId),
+          displayName: googleUser.name || googleUser.email,
           avatarUrl: await uploadImageFromUrl({
-            imageUrl: githubUser.avatar_url,
+            imageUrl: googleUser.picture,
             kind: 'avatar',
-            userSlug: normalizeUserSlug(githubUser.login, userId),
+            userSlug: normalizeUserSlug(baseUsername, userId),
             userId,
             uid: userId,
-          }) || githubUser.avatar_url,
-          githubUsername: githubUser.login,
+          }) || googleUser.picture,
           role: 'developer',
           emailVerified: true,
         });
@@ -163,9 +164,9 @@ export async function GET(request: NextRequest) {
         await db.insert(oauthConnections).values({
           id: generateId(),
           userId,
-          provider: 'github',
-          providerId: String(githubUser.id),
-          accessToken,
+          provider: 'google',
+          providerId: String(googleUser.id),
+          accessToken: tokenData.access_token,
         });
 
         user = await db.query.users.findFirst({
@@ -178,7 +179,7 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to create or find user');
     }
 
-    console.info('[OAuth][GitHub] user resolved', {
+    console.info('[OAuth][Google] user resolved', {
       userId: user.id,
       username: user.username,
       isDesktop: isAllowedDesktopRedirectUri(desktopRedirectUri),
@@ -186,9 +187,7 @@ export async function GET(request: NextRequest) {
 
     // Check if this is a desktop client callback
     if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
-      console.info('[OAuth][GitHub] taking desktop path', describeDesktopRedirectUri(desktopRedirectUri));
-      // For desktop client, generate JWT and redirect with session data
-      // This avoids the issue of OAuth code being single-use
+      console.info('[OAuth][Google] taking desktop path', describeDesktopRedirectUri(desktopRedirectUri));
       const desktopAccessToken = await encryptSession({
         userId: user.id,
         username: user.username,
@@ -198,10 +197,8 @@ export async function GET(request: NextRequest) {
         avatarUrl: user.avatarUrl ?? undefined,
       });
 
-      // Calculate expiration (7 days from now)
       const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
-      // Build session data for desktop
       const sessionData = {
         user: {
           id: user.id,
@@ -216,26 +213,19 @@ export async function GET(request: NextRequest) {
         expiresAt,
       };
 
-      // Encode session data as base64 URL-safe string
       const sessionBase64 = Buffer.from(JSON.stringify(sessionData)).toString('base64url');
 
-      // Build the HTTP callback URL (for TCP server fallback)
       const httpCallbackUrl = new URL(desktopRedirectUri);
       httpCallbackUrl.searchParams.set('session', sessionBase64);
 
-      // Build the deep link URL (primary path — avoids HTTPS→HTTP redirect issues)
       const deepLinkUrl = `viben://oauth?session=${encodeURIComponent(sessionBase64)}`;
 
-      console.info('[OAuth][GitHub] desktop session prepared', {
+      console.info('[OAuth][Google] desktop session prepared', {
         sessionBase64Len: sessionBase64.length,
         httpCallbackUrl: httpCallbackUrl.toString().replace(/session=[^&]+/, 'session=***'),
         deepLinkUrl: deepLinkUrl.replace(/session=[^&]+/, 'session=***'),
       });
 
-      // Return HTML page that tries deep link first, falls back to HTTP callback.
-      // This replaces the server-side 307 redirect which is unreliable on Windows:
-      // HTTPS→HTTP redirects to localhost can be blocked by browser HTTPS-First mode,
-      // Windows security software, or triggered by long session tokens in the URL.
       return renderDesktopOAuthCallbackPage({
         type: 'session',
         httpCallbackUrl: httpCallbackUrl.toString(),
@@ -244,7 +234,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Set session for web client
-    console.info('[OAuth][GitHub] taking web path', {
+    console.info('[OAuth][Google] taking web path', {
       userId: user.id,
       username: user.username,
       hasWebRedirect: Boolean(webRedirect),
@@ -259,23 +249,20 @@ export async function GET(request: NextRequest) {
       avatarUrl: user.avatarUrl ?? undefined,
     });
 
-    // Redirect to the original page (if login was initiated from a protected page)
-    // or to the home page as default. Only accepts same-origin paths for safety.
     if (webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')) {
-      console.info('[OAuth][GitHub] redirecting to stored webRedirect', { webRedirect });
+      console.info('[OAuth][Google] redirecting to stored webRedirect', { webRedirect });
       return NextResponse.redirect(`${appUrl}${webRedirect}`);
     }
-    console.info('[OAuth][GitHub] redirecting to home', { appUrl });
+    console.info('[OAuth][Google] redirecting to home', { appUrl });
     return NextResponse.redirect(appUrl);
   } catch (error) {
-    console.error('[OAuth][GitHub] callback error', {
+    console.error('[OAuth][Google] callback error', {
       message: error instanceof Error ? error.message : String(error),
       isDesktop: isAllowedDesktopRedirectUri(desktopRedirectUri),
     });
 
-    // If desktop client, return HTML error page (instead of 307 redirect)
     if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
-      console.info('[OAuth][GitHub] sending desktop error page', describeDesktopRedirectUri(desktopRedirectUri));
+      console.info('[OAuth][Google] sending desktop error page', describeDesktopRedirectUri(desktopRedirectUri));
       const httpCallbackUrl = new URL(desktopRedirectUri);
       httpCallbackUrl.searchParams.set('error', 'oauth_failed');
       const deepLinkUrl = 'viben://oauth?error=oauth_failed';
@@ -286,7 +273,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.info('[OAuth][GitHub] redirecting to web login error page');
+    console.info('[OAuth][Google] redirecting to web login error page');
     return NextResponse.redirect(`${appUrl}/login?error=oauth_failed`);
   }
 }

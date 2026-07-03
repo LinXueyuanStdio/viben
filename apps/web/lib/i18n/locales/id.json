@@ -564,6 +564,7 @@
     "signUpTitle": "Buat akun",
     "signUpDescription": "Mulai dengan Viben",
     "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
     "orContinueWith": "or continue with email",
     "email": "Email",
     "emailPlaceholder": "name@example.com",

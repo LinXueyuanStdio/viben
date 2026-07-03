@@ -564,6 +564,7 @@
     "signUpTitle": "खाता बनाएं",
     "signUpDescription": "Viben के साथ शुरुआत करें",
     "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
     "orContinueWith": "or continue with email",
     "email": "Email",
     "emailPlaceholder": "name@example.com",
