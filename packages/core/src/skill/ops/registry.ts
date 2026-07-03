@@ -5,9 +5,9 @@
  */
 import { writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { VibenClient } from "@viben/api-client";
+import { VibenClient, VIBEN_WEB_URL } from "@viben/api-client";
 import type { PaginatedResponse, SkillListParams, SkillPackage } from "@viben/api-client";
-import { readToken, VIBEN_WEB_URL } from "../../auth";
+import { readToken } from "../../auth";
 import { ensureDir } from "../../config/yaml";
 import { extractZipToDirectory } from "./extract";
 import { proxyFetch } from "../../http";

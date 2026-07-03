@@ -12,6 +12,7 @@ import {
   handleCommandError,
   outputError,
 } from "../lib";
+import { VIBEN_WEB_URL } from "@viben/api-client";
 import {
   readToken,
   writeToken,
@@ -19,7 +20,6 @@ import {
   validateTokenFormat,
   verifyToken,
   AuthApiError,
-  VIBEN_WEB_URL,
 } from "../../auth";
 
 const TOKEN_URL = `${VIBEN_WEB_URL}/settings/tokens`;

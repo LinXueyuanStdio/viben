@@ -52,6 +52,8 @@ import { registerCommandQueueRoutes } from "./command-queue";
 import { registerIdeaRoutes } from "./ideas";
 import { registerRewardRoutes } from "./reward";
 import { registerSkillRoutes } from "./skill";
+import webProxyPlugin from "@viben/api-client/routes";
+import { proxyFetch as webProxyFetch } from "@viben/api-client/proxy-fetch";
 import { registerPageRoutes } from "./page";
 import { registerMeshRoutes } from "./mesh";
 import { registerDeviceRoutes } from "./devices";
@@ -120,6 +122,8 @@ export async function registerRoutes(fastify: FastifyInstance, state: AppState):
   registerIdeaRoutes(fastify);
   registerRewardRoutes(fastify);
   registerSkillRoutes(fastify);
+  // Web platform proxy plugin — proxies web API calls through the gateway
+  await fastify.register(webProxyPlugin, { fetch: webProxyFetch });
   registerPageRoutes(fastify);
   registerMeshRoutes(fastify, state);
   registerDeviceRoutes(fastify, state);

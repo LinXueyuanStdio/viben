@@ -12,6 +12,5 @@ export {
 export {
   verifyToken,
   AuthApiError,
-  VIBEN_WEB_URL,
   type UserInfo,
 } from "./api";

@@ -1,61 +1,63 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock global fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock VibenClient since verifyToken now uses it internally
+const mocks = vi.hoisted(() => ({
+  me: vi.fn(),
+}));
 
-import { verifyToken, AuthApiError, VIBEN_WEB_URL } from "./api";
+vi.mock("@viben/api-client", () => ({
+  VibenClient: class {
+    user: any;
+    constructor(_config: unknown) {}
+    get user() { return { me: mocks.me }; }
+  },
+  ApiError: class extends Error { status: number; constructor(msg: string, s: number) { super(msg); this.status = s; } },
+  VIBEN_WEB_URL: "https://viben-web.vercel.app",
+}));
 
-describe("auth/api", () => {
+import { verifyToken, AuthApiError } from "./api";
+
+describe("auth/api — verifyToken", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("verifyToken", () => {
-    it("should return user info for valid token", async () => {
-      const mockUser = {
-        id: "user_123",
-        username: "testuser",
-        email: "test@example.com",
-        avatarUrl: "https://example.com/avatar.png",
-      };
+  it("returns user info for valid token", async () => {
+    const mockUser = {
+      id: "user_123",
+      username: "testuser",
+      email: "test@example.com",
+      avatarUrl: "https://example.com/avatar.png",
+    };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ user: mockUser }),
-      });
+    mocks.me.mockResolvedValueOnce({ user: mockUser });
 
-      const result = await verifyToken("bmcp_12345678_abcdefghijklmnopqrstuvwx");
+    const result = await verifyToken("bmcp_12345678_abcdefghijklmnopqrstuvwx");
 
-      expect(result).toEqual(mockUser);
-      expect(mockFetch).toHaveBeenCalledWith(
-        `${VIBEN_WEB_URL}/api/users/me`,
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: "Bearer bmcp_12345678_abcdefghijklmnopqrstuvwx",
-          }),
-        })
-      );
+    expect(result).toEqual({
+      id: "user_123",
+      username: "testuser",
+      email: "test@example.com",
+      avatarUrl: "https://example.com/avatar.png",
     });
+    expect(mocks.me).toHaveBeenCalled();
+  });
 
-    it("should throw AuthApiError for invalid token", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => ({ error: "Invalid API key" }),
-      });
+  it("throws AuthApiError for 401 response", async () => {
+    mocks.me.mockRejectedValueOnce(
+      new (await import("@viben/api-client")).ApiError("Invalid token", 401)
+    );
 
-      await expect(
-        verifyToken("bmcp_invalid_abcdefghijklmnopqrstuvwx")
-      ).rejects.toThrow(AuthApiError);
-    });
+    await expect(
+      verifyToken("bmcp_invalid_abcdefghijklmnopqrstuvwx")
+    ).rejects.toThrow(AuthApiError);
+  });
 
-    it("should throw AuthApiError for network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+  it("throws AuthApiError for network error", async () => {
+    mocks.me.mockRejectedValueOnce(new Error("Network error"));
 
-      await expect(
-        verifyToken("bmcp_12345678_abcdefghijklmnopqrstuvwx")
-      ).rejects.toThrow(AuthApiError);
-    });
+    await expect(
+      verifyToken("bmcp_12345678_abcdefghijklmnopqrstuvwx")
+    ).rejects.toThrow(AuthApiError);
   });
 });

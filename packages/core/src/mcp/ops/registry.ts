@@ -5,8 +5,8 @@
  */
 import { writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { VibenClient } from "@viben/api-client";
-import { readToken, VIBEN_WEB_URL } from "../../auth";
+import { VibenClient, VIBEN_WEB_URL } from "@viben/api-client";
+import { readToken } from "../../auth";
 import { ensureDir } from "../../config/yaml";
 import { extractZipToDirectory } from "../../skill/ops/extract";
 import { proxyFetch } from "../../http";
