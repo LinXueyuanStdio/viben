@@ -26,6 +26,7 @@ import type { Session } from "@/lib/auth/types"
 
 interface UserMenuProps {
   session: Session
+  isMobile?: boolean
 }
 
 function Spacer() {
@@ -38,7 +39,7 @@ const THEME_OPTIONS = [
   { value: "dark", label: "暗色", icon: Moon },
 ] as const
 
-export function UserMenu({ session }: UserMenuProps) {
+export function UserMenu({ session, isMobile }: UserMenuProps) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
   const displayLabel = session.displayName || session.userSlug

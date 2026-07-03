@@ -31,6 +31,8 @@ interface TopbarProps {
   session: Session | null
   onToggleSidebar: () => void
   sidebarCollapsed?: boolean
+  isMobile?: boolean
+  onOpenSidebar?: () => void
   centerContent?: React.ReactNode
   rightContent?: React.ReactNode
 }
@@ -48,6 +50,8 @@ export function Topbar({
   session,
   onToggleSidebar,
   sidebarCollapsed = false,
+  isMobile = false,
+  onOpenSidebar,
   centerContent,
   rightContent,
 }: TopbarProps) {
@@ -169,12 +173,19 @@ export function Topbar({
           "relative h-full mx-auto flex items-center",
           isRead
             ? "w-full px-4 grid gap-3"
-            : "w-[min(1280px,calc(100%-28px))] grid gap-3"
+            : cn(
+                "grid gap-3",
+                isMobile
+                  ? "w-full px-3"
+                  : "w-[min(1280px,calc(100%-28px))]"
+              )
         )}
         style={{
           gridTemplateColumns: isRead
             ? "minmax(430px, 1.45fr) minmax(160px, 260px) auto"
-            : "minmax(180px, 1fr) minmax(260px, 520px) minmax(180px, 1fr)",
+            : isMobile
+              ? "auto 1fr auto"
+              : "minmax(180px, 1fr) minmax(260px, 520px) minmax(180px, 1fr)",
         }}
       >
         {/* ===== Left ===== */}
@@ -182,33 +193,47 @@ export function Topbar({
           {/* 侧边栏切换按钮 — 动画汉堡图标 */}
           <button
             aria-label={t("community.toggleSidebar")}
-            onClick={onToggleSidebar}
+            onClick={() => {
+              if (isMobile) {
+                onOpenSidebar?.()
+              } else {
+                onToggleSidebar()
+              }
+            }}
             className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
           >
+            {/* 汉堡图标 SVG — 移动端始终显示汉堡，桌面端根据 collapsed 动画 */}
             <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              {/* top line → rotates to top of X */}
-              <path
-                className="transition-all duration-300 ease-out"
-                d={sidebarCollapsed ? "M3 5h12" : "M4 4l10 10"}
-                style={{ transformOrigin: sidebarCollapsed ? "9px 5px" : "9px 9px" }}
-              />
-              {/* middle line → fades out */}
-              <path
-                className="transition-all duration-200 ease-out"
-                d="M3 9h12"
-                style={{ opacity: sidebarCollapsed ? 1 : 0, transform: sidebarCollapsed ? "scaleX(1)" : "scaleX(0)" }}
-              />
-              {/* bottom line → rotates to bottom of X */}
-              <path
-                className="transition-all duration-300 ease-out"
-                d={sidebarCollapsed ? "M3 13h12" : "M4 14l10-10"}
-                style={{ transformOrigin: sidebarCollapsed ? "9px 13px" : "9px 9px" }}
-              />
+              {isMobile ? (
+                <>
+                  <path d="M3 5h12" />
+                  <path d="M3 9h12" />
+                  <path d="M3 13h12" />
+                </>
+              ) : (
+                <>
+                  <path
+                    className="transition-all duration-300 ease-out"
+                    d={sidebarCollapsed ? "M3 5h12" : "M4 4l10 10"}
+                    style={{ transformOrigin: sidebarCollapsed ? "9px 5px" : "9px 9px" }}
+                  />
+                  <path
+                    className="transition-all duration-200 ease-out"
+                    d="M3 9h12"
+                    style={{ opacity: sidebarCollapsed ? 1 : 0, transform: sidebarCollapsed ? "scaleX(1)" : "scaleX(0)" }}
+                  />
+                  <path
+                    className="transition-all duration-300 ease-out"
+                    d={sidebarCollapsed ? "M3 13h12" : "M4 14l10-10"}
+                    style={{ transformOrigin: sidebarCollapsed ? "9px 13px" : "9px 9px" }}
+                  />
+                </>
+              )}
             </svg>
           </button>
 
-          {/* 面包屑 */}
-          <BreadcrumbNav variant={isRead ? "read" : "global"} />
+          {/* 面包屑 — 移动端隐藏 */}
+          {!isMobile && <BreadcrumbNav variant={isRead ? "read" : "global"} />}
         </div>
 
         {/* ===== Center ===== */}
@@ -217,7 +242,7 @@ export function Topbar({
             "flex items-center",
             isRead
               ? "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-2 pointer-events-none w-max"
-              : "justify-center min-w-0"
+              : cn("justify-center min-w-0", isMobile ? "flex-1" : "")
           )}
         >
           {isRead ? (
@@ -250,21 +275,30 @@ export function Topbar({
         {/* ===== Right ===== */}
         <div className="flex items-center justify-end gap-1.5 min-w-0">
           {isRead ? (
+            // 阅读模式 — 保持不变
             rightContent ?? topbarSlots?.rightContent ?? (
               <>
-                {/* 阅读模式操作 */}
-                <IconButton size="compact" label={t("community.expandDetails")} onClick={() => { toggleDrawer(); trackAnalytics("drawer_open"); trackEngagement("drawer_toggle", { action: "open", page_id: urlPageId }) }}>
+                <IconButton size="compact" label={t("community.expandDetails")} onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}>
                   <PanelRight className="h-4 w-4" />
                 </IconButton>
-                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => { setImmersive(true); trackAnalytics("immersive_enter"); trackEngagement("immersive_toggle", { action: "enter", page_id: urlPageId }) }}>
+                <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => { setImmersive(true); trackAnalytics("immersive_enter") }}>
                   <Maximize2 className="h-4 w-4" />
                 </IconButton>
                 <ReadMoreMenu pageId={urlPageId ?? ""} userSlug={urlUserSlug ?? ""} />
               </>
             )
-          ) : (
+          ) : isMobile ? (
+            // 移动端非阅读模式 — 仅显示用户菜单（整合了创建/通知/动态/历史）
             <>
-              {/* 默认模式操作 */}
+              {session ? (
+                <UserMenu session={session} isMobile />
+              ) : (
+                <HeaderAuthButtons />
+              )}
+            </>
+          ) : (
+            // 桌面端非阅读模式 — 保持不变
+            <>
               {session ? (
                 <>
                   <CreateDropdown />
