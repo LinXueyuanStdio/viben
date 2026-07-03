@@ -7,14 +7,18 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
   ArrowLeft,
+  Calendar,
   CheckCircle2,
   ChevronRight,
   Code2,
   Copy,
   ExternalLink,
+  Eye,
+  FileText,
   Globe,
+  Hash,
+  Heart,
   History,
-  Info,
   Link2,
   Loader2,
   Mail,
@@ -513,58 +517,55 @@ export function PageSettingsPanel({
   return (
     <div className={cn("grid gap-6", className)}>
       {/* Page Info Section */}
-      <section className="rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <Info className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-foreground">
-            {t("page.settings.pageInfo", "Page Info")}
-          </h2>
+      <section className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <FileText className="size-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold leading-snug text-foreground truncate">
+              {pageTitle}
+            </h2>
+            <div className="mt-0.5 flex flex-wrap items-center text-xs text-muted-foreground [&>*:not(:last-child)]:after:mx-1.5 [&>*:not(:last-child)]:after:content-['·'] [&>*:not(:last-child)]:after:text-border">
+              <span className="inline-flex items-center gap-1">
+                <Hash className="size-3 shrink-0" />
+                <span className="inline-block truncate max-w-[160px] align-bottom">{pageUid}</span>
+              </span>
+              {pagePublishedAt && (
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="size-3 shrink-0" />
+                  {new Date(pagePublishedAt).toLocaleDateString("zh-CN")}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 capitalize">
+                <Globe className="size-3 shrink-0" />
+                {pageVisibility}
+              </span>
+            </div>
+            {(pageViewCount !== undefined || pageLikeCount !== undefined || pageCommentCount !== undefined) && (
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+                {pageViewCount !== undefined && (
+                  <span className="inline-flex items-center gap-1">
+                    <Eye className="size-3 shrink-0" />
+                    {pageViewCount}
+                  </span>
+                )}
+                {pageLikeCount !== undefined && (
+                  <span className="inline-flex items-center gap-1">
+                    <Heart className="size-3 shrink-0" />
+                    {pageLikeCount}
+                  </span>
+                )}
+                {pageCommentCount !== undefined && (
+                  <span className="inline-flex items-center gap-1">
+                    <MessageCircle className="size-3 shrink-0" />
+                    {pageCommentCount}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-
-        <dl className="space-y-3 text-sm">
-          <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">
-              {t("page.settings.name", "Name")}
-            </dt>
-            <dd className="font-medium text-foreground">{pageTitle}</dd>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">
-              {t("pageEditor.uidLabel", "Page ID")}
-            </dt>
-            <dd className="font-mono text-xs text-foreground">{pageUid}</dd>
-          </div>
-
-          {pagePublishedAt && (
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">
-                {t("pageEditor.settingsPublishedDate", "Published Date")}
-              </dt>
-              <dd className="text-xs text-foreground">
-                {new Date(pagePublishedAt).toLocaleDateString("zh-CN")}
-              </dd>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">
-              {t("pageEditor.settingsVisibilityLabel", "Visibility")}
-            </dt>
-            <dd className="text-xs text-foreground capitalize">
-              {pageVisibility}
-            </dd>
-          </div>
-
-          {pageViewCount !== undefined && (
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">
-                {t("page.settings.views", "Views")}
-              </dt>
-              <dd className="text-xs text-foreground">{pageViewCount}</dd>
-            </div>
-          )}
-        </dl>
       </section>
 
       {/* Publish Section */}
