@@ -103,10 +103,6 @@ export function AppShell({
     [session, sidebarCollapsed, toggleSidebar, isMobile, sidebarOpen, openSidebar, closeSidebar]
   )
 
-  // Determine sidebar visibility for desktop/mobile
-  const showDesktopSidebar = !isMobile && !sidebarCollapsed
-  const showMobileSidebar = isMobile && sidebarOpen
-
   return (
     <AppShellContext.Provider value={contextValue}>
       <DrawerProvider>
