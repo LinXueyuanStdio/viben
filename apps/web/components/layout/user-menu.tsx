@@ -2,10 +2,12 @@
 
 import { useCallback } from "react"
 import Link from "next/link"
-import { FileText, Star, ThumbsUp, Globe, Monitor, Sun, Moon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { FileText, Star, ThumbsUp, Globe, Monitor, Sun, Moon, Bell, Clock, MessageSquareText, FilePlus2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import { CREATE_MENU_ITEMS } from "@/lib/navigation/create-menu-items"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,9 +41,10 @@ const THEME_OPTIONS = [
   { value: "dark", label: "暗色", icon: Moon },
 ] as const
 
-export function UserMenu({ session, isMobile }: UserMenuProps) {
+export function UserMenu({ session, isMobile = false }: UserMenuProps) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const router = useRouter()
   const displayLabel = session.displayName || session.userSlug
   const initials = displayLabel.slice(0, 2).toUpperCase()
 
@@ -89,7 +92,54 @@ export function UserMenu({ session, isMobile }: UserMenuProps) {
           </div>
         </div>
 
-        <DropdownMenuSeparator />
+        {/* Mobile-only: navigation entries */}
+        {isMobile && (
+          <>
+            <DropdownMenuSeparator />
+
+            {/* 创建子菜单 */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center">
+                <FilePlus2 className="mr-2 h-4 w-4 shrink-0" />
+                <span>{t("nav.create")}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-44">
+                {CREATE_MENU_ITEMS.map((item) => (
+                  <DropdownMenuItem
+                    key={item.labelKey}
+                    onClick={() => router.push(item.href)}
+                  >
+                    <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                    {t(item.labelKey)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            {/* 通知 — 直接跳转 */}
+            <DropdownMenuItem onClick={() => router.push("/notifications")}>
+              <Bell className="mr-2 h-4 w-4 shrink-0" />
+              {t("nav.notifications")}
+            </DropdownMenuItem>
+
+            {/* 动态 — 直接跳转 */}
+            <DropdownMenuItem onClick={() => router.push("/moment")}>
+              <MessageSquareText className="mr-2 h-4 w-4 shrink-0" />
+              {t("nav.moment")}
+            </DropdownMenuItem>
+
+            {/* 历史 — 直接跳转 */}
+            <DropdownMenuItem onClick={() => router.push("/history")}>
+              <Clock className="mr-2 h-4 w-4 shrink-0" />
+              {t("nav.history")}
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {/* 桌面端使用原来的简单分隔线 */}
+        {!isMobile && <DropdownMenuSeparator />}
 
         {/* Section 1: Profile, Pages, Likes, Favorites */}
         <DropdownMenuItem asChild>
