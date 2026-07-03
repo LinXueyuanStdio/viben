@@ -2623,7 +2623,15 @@
         "security": "Security",
         "other": "Other"
       }
-    }
+    },
+    "deletePage": "Delete Page",
+    "deletePageWarning": "This action cannot be undone. All associated data including comments, likes, bookmarks, and publish history will be permanently deleted.",
+    "deleting": "Deleting...",
+    "confirmDelete": "Confirm Delete",
+    "pageDeleted": "Page deleted successfully",
+    "deleteFailed": "Failed to delete page",
+    "deleteTypePageId": "Type <strong>{{pageId}}</strong> to confirm:",
+    "deleteCountdown": "Please wait {{seconds}}s"
   },
   "pageEditor": {
     "title": "Create Page",

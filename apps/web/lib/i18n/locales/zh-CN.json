@@ -2622,7 +2622,15 @@
         "security": "安全问题",
         "other": "其他"
       }
-    }
+    },
+    "deletePage": "删除页面",
+    "deletePageWarning": "此操作不可撤销。所有关联数据（包括评论、点赞、收藏和发布历史）将被永久删除。",
+    "deleting": "删除中...",
+    "confirmDelete": "确认删除",
+    "pageDeleted": "页面已成功删除",
+    "deleteFailed": "删除页面失败",
+    "deleteTypePageId": "输入 <strong>{{pageId}}</strong> 以确认：",
+    "deleteCountdown": "请等待 {{seconds}} 秒"
   },
   "pageEditor": {
     "title": "创建页面",
