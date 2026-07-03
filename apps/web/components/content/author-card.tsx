@@ -28,7 +28,7 @@ interface AuthorCardProps {
 
 export function AuthorCard({ data, className, currentUserSlug }: AuthorCardProps) {
   const { t } = useTranslation()
-  const { fallbackText, avatarUrl, name, handle, userSlug, description, pageCount, followerCount, representativeWork, mutualFollows } = data
+  const { fallbackText, avatarUrl, name, userSlug, description, pageCount, followerCount, representativeWork, mutualFollows } = data
 
   return (
     <Link
@@ -46,7 +46,6 @@ export function AuthorCard({ data, className, currentUserSlug }: AuthorCardProps
       <div className="min-w-0">
         <div className="font-bold leading-[1.2] truncate">{name}</div>
         <div className="text-[13px] text-muted-foreground leading-[1.3] mt-[3px] mb-[6px]">
-          <span className="block truncate">{handle}</span>
           <span className="block truncate">{description}</span>
           <span className="block truncate">
             {pageCount} {t("community.pages")} · {t("community.followersCountWithFormat", { formattedCount: formatCount(followerCount) })}
