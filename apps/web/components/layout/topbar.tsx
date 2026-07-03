@@ -269,14 +269,20 @@ export function Topbar({
               <div className="pointer-events-auto">
                 <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
                   <VibenTabsList variant="pill">
-                    <VibenTabsTrigger value="page" variant="pill"><FileText className="h-4 w-4" /> {t("community.page")}</VibenTabsTrigger>
+                    <VibenTabsTrigger value="page" variant="pill">
+                      <FileText className="h-4 w-4" />
+                      <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.page")}</span>
+                    </VibenTabsTrigger>
                     {hasSidePage && (
-                      <VibenTabsTrigger value="side" variant="pill"><Columns2 className="h-4 w-4" /> {t("community.sidePage")}</VibenTabsTrigger>
+                      <VibenTabsTrigger value="side" variant="pill">
+                        <Columns2 className="h-4 w-4" />
+                        <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.sidePage")}</span>
+                      </VibenTabsTrigger>
                     )}
                     <VibenTabsTrigger value="settings" variant="pill"
                       className={cn(!isAuthor && "invisible")}>
                       <Settings className="h-4 w-4" />
-                      <span className="ml-1.5">{t("community.settings")}</span>
+                      <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.settings")}</span>
                     </VibenTabsTrigger>
                   </VibenTabsList>
                 </VibenTabs>
