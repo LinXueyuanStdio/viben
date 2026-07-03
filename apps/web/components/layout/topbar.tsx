@@ -279,11 +279,12 @@ export function Topbar({
                         <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.sidePage")}</span>
                       </VibenTabsTrigger>
                     )}
-                    <VibenTabsTrigger value="settings" variant="pill"
-                      className={cn(!isAuthor && "invisible")}>
-                      <Settings className="h-4 w-4" />
-                      <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.settings")}</span>
-                    </VibenTabsTrigger>
+                    {isAuthor && (
+                      <VibenTabsTrigger value="settings" variant="pill">
+                        <Settings className="h-4 w-4" />
+                        <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.settings")}</span>
+                      </VibenTabsTrigger>
+                    )}
                   </VibenTabsList>
                 </VibenTabs>
               </div>
