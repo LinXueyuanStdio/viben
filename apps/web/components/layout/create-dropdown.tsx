@@ -1,8 +1,9 @@
 "use client"
 
+import React from "react"
 import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
-import { FilePlus2, MessageSquareText, Package, Plus, Wand } from "lucide-react"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -11,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { CREATE_MENU_ITEMS } from "@/lib/navigation/create-menu-items"
 
 export function CreateDropdown() {
   const { t } = useTranslation()
@@ -25,23 +27,15 @@ export function CreateDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={() => router.push("/moment")}>
-          <MessageSquareText className="mr-2 h-4 w-4" />
-          {t("nav.postMoment")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/pages/new")}>
-          <FilePlus2 className="mr-2 h-4 w-4" />
-          {t("nav.createPage")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push("/publish?type=mcp")}>
-          <Package className="mr-2 h-4 w-4" />
-          {t("nav.publishMcp")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/publish?type=skill")}>
-          <Wand className="mr-2 h-4 w-4" />
-          {t("nav.createSkill")}
-        </DropdownMenuItem>
+        {CREATE_MENU_ITEMS.map((item, idx) => (
+          <React.Fragment key={item.labelKey}>
+            {idx === 2 && <DropdownMenuSeparator />}
+            <DropdownMenuItem onClick={() => router.push(item.href)}>
+              <item.icon className="mr-2 h-4 w-4" />
+              {t(item.labelKey)}
+            </DropdownMenuItem>
+          </React.Fragment>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )
