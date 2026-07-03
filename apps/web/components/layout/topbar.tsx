@@ -20,7 +20,7 @@ import { GlobalSearch } from "./global-search"
 import { NotificationPopover } from "./notification-popover"
 import { MomentPopover } from "./moment-popover"
 import { HistoryPopover } from "./history-popover"
-import { IconButton } from "@/components/ui/icon-button"
+
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
 import { CreateDropdown } from "./create-dropdown"
@@ -298,9 +298,12 @@ export function Topbar({
                 <>
                   <DropdownMenu open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
                     <DropdownMenuTrigger asChild>
-                      <IconButton size="compact" label={t("community.moreActions")}>
+                      <button
+                        className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+                        aria-label={t("community.moreActions")}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
-                      </IconButton>
+                      </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem onClick={() => { toggleDrawer(); trackAnalytics("drawer_open"); setMobileMoreOpen(false) }}>
@@ -327,12 +330,20 @@ export function Topbar({
               ) : (
                 // 桌面端阅读模式 — 三个独立按钮
                 <>
-                  <IconButton size="compact" label={t("community.expandDetails")} onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}>
+                  <button
+                    className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+                    aria-label={t("community.expandDetails")}
+                    onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}
+                  >
                     <PanelRight className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton size="compact" label={t("community.immersiveReading")} onClick={() => { setImmersive(true); trackAnalytics("immersive_enter") }}>
+                  </button>
+                  <button
+                    className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+                    aria-label={t("community.immersiveReading")}
+                    onClick={() => { setImmersive(true); trackAnalytics("immersive_enter") }}
+                  >
                     <Maximize2 className="h-4 w-4" />
-                  </IconButton>
+                  </button>
                   <ReadMoreMenu pageId={urlPageId ?? ""} userSlug={urlUserSlug ?? ""} />
                 </>
               )
