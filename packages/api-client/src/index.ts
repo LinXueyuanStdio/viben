@@ -2,27 +2,29 @@
  * Viben API Client
  *
  * A TypeScript client library for the Viben platform API.
+ * Provides HTTP client, Fastify proxy plugin, CLI commands, and shared utilities.
  *
  * @example
  * ```ts
- * import { VibenClient } from '@viben/api-client';
+ * import { VibenClient, createClient } from '@viben/api-client';
  *
+ * // Auto-configured client
+ * const client = createClient();
+ *
+ * // Or manual configuration
  * const client = new VibenClient({
  *   baseUrl: 'https://viben-web.vercel.app',
  *   apiKey: 'viben_xxx...',
  * });
  *
  * // List MCP packages
- * const { packages } = await client.mcp.list({ page: 1 });
+ * const { data: packages } = await client.mcp.list({ page: 1 });
  *
  * // Search skills
- * const { packages: skills } = await client.skill.search('git');
+ * const results = await client.skill.search('git');
  *
  * // Get current user
  * const { user } = await client.user.me();
- *
- * // Download a package
- * const blob = await client.mcp.download(packageId);
  * ```
  *
  * @packageDocumentation
@@ -32,9 +34,25 @@
 export { VibenClient, ApiError } from './client';
 export type { VibenClientConfig, FetchFunction } from './client';
 
+// Client factory
+export { createClient, createAuthenticatedClient } from './client-factory';
+
 // Backwards compatibility aliases
 export { VibenClient as BrowseMcpClient } from './client';
 export type { VibenClientConfig as BrowseMcpClientConfig } from './client';
+
+// Constants
+export { VIBEN_WEB_URL } from './constants';
+
+// Errors
+export {
+  NetworkError,
+  AuthError,
+  RateLimitError,
+  ServerError,
+  isApiError,
+  getApiErrorCode,
+} from './errors';
 
 // Types
 export type {
@@ -44,6 +62,7 @@ export type {
   PaginatedResponse,
   Author,
   IconData,
+  Category,
   // MCP
   McpPackage,
   McpPackageResponse,
@@ -53,6 +72,12 @@ export type {
   // Pages
   PublishPageRequest,
   PublishPageResponse,
+  PublishStatusResponse,
+  PublishHistoryItem,
+  PublishHistoryResponse,
+  PublishVersionResponse,
+  PublishRollbackResponse,
+  PublishedPage,
   // User
   User,
   UserResponse,

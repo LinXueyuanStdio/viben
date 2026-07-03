@@ -53,6 +53,16 @@ export interface IconData {
   value: string;
 }
 
+/**
+ * Package category
+ */
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  count?: number;
+}
+
 // ============================================
 // MCP Package Types
 // ============================================
@@ -148,6 +158,42 @@ export interface PublishPageResponse {
   page_uid: string;
   url: string;
   updated: boolean;
+}
+
+export interface PublishStatusResponse {
+  success: boolean;
+  published: boolean;
+  url: string | null;
+}
+
+export interface PublishHistoryItem {
+  version: number;
+  uid: string;
+  title: string;
+  html: string;
+  published_at: string;
+}
+
+export interface PublishHistoryResponse {
+  success: boolean;
+  history: PublishHistoryItem[];
+}
+
+export interface PublishVersionResponse {
+  success: boolean;
+  version: PublishHistoryItem;
+}
+
+export interface PublishRollbackResponse {
+  success: boolean;
+  version: number;
+}
+
+export interface PublishedPage {
+  uid: string;
+  title: string;
+  url: string;
+  published_at: string;
 }
 
 // ============================================

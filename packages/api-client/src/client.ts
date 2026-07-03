@@ -31,6 +31,12 @@ import type {
   VoiceTokenResponse,
   PublishPageRequest,
   PublishPageResponse,
+  PublishStatusResponse,
+  PublishHistoryResponse,
+  PublishVersionResponse,
+  PublishRollbackResponse,
+  PublishedPage,
+  Category,
 } from './types';
 
 /**
@@ -325,6 +331,12 @@ export class VibenClient {
         method: 'POST',
         body: JSON.stringify({ score }),
       }),
+
+    /**
+     * List available MCP categories
+     */
+    categories: (): Promise<Category[]> =>
+      this.request<Category[]>('/api/mcp/categories'),
   };
 
   // ============================================
@@ -408,6 +420,12 @@ export class VibenClient {
         method: 'POST',
         body: JSON.stringify({ score }),
       }),
+
+    /**
+     * List available skill categories
+     */
+    categories: (): Promise<Category[]> =>
+      this.request<Category[]>('/api/skill/categories'),
   };
 
   // ============================================
@@ -490,6 +508,71 @@ export class VibenClient {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    /**
+     * Check if a page is published on the web platform.
+     * Uses a HEAD request to the public page URL.
+     */
+    publishStatus: async (userSlug: string, uid: string): Promise<PublishStatusResponse> => {
+      const url = `/page/${encodeURIComponent(userSlug)}/${encodeURIComponent(uid)}`;
+      try {
+        const response = await this.fetchFn(`${this.baseUrl}${url}`, {
+          method: 'HEAD',
+          headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {},
+        });
+        if (response.status === 404) {
+          return { success: true, published: false, url: null };
+        }
+        if (!response.ok) {
+          return { success: false, published: false, url: null };
+        }
+        return { success: true, published: true, url };
+      } catch {
+        return { success: false, published: false, url: null };
+      }
+    },
+
+    /**
+     * Get publish history for a page.
+     */
+    publishHistory: (uid: string): Promise<PublishHistoryResponse> =>
+      this.request<PublishHistoryResponse>('/api/pages/publish-history', {
+        method: 'POST',
+        body: JSON.stringify({ uid }),
+      }),
+
+    /**
+     * Get a specific published version of a page.
+     */
+    publishVersion: (uid: string, version: number): Promise<PublishVersionResponse> =>
+      this.request<PublishVersionResponse>('/api/pages/publish-version', {
+        method: 'POST',
+        body: JSON.stringify({ uid, version }),
+      }),
+
+    /**
+     * Roll back a published page to a specific version.
+     */
+    publishRollback: (uid: string, version: number): Promise<PublishRollbackResponse> =>
+      this.request<PublishRollbackResponse>('/api/pages/publish-rollback', {
+        method: 'POST',
+        body: JSON.stringify({ uid, version }),
+      }),
+
+    /**
+     * Unpublish a page from the web platform.
+     */
+    unpublish: (uid: string): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>('/api/pages/unpublish', {
+        method: 'POST',
+        body: JSON.stringify({ uid }),
+      }),
+
+    /**
+     * List all published pages for the authenticated user.
+     */
+    listPublished: (): Promise<PaginatedResponse<PublishedPage>> =>
+      this.request<PaginatedResponse<PublishedPage>>('/api/pages'),
   };
 
   // ============================================
@@ -595,6 +678,33 @@ export class VibenClient {
     fork: (id: string): Promise<{ collection: Collection }> =>
       this.request<{ collection: Collection }>(`/api/collections/${id}/fork`, {
         method: 'POST',
+      }),
+
+    /**
+     * Toggle favorite on a collection
+     */
+    toggleFavorite: (id: string): Promise<{ favorited: boolean }> =>
+      this.request<{ favorited: boolean }>(`/api/collections/${id}/favorite`, {
+        method: 'POST',
+      }),
+
+    /**
+     * Get comments on a collection
+     */
+    comments: (id: string): Promise<CommentsResponse> =>
+      this.request<CommentsResponse>(`/api/collections/${id}/comments`),
+
+    /**
+     * Add comment to a collection
+     */
+    addComment: (
+      id: string,
+      content: string,
+      parentId?: string
+    ): Promise<{ success: boolean; id: string }> =>
+      this.request<{ success: boolean; id: string }>(`/api/collections/${id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, parentId }),
       }),
   };
 
