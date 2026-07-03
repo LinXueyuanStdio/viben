@@ -2625,6 +2625,7 @@
       }
     },
     "deletePage": "Delete Page",
+    "dangerZone": "Danger Zone",
     "deletePageWarning": "This action cannot be undone. All associated data including comments, likes, bookmarks, and publish history will be permanently deleted.",
     "deleting": "Deleting...",
     "confirmDelete": "Confirm Delete",

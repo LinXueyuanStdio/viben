@@ -662,18 +662,6 @@ export function PageSettingsPanel({
                     trailing={null}
                   />
                 </div>
-                <div className="border-t border-border" />
-
-                {/* Delete Page */}
-                <div className="space-y-1">
-                  <PublishActionRow
-                    icon={AlertTriangle}
-                    label={t("community.deletePage", "Delete page")}
-                    onClick={() => setDeleteDialogOpen(true)}
-                    destructive
-                    trailing={null}
-                  />
-                </div>
               </div>
             )}
 
@@ -1038,6 +1026,29 @@ export function PageSettingsPanel({
         >
           <Pen className="mr-2 h-4 w-4" />
           {t("pageEditor.settingsEditPage")}
+        </Button>
+      </section>
+
+      {/* Delete Page Section — standalone card at bottom */}
+      <section className="rounded-lg border border-destructive/30 bg-destructive/5 p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <h2 className="text-sm font-semibold text-destructive">
+            {t("community.dangerZone", "Danger Zone")}
+          </h2>
+        </div>
+
+        <p className="mb-4 text-xs text-muted-foreground">
+          {t("community.deletePageWarning")}
+        </p>
+
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setDeleteDialogOpen(true)}
+        >
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          {t("community.deletePage", "Delete page")}
         </Button>
       </section>
 

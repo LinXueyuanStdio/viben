@@ -2624,6 +2624,7 @@
       }
     },
     "deletePage": "删除页面",
+    "dangerZone": "危险区域",
     "deletePageWarning": "此操作不可撤销。所有关联数据（包括评论、点赞、收藏和发布历史）将被永久删除。",
     "deleting": "删除中...",
     "confirmDelete": "确认删除",
