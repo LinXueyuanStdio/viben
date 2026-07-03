@@ -77,6 +77,9 @@ interface SidebarProps {
   collapsed: boolean
   session?: { role?: string; username?: string; email?: string; avatarUrl?: string; userSlug?: string } | null
   pendingPackagesCount?: number
+  isMobile: boolean
+  open: boolean
+  onClose: () => void
 }
 
 function hasPermission(role: string, permission: AdminPermission): boolean {
@@ -92,6 +95,9 @@ export function Sidebar({
   collapsed,
   session,
   pendingPackagesCount = 0,
+  isMobile,
+  open,
+  onClose,
 }: SidebarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
@@ -165,178 +171,199 @@ export function Sidebar({
     },
   ];
 
+  const visible = isMobile ? open : !collapsed
+
   return (
-    <aside
-      className={cn(
-        "flex flex-col border-r bg-background transition-[width] duration-200 ease-out overflow-hidden",
-        collapsed ? "w-0 border-r-0" : "w-[var(--sidebar-w)]"
-      )}
-    >
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-        {/* Browse Section — always visible */}
-        <div className="px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t('nav.browse', '浏览')}
-          </span>
-        </div>
-        {browseNavigation.map((item) => {
-          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
+    <>
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-transform duration-200 ease-out",
+          "w-[var(--sidebar-w)]",
+          visible ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Close button — mobile only */}
+        {isMobile && (
+          <div className="flex items-center justify-end p-2">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+              aria-label="Close sidebar"
             >
-              <item.icon className="h-4 w-4" />
-              {t(item.nameKey)}
-            </Link>
-          );
-        })}
-
-        <div className="my-4 border-t" />
-
-        {/* Market Section */}
-        {navigation.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {t(item.nameKey)}
-            </Link>
-          );
-        })}
-
-        {/* My Section - Only visible to logged-in users */}
-        {isLoggedIn && (
-          <>
-            <div className="my-4 border-t" />
-            <div className="px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('nav.my')}
-              </span>
-            </div>
-            {myNavigation.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {t(item.nameKey)}
-                </Link>
-              );
-            })}
-          </>
+              <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M4 4l10 10" />
+                <path d="M14 4l-10 10" />
+              </svg>
+            </button>
+          </div>
         )}
 
-        {/* Creator Section - Only visible to logged-in users */}
-        {isLoggedIn && (
-          <>
-            <div className="my-4 border-t" />
-            <div className="px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('nav.creator')}
-              </span>
-            </div>
-            {creatorNavigation.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {t(item.nameKey)}
-                </Link>
-              );
-            })}
-          </>
-        )}
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+          {/* Browse Section — always visible */}
+          <div className="px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('nav.browse', '浏览')}
+            </span>
+          </div>
+          {browseNavigation.map((item) => {
+            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {t(item.nameKey)}
+              </Link>
+            );
+          })}
 
-        {/* Admin Section — grouped by function */}
-        {showAdmin && (
-          <>
-            <div className="my-4 border-t" />
-            <div className="px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t('nav.admin')}
-              </span>
-            </div>
-            {adminGroups.map((group) => {
-              // Filter items by permission
-              const visibleItems = group.items.filter(
-                (item) => !item.permission || hasPermission(userRole, item.permission)
-              );
-              if (visibleItems.length === 0) return null;
+          <div className="my-4 border-t" />
 
-              return (
-                <div key={group.label} className="mb-1">
-                  <div className="px-3 py-1.5">
-                    <span className="text-[11px] font-medium text-muted-foreground/60">
-                      {group.label}
-                    </span>
+          {/* Market Section */}
+          {navigation.map((item) => {
+            const isActive = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {t(item.nameKey)}
+              </Link>
+            );
+          })}
+
+          {/* My Section - Only visible to logged-in users */}
+          {isLoggedIn && (
+            <>
+              <div className="my-4 border-t" />
+              <div className="px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t('nav.my')}
+                </span>
+              </div>
+              {myNavigation.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {t(item.nameKey)}
+                  </Link>
+                );
+              })}
+            </>
+          )}
+
+          {/* Creator Section - Only visible to logged-in users */}
+          {isLoggedIn && (
+            <>
+              <div className="my-4 border-t" />
+              <div className="px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t('nav.creator')}
+                </span>
+              </div>
+              {creatorNavigation.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {t(item.nameKey)}
+                  </Link>
+                );
+              })}
+            </>
+          )}
+
+          {/* Admin Section — grouped by function */}
+          {showAdmin && (
+            <>
+              <div className="my-4 border-t" />
+              <div className="px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t('nav.admin')}
+                </span>
+              </div>
+              {adminGroups.map((group) => {
+                // Filter items by permission
+                const visibleItems = group.items.filter(
+                  (item) => !item.permission || hasPermission(userRole, item.permission)
+                );
+                if (visibleItems.length === 0) return null;
+
+                return (
+                  <div key={group.label} className="mb-1">
+                    <div className="px-3 py-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground/60">
+                        {group.label}
+                      </span>
+                    </div>
+                    {visibleItems.map((item) => {
+                      const isActive =
+                        item.href === '/admin'
+                          ? pathname === '/admin'
+                          : pathname.startsWith(item.href);
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                            isActive
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {item.name}
+                          {item.badgeCount !== undefined && item.badgeCount > 0 && (
+                            <Badge variant="destructive" className="ml-auto">
+                              {item.badgeCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
-                  {visibleItems.map((item) => {
-                    const isActive =
-                      item.href === '/admin'
-                        ? pathname === '/admin'
-                        : pathname.startsWith(item.href);
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                          isActive
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                        )}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {item.name}
-                        {item.badgeCount !== undefined && item.badgeCount > 0 && (
-                          <Badge variant="destructive" className="ml-auto">
-                            {item.badgeCount}
-                          </Badge>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </>
-        )}
-      </nav>
-    </aside>
+                );
+              })}
+            </>
+          )}
+        </nav>
+      </aside>
+    </>
   );
 }
