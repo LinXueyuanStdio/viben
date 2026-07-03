@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { ErrorBoundary } from '@/components/layout/error-boundary';
+import { GoogleOneTap } from '@/components/auth/google-one-tap';
 import type { Session } from '@/lib/auth/types';
 
 interface AppShellWrapperProps {
@@ -56,10 +57,13 @@ export function AppShellWrapper({ children, isLoggedIn }: AppShellWrapperProps) 
   }, [isLoggedIn]);
 
   return (
-    <AppShell session={session}>
-      <ErrorBoundary>
-        {children}
-      </ErrorBoundary>
-    </AppShell>
+    <>
+      <AppShell session={session}>
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </AppShell>
+      <GoogleOneTap enabled={session === null && ready} />
+    </>
   );
 }
