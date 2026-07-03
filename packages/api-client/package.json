@@ -10,20 +10,57 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./proxy-fetch": {
+      "types": "./dist/proxy-fetch.d.ts",
+      "import": "./dist/proxy-fetch.mjs",
+      "require": "./dist/proxy-fetch.js"
+    },
+    "./routes": {
+      "types": "./dist/routes/index.d.ts",
+      "import": "./dist/routes/index.mjs",
+      "require": "./dist/routes/index.js"
+    },
+    "./commands": {
+      "types": "./dist/commands/index.d.ts",
+      "import": "./dist/commands/index.mjs",
+      "require": "./dist/commands/index.js"
+    },
+    "./utils/token": {
+      "types": "./dist/utils/token.d.ts",
+      "import": "./dist/utils/token.mjs",
+      "require": "./dist/utils/token.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/proxy-fetch.ts src/routes/index.ts src/commands/index.ts src/utils/token.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts src/proxy-fetch.ts src/routes/index.ts src/commands/index.ts src/utils/token.ts --format cjs,esm --dts --watch",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "undici": "^7.0.0"
+  },
+  "peerDependencies": {
+    "fastify": ">=5.0.0",
+    "fastify-plugin": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "fastify": { "optional": true },
+    "fastify-plugin": { "optional": true }
+  },
   "devDependencies": {
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
   },
   "keywords": [
     "viben",
