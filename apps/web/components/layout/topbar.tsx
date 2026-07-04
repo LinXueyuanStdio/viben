@@ -312,7 +312,7 @@ export function Topbar({
                   <DropdownMenu open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
                     <DropdownMenuTrigger asChild>
                       <button
-                        className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+                        className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
                         aria-label={t("community.moreActions")}
                       >
                         <MoreHorizontal className="h-4 w-4" />
