@@ -199,7 +199,7 @@ jobs:
       # macOS: Build both ARM64 and x64 targets
       - name: Build Tauri app (macOS ARM64)
         if: matrix.platform == 'macos-latest'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -242,7 +242,7 @@ jobs:
 
       - name: Build Tauri app (macOS x64)
         if: matrix.platform == 'macos-latest'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -256,7 +256,7 @@ jobs:
       # Windows/Linux: Build single target
       - name: Build Tauri app
         if: matrix.platform != 'macos-latest'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
