@@ -195,26 +195,18 @@ export function Topbar({
     >
       <div
         className={cn(
-          "relative h-full mx-auto flex items-center",
-          isRead
-            ? cn(
-                "w-full grid gap-3",
-                isMobile ? "px-3" : "px-4"
-              )
-            : cn(
-                "grid gap-3",
-                isMobile
-                  ? "w-full px-3"
-                  : "w-[min(1280px,calc(100%-28px))]"
-              )
+          "relative h-full mx-auto grid items-center gap-3",
+          isMobile
+            ? "w-full px-3"
+            : isRead
+              ? "w-full px-4"
+              : "w-[min(1280px,calc(100%-28px))]"
         )}
         style={{
-          gridTemplateColumns: isRead
-            ? isMobile
-              ? "auto 1fr auto"
-              : "minmax(430px, 1.45fr) minmax(160px, 260px) auto"
-            : isMobile
-              ? "auto 1fr auto"
+          gridTemplateColumns: isMobile
+            ? "auto 1fr auto"
+            : isRead
+              ? "minmax(430px, 1.45fr) minmax(160px, 260px) auto"
               : "minmax(180px, 1fr) minmax(260px, 520px) minmax(180px, 1fr)",
         }}
       >
