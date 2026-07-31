@@ -1,4 +1,4 @@
-# 智能体 API
+﻿# 智能体 API
 
 > `/api/agent` - 智能体管理端点
 
@@ -98,7 +98,7 @@
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
+| workspace_path | string | 否 | - | 工作区路径 |
 | include_global | bool | 否 | true | 是否包含全局智能体 |
 
 **响应**:
@@ -333,7 +333,7 @@
 
 智能体配置存储在：
 - 全局: `~/.viben/agents/<id>/config.yaml`
-- 工作空间: `<workspace>/.viben/agents/<id>/config.yaml`
+- 工作区: `<workspace>/.viben/agents/<id>/config.yaml`
 
 ## 执行器类型 (executor_type)
 

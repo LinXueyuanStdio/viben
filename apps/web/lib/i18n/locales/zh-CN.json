@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "加载中...",
     "error": "错误",
@@ -1466,7 +1466,7 @@
     "createWorkspaceDesc": "创建新工作区以组织您的包和配置。",
     "noWorkspaces": "暂无工作区",
     "noWorkspacesDesc": "创建工作区以组织您的包和配置。",
-    "global": "全局工作空间",
+    "global": "全局工作区",
     "custom": "自定义",
     "type": "类型",
     "agentsCount": "智能体数",

@@ -1,4 +1,4 @@
-# 群聊 API
+﻿# 群聊 API
 
 > `/api/group-chats` - 群聊管理端点
 
@@ -80,7 +80,7 @@
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
+| workspace_path | string | 否 | - | 工作区路径 |
 | include_global | bool | 否 | true | 包含全局群聊 |
 | created_by | string | 否 | - | 按创建者过滤 |
 
@@ -278,7 +278,7 @@ WebSocket 连接，用于实时通信。
 
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| workspace_path | string | 否 | 工作空间路径 |
+| workspace_path | string | 否 | 工作区路径 |
 | member_type | string | 否 | 成员类型 |
 | member_id | string | 否 | 成员 ID |
 
@@ -353,7 +353,7 @@ interface ClientMessage {
 
 ## 群聊存储
 
-群聊数据存储在工作空间目录下：
+群聊数据存储在工作区目录下：
 
 ```
 <workspace>/.viben/group-chats/

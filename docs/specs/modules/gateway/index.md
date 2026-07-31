@@ -1,4 +1,4 @@
-# Viben Gateway
+﻿# Viben Gateway
 
 > 基于 Axum 的 HTTP/WebSocket API 服务器，提供 AI 智能体编排和管理服务。
 
@@ -78,7 +78,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 | WebSocket | `/ws`, `/terminal/ws` | [websocket.md](./websocket.md) |
 | ACP WebSocket | `/ws/agent/acp` | [acp.md](./acp.md) |
 
-## 工作空间作用域
+## 工作区作用域
 
 所有资源支持两个作用域级别：
 
@@ -92,14 +92,14 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 │  └── sessions/            会话存储                               │
 ├─────────────────────────────────────────────────────────────────┤
 │  Workspace Scope: <project>/.viben/                              │
-│  ├── agents/              工作空间智能体                         │
+│  ├── agents/              工作区智能体                         │
 │  ├── group-chats/         群聊                                   │
-│  └── config.yaml          工作空间配置                           │
+│  └── config.yaml          工作区配置                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **查询参数**:
-- `workspace_path`: 工作空间路径 (绝对路径)
+- `workspace_path`: 工作区路径 (绝对路径)
 - `include_global`: 是否包含全局资源 (默认 true)
 
 ## 通用响应格式

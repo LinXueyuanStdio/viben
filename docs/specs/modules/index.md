@@ -1,4 +1,4 @@
-# Module Specifications Index
+﻿# Module Specifications Index
 
 > Detailed specifications for each task in the Platform Upgrade v3.0.
 > **Status: Core Web modules completed. Kanban/Chat modules in specification phase.**
@@ -83,12 +83,12 @@ This directory contains detailed specifications for implementing each module of 
 
 ## Workspace System
 
-> **Reorganized**: 工作空间相关的规格已移至 `workspace/` 子目录
+> **Reorganized**: 工作区相关的规格已移至 `workspace/` 子目录
 
 | Module | Description | Status |
 |--------|-------------|--------|
-| [workspace/](./workspace/) | **工作空间模块索引** | - |
-| [workspace/workspace-management.md](./workspace/workspace-management.md) | Desktop 多工作空间系统 | Done |
+| [workspace/](./workspace/) | **工作区模块索引** | - |
+| [workspace/workspace-management.md](./workspace/workspace-management.md) | Desktop 多工作区系统 | Done |
 | [workspace/workspace-api.md](./workspace/workspace-api.md) | Web Workspace CRUD API (T14) | Done |
 | [workspace/workspace-ui.md](./workspace/workspace-ui.md) | Web Workspace UI (T17) | Done |
 | [workspace/kanban-integration.md](./workspace/kanban-integration.md) | Kanban 整体架构 | Specification |

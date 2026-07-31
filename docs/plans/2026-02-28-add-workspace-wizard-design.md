@@ -1,10 +1,10 @@
-# 添加工作空间向导设计
+﻿# 添加工作区向导设计
 
-> 参考 Auto-Claude 的 AddProjectModal，为 viben 创建工作空间时提供向导式创建流程。
+> 参考 Auto-Claude 的 AddProjectModal，为 viben 创建工作区时提供向导式创建流程。
 
 ## 概述
 
-将当前简单的文件夹选择改为两步向导式对话框，引导用户完成工作空间配置。
+将当前简单的文件夹选择改为两步向导式对话框，引导用户完成工作区配置。
 
 ## 组件结构
 
@@ -25,7 +25,7 @@ apps/desktop/src/components/workspace/
 │  选择创建方式    │ ──► │    配置表单      │ ──► │      完成       │
 │                 │     │                 │     │                 │
 │ • 打开现有文件夹 │     │ • 名称          │     │ • 成功提示      │
-│ • 创建新文件夹   │     │ • 位置          │     │ • 前往工作空间  │
+│ • 创建新文件夹   │     │ • 位置          │     │ • 前往工作区  │
 │                 │     │ • Git/Viben选项  │     │ • 继续添加      │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
 ```
@@ -36,12 +36,12 @@ apps/desktop/src/components/workspace/
 
 ```
 ┌────────────────────────────────────────────────┐
-│                 添加工作空间                     │
+│                 添加工作区                     │
 ├────────────────────────────────────────────────┤
 │                                                │
 │  ┌──────────────────────────────────────────┐  │
 │  │  📂  打开现有文件夹                        │  │
-│  │      选择已有的项目目录作为工作空间          │  │
+│  │      选择已有的项目目录作为工作区          │  │
 │  └──────────────────────────────────────────┘  │
 │                                                │
 │  ┌──────────────────────────────────────────┐  │
@@ -86,13 +86,13 @@ interface FolderStatus {
 
 ```
 ┌────────────────────────────────────────────────┐
-│  ←              配置工作空间                    │
+│  ←              配置工作区                    │
 ├────────────────────────────────────────────────┤
 │                                                │
 │  位置                                          │
 │  /Users/xxx/projects/my-project      [已选择]  │
 │                                                │
-│  工作空间名称                                   │
+│  工作区名称                                   │
 │  ┌──────────────────────────────────────────┐  │
 │  │ my-project                               │  │
 │  └──────────────────────────────────────────┘  │
@@ -116,10 +116,10 @@ interface FolderStatus {
 
 ```
 ┌────────────────────────────────────────────────┐
-│  ←              创建工作空间                    │
+│  ←              创建工作区                    │
 ├────────────────────────────────────────────────┤
 │                                                │
-│  工作空间名称                                   │
+│  工作区名称                                   │
 │  ┌──────────────────────────────────────────┐  │
 │  │ my-new-project                           │  │
 │  └──────────────────────────────────────────┘  │
@@ -170,14 +170,14 @@ interface FolderStatus {
 
 ```
 ┌────────────────────────────────────────────────┐
-│                  添加工作空间                   │
+│                  添加工作区                   │
 ├────────────────────────────────────────────────┤
 │                                                │
 │                    ✓                           │
 │                                                │
-│              工作空间创建成功！                  │
+│              工作区创建成功！                  │
 │                                                │
-│        my-project 已添加到工作空间列表          │
+│        my-project 已添加到工作区列表          │
 │                                                │
 │  ┌──────────────────────────────────────────┐  │
 │  │ 📁 /Users/xxx/projects/my-project        │  │
@@ -186,13 +186,13 @@ interface FolderStatus {
 │  └──────────────────────────────────────────┘  │
 │                                                │
 ├────────────────────────────────────────────────┤
-│        [继续添加]              [前往工作空间]   │
+│        [继续添加]              [前往工作区]   │
 └────────────────────────────────────────────────┘
 ```
 
 ### 交互行为
 
-- **前往工作空间**（主按钮）: 关闭对话框，导航到 `/workspace/:id`
+- **前往工作区**（主按钮）: 关闭对话框，导航到 `/workspace/:id`
 - **继续添加**: 重置向导状态，返回步骤1
 
 ### 创建结果数据
@@ -225,7 +225,7 @@ interface DetectFolderResponse {
 interface CreateWorkspaceRequest {
   method: 'open-existing' | 'create-new';
   path: string;              // 现有路径或父目录路径
-  name: string;              // 工作空间名称（创建新时也作为文件夹名）
+  name: string;              // 工作区名称（创建新时也作为文件夹名）
   init_git: boolean;
   init_viben: boolean;
   viben_options?: {          // 仅当 init_viben=true 时
@@ -282,14 +282,14 @@ interface CreateWorkspaceResponse {
 {
   "workspace": {
     "addModal": {
-      "title": "添加工作空间",
-      "titleConfigure": "配置工作空间",
-      "titleCreate": "创建工作空间",
+      "title": "添加工作区",
+      "titleConfigure": "配置工作区",
+      "titleCreate": "创建工作区",
       "methodOpenExisting": "打开现有文件夹",
-      "methodOpenExistingDesc": "选择已有的项目目录作为工作空间",
+      "methodOpenExistingDesc": "选择已有的项目目录作为工作区",
       "methodCreateNew": "创建新文件夹",
       "methodCreateNewDesc": "在指定位置创建新的项目目录",
-      "fieldName": "工作空间名称",
+      "fieldName": "工作区名称",
       "fieldNameHint": "用于文件夹名称，建议小写字母和连字符",
       "fieldLocation": "存储位置",
       "fieldLocationSelected": "已选择",
@@ -305,15 +305,15 @@ interface CreateWorkspaceResponse {
       "projectFrontend": "前端",
       "projectBackend": "后端",
       "optionIncludeCursor": "包含 Cursor 配置",
-      "successTitle": "工作空间创建成功！",
-      "successDesc": "{{name}} 已添加到工作空间列表",
+      "successTitle": "工作区创建成功！",
+      "successDesc": "{{name}} 已添加到工作区列表",
       "successGitInit": "Git 仓库已初始化",
       "successVibenInit": ".viben 配置已创建",
       "btnCancel": "取消",
       "btnBack": "上一步",
       "btnCreate": "创建",
       "btnContinueAdd": "继续添加",
-      "btnGoToWorkspace": "前往工作空间"
+      "btnGoToWorkspace": "前往工作区"
     }
   }
 }

@@ -1,4 +1,4 @@
-# GitHub Issue 全自动化管理设计方案
+﻿# GitHub Issue 全自动化管理设计方案
 
 > 生成日期: 2026-02-28
 > 参考项目: Auto-Claude
@@ -13,7 +13,7 @@
 | GitHub API | gh CLI wrapper |
 | 触发方式 | 混合模式（标签自动 + 手动触发） |
 | 人工审核 | 可配置，默认需要审核 |
-| UI 位置 | 工作空间新增 Issues Tab |
+| UI 位置 | 工作区新增 Issues Tab |
 | 批量处理 | 语义聚类 + 批量修复 |
 | AI 模型 | 独立模型配置（专门为 GitHub 功能） |
 | 架构方案 | Gateway 中心化 |
@@ -215,7 +215,7 @@ async function clusterIssues(
 `~/.viben/github-config.yaml` - GitHub 功能专用配置：
 
 ```yaml
-# GitHub 功能模型配置（独立于工作空间 Agent）
+# GitHub 功能模型配置（独立于工作区 Agent）
 model:
   provider: "anthropic"               # 或 openai, ollama 等
   model: "claude-sonnet-4-5-20250929"
@@ -242,7 +242,7 @@ batch:
 ```
 
 **配置优先级**（高到低）：
-1. 工作空间级：`{workspace}/.viben/github-config.yaml`
+1. 工作区级：`{workspace}/.viben/github-config.yaml`
 2. 全局级：`~/.viben/github-config.yaml`
 3. 默认值：代码内置
 
@@ -641,7 +641,7 @@ apps/desktop/src/
 
 本设计是 `2026-02-28-github-integration-design.md` 的扩展和深化：
 
-- 原设计侧重于**工作空间设置中的 GitHub Section**（认证、仓库选择、基础 Issue 导入）
-- 本设计侧重于**工作空间 Issues Tab 的全自动化功能**（AI 分析、自动修复、批量处理）
+- 原设计侧重于**工作区设置中的 GitHub Section**（认证、仓库选择、基础 Issue 导入）
+- 本设计侧重于**工作区 Issues Tab 的全自动化功能**（AI 分析、自动修复、批量处理）
 
 两个设计可以并行实现，共享 `gh-client.ts` 和 `config.ts` 基础组件。

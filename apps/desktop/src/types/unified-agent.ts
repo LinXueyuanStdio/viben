@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Unified Agent Types
  *
  * 统一的智能体类型定义，支持：
- * - 执行器 (Executor) - 来自工作空间自动发现（.claude/, CLAUDE.md 等），是运行后端
+ * - 执行器 (Executor) - 来自工作区自动发现（.claude/, CLAUDE.md 等），是运行后端
  * - 智能体 (Agent) - 来自 ~/.viben/agents/，Viben Agent 会使用某个执行器作为运行后端
  */
 
@@ -19,14 +19,14 @@ export type Agent = AgentInfo;
 
 /**
  * 来源类型
- * - workspace: 工作空间自动发现（执行器）
+ * - workspace: 工作区自动发现（执行器）
  * - global: 全局存储（智能体）
  */
 export type AgentSource = "workspace" | "global";
 
 /**
  * 角色类型
- * - executor: 执行器，来自工作空间自动发现配置，是运行后端
+ * - executor: 执行器，来自工作区自动发现配置，是运行后端
  * - agent: 智能体，来自全局存储，使用执行器作为运行后端
  */
 export type AgentRole = "executor" | "agent";
@@ -37,7 +37,7 @@ export type AgentRole = "executor" | "agent";
 
 /**
  * 统一的智能体接口
- * 合并工作空间智能体和全局智能体的属性
+ * 合并工作区智能体和全局智能体的属性
  */
 export interface UnifiedAgent {
   /** 唯一标识符 */
@@ -50,9 +50,9 @@ export interface UnifiedAgent {
   source: AgentSource;
   /** 角色 */
   role: AgentRole;
-  /** 工作空间 ID (仅工作空间智能体) */
+  /** 工作区 ID (仅工作区智能体) */
   workspaceId?: string;
-  /** 工作空间路径 (仅工作空间智能体) */
+  /** 工作区路径 (仅工作区智能体) */
   workspacePath?: string;
   /** 执行器类型 (仅执行器) */
   executorType?: ExecutorType;
@@ -95,7 +95,7 @@ export interface UnifiedAgent {
 // ============================================================================
 
 /**
- * 将工作空间自动发现的配置转换为执行器
+ * 将工作区自动发现的配置转换为执行器
  */
 export function executorToUnified(
   executor: Executor,
@@ -183,7 +183,7 @@ export function isAgent(agent: UnifiedAgent): boolean {
 }
 
 /**
- * 检查是否来自工作空间（执行器）
+ * 检查是否来自工作区（执行器）
  */
 export function isWorkspaceExecutor(agent: UnifiedAgent): boolean {
   return agent.source === "workspace";

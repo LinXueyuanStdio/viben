@@ -1,4 +1,4 @@
----
+﻿---
 sidebar_position: 1
 title: "安装指南"
 description: "安装 Viben 桌面应用、CLI 工具或 MCP 服务器"
@@ -127,7 +127,7 @@ viben version
 viben <command> [options]
 
 Core:
-  init          使用 AI 辅助开发工作流初始化 Viben 工作空间
+  init          使用 AI 辅助开发工作流初始化 Viben 工作区
   config        管理 Viben 配置（git 风格的 get/set）
   gateway       管理 Viben Gateway（start/stop/status）
   service       管理后台服务
@@ -153,16 +153,16 @@ Tools:
   cron          管理定时任务
 
 Workspace:
-  workspace     工作空间操作（list、current）
+  workspace     工作区操作（list、current）
   session       会话录制管理
   context       获取当前开发上下文
   user          管理用户身份
-  page          管理工作空间页面
+  page          管理工作区页面
 
 Config:
   provider      管理 AI Provider
   model         管理 AI 模型（aliases、fallback、config）
-  update        更新 Viben CLI 或工作空间组件
+  update        更新 Viben CLI 或工作区组件
 
 Telemetry:
   telemetry     管理遥测追踪与日志

@@ -1,6 +1,6 @@
-# WorkAny 核心功能迁移规范
+﻿# WorkAny 核心功能迁移规范
 
-> 将 WorkAny 的智能体对话功能迁移到 Viben Desktop 的工作空间对话页面
+> 将 WorkAny 的智能体对话功能迁移到 Viben Desktop 的工作区对话页面
 
 ---
 

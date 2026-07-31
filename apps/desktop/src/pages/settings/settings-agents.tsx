@@ -1,7 +1,7 @@
-/**
+﻿/**
  * Settings Agents Page - Reuses WorkspaceAgentsPage
  *
- * 设置页面中的智能体管理完全复用全局工作空间的智能体页面
+ * 设置页面中的智能体管理完全复用全局工作区的智能体页面
  * Settings > Agents section simply wraps the WorkspaceAgentsPage component
  */
 import { Loader2, Bot } from "lucide-react";

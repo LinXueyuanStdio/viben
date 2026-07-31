@@ -1,4 +1,4 @@
----
+﻿---
 sidebar_position: 22
 title: "viben user"
 description: "用户身份管理，支持多开发者/多智能体协作"
@@ -106,7 +106,7 @@ Developer not initialized
 │                                 # 内容: name=john
 └── workspace/
     ├── index.md                  # 主索引（活跃开发者表）
-    └── john/                     # 用户工作空间
+    └── john/                     # 用户工作区
         ├── index.md              # 个人索引
         └── journal-1.md          # 会话日志
 ```

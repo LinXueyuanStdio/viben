@@ -1,4 +1,4 @@
----
+﻿---
 sidebar_position: 1
 title: "微本简介"
 description: "微本 - Agent 集群 × 代码进化，多目标带约束的迭代优化，自动提升代码质量"
@@ -140,7 +140,7 @@ viben idea promote ci-001 --start --worktree
 │       └── AGENTS.md
 ├── cron.yaml         # 定时任务
 ├── channels.yaml     # 通知渠道
-└── workspaces.yaml   # 工作空间
+└── workspaces.yaml   # 工作区
 ```
 
 ## 快速开始

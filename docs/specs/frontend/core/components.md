@@ -1,4 +1,4 @@
-# Frontend Component Guidelines
+﻿# Frontend Component Guidelines
 
 > Conventions and patterns for React components in Viben desktop application.
 
@@ -604,7 +604,7 @@ import { WorkspaceBreadcrumb } from "@/components/workspace";
 **Hierarchy Structure**:
 ```
 层级结构:
-  Workspace名                           → 工作空间根页面
+  Workspace名                           → 工作区根页面
     ├─ 对话                             → Chat 页面
     ├─ 任务看板                          → Kanban 页面
     └─ {Agent名}                        → Agent 详情页

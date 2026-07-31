@@ -1,6 +1,6 @@
-# Kanban 模块规范
+﻿# Kanban 模块规范
 
-> 将 vibe-kanban 核心功能迁移到 packages/core，集成到 Desktop 工作空间看板页面
+> 将 vibe-kanban 核心功能迁移到 packages/core，集成到 Desktop 工作区看板页面
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### 1. 基于文件的存储 (File-Native)
 
-**不使用数据库**，所有数据以 YAML/JSON 文件形式存储在工作空间目录下：
+**不使用数据库**，所有数据以 YAML/JSON 文件形式存储在工作区目录下：
 
 ```
 <workspace>/.viben/kanban/

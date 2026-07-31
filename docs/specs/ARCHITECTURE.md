@@ -1,4 +1,4 @@
-# Viben 项目架构报告
+﻿# Viben 项目架构报告
 
 > **版本**: 0.2.0
 > **更新日期**: 2026-03-02
@@ -23,7 +23,7 @@
 
 ### 1.1 项目定位
 
-**Viben** 是一个多智能体工作空间管理器，包含以下核心产品：
+**Viben** 是一个多智能体工作区管理器，包含以下核心产品：
 
 | 产品 | 描述 | 技术 |
 |------|------|------|
@@ -170,7 +170,7 @@ viben/
 ├── design-system/           # 设计系统资源
 │
 ├── package.json             # 根包配置
-├── pnpm-workspace.yaml      # pnpm 工作空间配置
+├── pnpm-workspace.yaml      # pnpm 工作区配置
 └── turbo.json               # Turborepo 配置
 ```
 
@@ -219,7 +219,7 @@ packages:
 - MCP 包市场 (搜索、浏览、发布)
 - Skill 包市场
 - 用户认证 (邮箱 + GitHub OAuth)
-- 工作空间管理
+- 工作区管理
 - Collections (精选包列表)
 - 社交功能 (收藏、评分、评论)
 - 管理面板 (审核)
@@ -235,7 +235,7 @@ apps/web/
 │       ├── auth/             # 认证端点
 │       ├── mcp/              # MCP 包 CRUD
 │       ├── skills/           # Skill 包 CRUD
-│       ├── workspaces/       # 工作空间管理
+│       ├── workspaces/       # 工作区管理
 │       ├── collections/      # Collection 管理
 │       └── admin/            # 管理端点
 ├── components/               # React 组件
@@ -256,14 +256,14 @@ apps/web/
 | `skillPackages` | Skill 包注册表 |
 | `collections` | 精选包合集 |
 | `favorites`, `ratings`, `comments` | 社交功能 |
-| `workspaces` | 用户工作空间 |
+| `workspaces` | 用户工作区 |
 | `reports`, `moderationLogs` | 管理/审核 |
 
 ---
 
 ### 4.2 apps/desktop (@viben/desktop)
 
-**定位**: 本地多智能体工作空间管理桌面应用
+**定位**: 本地多智能体工作区管理桌面应用
 
 **核心功能**:
 - MCP 服务器管理 (启动/停止/监控)
@@ -285,7 +285,7 @@ apps/desktop/
 │   │   ├── kanban/           # 看板
 │   │   ├── settings/         # 设置面板
 │   │   ├── marketplace/      # 包浏览器
-│   │   ├── workspace/        # 工作空间管理
+│   │   ├── workspace/        # 工作区管理
 │   │   └── ui/               # 基础 UI 组件
 │   ├── pages/                # 路由页面
 │   ├── stores/               # Zustand stores
@@ -310,7 +310,7 @@ apps/desktop/
 | `commands::viben_agents` | Viben 智能体列表管理 |
 | `commands::auth` | 凭证管理, GitHub OAuth |
 | `commands::kanban` | 看板数据持久化 |
-| `commands::sync` | 云同步 (工作空间、包) |
+| `commands::sync` | 云同步 (工作区、包) |
 | `commands::cache` | 离线缓存 |
 
 **状态管理** (Zustand Store):
@@ -402,7 +402,7 @@ packages/core/src/
 ├── team/         # 团队功能
 ├── telemetry/    # 遥测与日志
 ├── types/        # 共享类型定义
-├── workspace/    # 工作空间管理
+├── workspace/    # 工作区管理
 ├── browser.ts    # 浏览器安全导出
 └── index.ts      # 主导出
 ```
@@ -448,7 +448,7 @@ const CHAT_SUPPORTED_EXECUTORS = ["CLAUDE_CODE", "GEMINI", "CODEX"];
 | **cron** | `/api/cron` | 定时任务 |
 | **mcp** | `/api/mcp` | MCP 服务器管理 |
 | **mcp-inspector** | `/api/mcp-inspector` | MCP 调试器 |
-| **workspaces** | `/api/workspaces` | 工作空间 |
+| **workspaces** | `/api/workspaces` | 工作区 |
 | **group-chats** | `/api/group-chats` | 群聊 |
 | **chat-list** | `/api/chat-list` | 聊天列表 |
 | **agent-run** | `/api/agent-run` | 智能体运行 (SSE) |
@@ -679,7 +679,7 @@ const user = await db.query.users.findFirst({
 /api/auth/*           # 认证
 /api/mcp/*            # MCP 包 CRUD
 /api/skill/*          # Skill 包 CRUD
-/api/workspaces/*     # 工作空间管理
+/api/workspaces/*     # 工作区管理
 /api/collections/*    # Collections
 /api/admin/*          # 管理端点
 ```
@@ -761,7 +761,7 @@ pnpm tauri build  # Tauri 生产构建
 | 文件 | 用途 |
 |------|------|
 | `package.json` | 根包配置 |
-| `pnpm-workspace.yaml` | 工作空间定义 |
+| `pnpm-workspace.yaml` | 工作区定义 |
 | `turbo.json` | Turborepo 任务配置 |
 | `tsconfig.json` | TypeScript 配置 |
 | `apps/web/drizzle.config.ts` | Drizzle ORM 配置 |

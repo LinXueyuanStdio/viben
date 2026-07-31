@@ -1,6 +1,6 @@
-# Gateway 资源发现 API 设计
+﻿# Gateway 资源发现 API 设计
 
-> Viben Gateway 提供工作空间范围内的 executors、agents、models 资源发现 API。
+> Viben Gateway 提供工作区范围内的 executors、agents、models 资源发现 API。
 
 ---
 
@@ -16,15 +16,15 @@
 
 ## 核心设计原则
 
-### 1. 工作空间层级
+### 1. 工作区层级
 
 ```
-~/.viben/              <- 全局工作空间 (Global Workspace)
+~/.viben/              <- 全局工作区 (Global Workspace)
 ├── agents/            <- 全局智能体
 ├── executors/         <- 全局执行器配置
 └── models.yaml        <- 全局模型配置
 
-/path/to/project/      <- 项目工作空间 (Project Workspace)
+/path/to/project/      <- 项目工作区 (Project Workspace)
 ├── .viben/
 │   ├── agents/        <- 项目智能体
 │   └── models.yaml    <- 项目模型覆盖
@@ -35,12 +35,12 @@
 
 ### 2. 默认行为
 
-- **workspace_path**: 不传时默认为用户目录 `~` 的绝对路径（即全局工作空间）
-- **include_global**: 不传时默认为 `true`，返回结果包含全局工作空间的资源
+- **workspace_path**: 不传时默认为用户目录 `~` 的绝对路径（即全局工作区）
+- **include_global**: 不传时默认为 `true`，返回结果包含全局工作区的资源
 
 ### 3. 资源归属标识
 
-每个资源必须包含 `workspace_path` 字段，标识该资源属于哪个工作空间：
+每个资源必须包含 `workspace_path` 字段，标识该资源属于哪个工作区：
 - `"workspace_path": "/Users/xxx"` - 全局资源
 - `"workspace_path": "/path/to/project"` - 项目资源
 
@@ -55,8 +55,8 @@
 **查询参数**:
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| workspace_path | string | `~` 绝对路径 | 工作空间路径，不传则使用用户目录 |
-| include_global | boolean | true | 是否包含全局工作空间的智能体 |
+| workspace_path | string | `~` 绝对路径 | 工作区路径，不传则使用用户目录 |
+| include_global | boolean | true | 是否包含全局工作区的智能体 |
 
 **响应示例**:
 ```json
@@ -105,7 +105,7 @@
 **查询参数**:
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| workspace_path | string | `~` 绝对路径 | 工作空间路径，不传则使用用户目录 |
+| workspace_path | string | `~` 绝对路径 | 工作区路径，不传则使用用户目录 |
 | include_global | boolean | true | 是否包含全局执行器 |
 
 **响应**:
@@ -150,7 +150,7 @@
 **查询参数**:
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| workspace_path | string | `~` 绝对路径 | 工作空间路径，不传则使用用户目录 |
+| workspace_path | string | `~` 绝对路径 | 工作区路径，不传则使用用户目录 |
 | include_global | boolean | true | 是否包含全局模型 |
 
 **响应**:
@@ -180,17 +180,17 @@
 ### 智能体 (Agents)
 
 当 `include_global=true` 时：
-1. 先加载项目工作空间的智能体
-2. 再加载全局工作空间的智能体
+1. 先加载项目工作区的智能体
+2. 再加载全局工作区的智能体
 3. **同名智能体**: 项目智能体优先，跳过全局同名智能体
 4. 每个智能体的 `source` 字段标识来源：`"workspace"` 或 `"global"`
-5. 每个智能体的 `workspace_path` 字段标识其所属工作空间
+5. 每个智能体的 `workspace_path` 字段标识其所属工作区
 
 ### 执行器 (Executors)
 
 当 `include_global=true` 时：
 1. 遍历所有已知执行器类型
-2. 检查项目工作空间和全局工作空间的配置
+2. 检查项目工作区和全局工作区的配置
 3. **同名执行器配置合并**:
    - `workspace_config_path`: 项目级配置路径
    - `global_config_path`: 全局配置路径
@@ -200,7 +200,7 @@
 
 当 `include_global=true` 时：
 1. 加载全局模型列表
-2. 检查项目工作空间是否有覆盖配置
+2. 检查项目工作区是否有覆盖配置
 3. `has_workspace_override` 标识是否有项目级覆盖
 
 ---
@@ -208,7 +208,7 @@
 ## 前端使用示例
 
 ```typescript
-// 获取当前工作空间可见的所有智能体
+// 获取当前工作区可见的所有智能体
 const agents = await gateway.getAgents({
   workspacePath: currentWorkspace.path,
   includeGlobal: true,
@@ -235,5 +235,5 @@ const editPath = agent.workspace_path === homeDir
 
 1. **workspace_path 必须是绝对路径**
 2. **不存在的路径返回 400 错误**
-3. **全局工作空间** 指用户目录 `~`，不是 `~/.viben`
-4. **IDE 配置** (如 `.claude/`, `.cursor/`) 总是属于发现它们的工作空间
+3. **全局工作区** 指用户目录 `~`，不是 `~/.viben`
+4. **IDE 配置** (如 `.claude/`, `.cursor/`) 总是属于发现它们的工作区

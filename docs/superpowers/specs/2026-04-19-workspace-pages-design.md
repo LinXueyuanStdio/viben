@@ -1,10 +1,10 @@
-# Workspace Pages 协议设计
+﻿# Workspace Pages 协议设计
 
-> 为 Viben Desktop 工作空间添加自定义页面功能，支持静态页面、Markdown 页面、开发服务器和代理页面。包含全局 Tab 管理系统。
+> 为 Viben Desktop 工作区添加自定义页面功能，支持静态页面、Markdown 页面、开发服务器和代理页面。包含全局 Tab 管理系统。
 
 ## 概述
 
-在工作空间根目录下，`pages/` 文件夹用于存放自定义页面。每个页面是一个包含 `SKILL.md` 文件的子目录，Desktop 应用会在左侧边栏展示这些页面，右侧提供类似浏览器的视图来渲染页面内容。
+在工作区根目录下，`pages/` 文件夹用于存放自定义页面。每个页面是一个包含 `SKILL.md` 文件的子目录，Desktop 应用会在左侧边栏展示这些页面，右侧提供类似浏览器的视图来渲染页面内容。
 
 ## 目录结构
 
@@ -394,7 +394,7 @@ import type { PageViewMode } from "@viben/core/page";
 
 /**
  * Tab 类型
- * - page: 工作空间页面
+ * - page: 工作区页面
  * - chat: 聊天会话
  * - settings: 设置页面
  * - new-tab: 新建 Tab 页（显示页面列表）
@@ -407,7 +407,7 @@ export interface PageTab {
   id: string;                      // 唯一标识
   type: TabType;                   // Tab 类型
   slug?: string;                   // 页面 slug (type=page 时)
-  workspace_id?: string;           // 工作空间 ID
+  workspace_id?: string;           // 工作区 ID
   name: string;                    // 显示名称
   icon?: string;                   // 图标名
   pinned: boolean;                 // 是否固定
@@ -468,7 +468,7 @@ packages/core/
 
 ```bash
 # CRUD 操作
-viben page list                    # 列出当前工作空间所有页面
+viben page list                    # 列出当前工作区所有页面
 viben page create <slug>           # 创建新页面（交互式选择模板）
 viben page view <slug>             # 查看页面详情
 viben page delete <slug>           # 删除页面
@@ -625,7 +625,7 @@ const handleClose = () => appWindow.close();
 
 ### 侧边栏结构
 
-在工作空间导航项下方、GatewayStatusIndicator 上方添加 Pages Section：
+在工作区导航项下方、GatewayStatusIndicator 上方添加 Pages Section：
 
 ```
 ┌─────────────────────────┐

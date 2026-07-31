@@ -1,4 +1,4 @@
----
+﻿---
 sidebar_position: 3
 title: "核心概念"
 description: "理解微本的核心概念：FileEvo、任务系统、智能体、执行器"
@@ -115,7 +115,7 @@ plan → implement → check → fix (失败时循环)
 | Copilot | COPILOT | `copilot` |
 | Droid | DROID | `droid` |
 
-**仅模板执行器**（用于 `viben init` 工作空间配置，不支持运行时启动）：
+**仅模板执行器**（用于 `viben init` 工作区配置，不支持运行时启动）：
 
 | 执行器 | 类型 |
 |--------|------|
@@ -214,7 +214,7 @@ AI 驱动的代码库分析，自动发现改进点。
 │       └── config.yaml
 ├── cron.yaml            # 定时任务
 ├── channels.yaml        # 通知渠道
-└── workspaces.yaml      # 工作空间
+└── workspaces.yaml      # 工作区
 ```
 
 ### 项目配置结构
@@ -225,7 +225,7 @@ AI 驱动的代码库分析，自动发现改进点。
 ├── tasks/               # 任务目录
 │   └── <date>-<slug>/
 │       └── task.json
-└── workspace/           # 开发者工作空间
+└── workspace/           # 开发者工作区
 ```
 
 ### 配置优先级

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PathPopover Component
  *
  * A reusable component that shows a path with copy button on hover.
@@ -21,7 +21,7 @@ import { useTranslation } from "react-i18next";
 export interface PathPopoverProps {
   /** The path to display */
   path: string;
-  /** Label for the path (e.g., "工作空间路径", "配置路径") */
+  /** Label for the path (e.g., "工作区路径", "配置路径") */
   label?: string;
   /** Type of location - affects icon and styling */
   locationType?: "workspace" | "global" | "custom";
@@ -68,7 +68,7 @@ export function PathPopover({
     if (label) return label;
     switch (locationType) {
       case "workspace":
-        return t("settingsAgents.workspaceScoped", "当前工作空间");
+        return t("settingsAgents.workspaceScoped", "当前工作区");
       case "global":
         return t("settingsAgents.globalScoped", "全局");
       default:

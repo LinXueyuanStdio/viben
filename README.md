@@ -1,4 +1,4 @@
-**中文 | [English](./README_EN.md)**
+﻿**中文 | [English](./README_EN.md)**
 
 <div align="center">
 
@@ -599,7 +599,7 @@ viben idea promote ci-001 --start --worktree
 │       └── AGENTS.md
 ├── cron.yaml         # 定时任务
 ├── channels.yaml     # 通知渠道
-└── workspaces.yaml   # 工作空间
+└── workspaces.yaml   # 工作区
 ```
 
 ---

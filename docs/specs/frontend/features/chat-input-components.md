@@ -1,4 +1,4 @@
-# 聊天输入组件规格
+﻿# 聊天输入组件规格
 
 本文档定义了 viben 应用中统一的聊天输入组件 `ChatInput` 和消息列表组件 `MessageList`。
 
@@ -41,7 +41,7 @@ apps/desktop/src/components/chat/     # Desktop 平台适配
 | 配置 | 用途 | 主要 Props |
 |------|------|-----------|
 | 基础模式 | 简单对话输入 | (默认) |
-| 工作空间模式 | 完整功能 | `showTopToolbar` `showConfigBar` `showResizeHandle` `enableWritingMode` |
+| 工作区模式 | 完整功能 | `showTopToolbar` `showConfigBar` `showResizeHandle` `enableWritingMode` |
 
 ## Props 接口
 
@@ -161,7 +161,7 @@ export interface ChatInputProps {
 └─────────────────────────────────────┘
 ```
 
-### 工作空间模式 (带工具栏和配置栏)
+### 工作区模式 (带工具栏和配置栏)
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -289,7 +289,7 @@ function WebChat() {
 |------|-----------|
 | 简单消息回复 | (默认，无额外 props) |
 | 基础对话框 | (默认) |
-| 工作空间对话 | `showTopToolbar showConfigBar showResizeHandle enableWritingMode` |
+| 工作区对话 | `showTopToolbar showConfigBar showResizeHandle enableWritingMode` |
 | 带配置的对话 | `showConfigBar` + agent/model props |
 
 ### 示例代码
@@ -315,7 +315,7 @@ function WebChat() {
 />
 ```
 
-#### 完整工作空间模式
+#### 完整工作区模式
 
 ```tsx
 <ChatInput

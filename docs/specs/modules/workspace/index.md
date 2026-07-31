@@ -1,6 +1,6 @@
-# Workspace Module Specifications
+﻿# Workspace Module Specifications
 
-> 工作空间相关的所有规格文档索引
+> 工作区相关的所有规格文档索引
 
 ---
 
@@ -24,8 +24,8 @@
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| [workspace-management.md](./workspace-management.md) | Desktop 工作空间核心架构 | Done |
-| [Add Workspace Wizard](../../../../docs/plans/2026-02-28-add-workspace-wizard-design.md) | 工作空间创建向导 UI 设计 | Approved |
+| [workspace-management.md](./workspace-management.md) | Desktop 工作区核心架构 | Done |
+| [Add Workspace Wizard](../../../../docs/plans/2026-02-28-add-workspace-wizard-design.md) | 工作区创建向导 UI 设计 | Approved |
 | [desktop-chat-workany.md](./desktop-chat-workany.md) | Chat 功能集成 (参考 workany) | Planning |
 | [session-persistence.md](./session-persistence.md) | Session/Task/Message 持久化设计 | Specification |
 
@@ -40,7 +40,7 @@
 
 ## Kanban System
 
-> 工作空间内的任务看板功能 (Desktop Only)
+> 工作区内的任务看板功能 (Desktop Only)
 
 ### Architecture & Analysis
 

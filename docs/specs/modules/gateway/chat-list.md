@@ -1,4 +1,4 @@
-# 聊天列表 API
+﻿# 聊天列表 API
 
 > `/api/chat-list` - 聊天列表聚合端点
 
@@ -18,13 +18,13 @@
 
 ### GET /api/chat-list
 
-获取工作空间下所有可聊天的资源。
+获取工作区下所有可聊天的资源。
 
 **查询参数**:
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
+| workspace_path | string | 否 | - | 工作区路径 |
 | include_global | bool | 否 | true | 包含全局资源 |
 
 **响应**:

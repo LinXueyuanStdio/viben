@@ -1,4 +1,4 @@
-# WebSocket API
+﻿# WebSocket API
 
 > WebSocket 实时通信端点
 
@@ -275,7 +275,7 @@ ws.onmessage = (event) => {
 
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| workspace_path | string | 否 | 工作空间路径 |
+| workspace_path | string | 否 | 工作区路径 |
 | member_type | string | 否 | 成员类型 |
 | member_id | string | 否 | 成员 ID |
 

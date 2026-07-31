@@ -1,4 +1,4 @@
-# viben init
+﻿# viben init
 
 > 初始化 Viben 工作区，包含完整的 AI 辅助开发环境配置。
 
@@ -42,7 +42,7 @@
 |------|------|
 | **Developer** | 开发者标识，用于区分不同开发者的工作区 |
 | **Project Type** | 项目类型 (frontend/backend/fullstack)，自动检测或手动指定 |
-| **Workspace** | 开发者独立工作空间，包含日志和会话记录 |
+| **Workspace** | 开发者独立工作区，包含日志和会话记录 |
 | **Executor** | AI 编码工具 (Claude Code, Cursor, Gemini 等) |
 | **Spec** | 项目规范文档，指导 AI 智能体行为 |
 

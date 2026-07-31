@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AcpChat - Main ACP Chat component for desktop application
  *
  * This component wraps ChatApp and provides ACP WebSocket client integration
@@ -795,7 +795,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   );
 
   // TripleSelector options
-  // 1. Agent 选项 (从 API 获取，包含工作空间和全局 agents)
+  // 1. Agent 选项 (从 API 获取，包含工作区和全局 agents)
   // agentOptions 来自 useAcpSession hook
 
   // 2. Provider 选项 (从 API 获取，已根据 executor 约束过滤)

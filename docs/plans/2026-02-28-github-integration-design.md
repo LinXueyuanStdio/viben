@@ -1,11 +1,11 @@
-# GitHub 集成设计方案
+﻿# GitHub 集成设计方案
 
 > 生成日期: 2026-02-28
 > 参考项目: Auto-Claude
 
 ## 概述
 
-在 Viben 工作空间设置中增加 GitHub 集成功能，完整移植 Auto-Claude 的所有 GitHub 功能。
+在 Viben 工作区设置中增加 GitHub 集成功能，完整移植 Auto-Claude 的所有 GitHub 功能。
 
 ### 需求决策
 
@@ -13,7 +13,7 @@
 |-------|------|
 | 功能范围 | 完整复制 Auto-Claude 所有 GitHub 功能 |
 | 认证方式 | 混合模式：优先 gh CLI，降级 PAT |
-| 配置范围 | 仅工作空间级别 |
+| 配置范围 | 仅工作区级别 |
 | Issue 处理 | 转化为 AI Spec（跟随 Auto-Claude） |
 | 实现方式 | 直接移植，适配 Viben 架构 |
 
@@ -183,7 +183,7 @@ GET  /api/github/repos?workspace_path=xxx
      → 列出用户有权访问的仓库
 
 GET  /api/github/repos/detect?workspace_path=xxx
-     → 从工作空间 .git 检测当前仓库
+     → 从工作区 .git 检测当前仓库
 
 POST /api/github/repos/connect?workspace_path=xxx
      body: { owner: string, name: string }
@@ -281,10 +281,10 @@ POST /api/github/releases?workspace_path=xxx
 
 ## UI 组件设计
 
-### 工作空间设置中的 GitHub Section
+### 工作区设置中的 GitHub Section
 
 ```
-┌─ 工作空间设置 ──────────────────────────────────────────────┐
+┌─ 工作区设置 ──────────────────────────────────────────────┐
 │                                                            │
 │  [常规] [执行器] [智能体] [MCP] [技能] [GitHub] [关于]       │
 │                                      ^^^^^^^^              │
@@ -351,7 +351,7 @@ POST /api/github/releases?workspace_path=xxx
          ▼
 ┌─────────────────────────────────────┐
 │ 2. 构建上下文                       │
-│    - 工作空间代码结构               │
+│    - 工作区代码结构               │
 │    - 相关文件内容                   │
 │    - 项目 README/CLAUDE.md          │
 └────────┬────────────────────────────┘
@@ -368,7 +368,7 @@ POST /api/github/releases?workspace_path=xxx
          ▼
 ┌─────────────────────────────────────┐
 │ 4. 输出结果                         │
-│    - 保存 Spec 到工作空间           │
+│    - 保存 Spec 到工作区           │
 │    - 可选：创建 Agent 任务          │
 └─────────────────────────────────────┘
 ```
@@ -394,7 +394,7 @@ analysis:
 spec:
   title: "添加 GitHub 集成功能"
   description: |
-    在工作空间设置中增加 GitHub 集成，支持...
+    在工作区设置中增加 GitHub 集成，支持...
 
   requirements:
     - "支持 gh CLI 和 PAT 两种认证方式"

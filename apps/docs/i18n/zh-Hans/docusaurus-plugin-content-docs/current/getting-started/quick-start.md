@@ -1,4 +1,4 @@
----
+﻿---
 sidebar_position: 2
 title: "快速入门"
 description: "快速上手微本 - Agent 集群 × 代码进化"
@@ -22,11 +22,11 @@ description: "快速上手微本 - Agent 集群 × 代码进化"
 2. 下载对应平台的安装包
 3. 安装并启动微本
 
-### 第二步：添加工作空间
+### 第二步：添加工作区
 
 1. 点击侧边栏的 **+** 按钮
 2. 选择"打开现有文件夹"或"创建新文件夹"
-3. 按向导完成工作空间配置
+3. 按向导完成工作区配置
 
 ### 第三步：创建任务
 
@@ -62,10 +62,10 @@ npm install -g viben
 npx viben
 ```
 
-### 第二步：初始化工作空间
+### 第二步：初始化工作区
 
 ```bash
-# 完整工作空间初始化（推荐）
+# 完整工作区初始化（推荐）
 # 创建 .viben/ 目录结构、docs/specs/、执行器配置和 AGENTS.md
 viben init --user <your-name>
 
@@ -74,8 +74,8 @@ viben init --user <your-name> --executor CLAUDE_CODE --executor GEMINI
 ```
 
 :::note `viben init` 与 `viben user init` 的区别
-- **`viben init --user <name>`** - 完整工作空间初始化。创建 `.viben/` 目录、`docs/specs/` 规范文件、执行器配置文件（如 `.claude/`、`.cursor/`）以及根目录的 `AGENTS.md`。这是设置新项目的推荐方式。
-- **`viben user init <name>`** - 仅设置开发者身份。不会创建工作空间结构或执行器配置。如果您只需要注册身份而不初始化工作空间，可以使用此命令。
+- **`viben init --user <name>`** - 完整工作区初始化。创建 `.viben/` 目录、`docs/specs/` 规范文件、执行器配置文件（如 `.claude/`、`.cursor/`）以及根目录的 `AGENTS.md`。这是设置新项目的推荐方式。
+- **`viben user init <name>`** - 仅设置开发者身份。不会创建工作区结构或执行器配置。如果您只需要注册身份而不初始化工作区，可以使用此命令。
 :::
 
 ### 第三步：创建任务

@@ -1,4 +1,4 @@
-# 模型 API
+﻿# 模型 API
 
 > `/api/models` - 模型管理端点
 
@@ -53,7 +53,7 @@
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
+| workspace_path | string | 否 | - | 工作区路径 |
 | include_global | bool | 否 | true | 包含全局模型 |
 | include_provider_predefined | bool | 否 | true | 包含提供商预定义模型 |
 

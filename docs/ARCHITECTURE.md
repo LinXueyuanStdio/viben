@@ -1,8 +1,8 @@
-# Viben 系统架构文档
+﻿# Viben 系统架构文档
 
 > **版本**: 1.0.0
 > **更新日期**: 2026-02-28
-> **项目描述**: 多智能体工作空间管理器，支持看板、日历、时间线和任务管理
+> **项目描述**: 多智能体工作区管理器，支持看板、日历、时间线和任务管理
 
 ---
 
@@ -167,7 +167,7 @@ packages/core/src/gateway/
 - 智能体 CRUD
 - 模板管理
 - 默认智能体设置
-- 工作空间级别智能体支持
+- 工作区级别智能体支持
 
 ### 3.3 ProviderManager
 
@@ -321,7 +321,7 @@ sequenceDiagram
 | `/api/cron` | 定时任务 |
 | `/api/mcp` | MCP 服务管理 |
 | `/api/marketplace` | 插件市场 |
-| `/api/workspaces` | 工作空间 |
+| `/api/workspaces` | 工作区 |
 | `/api/executors` | 执行器管理 |
 
 ### 5.3 事件系统
@@ -360,12 +360,12 @@ Gateway 内部使用事件系统进行状态同步:
 ├── models.yaml                # 模型配置
 ├── mcp.yaml                   # MCP 配置
 ├── cron.yaml                  # 定时任务配置
-├── workspaces.yaml            # 工作空间配置
+├── workspaces.yaml            # 工作区配置
 └── cache/                     # 缓存目录
     └── providers.json         # 市场数据缓存
 ```
 
-### 6.2 工作空间配置
+### 6.2 工作区配置
 
 每个项目目录可以有自己的 `.viben/` 配置:
 
@@ -373,10 +373,10 @@ Gateway 内部使用事件系统进行状态同步:
 <project>/
 └── .viben/
     ├── agents/               # 项目级智能体
-    └── workspace.yaml        # 工作空间配置
+    └── workspace.yaml        # 工作区配置
 ```
 
-工作空间智能体优先级高于全局智能体。
+工作区智能体优先级高于全局智能体。
 
 ---
 

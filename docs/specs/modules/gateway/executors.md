@@ -1,4 +1,4 @@
-# 执行器 API
+﻿# 执行器 API
 
 > `/api/executors` - 执行器管理端点
 
@@ -26,7 +26,7 @@
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
+| workspace_path | string | 否 | - | 工作区路径 |
 | include_global | bool | 否 | true | 是否包含全局配置 |
 
 **响应**:
@@ -76,7 +76,7 @@
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 限定工作空间路径 |
+| workspace_path | string | 否 | - | 限定工作区路径 |
 
 **响应**:
 
@@ -116,7 +116,7 @@
 
 | 参数 | 类型 | 必需 | 默认 | 说明 |
 |------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
+| workspace_path | string | 否 | - | 工作区路径 |
 | include_subagents | bool | 否 | true | 是否包含子智能体消息 |
 
 **响应**:

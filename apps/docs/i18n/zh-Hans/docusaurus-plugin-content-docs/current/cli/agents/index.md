@@ -1,4 +1,4 @@
----
+﻿---
 sidebar_position: 1
 title: "智能体管理"
 description: "Viben CLI 智能体管理概述 - 群体编排、概念和命令"
@@ -224,7 +224,7 @@ Agents:
 
 ### 仅模板执行器
 
-仅模板执行器用于 `viben init` 工作空间配置，不支持运行时启动：
+仅模板执行器用于 `viben init` 工作区配置，不支持运行时启动：
 
 | ID | 说明 |
 |----|------|

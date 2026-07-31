@@ -1,8 +1,8 @@
-# Desktop 设置页 Sidebar 重构设计
+﻿# Desktop 设置页 Sidebar 重构设计
 
 ## 背景
 
-当前 Desktop 设置页由 `SettingsPage` 自己渲染左右两栏：左侧是设置分类列表，右侧是设置详情。外层 `AppLayout` 始终显示工作空间 sidebar，因此进入设置页后会出现“应用 sidebar + 设置页内 sidebar”的双层导航。
+当前 Desktop 设置页由 `SettingsPage` 自己渲染左右两栏：左侧是设置分类列表，右侧是设置详情。外层 `AppLayout` 始终显示工作区 sidebar，因此进入设置页后会出现“应用 sidebar + 设置页内 sidebar”的双层导航。
 
 目标是让设置页融入 Desktop shell：进入 `/settings` 或 `/settings/:section` 时，左侧 Desktop sidebar 的主体内容切换成设置分类列表，右侧页面只显示设置详情，不再包含设置页内的左侧列表。
 
@@ -60,7 +60,7 @@
 - `location.pathname === "/settings"`
 - `location.pathname.startsWith("/settings/")`
 
-处于设置路由时，不渲染工作空间 selector、workspace pages、workspace nav、creator nav、原 bottom drawer。
+处于设置路由时，不渲染工作区 selector、workspace pages、workspace nav、creator nav、原 bottom drawer。
 
 改为渲染：
 
@@ -124,7 +124,7 @@
 单元/组件测试优先覆盖：
 
 - `/settings` 和 `/settings/:section` 下 `Sidebar` 进入设置模式。
-- 非设置路由下 `Sidebar` 保持原工作空间模式。
+- 非设置路由下 `Sidebar` 保持原工作区模式。
 - 设置分类点击使用 replace 语义更新设置 URL，并保持 active 高亮。
 - 用户连续切换多个设置分类后，点击返回应离开设置页，回到最近的非 `/settings` tab history。
 - 设置模式下仍显示 bottom drawer 的 Documents、Devices、Settings、Console、用户菜单等入口，并显示 Gateway Status 和 Wakeword Button。
@@ -134,7 +134,7 @@
 
 - `pnpm --filter @viben/desktop typecheck`
 - 如仓库当前脚本要求，运行 `pnpm typecheck` 或 `pnpm build`。
-- 在 Desktop dev 环境验证：从工作空间进入设置页、切换分类、返回、折叠 sidebar、悬停展开、Gateway Status 和 Wakeword Button 仍可见。
+- 在 Desktop dev 环境验证：从工作区进入设置页、切换分类、返回、折叠 sidebar、悬停展开、Gateway Status 和 Wakeword Button 仍可见。
 
 ## 非目标
 

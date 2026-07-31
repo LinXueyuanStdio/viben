@@ -1,4 +1,4 @@
-# Viben Gateway API 文档
+﻿# Viben Gateway API 文档
 
 > **版本**: 1.0.0
 > **更新日期**: 2026-02-28
@@ -20,7 +20,7 @@
 9. [MCP API](#9-mcp-api)
 10. [市场 API](#10-市场-api)
 11. [MCP Inspector API](#11-mcp-inspector-api)
-12. [工作空间 API](#12-工作空间-api)
+12. [工作区 API](#12-工作区-api)
 13. [其他 API](#13-其他-api)
 
 ---
@@ -129,12 +129,12 @@ GET /api/agent?includeGlobal=true
 
 **GET /api/agent**
 
-列出所有智能体，支持工作空间级别筛选。
+列出所有智能体，支持工作区级别筛选。
 
 **查询参数**:
 | 参数 | 类型 | 默认值 | 描述 |
 |------|------|--------|------|
-| workspace_path | string | - | 工作空间路径，用于加载项目级智能体 |
+| workspace_path | string | - | 工作区路径，用于加载项目级智能体 |
 | include_global | string | "true" | 是否包含全局智能体 |
 
 **响应示例**:
@@ -176,7 +176,7 @@ GET /api/agent?includeGlobal=true
 **查询参数**:
 | 参数 | 类型 | 描述 |
 |------|------|------|
-| workspace_path | string | 优先从工作空间查找 |
+| workspace_path | string | 优先从工作区查找 |
 
 **响应**: 同上述智能体对象
 
@@ -215,7 +215,7 @@ GET /api/agent?includeGlobal=true
 **查询参数**:
 | 参数 | 类型 | 描述 |
 |------|------|------|
-| workspace_path | string | 指定工作空间 |
+| workspace_path | string | 指定工作区 |
 
 **请求体**: 要更新的字段
 
@@ -228,7 +228,7 @@ GET /api/agent?includeGlobal=true
 **查询参数**:
 | 参数 | 类型 | 描述 |
 |------|------|------|
-| workspace_path | string | 指定工作空间 |
+| workspace_path | string | 指定工作区 |
 
 ### 4.6 默认智能体
 
@@ -652,7 +652,7 @@ GET /api/agent?includeGlobal=true
 **查询参数**:
 | 参数 | 类型 | 描述 |
 |------|------|------|
-| workspace_path | string | 工作空间路径 |
+| workspace_path | string | 工作区路径 |
 | include_global | string | 包含全局模型 |
 | include_provider_predefined | string | 包含预定义模型 |
 
@@ -963,13 +963,13 @@ SSE/STDIO 消息端点。
 
 ---
 
-## 12. 工作空间 API
+## 12. 工作区 API
 
-### 12.1 列出工作空间
+### 12.1 列出工作区
 
 **GET /api/workspaces**
 
-列出所有工作空间 (始终包含 global)。
+列出所有工作区 (始终包含 global)。
 
 **响应示例**:
 ```json

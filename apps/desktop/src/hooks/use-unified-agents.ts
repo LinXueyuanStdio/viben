@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Hook for Unified Agent Management
  *
  * 合并执行器和智能体，提供统一的接口。
- * - 执行器 (Executor): 来自工作空间自动发现（.claude/, CLAUDE.md 等），是运行后端
+ * - 执行器 (Executor): 来自工作区自动发现（.claude/, CLAUDE.md 等），是运行后端
  * - 智能体 (Agent): 来自 ~/.viben/agents/，Viben Agent 使用执行器作为运行后端
  */
 import { useCallback, useMemo } from "react";
@@ -23,11 +23,11 @@ import {
 // ============================================================================
 
 export interface UseUnifiedAgentsOptions {
-  /** 工作空间 ID (可选，用于加载执行器) */
+  /** 工作区 ID (可选，用于加载执行器) */
   workspaceId?: string | null;
   /** 是否包含智能体（全局存储） */
   includeAgents?: boolean;
-  /** 是否包含执行器（工作空间自动发现） */
+  /** 是否包含执行器（工作区自动发现） */
   includeExecutors?: boolean;
 }
 
@@ -35,7 +35,7 @@ export interface UseUnifiedAgentsReturn {
   // Data
   /** 所有项目（执行器 + 智能体） */
   all: UnifiedAgent[];
-  /** 执行器 (来自工作空间自动发现) */
+  /** 执行器 (来自工作区自动发现) */
   executors: UnifiedAgent[];
   /** 智能体 (来自全局存储) */
   agents: UnifiedAgent[];

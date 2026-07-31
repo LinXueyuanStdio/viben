@@ -1,4 +1,4 @@
-# Workspace Pages P0 实现计划
+﻿# Workspace Pages P0 实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -3741,7 +3741,7 @@ export interface PageTab {
   id: string;                       // 唯一标识
   type: "page" | "chat" | "settings" | "new-tab";  // Tab 类型
   slug?: string;                    // 页面 slug (type=page 时)
-  workspaceId?: string;            // 所属工作空间
+  workspaceId?: string;            // 所属工作区
   name: string;                    // 显示名称
   icon?: string;                   // 图标名 (Lucide icon name)
   pinned: boolean;                 // 是否固定
@@ -4719,7 +4719,7 @@ Run: `pnpm gateway:restart`
 - [ ] **Step 2: 测试 CLI 命令**
 
 ```bash
-# 创建测试工作空间
+# 创建测试工作区
 mkdir -p /tmp/test-workspace/pages
 
 cd /tmp/test-workspace
@@ -4810,7 +4810,7 @@ curl -X POST http://localhost:18790/api/page/templates \
 Run: `pnpm desktop:restart`
 
 1. 打开 Desktop 应用
-2. 选择一个工作空间
+2. 选择一个工作区
 3. 在侧边栏查看 Pages Section
 4. 点击顶部 [+] 创建页面
 5. 点击页面名称查看详情

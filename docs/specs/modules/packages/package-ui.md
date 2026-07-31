@@ -1,4 +1,4 @@
-# @viben/ui - 共享 UI 组件库规格
+﻿# @viben/ui - 共享 UI 组件库规格
 
 > 从 desktop 应用中提取可复用的 UI 原语，供所有应用共享。
 
@@ -236,7 +236,7 @@ function WorkspaceKanbanPage() {
     <Breadcrumb
       items={[
         { label: "首页", href: "/", icon: Home },
-        { label: "我的工作空间", href: "/workspaces/123", icon: Folder },
+        { label: "我的工作区", href: "/workspaces/123", icon: Folder },
         { label: "任务看板", icon: KanbanSquare },
       ]}
       renderLink={({ href, children, className }) => (

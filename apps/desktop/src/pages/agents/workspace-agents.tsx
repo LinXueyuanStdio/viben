@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Workspace Agents Page - WeChat-style layout
  *
  * 主要智能体管理入口：
- * - 显示当前工作空间的执行器（自动发现）
+ * - 显示当前工作区的执行器（自动发现）
  * - 显示智能体列表（全局存储）
  * - 支持新增智能体（创建到全局目录）
  * - Left: List (执行器 + 智能体)
@@ -638,7 +638,7 @@ export function WorkspaceAgentsPage({
                   <Separator className="my-2" />
                 )}
 
-                {/* Unified Agents Section (智能体 - 包含工作空间和全局) */}
+                {/* Unified Agents Section (智能体 - 包含工作区和全局) */}
                 {filteredAllAgents.length > 0 && (
                   <>
                     <div className="px-2 py-1.5 flex items-center gap-2">
