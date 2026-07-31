@@ -11,6 +11,7 @@ import { requirePermission, AuthError } from '@/lib/auth';
 import { db, rankingSnapshots, rankingItems } from '@/lib/db';
 import { eq, asc } from 'drizzle-orm';
 
+/** @ignore */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -45,6 +46,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

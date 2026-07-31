@@ -16,6 +16,7 @@ const warnSchema = z.object({
   reason: z.string().min(1, 'Reason is required'),
 });
 
+/** @ignore */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, drafts, mcpPackages, skillPackages } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { mcpDraftDataSchema, skillDraftDataSchema } from '@/lib/validations/draft';
+import { McpDraftPublishBody, SkillDraftPublishBody } from '@/lib/validations/draft';
 import { generateId } from '@/lib/utils';
 import { eq, and } from 'drizzle-orm';
 import { ZodError } from 'zod';
@@ -11,6 +11,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/** @ignore */
 // POST - Publish draft (convert to MCP or Skill package)
 export async function POST(
   request: NextRequest,
@@ -57,7 +58,7 @@ export async function POST(
 
     if (draft.packageType === 'mcp') {
       // Validate MCP draft data
-      const validatedData = mcpDraftDataSchema.parse(draftData);
+      const validatedData = McpDraftPublishBody.parse(draftData);
 
       // Check if slug is unique
       const existingMcp = await db.query.mcpPackages.findFirst({
@@ -106,7 +107,7 @@ export async function POST(
       });
     } else if (draft.packageType === 'skill') {
       // Validate Skill draft data
-      const validatedData = skillDraftDataSchema.parse(draftData);
+      const validatedData = SkillDraftPublishBody.parse(draftData);
 
       // Check if slug is unique
       const existingSkill = await db.query.skillPackages.findFirst({

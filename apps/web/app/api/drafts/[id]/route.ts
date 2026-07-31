@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, drafts } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { updateDraftSchema } from '@/lib/validations/draft';
+import { DraftUpdateBody } from '@/lib/validations/draft';
 import { eq, and } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
@@ -10,6 +10,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/** @ignore */
 // GET - Get draft by ID
 export async function GET(
   request: NextRequest,
@@ -49,6 +50,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 // PATCH - Update draft (auto-save)
 export async function PATCH(
   request: NextRequest,
@@ -62,7 +64,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const updateData = updateDraftSchema.parse(body);
+    const updateData = DraftUpdateBody.parse(body);
 
     // Get current draft to verify ownership
     const existingDraft = await db.query.drafts.findFirst({
@@ -119,6 +121,7 @@ export async function PATCH(
   }
 }
 
+/** @ignore */
 // DELETE - Delete draft
 export async function DELETE(
   request: NextRequest,

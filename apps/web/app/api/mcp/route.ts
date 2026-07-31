@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, mcpPackages, users } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
-import { listMcpQuerySchema, createMcpSchema } from '@/lib/validations/mcp';
+import { McpListQuery, McpCreateBody } from '@/lib/validations/mcp';
 import { generateId } from '@/lib/utils';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
+/** @ignore */
 // GET - List MCP packages
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = listMcpQuerySchema.parse({
+    const query = McpListQuery.parse({
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),
       category: searchParams.get('category'),
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 // POST - Create MCP package
 export async function POST(request: NextRequest) {
   try {
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const data = createMcpSchema.parse(body);
+    const data = McpCreateBody.parse(body);
 
     // Check if slug is unique
     const existing = await db.query.mcpPackages.findFirst({

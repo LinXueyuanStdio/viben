@@ -17,6 +17,7 @@ const listSharesQuerySchema = z.object({
   status: z.enum(['all', 'active', 'expired', 'revoked']).default('all'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'content.moderate');

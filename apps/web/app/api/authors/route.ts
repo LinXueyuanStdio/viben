@@ -2,7 +2,14 @@ import { NextResponse } from "next/server"
 import { db, users } from "@/lib/db"
 import { desc, lt, or, and, eq } from "drizzle-orm"
 
-/** GET /api/authors — cursor-paginated author list */
+/**
+ * 获取作者列表
+ * @summary 获取作者列表
+ * @description 游标分页的创作者列表，按粉丝数降序排列。游标使用 base64url 编码，内部包含 followers_count 和 id，用于实现稳定的断点续传分页。每次查询取 limit+1 条记录，通过多余的一条判断是否还有更多数据。返回数据已做字段转换（snake_case 到 camelCase，部分字段重命名）以便前端直接使用。
+ * @params AuthorsListQuery
+ * @response 200:AuthorsListResponse:作者列表、下一页游标及是否有更多数据
+ * @tag Authors
+ */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get("cursor")

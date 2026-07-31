@@ -20,6 +20,18 @@ function getErrorDetails(error: unknown): string | undefined {
   }
 }
 
+/**
+ * 获取发布版本详情
+ * @summary 获取指定版本的页面内容
+ * @description 根据页面 uid 和版本号查询已发布页面的特定版本完整内容，需登录。响应包含 title、icon、description、html、created_at 等完整字段
+ * @body PublishVersionBody
+ * @response 200:PublishVersionResponse:发布版本详情（含 HTML 内容）
+ * @response 400:ErrorResponse:缺少参数或参数格式错误
+ * @response 404:ErrorResponse:发布版本不存在
+ * @responseSet auth
+ * @auth bearer
+ * @tag Pages
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);

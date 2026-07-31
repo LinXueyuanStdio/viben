@@ -16,7 +16,7 @@ import {
   skillPackages,
   moderationLogs,
 } from '@/lib/admin';
-import { rejectPackageSchema } from '@/lib/validations/admin';
+import { RejectPackageBody } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
 import { eq } from 'drizzle-orm';
 import type { PackageStatus } from '@/lib/types/admin';
@@ -30,6 +30,7 @@ import type { PackageStatus } from '@/lib/types/admin';
  * - reason: string (required - shown to package author)
  *
  * Required permission: packages.approve
+ * @ignore
  */
 export async function POST(
   request: NextRequest,
@@ -50,7 +51,7 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    const data = rejectPackageSchema.parse(body);
+    const data = RejectPackageBody.parse(body);
 
     // Update package status
     const updateData: Record<string, unknown> = {

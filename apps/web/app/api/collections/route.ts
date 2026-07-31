@@ -5,20 +5,18 @@ import {
   listUserCollections,
   createCollection,
 } from '@/lib/services/collections';
-import { z } from 'zod';
+import { CollectionsCreateBody } from '@/lib/validations/collections';
 
-const createCollectionSchema = z.object({
-  name: z.string().min(1).max(100),
-  slug: z
-    .string()
-    .min(1)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only')
-    .optional(),
-  description: z.string().max(500).optional(),
-  isPublic: z.boolean().optional(),
-});
-
+/**
+ * 获取合集列表
+ * @summary 获取合集列表
+ * @description 查询公开合集（默认）或当前用户的合集（?mine=true 时需登录），返回 `{ collections }` 数组。公开查询无需登录，个人合集查询需有效的 session。
+ * @params CollectionsListQuery
+ * @response 200:CollectionsListResponse:合集列表
+ * @response 401:ErrorResponse:未登录（mine=true 时）
+ * @response 500:ErrorResponse:服务器内部错误
+ * @tag Collections
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -43,6 +41,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * 创建合集
+ * @summary 创建合集
+ * @description 创建一个新合集，slug 不提供则自动生成。需登录，仅所有者可操作。请求体通过 Zod 验证，slug 有格式限制（小写字母、数字和连字符）。
+ * @body CollectionsCreateBody
+ * @response 201:CollectionsCreateResponse:创建成功
+ * @response 400:ErrorResponse:请求参数无效
+ * @response 401:ErrorResponse:未登录
+ * @response 409:ErrorResponse:slug 已被占用
+ * @responseSet auth
+ * @auth bearer
+ * @tag Collections
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -51,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const parsed = createCollectionSchema.safeParse(body);
+    const parsed = CollectionsCreateBody.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(

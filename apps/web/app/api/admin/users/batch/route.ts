@@ -18,6 +18,7 @@ const batchUsersSchema = z.object({
   reason: z.string().optional(),
 });
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     const session = await requirePermission(request, 'users.ban');

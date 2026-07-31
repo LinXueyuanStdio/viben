@@ -20,6 +20,18 @@ function getErrorDetails(error: unknown): string | undefined {
   }
 }
 
+/**
+ * 获取页面发布历史
+ * @summary 获取页面发布历史记录
+ * @description 根据页面 uid 查询用户已发布页面的所有历史版本记录，需登录。响应包含 page_uid、current_version、records（版本记录列表，含标题、图标、描述、是否当前版本等）
+ * @body PublishHistoryBody
+ * @response 200:PublishHistoryResponse:发布历史列表
+ * @response 400:ErrorResponse:缺少 uid 参数
+ * @response 404:ErrorResponse:发布页面不存在
+ * @responseSet auth
+ * @auth bearer
+ * @tag Pages
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);

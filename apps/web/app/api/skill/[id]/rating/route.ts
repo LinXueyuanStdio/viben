@@ -7,6 +7,7 @@ const ratingSchema = z.object({
   score: z.number().int().min(1).max(5),
 });
 
+/** @ignore */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -26,6 +27,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

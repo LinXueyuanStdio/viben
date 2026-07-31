@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { registerFormSchema } from '@/lib/validations/user';
+import { RegisterFormSchema } from '@/lib/validations/user';
 import type { RegisterFormInput } from '@/lib/validations/user';
 
 export function RegisterForm() {
@@ -44,7 +44,7 @@ export function RegisterForm() {
   const strength = getStrength();
 
   function validate(): RegisterFormInput | null {
-    const result = registerFormSchema.safeParse({
+    const result = RegisterFormSchema.safeParse({
       email, username, displayName, password, confirmPassword, agreeToTerms,
     });
     if (!result.success) {

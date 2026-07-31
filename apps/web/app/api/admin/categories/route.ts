@@ -28,6 +28,7 @@ const createCategorySchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'categories.manage');
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, 'categories.manage');

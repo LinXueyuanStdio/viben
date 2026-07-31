@@ -3,7 +3,15 @@ import type { NextRequest } from 'next/server';
 import { db, users, mcpPackages, skillPackages } from '@/lib/db';
 import { eq, count } from 'drizzle-orm';
 
-// GET - Public user profile
+/**
+ * 获取用户公开资料
+ * @description 根据 user_slug 获取用户的公开信息，包括用户名、显示名称、头像、简介、网站、GitHub 用户名、角色、注册时间，以及 stats 对象（含 mcpPackages 和 skillPackages 发布数量统计）。公开接口，无需登录。
+ * @pathParams UserSlugParams
+ * @response 200:UserProfileResponse:用户公开资料及包数量统计
+ * @response 404:ErrorResponse:指定 user_slug 的用户不存在
+ * @response 500:ErrorResponse:查询失败
+ * @tag Users
+ */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ user_slug: string }> }

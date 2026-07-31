@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
 import { db, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { forgotPasswordSchema } from '@/lib/validations/user';
+import { ForgotPasswordBody } from '@/lib/validations/user';
 import { storeResetToken } from '@/lib/auth/reset-tokens';
 import { ZodError } from 'zod';
 
+/**
+ * 忘记密码
+ * @summary 发送密码重置邮件
+ * @description 根据邮箱地址发送密码重置令牌（开发环境打印至控制台）。为防止邮箱枚举攻击，无论邮箱是否存在均返回相同成功消息。令牌通过 `storeResetToken` 存储在服务端，有效期有限。
+ * @body ForgotPasswordBody
+ * @response 200:SuccessResponse:若邮箱存在已发送重置链接
+ * @response 400:ErrorResponse:输入无效
+ * @tag Auth
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email } = forgotPasswordSchema.parse(body);
+    const { email } = ForgotPasswordBody.parse(body);
 
     // Find user by email - always return success to prevent email enumeration
     const user = await db.query.users.findFirst({

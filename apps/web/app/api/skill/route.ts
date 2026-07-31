@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, skillPackages, users } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
-import { listSkillQuerySchema, createSkillSchema } from '@/lib/validations/skill';
+import { SkillListQuery, SkillCreateBody } from '@/lib/validations/skill';
 import { generateId } from '@/lib/utils';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
+/** @ignore */
 // GET - List Skill packages
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = listSkillQuerySchema.parse({
+    const query = SkillListQuery.parse({
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),
       category: searchParams.get('category'),
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 // POST - Create Skill package
 export async function POST(request: NextRequest) {
   try {
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const data = createSkillSchema.parse(body);
+    const data = SkillCreateBody.parse(body);
 
     // Check if slug is unique
     const existing = await db.query.skillPackages.findFirst({

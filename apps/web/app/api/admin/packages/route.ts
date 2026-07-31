@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { listPackagesForReview } from '@/lib/admin';
-import { listAdminPackagesQuerySchema } from '@/lib/validations/admin';
+import { AdminPackagesQuery } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
 
 /**
@@ -24,6 +24,7 @@ import { ZodError } from 'zod';
  * - sort: 'newest' | 'oldest' (default: 'oldest')
  *
  * Required permission: packages.review
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
-    const query = listAdminPackagesQuerySchema.parse(
+    const query = AdminPackagesQuery.parse(
       Object.fromEntries(searchParams.entries())
     );
 

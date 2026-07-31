@@ -21,6 +21,7 @@ const createRevisionSchema = z.object({
   locale: z.string().min(1).max(50).default('default'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'operations.manage');
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, 'operations.manage');

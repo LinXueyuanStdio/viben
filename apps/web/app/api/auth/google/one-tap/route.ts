@@ -1,11 +1,3 @@
-/**
- * Google One Tap 登录 API
- *
- * POST /api/auth/google/one-tap
- * 接收 Google One Tap 返回的 credential (ID Token JWT)，
- * 通过 Google tokeninfo 端点验证并查找/创建用户，最后设置 session cookie。
- */
-
 import { NextResponse } from 'next/server';
 import { db, users, oauthConnections } from '@/lib/db';
 import { uploadImageFromUrl } from '@/lib/media';
@@ -30,6 +22,7 @@ interface GoogleTokenInfo {
   exp: string;
 }
 
+/** @ignore */
 export async function POST(request: Request) {
   try {
     const body = await request.json();

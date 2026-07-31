@@ -16,6 +16,7 @@ const batchDraftsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(100),
 });
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, 'content.delete');

@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, skillPackages } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
-import { updateSkillSchema } from '@/lib/validations/skill';
+import { SkillUpdateBody } from '@/lib/validations/skill';
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
+/** @ignore */
 // GET - Get Skill package details
 export async function GET(
   _request: NextRequest,
@@ -43,6 +44,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 // PUT - Update Skill package
 export async function PUT(
   request: NextRequest,
@@ -52,7 +54,7 @@ export async function PUT(
     const session = await requireAuth(request);
     const { id } = await params;
     const body = await request.json();
-    const data = updateSkillSchema.parse(body);
+    const data = SkillUpdateBody.parse(body);
 
     // Check ownership
     const pkg = await db.query.skillPackages.findFirst({
@@ -126,6 +128,7 @@ export async function PUT(
   }
 }
 
+/** @ignore */
 // DELETE - Delete Skill package
 export async function DELETE(
   request: NextRequest,

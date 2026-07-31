@@ -32,6 +32,7 @@ const listUsersQuerySchema = z.object({
  * - sort: 'newest' | 'oldest' (default: 'newest')
  *
  * Required permission: users.view
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {

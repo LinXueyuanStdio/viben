@@ -7,7 +7,14 @@ import { generateId } from '@/lib/utils';
 import { eq } from 'drizzle-orm';
 import type { GitHubUser } from '@/lib/validations/github';
 
-// GET - Handle GitHub OAuth callback for repository access
+/**
+ * GitHub OAuth 回调 — 仓库访问授权
+ * @description 处理 GitHub OAuth 授权回调，用 code 换取 access token，加密存储到数据库。成功后重定向到发布页
+ * @params GithubCallbackQuery
+ * @responseSet auth
+ * @tag GitHub
+ * @ignore
+ */
 export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const searchParams = request.nextUrl.searchParams;

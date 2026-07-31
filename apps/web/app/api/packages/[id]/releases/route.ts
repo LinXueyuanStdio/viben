@@ -31,6 +31,7 @@ async function findPackage(id: string): Promise<{
   return null;
 }
 
+/** @ignore */
 export async function GET(
   request: NextRequest,
   { params }: RouteParams
@@ -55,6 +56,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 export async function POST(
   request: NextRequest,
   { params }: RouteParams

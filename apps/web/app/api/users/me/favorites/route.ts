@@ -30,6 +30,17 @@ interface FavoritesResponse {
   hasMore: boolean;
 }
 
+/**
+ * 获取我的收藏列表
+ * @description 获取当前用户收藏的 MCP 和 Skill 包列表，按收藏时间降序排列，支持基于 createdAt 的游标分页。limit 默认 20、最大 50。返回 favorites 数组（每项含包详情及作者信息），以及 nextCursor 和 hasMore 分页信息。需登录后调用。
+ * @params FavoritesQuery
+ * @response 200:UserFavoritesResponse:收藏列表，含 favorites、nextCursor、hasMore 分页信息
+ * @response 500:ErrorResponse:查询失败
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @auth bearer
+ * @tag Users
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();

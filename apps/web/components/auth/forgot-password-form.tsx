@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2 } from 'lucide-react';
-import { forgotPasswordSchema } from '@/lib/validations/user';
+import { ForgotPasswordBody } from '@/lib/validations/user';
 
 export function ForgotPasswordForm() {
   const { t } = useTranslation();
@@ -17,7 +17,7 @@ export function ForgotPasswordForm() {
   const [submitted, setSubmitted] = useState(false);
 
   function validate(): boolean {
-    const result = forgotPasswordSchema.safeParse({ email });
+    const result = ForgotPasswordBody.safeParse({ email });
     if (!result.success) {
       setFieldError(result.error.issues[0]?.message ?? t('auth.invalidEmail'));
       return false;

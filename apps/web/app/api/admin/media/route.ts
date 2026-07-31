@@ -19,6 +19,7 @@ const listMediaQuerySchema = z.object({
   mime_type: z.string().optional(),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'content.moderate');

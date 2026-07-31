@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
-import { resetPasswordSchema } from '@/lib/validations/user';
+import { ResetPasswordBody } from '@/lib/validations/user';
 import type { ResetPasswordInput } from '@/lib/validations/user';
 
 export function ResetPasswordForm() {
@@ -43,7 +43,7 @@ export function ResetPasswordForm() {
   const strength = getStrength();
 
   function validate(): ResetPasswordInput | null {
-    const result = resetPasswordSchema.safeParse({ token, password, confirmPassword });
+    const result = ResetPasswordBody.safeParse({ token, password, confirmPassword });
     if (!result.success) {
       const errors: Record<string, string> = {};
       for (const issue of result.error.issues) {

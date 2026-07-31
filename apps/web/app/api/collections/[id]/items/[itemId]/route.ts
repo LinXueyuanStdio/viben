@@ -6,6 +6,18 @@ interface RouteParams {
   params: Promise<{ id: string; itemId: string }>;
 }
 
+/**
+ * 移除合集条目
+ * @summary 移除合集条目
+ * @description 从指定合集中删除一个条目，仅合集所有者可以操作。路径参数包含合集 ID 和条目 ID。成功后返回 `{ success: true }`。
+ * @pathParams CollectionItemParams
+ * @response 200:SuccessResponse:移除成功
+ * @response 401:ErrorResponse:未登录
+ * @response 404:ErrorResponse:合集不存在或无权操作
+ * @responseSet auth
+ * @auth bearer
+ * @tag Collections
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: RouteParams

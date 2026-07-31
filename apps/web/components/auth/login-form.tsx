@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { loginSchema } from '@/lib/validations/user';
+import { LoginBody } from '@/lib/validations/user';
 import type { LoginInput } from '@/lib/validations/user';
 
 export function LoginForm() {
@@ -21,7 +21,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
 
   function validate(): LoginInput | null {
-    const result = loginSchema.safeParse({ email, password });
+    const result = LoginBody.safeParse({ email, password });
     if (!result.success) {
       const errors: Record<string, string> = {};
       for (const issue of result.error.issues) {

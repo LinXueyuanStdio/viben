@@ -21,6 +21,7 @@ const updateTopicSchema = z.object({
   is_blocked: z.boolean().optional(),
 });
 
+/** @ignore */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -49,6 +50,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -93,6 +95,7 @@ export async function PATCH(
   }
 }
 
+/** @ignore */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

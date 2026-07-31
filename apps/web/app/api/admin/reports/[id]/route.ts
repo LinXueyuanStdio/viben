@@ -23,6 +23,7 @@ const updateReportSchema = z.object({
  * Get full report details including reporter and resolver info.
  *
  * Required permission: reports.view
+ * @ignore
  */
 export async function GET(
   request: NextRequest,
@@ -79,6 +80,7 @@ export async function GET(
  * - action: 'resolve' | 'dismiss'
  *
  * Required permission: reports.resolve
+ * @ignore
  */
 export async function PATCH(
   request: NextRequest,

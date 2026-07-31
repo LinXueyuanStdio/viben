@@ -33,6 +33,7 @@ const updateItemSchema = z.object({
   ends_at: z.string().nullable().optional(),
 });
 
+/** @ignore */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -90,6 +91,7 @@ export async function PATCH(
   }
 }
 
+/** @ignore */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

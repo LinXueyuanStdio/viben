@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, drafts } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { listDraftsQuerySchema, createDraftSchema } from '@/lib/validations/draft';
+import { DraftsQuery, DraftCreateBody } from '@/lib/validations/draft';
 import { generateId } from '@/lib/utils';
 import { eq, and, desc, count, gt } from 'drizzle-orm';
 import { ZodError } from 'zod';
@@ -10,6 +10,7 @@ import { ZodError } from 'zod';
 // Draft expiry duration: 30 days in milliseconds
 const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** @ignore */
 // GET - List user's drafts
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const query = listDraftsQuerySchema.parse({
+    const query = DraftsQuery.parse({
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),
       packageType: searchParams.get('packageType'),
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 // POST - Create a new draft
 export async function POST(request: NextRequest) {
   try {
@@ -103,7 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const data = createDraftSchema.parse(body);
+    const data = DraftCreateBody.parse(body);
 
     const draftId = generateId();
     const now = new Date();

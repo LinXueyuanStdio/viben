@@ -23,6 +23,7 @@ import {
  * Get full package details for admin review, including review history and stats.
  *
  * Required permission: packages.review
+ * @ignore
  */
 export async function GET(
   request: NextRequest,
@@ -60,6 +61,7 @@ export async function GET(
  * Hard delete a package permanently from the database.
  *
  * Required permission: packages.review
+ * @ignore
  */
 export async function DELETE(
   request: NextRequest,

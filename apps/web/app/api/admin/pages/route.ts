@@ -17,6 +17,7 @@ const listPagesQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(50).default(20),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'pages.review');

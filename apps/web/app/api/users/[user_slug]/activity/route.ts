@@ -3,6 +3,13 @@ import { db, publishedPages, users } from "@/lib/db"
 import { eq, and, count, gte } from "drizzle-orm"
 import { sql } from "drizzle-orm"
 
+/**
+ * 获取用户动态
+ * @description 获取用户过去一年（365天）内公开发布且审核通过的页面数量统计，按日期分组并升序排列。仅统计 visibility=public 且 moderationStatus=approved 的页面。用户不存在时返回空 data 数组而不报 404。公开接口，无需登录。
+ * @pathParams UserSlugParams
+ * @response 200:UserActivityResponse:近一年每日发布统计，data 为 {date, count} 数组；用户不存在或查询失败时返回空数组
+ * @tag Users
+ */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ user_slug: string }> }

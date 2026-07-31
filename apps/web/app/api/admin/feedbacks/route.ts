@@ -17,6 +17,7 @@ const listFeedbacksQuerySchema = z.object({
   category: z.enum(['all', 'bug', 'suggestion', 'other']).default('all'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'feedbacks.view');

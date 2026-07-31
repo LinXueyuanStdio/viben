@@ -3,7 +3,15 @@ import { db, githubConnections } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
-// GET - Check GitHub connection status
+/**
+ * 获取 GitHub 连接状态
+ * @description 检查当前用户是否已连接 GitHub，返回连接状态、用户名和连接时间
+ * @response 200:{ connected: boolean; githubUsername?: string; connectedAt?: string }
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @tag GitHub
+ * @ignore
+ */
 export async function GET() {
   try {
     const session = await getSession();
@@ -35,7 +43,16 @@ export async function GET() {
   }
 }
 
-// DELETE - Disconnect GitHub
+/**
+ * 断开 GitHub 连接
+ * @description 删除当前用户的 GitHub 连接记录，取消仓库访问授权
+ * @response 200:SuccessResponse:断开成功
+ * @response 404:ErrorResponse:未找到 GitHub 连接
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @tag GitHub
+ * @ignore
+ */
 export async function DELETE() {
   try {
     const session = await getSession();

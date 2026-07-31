@@ -18,6 +18,7 @@ const listQuerySchema = z.object({
   read_status: z.enum(['all', 'read', 'unread']).default('all'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'users.view');

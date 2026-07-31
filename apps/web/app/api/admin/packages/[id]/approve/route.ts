@@ -16,7 +16,7 @@ import {
   skillPackages,
   moderationLogs,
 } from '@/lib/admin';
-import { approvePackageSchema } from '@/lib/validations/admin';
+import { ApprovePackageBody } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
 import { eq } from 'drizzle-orm';
 import type { PackageStatus } from '@/lib/types/admin';
@@ -30,6 +30,7 @@ import type { PackageStatus } from '@/lib/types/admin';
  * - note: string (internal note for moderation log)
  *
  * Required permission: packages.approve
+ * @ignore
  */
 export async function POST(
   request: NextRequest,
@@ -52,7 +53,7 @@ export async function POST(
     let note: string | undefined;
     const bodyText = await request.text();
     if (bodyText) {
-      const data = approvePackageSchema.parse(JSON.parse(bodyText));
+      const data = ApprovePackageBody.parse(JSON.parse(bodyText));
       note = data.note;
     }
 

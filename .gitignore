@@ -317,3 +317,6 @@ docs/index/
 **/CLAUDE.local.md
 
 .vscode/settings.json
+.codex
+.openapi-gen
+

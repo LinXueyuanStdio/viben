@@ -27,6 +27,7 @@ const updateSlotSchema = z.object({
   fallback_strategy: z.string().optional(),
 });
 
+/** @ignore */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -78,6 +79,7 @@ export async function PATCH(
   }
 }
 
+/** @ignore */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -1,11 +1,3 @@
-/**
- * Pin/Unpin Published Page API
- *
- * PATCH /api/pages/[id]/pin - Toggle pin status for a published page
- *   Body: { pinned: boolean }
- *   Max 6 pinned pages per user.
- */
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
@@ -17,6 +9,20 @@ const pinSchema = z.object({
   pinned: z.boolean(),
 });
 
+/**
+ * 置顶/取消置顶已发布页面
+ * @summary 切换页面置顶状态
+ * @description 切换页面的置顶状态，需登录且仅页面所有者可操作。每个用户最多置顶 6 个页面，超过上限返回 400。非所有者返回 403，页面不存在返回 404。成功返回 { success: true, pinned: boolean }
+ * @pathParams PagesParams
+ * @body PinPageBody
+ * @response 200:PinPageResponse:操作成功，返回当前置顶状态
+ * @response 400:ErrorResponse:请求无效或超过置顶上限
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:无权操作他人页面
+ * @response 404:ErrorResponse:页面不存在
+ * @responseSet auth
+ * @tag Pages
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -18,6 +18,7 @@ import type { ClawhubSkillSortOption } from '@/lib/types/clawhub-registry';
  * - sort: Sort option (updated, downloads, stars, trending, etc.)
  * - limit: Results per page (default: 50, max: 200)
  * - slug: If provided, fetch a specific skill by slug
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {

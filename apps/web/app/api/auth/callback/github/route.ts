@@ -21,23 +21,7 @@ interface GitHubEmail {
   verified: boolean;
 }
 
-/**
- * Desktop client OAuth callback handler
- *
- * This endpoint is called by the desktop app to exchange an OAuth code
- * for user session data. Unlike the web callback which redirects,
- * this returns JSON with tokens.
- *
- * Request: POST /api/auth/callback/github
- * Body: { code: string }
- *
- * Response: {
- *   user: { id, email, username, displayName, avatarUrl },
- *   accessToken: string,
- *   refreshToken: string | null,
- *   expiresAt: number
- * }
- */
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

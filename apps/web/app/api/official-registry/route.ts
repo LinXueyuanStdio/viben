@@ -16,6 +16,7 @@ import {
  * - limit: Results per page (default: 50, max: 100)
  * - name: If provided, fetch a specific server by name
  * - version: Version to fetch (only with name)
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {

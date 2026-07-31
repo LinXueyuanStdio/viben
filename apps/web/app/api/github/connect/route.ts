@@ -3,7 +3,14 @@ import { getSession } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import { cookies } from 'next/headers';
 
-// GET - Initiate GitHub OAuth for repository access
+/**
+ * 发起 GitHub 连接授权
+ * @description 生成 OAuth state 并重定向到 GitHub 授权页面，请求 repo 权限以访问仓库
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @tag GitHub
+ * @ignore
+ */
 export async function GET() {
   try {
     const session = await getSession();

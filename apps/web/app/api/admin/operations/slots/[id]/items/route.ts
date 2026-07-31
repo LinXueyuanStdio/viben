@@ -33,6 +33,7 @@ const createItemSchema = z.object({
   ends_at: z.string().nullable().optional(),
 });
 
+/** @ignore */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -58,6 +59,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

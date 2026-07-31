@@ -1,0 +1,36 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Viben Web API",
+    "description": "面向 C 端创作者的 Viben 平台公开 API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://viben-web.vercel.app", "description": "生产环境" },
+    { "url": "http://localhost:3000", "description": "本地开发" }
+  ],
+  "apiDir": "app/api",
+  "schemaDir": "lib/validations",
+  "schemaType": "zod",
+  "outputFile": "openapi.json",
+  "docsUrl": "/api-docs",
+  "ui": "scalar",
+  "exclude": [
+    "mcp/**",
+    "skill/**",
+    "packages/**",
+    "drafts/**",
+    "releases/**",
+    "clawhub-registry/**",
+    "official-registry/**",
+    "admin/**"
+  ],
+  "authPresets": {
+    "bearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "API Key / JWE Token",
+      "description": "API Key（bmcp_ 前缀）或 JWE session token"
+    }
+  }
+}

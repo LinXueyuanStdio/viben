@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, skillPackages, users } from '@/lib/db';
-import { searchSkillQuerySchema } from '@/lib/validations/skill';
+import { SkillSearchQuery } from '@/lib/validations/skill';
 import { eq, desc, or, ilike, and, count } from 'drizzle-orm';
 
+/** @ignore */
 // GET - Search Skill packages
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = searchSkillQuerySchema.parse({
+    const query = SkillSearchQuery.parse({
       q: searchParams.get('q'),
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),

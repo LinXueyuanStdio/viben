@@ -4,6 +4,19 @@ import { db, publishedPages } from "@/lib/db"
 import { requireAuth, AuthError } from "@/lib/auth/middleware"
 import { eq } from "drizzle-orm"
 
+/**
+ * 删除已发布页面
+ * @summary 删除已发布页面
+ * @description 删除指定已发布页面，需登录且仅页面作者可操作。非作者返回 403，页面不存在返回 404。级联删除由数据库层处理
+ * @pathParams PagesParams
+ * @response 200:SuccessResponse:删除成功
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:无权限（非页面作者）
+ * @response 404:ErrorResponse:页面不存在
+ * @responseSet auth
+ * @auth bearer
+ * @tag Pages
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

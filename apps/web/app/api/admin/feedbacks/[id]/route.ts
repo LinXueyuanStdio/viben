@@ -12,6 +12,7 @@ import { db, feedbacks, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
 
+/** @ignore */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,6 +51,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

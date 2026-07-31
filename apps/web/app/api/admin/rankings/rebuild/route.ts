@@ -104,6 +104,7 @@ function buildBreakdown(page: ScoredPage): Record<string, unknown> {
 // Handler
 // ============================================
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, 'rankings.manage');

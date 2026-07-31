@@ -27,6 +27,7 @@ const createSlotSchema = z.object({
   fallback_strategy: z.string().default('none'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'operations.manage');
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, 'operations.manage');

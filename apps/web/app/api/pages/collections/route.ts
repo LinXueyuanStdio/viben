@@ -20,7 +20,15 @@ function isChaptersJson(value: unknown): value is ChaptersJson {
   );
 }
 
-// GET /api/pages/collections?mine=true
+/**
+ * 获取页面合集列表
+ * @summary 获取页面合集列表
+ * @description 查询公开合集列表（从已发布页面的 chaptersJson 中提取去重）。传 mine=true 时返回当前用户创建的合集，需登录（未登录时 mine=true 返回 401）
+ * @params PageCollectionsQuery
+ * @response 200:PageCollectionsListResponse:页面合集列表
+ * @response 401:ErrorResponse:未登录（mine=true 时）
+ * @tag Pages
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -105,7 +113,16 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/pages/collections — create a page collection (validates, no DB write)
+/**
+ * 创建页面合集
+ * @summary 验证并生成合集 slug
+ * @description 验证合集名称并生成 slug，不写入数据库，仅返回计算后的合集信息（含 slug 和 name）。需登录，名称不超过 100 字符
+ * @body CreatePageCollectionBody
+ * @response 200:PageCollectionResponse:合集信息（含 slug 和 name）
+ * @response 400:ErrorResponse:名称无效或过长
+ * @responseSet auth
+ * @tag Pages
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();

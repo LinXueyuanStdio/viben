@@ -132,6 +132,7 @@ function constructUnifiedData(release: GitHubRelease): UnifiedRelease {
   };
 }
 
+/** @ignore */
 export async function GET() {
   try {
     const releasesUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases`;

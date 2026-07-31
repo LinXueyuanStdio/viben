@@ -8,6 +8,7 @@ import { getAdminStats } from '@/lib/admin/stats';
  *
  * Returns admin dashboard statistics.
  * Requires admin role (support, moderator, or super_admin).
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {

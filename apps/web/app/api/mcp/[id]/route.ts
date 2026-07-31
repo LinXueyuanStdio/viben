@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, mcpPackages } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
-import { updateMcpSchema } from '@/lib/validations/mcp';
+import { McpUpdateBody } from '@/lib/validations/mcp';
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
+/** @ignore */
 // GET - Get MCP package details
 export async function GET(
   _request: NextRequest,
@@ -43,6 +44,7 @@ export async function GET(
   }
 }
 
+/** @ignore */
 // PUT - Update MCP package
 export async function PUT(
   request: NextRequest,
@@ -52,7 +54,7 @@ export async function PUT(
     const session = await requireAuth(request);
     const { id } = await params;
     const body = await request.json();
-    const data = updateMcpSchema.parse(body);
+    const data = McpUpdateBody.parse(body);
 
     // Check ownership
     const pkg = await db.query.mcpPackages.findFirst({
@@ -128,6 +130,7 @@ export async function PUT(
   }
 }
 
+/** @ignore */
 // DELETE - Delete MCP package
 export async function DELETE(
   request: NextRequest,

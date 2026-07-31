@@ -6,6 +6,17 @@ import { feedbacks } from '@/lib/db/schema';
 
 const VALID_CATEGORIES = ['bug', 'suggestion', 'other'] as const;
 
+/**
+ * 提交反馈
+ * @summary 提交页面反馈
+ * @description 对页面提交反馈，需登录。包含 page_id（页面 ID）、category（分类：bug/suggestion/other）、rating（评分 1-5）、content（内容，最多 1000 字）。成功返回包含反馈 ID 的响应
+ * @body FeedbackBody
+ * @response 200:FeedbackResponse:反馈结果（含创建 id）
+ * @response 400:ErrorResponse:参数缺失或无效
+ * @responseSet auth
+ * @auth bearer
+ * @tag Feedbacks
+ */
 export async function POST(request: NextRequest) {
   let session;
   try {

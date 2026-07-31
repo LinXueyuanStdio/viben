@@ -39,6 +39,17 @@ function getErrorDetails(error: unknown): string | undefined {
   }
 }
 
+/**
+ * 发布页面
+ * @summary 发布或更新页面
+ * @description 发布或更新已发布页面，需登录。支持定时发布（scheduled_at）、合集章节管理（collection_slug/collection_name）、SEO 元数据。自动同步合集内章节信息。成功返回 page_uid、url、read_url、updated 标识
+ * @body PublishPageBody
+ * @response 200:PublishPageResponse:发布成功，返回页面信息和访问链接
+ * @response 400:ErrorResponse:缺少必填字段（uid、title、html）
+ * @responseSet auth
+ * @auth bearer
+ * @tag Pages
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);

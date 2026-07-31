@@ -18,6 +18,7 @@ const listCommentsQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'content.moderate');

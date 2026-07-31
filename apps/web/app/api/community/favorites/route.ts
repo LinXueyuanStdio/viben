@@ -9,6 +9,17 @@ function toLimit(value: string | null, fallback: number, max: number) {
   return Math.min(Math.floor(parsed), max);
 }
 
+/**
+ * 获取收藏列表
+ * @summary 获取收藏列表
+ * @description 获取当前用户的所有收藏内容，支持按实体类型（published_page / moment）过滤和游标分页。需通过 requireAuth 中间件登录。limit 默认 30，最大 100。
+ * @params CommunityBookmarksQuery
+ * @response 200:BookmarkListResponse:收藏列表数据
+ * @response 401:ErrorResponse:未登录
+ * @responseSet auth
+ * @auth bearer
+ * @tag Community
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);

@@ -9,6 +9,15 @@ interface RouteContext {
   params: Promise<{ user_slug: string; page_id: string }>;
 }
 
+/**
+ * 阅读已发布页面
+ * @description 根据用户 slug 和页面 ID 获取已发布页面的内容。通过 fields 查询参数控制返回范围：meta（仅元信息）、html（仅 HTML）、all（全部，默认）。公开页面（visibility=public 且审核通过）启用 CDN 缓存，私有页面禁用缓存。非公开页面仅作者本人可见。无需登录，可选传入 session 判断 isAuthor 身份。
+ * @pathParams ReadPageParams
+ * @params ReadPageQuery
+ * @response 200:ReadPageResponse:页面内容，根据 fields 参数动态返回 html 和/或 meta
+ * @response 404:ErrorResponse:页面不存在或无权访问
+ * @tag Read
+ */
 export async function GET(
   request: NextRequest,
   { params }: RouteContext,

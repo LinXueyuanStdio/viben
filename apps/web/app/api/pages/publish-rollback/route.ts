@@ -16,6 +16,18 @@ function getErrorDetails(error: unknown): string | undefined {
   }
 }
 
+/**
+ * 回滚发布页面
+ * @summary 回滚页面到历史版本
+ * @description 将已发布页面回滚到指定历史版本，需登录。回滚到当前版本返回 400，页面或版本不存在返回 404。成功返回 page_uid、version、url
+ * @body PublishRollbackBody
+ * @response 200:PublishRollbackResponse:回滚成功，返回页面信息和版本号
+ * @response 400:ErrorResponse:参数无效或已是当前版本
+ * @response 404:ErrorResponse:页面或版本不存在
+ * @responseSet auth
+ * @auth bearer
+ * @tag Pages
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);

@@ -31,6 +31,7 @@ const updateRoleSchema = z.object({
  * - reason: string (optional, for audit log)
  *
  * Required permission: users.ban
+ * @ignore
  */
 export async function PATCH(
   request: NextRequest,

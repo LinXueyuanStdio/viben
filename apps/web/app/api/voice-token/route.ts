@@ -27,23 +27,16 @@ interface ErrorResponse {
 }
 
 /**
- * POST /api/voice-token
- *
- * Request body:
- * {
- *   api_key: string,      // Vocal Bridge API key
- *   agent_id: string,     // Agent UUID
- *   participant_name?: string  // Optional participant name
- * }
- *
- * Response:
- * {
- *   url: string,
- *   token: string,
- *   room_name: string,
- *   participant_name: string,
- *   participant_identity: string
- * }
+ * 获取语音会话 token
+ * @description 代理 Vocal Bridge API（vocalbridgeai.com）获取 LiveKit 语音会话凭证，用于桌面端的语音交互功能。本端点不做登录检查，由 Vocal Bridge 外部服务验证 api_key 身份。agent_id 需为有效的智能体 UUID。CORS 允许任意来源。
+ * @body VoiceTokenBody
+ * @response 200:VoiceTokenResponse:语音 token 凭证，含 livekit_url、token、room_name、participant_identity、expires_in、agent_mode
+ * @response 400:ErrorResponse:缺少 api_key或 agent_id
+ * @response 401:ErrorResponse:api_key 无效（转发 Vocal Bridge 错误）
+ * @response 403:ErrorResponse:使用额度超限（转发 Vocal Bridge 错误）
+ * @response 404:ErrorResponse:智能体不存在（转发 Vocal Bridge 错误）
+ * @response 500:ErrorResponse:代理请求失败或内部错误
+ * @tag Voice
  */
 export async function POST(request: NextRequest) {
   try {
@@ -118,8 +111,10 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * OPTIONS /api/voice-token
- * CORS preflight handler
+ * CORS 预检请求
+ * @description 处理浏览器跨域预检请求（OPTIONS），响应头允许任意来源（Access-Control-Allow-Origin: *）、POST 和 OPTIONS 方法、以及 Content-Type 和 Authorization 请求头。用于桌面端 WebView 调用时的 CORS 兼容。
+ * @response 204
+ * @tag Voice
  */
 export async function OPTIONS() {
   return new NextResponse(null, {

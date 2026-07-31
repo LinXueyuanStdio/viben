@@ -28,6 +28,7 @@ interface RouteParams {
  * - type: 'followers' | 'followees' (default: 'followers')
  *
  * Required permission: users.view
+ * @ignore
  */
 export async function GET(
   request: NextRequest,

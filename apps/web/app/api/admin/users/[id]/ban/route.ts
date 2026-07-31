@@ -17,6 +17,7 @@ const banSchema = z.object({
   reason: z.string().optional(),
 });
 
+/** @ignore */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -9,6 +9,17 @@ import { getStorage } from '@/lib/storage';
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
+/**
+ * 上传媒体文件
+ * @summary 上传媒体文件
+ * @description 上传图片等媒体文件到存储服务，支持 media/avatar/page_cover 三种用途。FormData 格式（非 JSON body），文件限制：PNG/JPEG/WebP/GIF，最大 10MB。avatar 和 page_cover 类型必须传 uid。成功返回 url（代理 URL）、asset_id（资源 ID）、thumbnail_url（缩略图 URL，可能为 null）
+ * @body MediaUploadBody — FormData 字段：file（文件）、kind（用途）、user_slug、uid
+ * @response 200:MediaUploadResponse:上传成功，返回 url、asset_id、thumbnail_url
+ * @response 400:ErrorResponse:文件类型不支持或大小超限
+ * @responseSet auth
+ * @auth bearer
+ * @tag Media
+ */
 export async function POST(request: NextRequest) {
   let session;
   try {

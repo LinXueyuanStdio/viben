@@ -4,6 +4,7 @@ import { uploadPackage } from '@/lib/services/packages';
 import { db, skillPackages } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();

@@ -2,12 +2,22 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, githubConnections } from '@/lib/db';
 import { getSession, decryptToken } from '@/lib/auth';
-import { listReposQuerySchema } from '@/lib/validations/github';
+import { GithubReposQuery } from '@/lib/validations/github';
 import type { GitHubRepo } from '@/lib/validations/github';
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
-// GET - List user's GitHub repositories
+/**
+ * 获取 GitHub 仓库列表
+ * @description 获取已连接用户的 GitHub 仓库列表，支持分页和排序，包含公开和私有仓库
+ * @params GithubReposQuery — 分页和排序参数
+ * @response 200:{ repos, pagination } — 仓库列表及分页信息
+ * @response 400:ErrorResponse:未连接 GitHub 或参数无效
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录或 token 过期
+ * @tag GitHub
+ * @ignore
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -38,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     // Parse query params
     const searchParams = request.nextUrl.searchParams;
-    const query = listReposQuerySchema.parse({
+    const query = GithubReposQuery.parse({
       page: searchParams.get('page'),
       perPage: searchParams.get('perPage'),
       sort: searchParams.get('sort'),

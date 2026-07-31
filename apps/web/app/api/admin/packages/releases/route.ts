@@ -27,6 +27,7 @@ const releasesQuerySchema = z.object({
  * - entityId: string (required)
  *
  * Required permission: packages.review
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {

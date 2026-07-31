@@ -4,8 +4,22 @@ import { AuthError, requireAuth } from "@/lib/auth/middleware"
 import { db } from "@/lib/db"
 import { notes } from "@/lib/db/schema"
 import { eq, and } from "drizzle-orm"
+import { NoteParams, NoteUpdateBody } from "@/lib/validations/notes"
 
-// PATCH /api/notes/[id]
+/**
+ * 更新笔记
+ * @summary 更新笔记内容
+ * @description 更新指定笔记的 markdown 内容，仅笔记作者可操作。找不到笔记或非作者操作时返回 404。成功返回 { note: NoteResponse }
+ * @pathParams NoteParams — 笔记 ID
+ * @body NoteUpdateBody
+ * @response 200:NoteWrapperResponse:更新成功，返回更新后的笔记（note 字段包裹）
+ * @response 400:ErrorResponse:content 为空
+ * @response 401:ErrorResponse:未登录
+ * @response 404:ErrorResponse:笔记不存在或无权操作
+ * @responseSet auth
+ * @auth bearer
+ * @tag Notes
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,7 +64,18 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/notes/[id]
+/**
+ * 删除笔记
+ * @summary 删除笔记
+ * @description 删除指定笔记，仅笔记作者可操作。找不到笔记或非作者操作时返回 404。成功返回 204 No Content（无响应体）
+ * @pathParams NoteParams — 笔记 ID
+ * @response 204
+ * @response 401:ErrorResponse:未登录
+ * @response 404:ErrorResponse:笔记不存在或无权操作
+ * @responseSet auth
+ * @auth bearer
+ * @tag Notes
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

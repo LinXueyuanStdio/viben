@@ -26,6 +26,7 @@ const createTopicSchema = z.object({
   is_featured: z.boolean().default(false),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'topics.manage');
@@ -90,6 +91,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, 'topics.manage');

@@ -16,10 +16,16 @@ function getErrorDetails(error: unknown): string | undefined {
 }
 
 /**
- * POST /api/pages/settings
- *
- * Save SEO settings for a published page.
- * Body: { uid, seo_title?, seo_description?, seo_keywords?, is_discoverable? }
+ * 保存页面 SEO 设置
+ * @summary 保存页面 SEO 配置
+ * @description 保存已发布页面的 SEO 设置（标题、描述、关键词）及可发现性（is_discoverable），需登录。仅更新提供的字段，无字段更新时返回 400
+ * @body PagesSettingsBody
+ * @response 200:SuccessResponse:保存成功
+ * @response 400:ErrorResponse:缺少 uid 或无字段更新
+ * @response 404:ErrorResponse:页面不存在
+ * @responseSet auth
+ * @auth bearer
+ * @tag Pages
  */
 export async function POST(request: NextRequest) {
   try {

@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, mcpPackages, users } from '@/lib/db';
-import { searchMcpQuerySchema } from '@/lib/validations/mcp';
+import { McpSearchQuery } from '@/lib/validations/mcp';
 import { eq, desc, or, ilike, and, count } from 'drizzle-orm';
 
+/** @ignore */
 // GET - Search MCP packages
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = searchMcpQuerySchema.parse({
+    const query = McpSearchQuery.parse({
       q: searchParams.get('q'),
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),

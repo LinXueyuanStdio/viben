@@ -17,7 +17,7 @@ import {
   skillPackages,
   moderationLogs,
 } from '@/lib/admin';
-import { featurePackageSchema } from '@/lib/validations/admin';
+import { FeaturePackageBody } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
 import { eq } from 'drizzle-orm';
 import type { PackageStatus } from '@/lib/types/admin';
@@ -35,6 +35,7 @@ import type { PackageStatus } from '@/lib/types/admin';
  * - Unfeaturing changes status back to 'approved'
  *
  * Required permission: packages.feature
+ * @ignore
  */
 export async function POST(
   request: NextRequest,
@@ -55,7 +56,7 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    const data = featurePackageSchema.parse(body);
+    const data = FeaturePackageBody.parse(body);
 
     // Get current status
     const currentStatus = await getPackageStatus(id, packageType);

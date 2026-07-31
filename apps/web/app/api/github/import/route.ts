@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, githubConnections, drafts } from '@/lib/db';
 import { getSession, decryptToken } from '@/lib/auth';
-import { importSkillsSchema, type GitHubContent } from '@/lib/validations/github';
+import { GithubImportBody, type GitHubContent } from '@/lib/validations/github';
 import { generateId, slugify } from '@/lib/utils';
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
@@ -78,7 +78,7 @@ function parseSkillMd(content: string): { name: string; description: string; con
   };
 }
 
-// POST - Import skills from GitHub as drafts
+/** @ignore */
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const input = importSkillsSchema.parse(body);
+    const input = GithubImportBody.parse(body);
 
     // Get GitHub connection
     const connection = await db.query.githubConnections.findFirst({

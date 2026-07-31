@@ -9,6 +9,7 @@ import { generateId } from '@/lib/utils';
 import { cookies } from 'next/headers';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri } from '@/lib/auth/desktop-redirect';
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   console.error('[OAuth][Google] HANDLER INVOKED');
 

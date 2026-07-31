@@ -40,6 +40,7 @@ interface RouteParams {
  * - Moderation log entries for this user
  *
  * Required permission: users.view
+ * @ignore
  */
 export async function GET(
   request: NextRequest,

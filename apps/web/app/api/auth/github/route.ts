@@ -10,6 +10,7 @@ import { generateId } from '@/lib/utils';
 import { cookies } from 'next/headers';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri } from '@/lib/auth/desktop-redirect';
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   // First line of the handler — confirms the function was invoked.
   console.error('[OAuth][GitHub] HANDLER INVOKED');

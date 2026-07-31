@@ -11,6 +11,7 @@ import { db, mediaAssets } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createModerationLog } from '@/lib/admin/logs';
 
+/** @ignore */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

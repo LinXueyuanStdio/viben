@@ -30,6 +30,7 @@ function buildStatusFilter(status: string) {
   return undefined;
 }
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'users.view');

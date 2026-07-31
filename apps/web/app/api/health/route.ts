@@ -2,8 +2,26 @@ import { NextResponse } from 'next/server';
 import { db, users, mcpPackages, skillPackages, publishedPages } from '@/lib/db';
 import { count } from 'drizzle-orm';
 
+import { z } from 'zod';
+
+export const HealthCheckResponse = z.object({
+  status: z.enum(['healthy', 'unhealthy']).describe('服务整体状态'),
+  checks: z.record(z.string(), z.object({
+    status: z.enum(['ok', 'error', 'skipped', 'unknown']).describe('检查项状态'),
+    message: z.string().optional().describe('检查项详情'),
+  })).describe('各项检查结果'),
+});
+
 export const dynamic = 'force-dynamic';
 
+/**
+ * 健康检查
+ * @summary 检查服务健康状态
+ * @description 检查 API 服务及各依赖（数据库、核心表）的运行状态，可用于监控和负载均衡探活。全部检查通过返回 200（status=healthy），否则返回 503（status=unhealthy），各检查项独立报告状态（ok/error/skipped）
+ * @response 200:HealthCheckResponse:所有检查通过
+ * @response 503:HealthCheckResponse:存在失败的检查项
+ * @tag Health
+ */
 export async function GET() {
   const checks: Record<string, { status: string; message?: string }> = {
     api: { status: 'ok' },

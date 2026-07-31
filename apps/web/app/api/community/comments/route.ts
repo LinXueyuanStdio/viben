@@ -9,6 +9,15 @@ function toLimit(value: string | null, fallback: number, max: number) {
   return Math.min(Math.floor(parsed), max);
 }
 
+/**
+ * 获取评论列表
+ * @summary 获取评论列表
+ * @description 获取指定实体的评论列表，支持按父评论过滤和游标分页。实体类型支持 published_page、moment、comment。支持可选登录（通过 getOptionalSession），登录后可获取用户对评论的交互状态。
+ * @params CommunityCommentsQuery
+ * @response 200:CommentListResponse:评论列表数据
+ * @response 400:ErrorResponse:不支持的实体类型或缺少 entity_id
+ * @tag Community
+ */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const entityType = searchParams.get('entity_type');
@@ -37,6 +46,18 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(result);
 }
 
+/**
+ * 创建评论
+ * @summary 创建评论
+ * @description 对指定实体创建评论，支持回复其他评论（通过 parent_comment_id）。实体类型仅支持 published_page 和 moment。需登录（requireAuth），AuthError 时返回 login_required。成功后返回创建的评论对象。
+ * @body CreateCommentBody
+ * @response 200:CommentCreateResponse:评论创建成功
+ * @response 400:ErrorResponse:参数无效或实体不存在
+ * @response 401:ErrorResponse:未登录
+ * @responseSet auth
+ * @auth bearer
+ * @tag Community
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);

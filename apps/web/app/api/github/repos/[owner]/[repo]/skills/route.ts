@@ -166,7 +166,18 @@ async function findSkillFilesInDir(
   return skills;
 }
 
-// GET - Detect skills in a repository
+/**
+ * 检测仓库中的 Skills
+ * @description 扫描 GitHub 仓库中的 SKILL.md 文件（含 skills/ 目录递归），解析并返回检测到的 Skill 列表
+ * @pathParams owner — 仓库所有者
+ * @pathParams repo — 仓库名称
+ * @response 200:{ skills: DetectedSkill[]; repository: { owner: string; repo: string } } — 检测到的 Skill 列表
+ * @response 400:ErrorResponse:未连接 GitHub
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @tag GitHub
+ * @ignore
+ */
 export async function GET(
   request: NextRequest,
   { params }: RouteParams

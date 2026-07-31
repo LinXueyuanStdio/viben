@@ -20,6 +20,7 @@ const listMomentsQuerySchema = z.object({
   include_deleted: z.coerce.boolean().default(false),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'moments.moderate');

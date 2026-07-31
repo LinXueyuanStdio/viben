@@ -28,6 +28,7 @@ const listReportsQuerySchema = z.object({
  * - status: 'pending' | 'resolved' | 'dismissed' | 'all' (default: 'pending')
  *
  * Required permission: reports.view
+ * @ignore
  */
 export async function GET(request: NextRequest) {
   try {

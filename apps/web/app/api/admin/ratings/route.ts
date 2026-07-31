@@ -17,6 +17,7 @@ const listRatingsQuerySchema = z.object({
   entity_type: z.enum(['mcp', 'skill', 'all']).default('all'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'content.moderate');

@@ -6,6 +6,18 @@ import { reports } from "@/lib/db/schema"
 
 const VALID_REASONS = ["spam", "inappropriate", "copyright", "security", "other"]
 
+/**
+ * 提交举报
+ * @description 对指定实体（published_page、moment、comment 等）提交举报。reason 必须为预定义类型（spam/inappropriate/copyright/security/other），description 最长 500 字符，超出自动截断。举报提交后初始状态为 pending。
+ * @body ReportBody
+ * @response 200:ReportResponse:举报提交结果，含 id 和 status（pending）
+ * @response 400:ErrorResponse:参数缺失（entity_type/entity_id 为空）或 reason 不在预定义列表中
+ * @response 500:ErrorResponse:举报提交失败（数据库错误）
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @auth bearer
+ * @tag Reports
+ */
 export async function POST(request: NextRequest) {
   let session
   try {

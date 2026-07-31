@@ -4,7 +4,13 @@ import { AuthError, requireAuth } from "@/lib/auth/middleware"
 import { getRecentSearches } from "@/lib/services/search"
 
 /**
- * GET /api/search/recent — 获取用户最近搜索词（需登录）
+ * 获取用户最近搜索词
+ * @description 返回当前登录用户的去重最近搜索词列表，按搜索时间降序排列。通过 limit 参数控制返回条数（默认 5，最大 20）。未登录或认证失败时降级返回空数组，不报错。
+ * @params RecentSearchQuery
+ * @response 200:RecentSearchesResponse:最近搜索词字符串数组
+ * @responseSet auth
+ * @auth bearer
+ * @tag Search
  */
 export async function GET(request: NextRequest) {
   try {

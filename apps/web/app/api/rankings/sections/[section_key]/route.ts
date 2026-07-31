@@ -23,6 +23,15 @@ function encodeCursor(offset: number): string {
   return Buffer.from(JSON.stringify({ offset }), 'utf8').toString('base64url');
 }
 
+/**
+ * 获取分区榜单
+ * @summary 获取分区内容列表
+ * @description 根据分区 key（路径参数 section_key）从首页配置中查找对应分区并返回其内容列表，支持基于游标（base64url 编码的 offset）的无限滚动分页。响应包含 section_key、items、next_cursor、has_more 等
+ * @pathParams SectionKeyParams — 分区标识
+ * @params SectionRankingQuery
+ * @response 200:SectionRankingResponse:分区榜单数据
+ * @tag Rankings
+ */
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const { section_key: sectionKey } = await params;
   const rawLimit = Number(request.nextUrl.searchParams.get('limit'));

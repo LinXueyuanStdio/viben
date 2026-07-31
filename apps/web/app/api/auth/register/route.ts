@@ -4,13 +4,22 @@ import { hashPassword } from '@/lib/auth/password';
 import { setSessionCookie } from '@/lib/auth/cookies';
 import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
-import { registerSchema } from '@/lib/validations/user';
+import { RegisterBody } from '@/lib/validations/user';
 import { ZodError } from 'zod';
 
+/**
+ * 用户注册
+ * @summary 用户注册
+ * @description 创建新账号，校验邮箱和用户名唯一性，成功后自动设置 session cookie 并登录。返回 `{ success: true, userId }`。使用 Zod 验证输入，验证失败返回 400 及详细错误字段。
+ * @body RegisterBody
+ * @response 200:SuccessResponse:注册成功
+ * @response 400:ErrorResponse:邮箱或用户名已被占用或输入无效
+ * @tag Auth
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, username, password, displayName } = registerSchema.parse(body);
+    const { email, username, password, displayName } = RegisterBody.parse(body);
 
     // Check if user exists
     const existing = await db.query.users.findFirst({

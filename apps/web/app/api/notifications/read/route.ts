@@ -3,6 +3,17 @@ import type { NextRequest } from 'next/server';
 import { AuthError, requireAuth } from '@/lib/auth/middleware';
 import { markNotificationsRead } from '@/lib/services/community';
 
+/**
+ * 批量标记通知已读
+ * @summary 批量标记通知已读
+ * @description 将指定通知批量标记为已读，需登录。支持两种方式：按 notification_ids（通知 ID 列表）或按 before_cursor（标记该游标之前的全部通知已读），两者可同时使用
+ * @body NotificationsReadBody
+ * @response 200:SuccessResponse:标记成功
+ * @responseSet auth
+ * @response 401:ErrorResponse:未登录
+ * @auth bearer
+ * @tag Notifications
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);

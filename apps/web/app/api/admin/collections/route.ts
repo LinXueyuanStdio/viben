@@ -18,6 +18,7 @@ const listCollectionsQuerySchema = z.object({
   visibility: z.enum(['all', 'public', 'private']).default('all'),
 });
 
+/** @ignore */
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, 'content.moderate');

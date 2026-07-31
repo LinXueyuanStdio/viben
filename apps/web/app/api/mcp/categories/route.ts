@@ -21,6 +21,7 @@ const categoryDescriptions: Record<string, string> = {
   other: 'Other tools and utilities',
 };
 
+/** @ignore */
 // GET - List MCP package categories
 export async function GET() {
   try {
