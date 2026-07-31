@@ -1,5 +1,4 @@
 import { useCallback, useMemo, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -272,23 +271,23 @@ export function DesktopBreadcrumbBar({
   return (
     <header
       className={cn(
-        "grid h-10 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b bg-background px-4",
+        "grid h-10 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b bg-background px-1",
         className
       )}
     >
       <div className="min-w-0 overflow-x-auto scrollbar-none">
         <nav
           aria-label={t("common.breadcrumb")}
-          className="flex min-w-max items-center gap-1"
+          className="flex min-w-max items-center gap-0"
         >
           {allSegments.map((segment, index) => {
             const isCurrent = index === allSegments.length - 1;
             const key = segment.id ?? `${segment.href}-${segment.label}-${index}`;
 
             return (
-              <div key={key} className="flex items-center gap-1">
+              <div key={key} className="flex items-center gap-0">
                 {index > 0 ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
+                  <span className="text-muted-foreground/40 text-sm font-light select-none">/</span>
                 ) : null}
                 {renderDropdown(
                   segment,

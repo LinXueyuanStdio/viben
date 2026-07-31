@@ -7,7 +7,6 @@
 import { VibenClient } from "./client";
 import type { VibenClientConfig } from "./client";
 import { getWebUrl } from "./utils/config";
-import { readToken } from "./utils/token";
 import { proxyFetch } from "./proxy-fetch";
 
 /**
@@ -40,6 +39,9 @@ export function createClient(options?: Partial<VibenClientConfig>): VibenClient 
  * Create an authenticated VibenClient by reading the stored token.
  * Returns null if no token is available (user not logged in).
  *
+ * Uses dynamic import for readToken to avoid bundling Node.js built-ins
+ * (fs, os, path) in browser environments.
+ *
  * @example
  * ```ts
  * const client = await createAuthenticatedClient();
@@ -52,6 +54,9 @@ export function createClient(options?: Partial<VibenClientConfig>): VibenClient 
 export async function createAuthenticatedClient(
   options?: Partial<Omit<VibenClientConfig, "apiKey">>
 ): Promise<VibenClient | null> {
+  // Dynamic import — token.ts uses Node.js fs/path/os, which
+  // are unavailable in browser/Tauri webview environments.
+  const { readToken } = await import("./utils/token");
   const token = await readToken();
   if (!token) return null;
 

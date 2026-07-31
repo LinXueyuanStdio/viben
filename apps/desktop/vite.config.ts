@@ -148,6 +148,9 @@ export default defineConfig(() => ({
       "lucide-react",
       "i18next",
       "react-i18next",
+      // pixi.js and recharts depend on eventemitter3, which esbuild
+      // can't resolve from deep pnpm symlinks during pre-bundling
+      "eventemitter3",
     ],
     // Exclude server-side only packages from pre-bundling
     exclude: nodeOnlyPackages,
