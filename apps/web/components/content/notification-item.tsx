@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import Link from "next/link"
+import { useTranslation } from "react-i18next"
 import type { LucideIcon } from "lucide-react"
 import { ArrowRight, Check, Bell, UserPlus } from "lucide-react"
 import { toast } from "sonner"
@@ -21,6 +22,7 @@ export interface NotificationItemData {
   notificationId?: string
   action?: {
     label: string
+    labelKey?: string
     href?: string
     onClick?: () => void
     variant?: "arrow" | "follow" | "read" | "subscribed"
@@ -80,9 +82,10 @@ function ReadAction({ notificationId, label, onClick }: { notificationId: string
   )
 }
 
-function renderAction(action: NotificationItemData["action"], notificationId?: string) {
-  if (!action) return null
-  const { label, href, onClick, variant = "arrow" } = action
+function ActionButton({ action, notificationId }: { action: NonNullable<NotificationItemData["action"]>; notificationId?: string }) {
+  const { t } = useTranslation()
+  const { label, labelKey, href, onClick, variant = "arrow" } = action
+  const displayLabel = labelKey ? t(labelKey, label) : label
 
   switch (variant) {
     case "arrow":
@@ -114,14 +117,14 @@ function renderAction(action: NotificationItemData["action"], notificationId?: s
       return (
         <span className="flex items-center gap-1 text-[13px] font-bold text-muted-foreground shrink-0">
           <Check className="size-3.5" />
-          {label}
+          {displayLabel}
         </span>
       )
     case "subscribed":
       return (
         <button onClick={onClick} className="flex items-center gap-1 text-[13px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
           <Bell className="size-3.5" />
-          {label}
+          {displayLabel}
         </button>
       )
     default:
@@ -154,7 +157,7 @@ export function NotificationItem({ data, className }: NotificationItemProps) {
           {timeAgo}
         </div>
       </div>
-      {renderAction(action, notificationId)}
+      {action && <ActionButton action={action} notificationId={notificationId} />}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/
 import { MarkAllReadButton } from "@/components/content/mark-all-read-button"
 import { NotificationSettings } from "@/components/content/notification-settings"
 import { listNotifications } from "@/lib/services/community"
-import { EmptyState } from "@/components/content/i18n-text"
+import { EmptyState, T } from "@/components/content/i18n-text"
 import { getSession } from "@/lib/auth/cookies"
 import { redirect } from "next/navigation"
 import { db, users } from "@/lib/db"
@@ -17,7 +17,12 @@ import type { AuthorCardData } from "@/components/content/author-card"
 
 export const dynamic = "force-dynamic"
 
-const NOTIF_TABS = ["全部", "评论", "关注", "订阅"]
+const NOTIF_TABS = [
+  { value: "全部", labelKey: "community.all", fallback: "全部" },
+  { value: "评论", labelKey: "community.comments", fallback: "评论" },
+  { value: "关注", labelKey: "community.follows", fallback: "关注" },
+  { value: "订阅", labelKey: "community.subscriptions", fallback: "订阅" },
+]
 
 const TYPE_ICON_MAP: Record<string, LucideIcon> = {
   page_published: FileText,
@@ -78,21 +83,21 @@ export default async function NotificationsPage() {
       action: item.read_at
         ? undefined
         : readUrl
-          ? { label: "查看", variant: "arrow" as const, href: readUrl }
-          : { label: "标记已读", variant: "read" as const },
+          ? { label: "查看", labelKey: "community.notifView", variant: "arrow" as const, href: readUrl }
+          : { label: "标记已读", labelKey: "community.markRead", variant: "read" as const },
     }
   })
 
-  const filterNotifications = (tab: string): NotificationItemData[] => {
-    if (tab === "全部") return allNotifications
-    if (tab === "评论")
+  const filterNotifications = (tabValue: string): NotificationItemData[] => {
+    if (tabValue === "全部") return allNotifications
+    if (tabValue === "评论")
       return allNotifications.filter(
         (_, i) =>
           rawNotifs[i].type === "comment" || rawNotifs[i].type === "comment_reply"
       )
-    if (tab === "关注")
+    if (tabValue === "关注")
       return allNotifications.filter((_, i) => rawNotifs[i].type === "follow")
-    if (tab === "订阅")
+    if (tabValue === "订阅")
       return allNotifications.filter(
         (_, i) =>
           rawNotifs[i].type === "page_published" ||
@@ -117,24 +122,24 @@ export default async function NotificationsPage() {
     <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <div className="flex items-center justify-between">
-          <SectionHead title="通知" />
+          <SectionHead title={<T tKey="nav.notifications" fallback="通知" />} />
           <MarkAllReadButton />
         </div>
         <VibenTabs defaultValue="全部">
           <VibenTabsList>
             {NOTIF_TABS.map((tab) => (
-              <VibenTabsTrigger key={tab} value={tab}>
-                {tab}
+              <VibenTabsTrigger key={tab.value} value={tab.value}>
+                <T tKey={tab.labelKey} fallback={tab.fallback} />
               </VibenTabsTrigger>
             ))}
           </VibenTabsList>
           {NOTIF_TABS.map((tab) => (
-            <VibenTabsContent key={tab} value={tab} className="mt-2">
+            <VibenTabsContent key={tab.value} value={tab.value} className="mt-2">
               <div className="grid gap-2">
-                {filterNotifications(tab).length === 0 ? (
+                {filterNotifications(tab.value).length === 0 ? (
                   <EmptyState tKey="community.noNotifications" fallback="暂无通知" />
                 ) : (
-                  filterNotifications(tab).map((item, i) => (
+                  filterNotifications(tab.value).map((item, i) => (
                     <NotificationItem key={i} data={item} />
                   ))
                 )}
@@ -145,7 +150,7 @@ export default async function NotificationsPage() {
       </div>
       <aside className="grid gap-3 content-start">
         <NotificationSettings />
-        <SectionHead title="订阅作者" />
+        <SectionHead title={<T tKey="community.subscribedAuthors" fallback="订阅作者" />} />
         {authorCards.map((author, i) => (
           <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
         ))}
