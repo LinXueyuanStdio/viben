@@ -2731,5 +2731,10 @@
       "rollbackFailed": "Rollback failed",
       "rollbackComplete": "Rollback complete"
     }
+  },
+  "notFoundPage": {
+    "title": "Page Not Found",
+    "description": "The page you're looking for doesn't exist or has been removed.",
+    "backHome": "Back to Home"
   }
 }
