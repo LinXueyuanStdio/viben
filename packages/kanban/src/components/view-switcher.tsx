@@ -39,7 +39,7 @@ export function ViewSwitcher({ value, onChange, className, labels }: ViewSwitche
         onClick={() => onChange("kanban")}
         aria-pressed={value === "kanban"}
       >
-        <LayoutGrid className="h-4 w-4" />
+        <LayoutGrid className="h-3.5 w-3.5" />
         <span className="text-sm">{labels?.kanban ?? "Kanban"}</span>
       </Button>
       <Button
@@ -55,7 +55,7 @@ export function ViewSwitcher({ value, onChange, className, labels }: ViewSwitche
         onClick={() => onChange("list")}
         aria-pressed={value === "list"}
       >
-        <List className="h-4 w-4" />
+        <List className="h-3.5 w-3.5" />
         <span className="text-sm">{labels?.list ?? "List"}</span>
       </Button>
       <Button
@@ -71,7 +71,7 @@ export function ViewSwitcher({ value, onChange, className, labels }: ViewSwitche
         onClick={() => onChange("table")}
         aria-pressed={value === "table"}
       >
-        <Table2 className="h-4 w-4" />
+        <Table2 className="h-3.5 w-3.5" />
         <span className="text-sm">{labels?.table ?? "Table"}</span>
       </Button>
     </div>
