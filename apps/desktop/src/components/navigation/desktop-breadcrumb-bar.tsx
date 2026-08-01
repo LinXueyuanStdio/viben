@@ -275,7 +275,7 @@ export function DesktopBreadcrumbBar({
         className
       )}
     >
-      <div className="min-w-0 overflow-x-auto scrollbar-none">
+      <div className="min-w-0 h-8 overflow-x-auto overflow-y-clip scrollbar-breadcrumb">
         <nav
           aria-label={t("common.breadcrumb")}
           className="flex min-w-max items-center gap-0"

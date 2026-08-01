@@ -830,3 +830,39 @@
 .lite-terminal .brightMagenta { color: var(--term-brightMagenta, #ff00ff); }
 .lite-terminal .brightCyan { color: var(--term-brightCyan, #3DD9C8); }
 .lite-terminal .brightWhite { color: var(--term-brightWhite, #fff); }
+
+/* ===== Breadcrumb Scrollbar =====
+ * 2px ultra-thin scrollbar. At this thickness the layout shift
+ * (~1px) is imperceptible, so no padding/margin tricks needed.
+ */
+.scrollbar-breadcrumb {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #78716c40 transparent;
+}
+
+.scrollbar-breadcrumb:hover {
+  scrollbar-color: #78716c80 transparent;
+}
+
+/* WebKit (Chrome, Edge, Tauri WebView2) */
+.scrollbar-breadcrumb::-webkit-scrollbar {
+  height: 2px;
+}
+
+.scrollbar-breadcrumb::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-breadcrumb::-webkit-scrollbar-thumb {
+  background: #78716c40;
+  border-radius: 9999px;
+}
+
+.scrollbar-breadcrumb::-webkit-scrollbar-thumb:hover {
+  background: #78716c80;
+}
+
+.scrollbar-breadcrumb::-webkit-scrollbar-thumb:active {
+  background: #78716c99;
+}
