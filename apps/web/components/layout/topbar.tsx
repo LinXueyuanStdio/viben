@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Maximize2, FileText, Columns2, PanelRight, Settings, MoreHorizontal, Flag, MessageSquare } from "lucide-react"
+import { Maximize2, FileText, Columns2, PanelRight, Settings, MoreHorizontal, Flag, MessageSquare, PanelLeftOpen, PanelLeftClose } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { trackAnalytics } from "@/lib/analytics/track"
@@ -224,23 +224,11 @@ export function Topbar({
             }}
             className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
           >
-            <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path
-                className="transition-all duration-300 ease-out"
-                d={hamburgerClosed ? "M3 5h12" : "M4 4l10 10"}
-                style={{ transformOrigin: hamburgerClosed ? "9px 5px" : "9px 9px" }}
-              />
-              <path
-                className="transition-all duration-200 ease-out"
-                d="M3 9h12"
-                style={{ opacity: hamburgerClosed ? 1 : 0, transform: hamburgerClosed ? "scaleX(1)" : "scaleX(0)" }}
-              />
-              <path
-                className="transition-all duration-300 ease-out"
-                d={hamburgerClosed ? "M3 13h12" : "M4 14l10-10"}
-                style={{ transformOrigin: hamburgerClosed ? "9px 13px" : "9px 9px" }}
-              />
-            </svg>
+            {hamburgerClosed ? (
+              <PanelLeftOpen className="size-[18px]" />
+            ) : (
+              <PanelLeftClose className="size-[18px]" />
+            )}
           </button>
 
           {/* 面包屑 — 移动端隐藏 */}
