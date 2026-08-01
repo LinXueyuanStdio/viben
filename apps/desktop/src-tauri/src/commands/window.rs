@@ -144,7 +144,7 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
     app: AppHandle<R>,
     workspace_id: String,
     workspace_path: String,
-    slug: String,
+    uid: String,
     title: Option<String>,
     view: Option<String>,
 ) -> Result<String, String> {
@@ -154,10 +154,10 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
         .filter(|value| value == "skill" || value == "page")
         .unwrap_or_else(|| "page".to_string());
     let url = format!(
-        "/page-preview-window.html?workspace_id={}&workspace_path={}&slug={}&view={}",
+        "/page-preview-window.html?workspace_id={}&workspace_path={}&uid={}&view={}",
         urlencoding::encode(&workspace_id),
         urlencoding::encode(&workspace_path),
-        urlencoding::encode(&slug),
+        urlencoding::encode(&uid),
         urlencoding::encode(&view_mode),
     );
 
