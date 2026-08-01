@@ -38,7 +38,7 @@ interface EditCollectionFormProps {
 }
 
 export function EditCollectionForm({ collection }: EditCollectionFormProps) {
-  const { t } = useTranslation('collections');
+  const { t } = useTranslation();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(true);
@@ -93,14 +93,14 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || t('failedToUpdate'));
+        throw new Error(error.error || t('collections.failedToUpdate'));
       }
 
-      toast.success(t('updatedSuccess'));
+      toast.success(t('collections.updatedSuccess'));
       router.push(`/collections/${collection.id}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('failedToUpdate'));
+      toast.error(error instanceof Error ? error.message : t('collections.failedToUpdate'));
     } finally {
       setIsLoading(false);
     }
@@ -110,14 +110,14 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
     <Card>
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle>{t('collectionDetails')}</CardTitle>
+          <CardTitle>{t('collections.collectionDetails')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">{t('name')}</Label>
+            <Label htmlFor="name">{t('collections.name')}</Label>
             <Input
               id="name"
-              placeholder={t('namePlaceholder')}
+              placeholder={t('collections.namePlaceholder')}
               value={name}
               onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
             />
@@ -127,24 +127,24 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="slug">{t('slug')}</Label>
+            <Label htmlFor="slug">{t('collections.slug')}</Label>
             <Input
               id="slug"
-              placeholder={t('slugPlaceholder')}
+              placeholder={t('collections.slugPlaceholder')}
               value={slug}
               onChange={(e) => { setSlugManuallyEdited(true); setSlug(e.target.value); clearFieldError('slug'); }}
             />
-            <p className="text-xs text-muted-foreground">{t('slugDescriptionEdit')}</p>
+            <p className="text-xs text-muted-foreground">{t('collections.slugDescriptionEdit')}</p>
             {fieldErrors.slug && (
               <p className="text-sm text-destructive">{fieldErrors.slug}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">{t('descriptionOptional')}</Label>
+            <Label htmlFor="description">{t('collections.descriptionOptional')}</Label>
             <Textarea
               id="description"
-              placeholder={t('descriptionPlaceholder')}
+              placeholder={t('collections.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -152,19 +152,19 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
 
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label>{t('public')}</Label>
-              <p className="text-sm text-muted-foreground">{t('publicDescription')}</p>
+              <Label>{t('collections.public')}</Label>
+              <p className="text-sm text-muted-foreground">{t('collections.publicDescription')}</p>
             </div>
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button type="button" variant="outline" onClick={() => router.back()}>
-            {t('cancel')}
+            {t('collections.cancel')}
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('saveChanges')}
+            {t('collections.saveChanges')}
           </Button>
         </CardFooter>
       </form>

@@ -40,7 +40,7 @@ function getDefaultState() {
 }
 
 export function CreateCollectionButton() {
-  const { t } = useTranslation('collections');
+  const { t } = useTranslation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,17 +105,17 @@ export function CreateCollectionButton() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || t('failedToCreate'));
+        throw new Error(error.error || t('collections.failedToCreate'));
       }
 
       const { collection } = await response.json();
-      toast.success(t('createdSuccess'));
+      toast.success(t('collections.createdSuccess'));
       setOpen(false);
       resetForm();
       router.push(`/collections/${collection.id}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('failedToCreate'));
+      toast.error(error instanceof Error ? error.message : t('collections.failedToCreate'));
     } finally {
       setIsLoading(false);
     }
@@ -131,22 +131,22 @@ export function CreateCollectionButton() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          {t('newCollection')}
+          {t('collections.newCollection')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{t('createCollection')}</DialogTitle>
-            <DialogDescription>{t('createCollectionDesc')}</DialogDescription>
+            <DialogTitle>{t('collections.createCollection')}</DialogTitle>
+            <DialogDescription>{t('collections.createCollectionDesc')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">{t('name')}</Label>
+              <Label htmlFor="name">{t('collections.name')}</Label>
               <Input
                 id="name"
-                placeholder={t('namePlaceholder')}
+                placeholder={t('collections.namePlaceholder')}
                 value={name}
                 onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
               />
@@ -154,22 +154,22 @@ export function CreateCollectionButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">{t('slug')}</Label>
+              <Label htmlFor="slug">{t('collections.slug')}</Label>
               <Input
                 id="slug"
-                placeholder={t('slugPlaceholder')}
+                placeholder={t('collections.slugPlaceholder')}
                 value={slug}
                 onChange={(e) => { setSlugManuallyEdited(true); setSlug(e.target.value); clearFieldError('slug'); }}
               />
-              <p className="text-xs text-muted-foreground">{t('slugDescription')}</p>
+              <p className="text-xs text-muted-foreground">{t('collections.slugDescription')}</p>
               {fieldErrors.slug && <p className="text-sm text-destructive">{fieldErrors.slug}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">{t('descriptionOptional')}</Label>
+              <Label htmlFor="description">{t('collections.descriptionOptional')}</Label>
               <Textarea
                 id="description"
-                placeholder={t('descriptionPlaceholder')}
+                placeholder={t('collections.descriptionPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -177,8 +177,8 @@ export function CreateCollectionButton() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>{t('public')}</Label>
-                <p className="text-xs text-muted-foreground">{t('publicDescription')}</p>
+                <Label>{t('collections.public')}</Label>
+                <p className="text-xs text-muted-foreground">{t('collections.publicDescription')}</p>
               </div>
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             </div>
@@ -187,7 +187,7 @@ export function CreateCollectionButton() {
           <DialogFooter>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('createCollection')}
+              {t('collections.createCollection')}
             </Button>
           </DialogFooter>
         </form>

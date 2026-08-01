@@ -15,7 +15,7 @@ interface CollectionsFiltersProps {
 }
 
 export function CollectionsFilters({ sort }: CollectionsFiltersProps) {
-  const { t } = useTranslation('collections');
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -37,13 +37,13 @@ export function CollectionsFilters({ sort }: CollectionsFiltersProps) {
         onValueChange={(value) => updateFilter('sort', value)}
       >
         <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder={t('sortBy')} />
+          <SelectValue placeholder={t('collections.sortBy')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="default">{t('sortMostPopular')}</SelectItem>
-          <SelectItem value="recent">{t('sortRecentlyAdded')}</SelectItem>
-          <SelectItem value="items">{t('sortMostItems')}</SelectItem>
-          <SelectItem value="forks">{t('sortMostForked')}</SelectItem>
+          <SelectItem value="default">{t('collections.sortMostPopular')}</SelectItem>
+          <SelectItem value="recent">{t('collections.sortRecentlyAdded')}</SelectItem>
+          <SelectItem value="items">{t('collections.sortMostItems')}</SelectItem>
+          <SelectItem value="forks">{t('collections.sortMostForked')}</SelectItem>
         </SelectContent>
       </Select>
     </div>

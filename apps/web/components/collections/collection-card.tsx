@@ -32,7 +32,7 @@ interface CollectionCardProps {
 }
 
 export function CollectionCard({ collection, isOwner, isAuthenticated, hasBookmarked }: CollectionCardProps) {
-  const { t } = useTranslation(['collections', 'community']);
+  const { t } = useTranslation();
 
   const bookmark = useToggleBookmark({
     entityType: 'published_page',
@@ -45,10 +45,10 @@ export function CollectionCard({ collection, isOwner, isAuthenticated, hasBookma
     e.stopPropagation();
     e.preventDefault();
     if (!isAuthenticated) {
-      toast.error(t('loginToInteract'));
+      toast.error(t('community.loginToInteract'));
       return;
     }
-    bookmark.toggle().catch(() => toast.error(t('bookmarkFailed')));
+    bookmark.toggle().catch(() => toast.error(t('community.bookmarkFailed')));
   };
 
   const bookmarkElement = isAuthenticated !== undefined ? (
@@ -99,11 +99,11 @@ export function CollectionCard({ collection, isOwner, isAuthenticated, hasBookma
               </p>
             </div>
           </div>
-          {isOwner && <Badge variant="outline">{t('owner')}</Badge>}
+          {isOwner && <Badge variant="outline">{t('collections.owner')}</Badge>}
         </div>
 
         <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
-          {collection.description || t('noDescription')}
+          {collection.description || t('collections.noDescription')}
         </p>
 
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">

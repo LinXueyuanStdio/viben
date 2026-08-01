@@ -89,7 +89,7 @@ function SortableItem({
   onRemove: (itemId: string) => void;
   removingId: string | null;
 }) {
-  const { t } = useTranslation('collections');
+  const { t } = useTranslation();
 
   const {
     attributes,
@@ -107,7 +107,7 @@ function SortableItem({
 
   const TypeIcon = item.itemType === 'mcp' ? Server : Sparkles;
   const typeRoute = item.itemType === 'mcp' ? '/mcp-market' : '/skill-market';
-  const typeLabel = item.itemType === 'mcp' ? t('mcp') : t('skill');
+  const typeLabel = item.itemType === 'mcp' ? t('collections.mcp') : t('collections.skill');
 
   return (
     <Card
@@ -149,11 +149,11 @@ function SortableItem({
             </Link>
           ) : (
             <span className="font-semibold text-muted-foreground">
-              {t('unknownPackage')}
+              {t('collections.unknownPackage')}
             </span>
           )}
           <p className="text-sm text-muted-foreground line-clamp-1">
-            {item.package?.description || t('packageNotFound')}
+            {item.package?.description || t('collections.packageNotFound')}
           </p>
           {item.note && (
             <p className="mt-1 text-sm italic text-muted-foreground">
@@ -194,7 +194,7 @@ export function CollectionItems({
   items: initialItems,
   isOwner,
 }: CollectionItemsProps) {
-  const { t } = useTranslation('collections');
+  const { t } = useTranslation();
   const [items, setItems] = useState<CollectionItem[]>(initialItems);
   const [showAdd, setShowAdd] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -258,9 +258,9 @@ export function CollectionItems({
         if (item) next.delete(item.id);
         return next;
       });
-      toast.success(t('itemRemoved'));
+      toast.success(t('collections.itemRemoved'));
     } catch {
-      toast.error(t('failedToRemoveItem'));
+      toast.error(t('collections.failedToRemoveItem'));
     } finally {
       setRemovingId(null);
     }
@@ -289,9 +289,9 @@ export function CollectionItems({
       setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
       setSelectedIds(new Set());
       setConfirmBatchDelete(false);
-      toast.success(t('batchDeleteSuccess') || 'Items removed');
+      toast.success(t('collections.batchDeleteSuccess'));
     } catch {
-      toast.error(t('batchDeleteError') || 'Failed to remove items');
+      toast.error(t('collections.batchDeleteError'));
     } finally {
       setBatchDeleting(false);
     }
@@ -352,7 +352,7 @@ export function CollectionItems({
       );
       setUserCollections(collections);
     } catch {
-      toast.error(t('failedToLoadCollections') || 'Failed to load collections');
+      toast.error(t('collections.failedToLoadCollections'));
     } finally {
       setLoadingCollections(false);
     }
@@ -392,9 +392,9 @@ export function CollectionItems({
       setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
       setSelectedIds(new Set());
       setShowMoveDialog(false);
-      toast.success(t('moveSuccess') || 'Items moved');
+      toast.success(t('collections.moveSuccess'));
     } catch {
-      toast.error(t('moveError') || 'Failed to move items');
+      toast.error(t('collections.moveError'));
     } finally {
       setMovingItems(false);
     }
@@ -407,12 +407,11 @@ export function CollectionItems({
       {/* Header with batch toolbar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">{t('items')}</h2>
+          <h2 className="text-lg font-semibold">{t('collections.items')}</h2>
           {selectedCount > 0 && (
             <>
               <span className="text-sm text-muted-foreground">
-                {t('selectedCount')?.replace('{{count}}', String(selectedCount)) ||
-                  `${selectedCount} selected`}
+                {t('collections.selectedCount', { count: selectedCount })}
               </span>
               <Button
                 variant="outline"
@@ -420,7 +419,7 @@ export function CollectionItems({
                 onClick={() => setConfirmBatchDelete(true)}
               >
                 <Trash2 className="mr-1 h-4 w-4" />
-                {t('batchDelete') || 'Delete'}
+                {t('collections.batchDelete')}
               </Button>
               <Button
                 variant="outline"
@@ -428,7 +427,7 @@ export function CollectionItems({
                 onClick={handleOpenMoveDialog}
               >
                 <ArrowRightLeft className="mr-1 h-4 w-4" />
-                {t('moveTo') || 'Move'}
+                {t('collections.moveTo')}
               </Button>
             </>
           )}
@@ -442,14 +441,14 @@ export function CollectionItems({
               onClick={handleSelectAll}
             >
               {selectedCount === items.length
-                ? t('deselectAll') || 'Deselect All'
-                : t('selectAll') || 'Select All'}
+                ? t('collections.deselectAll')
+                : t('collections.selectAll')}
             </Button>
           )}
           {isOwner && (
             <Button onClick={() => setShowAdd(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              {t('addItem')}
+              {t('collections.addItem')}
             </Button>
           )}
         </div>
@@ -457,7 +456,7 @@ export function CollectionItems({
 
       {items.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">{t('emptyCollection')}</p>
+          <p className="text-muted-foreground">{t('collections.emptyCollection')}</p>
           {isOwner && (
             <Button
               variant="outline"
@@ -465,7 +464,7 @@ export function CollectionItems({
               onClick={() => setShowAdd(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              {t('addFirstItem')}
+              {t('collections.addFirstItem')}
             </Button>
           )}
         </Card>
@@ -508,10 +507,9 @@ export function CollectionItems({
       <Dialog open={confirmBatchDelete} onOpenChange={setConfirmBatchDelete}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('batchDeleteConfirm') || 'Confirm Delete'}</DialogTitle>
+            <DialogTitle>{t('collections.batchDeleteConfirm')}</DialogTitle>
             <DialogDescription>
-              {t('batchDeleteConfirmDesc') ||
-                `Are you sure you want to remove ${selectedCount} item(s)? This action cannot be undone.`}
+              {t('collections.batchDeleteConfirmDesc', { count: selectedCount })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -520,7 +518,7 @@ export function CollectionItems({
               onClick={() => setConfirmBatchDelete(false)}
               disabled={batchDeleting}
             >
-              {t('cancel')}
+              {t('collections.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -528,7 +526,7 @@ export function CollectionItems({
               disabled={batchDeleting}
             >
               {batchDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('delete')}
+              {t('collections.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -538,10 +536,9 @@ export function CollectionItems({
       <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('moveToCollection') || 'Move to Collection'}</DialogTitle>
+            <DialogTitle>{t('collections.moveToCollection')}</DialogTitle>
             <DialogDescription>
-              {t('moveToCollectionDesc') ||
-                `Select a collection to move ${selectedCount} item(s) to.`}
+              {t('collections.moveToCollectionDesc', { count: selectedCount })}
             </DialogDescription>
           </DialogHeader>
 
@@ -552,7 +549,7 @@ export function CollectionItems({
               </div>
             ) : userCollections.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">
-                {t('noOtherCollections') || 'No other collections available'}
+                {t('collections.noOtherCollections')}
               </p>
             ) : (
               userCollections.map((collection) => (
@@ -568,7 +565,7 @@ export function CollectionItems({
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{collection.name}</span>
                     <span className="text-sm text-muted-foreground">
-                      {t('itemCount', { count: collection.itemCount })}
+                      {t('collections.itemCount', { count: collection.itemCount })}
                     </span>
                   </div>
                 </Card>
@@ -582,14 +579,14 @@ export function CollectionItems({
               onClick={() => setShowMoveDialog(false)}
               disabled={movingItems}
             >
-              {t('cancel')}
+              {t('collections.cancel')}
             </Button>
             <Button
               onClick={handleMoveItems}
               disabled={!targetCollectionId || movingItems}
             >
               {movingItems && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('move') || 'Move'}
+              {t('collections.move')}
             </Button>
           </DialogFooter>
         </DialogContent>

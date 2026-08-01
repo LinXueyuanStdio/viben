@@ -7,14 +7,14 @@ interface CollectionsEmptyProps {
 }
 
 export function CollectionsEmpty({ hasQuery }: CollectionsEmptyProps) {
-  const { t } = useTranslation('collections');
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col items-center justify-center py-12">
-      <p className="text-lg text-muted-foreground">{t('noCollectionsFound')}</p>
+      <p className="text-lg text-muted-foreground">{t('collections.noCollectionsFound')}</p>
       {hasQuery && (
         <p className="mt-2 text-sm text-muted-foreground">
-          {t('tryAdjustingSearch')}
+          {t('collections.tryAdjustingSearch')}
         </p>
       )}
     </div>
