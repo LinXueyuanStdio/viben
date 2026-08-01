@@ -1,5 +1,7 @@
-import { Loader2, FolderOpen, Plus, ArrowLeft, Settings } from "lucide-react";
+import { useMemo } from "react";
+import { Loader2, FolderOpen, Plus, ArrowLeft, Settings, LayoutGrid, List, Table2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -7,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@viben/ui";
-import { ViewSwitcher, StatsPanel } from "@viben/kanban";
+import { StatsPanel } from "@viben/kanban";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { useKanbanBoard } from "./hooks";
@@ -41,6 +43,34 @@ export function WorkspaceKanbanPage() {
     setSettingsOpen,
     refetchTasks,
   } = board;
+
+  // View mode tab list
+  const tabList = useMemo(() => [
+    { key: "kanban" as const, icon: LayoutGrid, label: t("workspace.viewMode.kanban", "Kanban") },
+    { key: "list" as const, icon: List, label: t("workspace.viewMode.list", "List") },
+    { key: "table" as const, icon: Table2, label: t("workspace.viewMode.table", "Table") },
+  ], [t]);
+
+  // Center content: view mode switcher tablist
+  const centerContent = useMemo(() => (
+    <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+      {tabList.map(({ key, icon: Icon, label }) => (
+        <button
+          key={key}
+          onClick={() => setViewMode(key)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+            viewMode === key
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  ), [tabList, viewMode, setViewMode]);
 
   // Loading state for workspace
   if (isLoadingWorkspaces && !workspace) {
@@ -142,17 +172,7 @@ export function WorkspaceKanbanPage() {
         onRefresh={refetchTasks}
         isRefreshing={isLoadingTasks}
         showRemove={false}
-        centerContent={
-          <ViewSwitcher
-            value={viewMode}
-            onChange={setViewMode}
-            labels={{
-              kanban: t("workspace.viewMode.kanban", "Kanban"),
-              list: t("workspace.viewMode.list", "List"),
-              table: t("workspace.viewMode.table", "Table"),
-            }}
-          />
-        }
+        centerContent={centerContent}
         rightContent={
           <>
             <Button
