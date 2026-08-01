@@ -35,15 +35,15 @@ function Spacer() {
   return <span className="mr-2 h-4 w-4 shrink-0" />
 }
 
-const THEME_OPTIONS = [
-  { value: "system", label: "跟随系统", icon: Monitor },
-  { value: "light", label: "亮色", icon: Sun },
-  { value: "dark", label: "暗色", icon: Moon },
-] as const
-
 export function UserMenu({ session, isMobile = false }: UserMenuProps) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
+
+  const THEME_OPTIONS = [
+    { value: "system", label: t("settings.system"), icon: Monitor },
+    { value: "light", label: t("settings.light"), icon: Sun },
+    { value: "dark", label: t("settings.dark"), icon: Moon },
+  ] as const
   const router = useRouter()
   const displayLabel = session.displayName || session.userSlug
   const initials = displayLabel.slice(0, 2).toUpperCase()
@@ -197,7 +197,7 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="flex items-center">
             <Globe className="mr-2 h-4 w-4 shrink-0" />
-            <span>语言</span>
+            <span>{t("settings.language")}</span>
             <span className="ml-auto text-xs text-muted-foreground">
               {currentLanguage?.nativeName ?? currentLang}
             </span>
