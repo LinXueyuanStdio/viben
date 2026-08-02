@@ -77,7 +77,10 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         {/* Header: avatar + displayName + userSlug */}
-        <div className="flex items-center gap-3 px-2 py-2">
+        <div
+          className="flex items-center gap-3 px-2 py-2 rounded-lg cursor-pointer hover:bg-surface-secondary transition-colors"
+          onClick={() => router.push(`/${session.userSlug}`)}
+        >
           <Avatar className="h-10 w-10">
             <AvatarImage src={session.avatarUrl} alt={displayLabel} />
             <AvatarFallback>{initials}</AvatarFallback>
