@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useResizable } from '@/hooks/use-resizable';
 import {
   Home,
   Grid3X3,
@@ -30,9 +31,12 @@ import {
   Image,
   Download,
   Share2,
+  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
+import { SidebarViewStack } from './sidebar-view-stack';
 
 // Navigation items
 const browseNavigation = [
@@ -80,6 +84,31 @@ export function Sidebar({
   const userRole = session?.role;
 
   const showAdmin = userRole && isAdminRole(userRole);
+
+  // Resizable sidebar
+  const { handleProps, isDragging: isResizing } = useResizable({
+    cssVar: "--sidebar-w",
+    storageKey: "viben-sidebar-w",
+    minWidth: 200,
+    maxWidth: 400,
+    defaultWidth: 256,
+    direction: "right",
+  })
+
+  // Admin panel toggle
+  const [adminPanelOpen, setAdminPanelOpen] = React.useState(false);
+
+  // Auto-open admin panel when on admin routes, auto-close when leaving
+  React.useEffect(() => {
+    if (showAdmin && pathname.startsWith('/admin')) {
+      setAdminPanelOpen(true);
+    } else {
+      setAdminPanelOpen(false);
+    }
+  }, [pathname, showAdmin]);
+
+  const openAdminPanel = React.useCallback(() => setAdminPanelOpen(true), []);
+  const closeAdminPanel = React.useCallback(() => setAdminPanelOpen(false), []);
 
   // Admin navigation organized by functional workflow
   const adminGroups: { label: string; items: AdminNavItem[] }[] = [
@@ -159,23 +188,27 @@ export function Sidebar({
     }
   }, [isMobile, open, onClose])
 
+  const isAdminActive = pathname.startsWith('/admin');
+
   return (
     <>
-      {/* Backdrop — always rendered, CSS-controlled visibility */}
-      <div
-        className={cn(
-          "fixed inset-0 z-40 transition-opacity duration-180",
-          isMobile && open
-            ? "opacity-100 pointer-events-auto bg-black/40"
-            : "opacity-0 pointer-events-none"
-        )}
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      {/* Backdrop — mobile only, when sidebar is open */}
+      {isMobile && (
+        <div
+          className={cn(
+            "fixed inset-0 z-40 transition-opacity duration-180",
+            open
+              ? "opacity-100 pointer-events-auto bg-black/40"
+              : "opacity-0 pointer-events-none"
+          )}
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
       <aside
         className={cn(
-          "fixed left-0 z-50 flex flex-col border-r bg-background",
+          "fixed left-0 z-50 flex flex-col border-r bg-background relative",
           "w-[var(--sidebar-w)]",
           "transition-transform duration-[220ms] ease-out",
           visible ? "translate-x-0" : "-translate-x-full"
@@ -186,40 +219,70 @@ export function Sidebar({
           willChange: "transform",
         }}
       >
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-          {browseNavigation.map((item) => {
-            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {t(item.nameKey)}
-              </Link>
-            );
-          })}
+        <SidebarViewStack activePanelId={adminPanelOpen ? 'admin' : 'main'}>
+          {/* ─── Main Panel ──────────────────────────────────────── */}
+          <SidebarViewStack.Panel id="main">
+            <nav className="h-full space-y-1 overflow-y-auto p-4">
+              {browseNavigation.map((item) => {
+                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {t(item.nameKey)}
+                  </Link>
+                );
+              })}
 
-          {/* Admin Section — grouped by function */}
-          {showAdmin && (
-            <>
-              <div className="my-4 border-t" />
-              <div className="px-3 py-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t('nav.admin')}
-                </span>
-              </div>
+              {/* Admin entry — single clickable item that opens admin panel */}
+              {showAdmin && (
+                <>
+                  <div className="my-4 border-t" />
+                  <button
+                    type="button"
+                    onClick={openAdminPanel}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors text-left',
+                      isAdminActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span className="flex-1">{t('nav.admin')}</span>
+                    <ChevronRight className="h-4 w-4 opacity-50" />
+                  </button>
+                </>
+              )}
+            </nav>
+          </SidebarViewStack.Panel>
+
+          {/* ─── Admin Panel ─────────────────────────────────────── */}
+          <SidebarViewStack.Panel id="admin">
+            <nav className="h-full space-y-1 overflow-y-auto p-4">
+              {/* Back button */}
+              <button
+                type="button"
+                onClick={closeAdminPanel}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors text-left text-muted-foreground hover:bg-muted hover:text-foreground mb-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="font-medium text-foreground">{t('nav.admin')}</span>
+              </button>
+
+              {/* Admin groups */}
               {adminGroups.map((group) => {
                 // Filter items by permission
                 const visibleItems = group.items.filter(
-                  (item) => !item.permission || hasPermission(userRole, item.permission)
+                  (item) => !item.permission || hasPermission(userRole!, item.permission)
                 );
                 if (visibleItems.length === 0) return null;
 
@@ -260,9 +323,19 @@ export function Sidebar({
                   </div>
                 );
               })}
-            </>
-          )}
-        </nav>
+            </nav>
+          </SidebarViewStack.Panel>
+        </SidebarViewStack>
+        {/* Resize handle — desktop only */}
+        {!isMobile && (
+          <div
+            {...handleProps}
+            className={cn(
+              "absolute right-0 top-0 bottom-0 w-[5px] cursor-col-resize transition-colors",
+              handleProps.className
+            )}
+          />
+        )}
       </aside>
     </>
   );
