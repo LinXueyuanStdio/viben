@@ -25,6 +25,7 @@ import {
   TrendingDown,
   Star,
   FileEdit,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react"
 
@@ -53,16 +54,15 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/leaderboard": { label: "榜单", icon: TrendingUp, parent: "/", dropdownCategory: "浏览" },
   "/moment": { label: "动态", icon: MessageSquare, parent: "/", dropdownCategory: "浏览" },
   "/category": { label: "分类", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
-  "/author": { label: "作者", icon: User, parent: "/", dropdownCategory: "浏览" },
   "/notifications": { label: "通知", icon: Bell, parent: "/", dropdownCategory: "浏览" },
   "/history": { label: "浏览历史", icon: Clock, parent: "/", dropdownCategory: "浏览" },
   "/search": { label: "搜索", icon: Search, parent: "/" },
   "/tags": { label: "标签", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
 
   // 市场
+  "/market": { label: "市场", icon: ShoppingBag, parent: "/", dropdownCategory: "市场" },
   "/mcp-market": { label: "MCP 市场", icon: Package, parent: "/", dropdownCategory: "市场" },
   "/skill-market": { label: "技能市场", icon: Sparkles, parent: "/", dropdownCategory: "市场" },
-  "/collections": { label: "合集", icon: Layers, parent: "/", dropdownCategory: "市场" },
 
   // 创作者
   "/publish": { label: "发布", icon: Upload, parent: "/", dropdownCategory: "创作" },
