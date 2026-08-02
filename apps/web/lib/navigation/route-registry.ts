@@ -32,7 +32,7 @@ import {
 export interface RouteConfig {
   label: string
   titleKey?: string       // i18n key，优先于 label
-  icon: LucideIcon
+  icon?: LucideIcon
   dropdownCategory?: string // 下拉菜单分组
   parent?: string           // 父路由路径
   mode?: "global" | "author" | "read"
@@ -74,8 +74,13 @@ export const routeRegistry: Record<string, RouteConfig> = {
 
   // 个人（动态段路由 /[user_slug] 已存在，此处不再注册静态 /profile）
 
+  // 合集
+  "/collections": { label: "合集", icon: Layers, parent: "/" },
+
   // 创作
+  "/pages": { label: "页面", icon: FileText, parent: "/" },
   "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },
+  "/pages/edit": { label: "编辑页面", icon: FileEdit, parent: "/pages" },
 
   // 设置
   "/settings": { label: "设置", titleKey: "common.settings", icon: User, parent: "/", dropdownCategory: "我的" },
@@ -87,6 +92,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
   "/home": { label: "产品首页", icon: Home, parent: "/" },
   "/web": { label: "Web", icon: FileText, parent: "/" },
+  "/api-docs": { label: "API 文档", icon: ScrollText, parent: "/" },
 
   // 管理员路由（仅 role=admin 可见）
   "/admin": {
@@ -270,7 +276,7 @@ export function resolveBreadcrumbSegments(
         href: dynamicLabel.href ?? accumulated,
         config: {
           label: dynamicLabel.label,
-          icon: dynamicLabel.icon ?? Home,
+          icon: dynamicLabel.icon,
         },
         isLast,
       })
@@ -278,14 +284,14 @@ export function resolveBreadcrumbSegments(
       // 中间段无匹配 — 保留为占位段（用路径段名作为 label）
       segments.push({
         href: accumulated,
-        config: { label: parts[i], icon: Home },
+        config: { label: parts[i] },
         isLast: false,
       })
     } else {
       // 最末段 — 用路径末段作为 label
       segments.push({
         href: accumulated,
-        config: { label: parts[i], icon: Home },
+        config: { label: parts[i] },
         isLast: true,
       })
     }

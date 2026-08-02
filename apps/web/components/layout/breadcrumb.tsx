@@ -13,9 +13,12 @@ import { VibenLogo } from "@/components/shared/viben-logo"
 import {
   resolveBreadcrumbSegments,
   getSiblingRoutes,
+  routeRegistry,
   type DynamicSegmentLabel,
   type RouteConfig,
 } from "@/lib/navigation/route-registry"
+import { isPublishedPageRoute } from "@/lib/navigation/page-route"
+import { PageSwitcherPopover } from "@/components/layout/page-switcher-popover"
 
 // --- Context ---
 
@@ -46,6 +49,16 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
   const ctx = React.useContext(BreadcrumbDynamicContext)
   const dynamicLabels: Record<string, DynamicSegmentLabel> | undefined = ctx.labels
 
+  // 判断是否为 /[user_slug] 及其子路由：第一段不是已知静态路由即为动态用户路由
+  const firstSegment = pathname.split("/").filter(Boolean)[0] ?? ""
+  const showViben = firstSegment === "" || routeRegistry[`/${firstSegment}`] !== undefined
+
+  // 判断是否为已发布页面阅读路由
+  const readPageInfo = React.useMemo(
+    () => isPublishedPageRoute(pathname),
+    [pathname]
+  )
+
   const segments = React.useMemo(
     () => resolveBreadcrumbSegments(pathname, dynamicLabels),
     [pathname, dynamicLabels]
@@ -63,17 +76,21 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
 
   return (
     <nav aria-label={t("community.breadcrumb")} className={cn("flex items-center gap-0.5 min-w-0", className)}>
-      {/* 品牌标记 — 始终显示，参考 index.html */}
+      {/* 品牌标记 — icon 始终显示（点击回首页），/[user_slug] 路由隐藏文字 */}
       <Link
         href="/"
         className="inline-flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-transparent shrink-0"
         aria-label={t("community.viben")}
       >
         <VibenLogo size={22} />
-        <span className="font-extrabold text-foreground">Viben</span>
+        {showViben && (
+          <span className="font-extrabold text-foreground">Viben</span>
+        )}
       </Link>
-      {filteredSegments.map((seg) => {
+      {filteredSegments.map((seg, idx) => {
         const label = seg.config.titleKey ? t(seg.config.titleKey) : seg.config.label
+        const isPageSwitcher =
+          readPageInfo.isPage && seg.isLast && readPageInfo.userSlug && readPageInfo.pageId
         return (
           <React.Fragment key={seg.href}>
             <ChevronRight className="h-4 w-4 text-[#93b4bf] dark:text-muted-foreground shrink-0" />
@@ -84,6 +101,11 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
               isLast={seg.isLast}
               variant={variant}
               customSiblings={ctx.dropdownItems?.[seg.href]}
+              pageSwitcher={
+                isPageSwitcher
+                  ? { userSlug: readPageInfo.userSlug!, currentPageId: readPageInfo.pageId! }
+                  : undefined
+              }
             />
           </React.Fragment>
         )
@@ -95,13 +117,14 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
 interface BreadcrumbSegmentProps {
   href: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon?: React.ComponentType<{ className?: string }>
   isLast: boolean
   variant: "global" | "read"
   customSiblings?: Array<{ href: string; config: RouteConfig }>
+  pageSwitcher?: { userSlug: string; currentPageId: string }
 }
 
-function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSiblings }: BreadcrumbSegmentProps) {
+function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSiblings, pageSwitcher }: BreadcrumbSegmentProps) {
   const { t } = useTranslation()
   const parentPath = href === "/" ? "/" : href
   const siblings = getSiblingRoutes(parentPath, customSiblings)
@@ -127,6 +150,25 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
     }
   }, [])
 
+  // 分段按钮：pageuid 段切换页面下拉
+  if (pageSwitcher && isLast) {
+    return (
+      <PageSwitcherPopover
+        userSlug={pageSwitcher.userSlug}
+        currentPageId={pageSwitcher.currentPageId}
+        label={label}
+        icon={Icon}
+      />
+    )
+  }
+
+  const segmentContent = (
+    <>
+      {Icon && <Icon className="h-4 w-4 shrink-0" />}
+      <span className="truncate">{label}</span>
+    </>
+  )
+
   const segment = (
     <Button
       variant="ghost"
@@ -139,20 +181,11 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
       asChild={hasDropdown ? false : isLast ? false : true}
     >
       {hasDropdown ? (
-        <span className="flex items-center gap-1.5 min-w-0">
-          <Icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{label}</span>
-        </span>
+        <span className="flex items-center gap-1.5 min-w-0">{segmentContent}</span>
       ) : isLast ? (
-        <span className="flex items-center gap-1.5 min-w-0">
-          <Icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{label}</span>
-        </span>
+        <span className="flex items-center gap-1.5 min-w-0">{segmentContent}</span>
       ) : (
-        <Link href={href} className="flex items-center gap-1.5 min-w-0">
-          <Icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{label}</span>
-        </Link>
+        <Link href={href} className="flex items-center gap-1.5 min-w-0">{segmentContent}</Link>
       )}
     </Button>
   )
@@ -189,7 +222,10 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
                     sib.href === href && "bg-surface-secondary text-foreground"
                   )}
                 >
-                  <sib.config.icon className="h-4 w-4" />
+                  {(() => {
+                    const Icon = sib.config.icon
+                    return Icon ? <Icon className="h-4 w-4" /> : <span className="w-[18px]" />
+                  })()}
                   <span className="truncate">
                     {sib.config.titleKey ? t(sib.config.titleKey) : sib.config.label}
                   </span>

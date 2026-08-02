@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, count, desc, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import {
   communityComments,
   communityEntities,
@@ -137,6 +137,32 @@ export const getPublishedPageContext = cache(
     return { page, author }
   }
 )
+
+export async function searchPublishedPagesByAuthor(
+  authorSlug: string,
+  opts?: { query?: string; limit?: number }
+): Promise<Array<{ uid: string; title: string; authorSlug: string }>> {
+  const { query, limit = 20 } = opts ?? {}
+  const conditions = [
+    eq(publishedPages.authorSlug, authorSlug),
+    eq(publishedPages.visibility, "public"),
+    eq(publishedPages.moderationStatus, "approved"),
+  ]
+  if (query) {
+    conditions.push(ilike(publishedPages.uid, `%${query}%`))
+  }
+
+  return db
+    .select({
+      uid: publishedPages.uid,
+      title: publishedPages.title,
+      authorSlug: publishedPages.authorSlug,
+    })
+    .from(publishedPages)
+    .where(and(...conditions))
+    .orderBy(desc(publishedPages.lastPublishedAt))
+    .limit(limit)
+}
 
 export function canReadPage(
   page: typeof publishedPages.$inferSelect,
