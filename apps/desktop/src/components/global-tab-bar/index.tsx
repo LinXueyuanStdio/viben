@@ -450,7 +450,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                 {t("common.back", "Go Back")}
               </TooltipContent>
             </Tooltip>
-            <ContextMenuContent className="w-64">
+            <ContextMenuContent className="w-72">
               {backHistoryItems.length > 0 ? (
                 <>
                   {backHistoryItems.map((item) => (
@@ -527,7 +527,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                 {t("common.forward", "Go Forward")}
               </TooltipContent>
             </Tooltip>
-            <ContextMenuContent className="w-64">
+            <ContextMenuContent className="w-72">
               {forwardHistoryItems.length > 0 ? (
                 <>
                   {currentPageItem && (
@@ -684,7 +684,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           <ContextMenuTrigger asChild>
             <div data-tauri-drag-region className="h-full w-full" />
           </ContextMenuTrigger>
-          <ContextMenuContent className="w-52">
+          <ContextMenuContent className="w-60">
             <ContextMenuItem onClick={handleNewTab}>
               {t("common.newTab", "New Tab")}
             </ContextMenuItem>

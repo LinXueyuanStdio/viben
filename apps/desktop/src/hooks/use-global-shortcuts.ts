@@ -162,7 +162,7 @@ export function useGlobalShortcuts() {
 
       if (isShortcutPressed(e, shortcuts.newTab)) {
         e.preventDefault();
-        const url = "/workspace";
+        const url = "/workspace/global";
         openTab({
           navigationState: createTabNavigationState(
             url,

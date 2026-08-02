@@ -13,15 +13,18 @@ import {
 } from "@/navigation/new-tab-request";
 
 function canonicalizeNewTabUrl(url: string): string {
-  const strippedUrl = withoutNewTabRequest(url);
-  return strippedUrl === "/workspace" ? "/workspace/global" : strippedUrl;
+  return withoutNewTabRequest(url);
 }
 
 function normalizeUrlPreservingHash(url: string): string {
   const hashIndex = url.indexOf("#");
   const pathAndSearch = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
   const hash = hashIndex >= 0 ? url.slice(hashIndex) : "";
-  return `${registry.normalizeUrl(pathAndSearch)}${hash}`;
+  const normalized = registry.normalizeUrl(pathAndSearch);
+  // Normalize bare /workspace to /workspace/global to prevent redirect loops
+  // caused by WorkspaceRedirect in React Router.
+  const safe = normalized === "/workspace" ? "/workspace/global" : normalized;
+  return `${safe}${hash}`;
 }
 
 /**

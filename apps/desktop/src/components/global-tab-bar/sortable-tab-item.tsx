@@ -204,23 +204,23 @@ export const SortableTabItem = memo(function SortableTabItem({
               {tab.titleKey ? t(tab.titleKey, tab.label) : tab.label}
             </TooltipContent>
           </Tooltip>
-          <ContextMenuContent className="w-48">
+          <ContextMenuContent className="w-56">
             <ContextMenuItem onClick={onClose}>
               <X className="h-4 w-4 mr-2" />
               {t("common.close")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onCloseOthers}>
-              {t("tabBar.closeOthers", "Close Others")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.closeOthers", "Close Others")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onCloseRight}>
-              {t("tabBar.closeToRight", "Close Tabs to the Right")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.closeToRight", "Close Tabs to the Right")}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onReopenClosed} disabled={!canReopenClosed}>
-              {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onDuplicate}>
-              {t("tabBar.duplicateTab", "Duplicate Tab")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.duplicateTab", "Duplicate Tab")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onDetach}>
               <ExternalLink className="h-4 w-4 mr-2" />
@@ -233,14 +233,14 @@ export const SortableTabItem = memo(function SortableTabItem({
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onCopyLink}>
-              {t("tabBar.copyLink", "Copy Link")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.copyLink", "Copy Link")}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onMoveToStart} disabled={!canMoveToStart}>
-              {t("tabBar.moveToStart", "Move to Start")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.moveToStart", "Move to Start")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onMoveToEnd} disabled={!canMoveToEnd}>
-              {t("tabBar.moveToEnd", "Move to End")}
+              <span className="w-4 h-4 mr-2" />{t("tabBar.moveToEnd", "Move to End")}
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
@@ -329,7 +329,7 @@ export const SortableTabItem = memo(function SortableTabItem({
             )}
           </button>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
+        <ContextMenuContent className="w-56">
           {canClose && (
             <>
               <ContextMenuItem onClick={onClose}>
@@ -337,19 +337,19 @@ export const SortableTabItem = memo(function SortableTabItem({
                 {t("common.close")}
               </ContextMenuItem>
               <ContextMenuItem onClick={onCloseOthers}>
-                {t("tabBar.closeOthers", "Close Others")}
+                <span className="w-4 h-4 mr-2" />{t("tabBar.closeOthers", "Close Others")}
               </ContextMenuItem>
               <ContextMenuItem onClick={onCloseRight}>
-                {t("tabBar.closeToRight", "Close Tabs to the Right")}
+                <span className="w-4 h-4 mr-2" />{t("tabBar.closeToRight", "Close Tabs to the Right")}
               </ContextMenuItem>
               <ContextMenuSeparator />
             </>
           )}
           <ContextMenuItem onClick={onReopenClosed} disabled={!canReopenClosed}>
-            {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+            <span className="w-4 h-4 mr-2" />{t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
           </ContextMenuItem>
           <ContextMenuItem onClick={onDuplicate}>
-            {t("tabBar.duplicateTab", "Duplicate Tab")}
+            <span className="w-4 h-4 mr-2" />{t("tabBar.duplicateTab", "Duplicate Tab")}
           </ContextMenuItem>
           <ContextMenuItem onClick={onDetach}>
             <ExternalLink className="h-4 w-4 mr-2" />
@@ -362,14 +362,14 @@ export const SortableTabItem = memo(function SortableTabItem({
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onCopyLink}>
-            {t("tabBar.copyLink", "Copy Link")}
+            <span className="w-4 h-4 mr-2" />{t("tabBar.copyLink", "Copy Link")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onMoveToStart} disabled={!canMoveToStart}>
-            {t("tabBar.moveToStart", "Move to Start")}
+            <span className="w-4 h-4 mr-2" />{t("tabBar.moveToStart", "Move to Start")}
           </ContextMenuItem>
           <ContextMenuItem onClick={onMoveToEnd} disabled={!canMoveToEnd}>
-            {t("tabBar.moveToEnd", "Move to End")}
+            <span className="w-4 h-4 mr-2" />{t("tabBar.moveToEnd", "Move to End")}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
