@@ -696,6 +696,7 @@ export default async function UserSlugPage({
               <ProfilePinnedSection
                 pinnedItems={pinnedItems}
                 isOwnProfile={isOwnProfile}
+                userSlug={user.userSlug}
               />
 
               {/* Activity heatmap (lazy-loaded) */}

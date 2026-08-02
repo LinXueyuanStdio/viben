@@ -46,18 +46,19 @@ interface PinnableSkill {
 interface ProfilePinnedSectionProps {
   pinnedItems: PinnedItem[]
   isOwnProfile: boolean
+  userSlug: string
 }
 
 // ===== SortableCard =====
 
-function SortableCard({ item }: { item: PinnedItem }) {
+function SortableCard({ item, userSlug }: { item: PinnedItem; userSlug: string }) {
   const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
   const d = item.data
 
   const href = item.entity_type === "page" && d.pageUid
-    ? `/${encodeURIComponent(d.pageUid)}`
+    ? `/${encodeURIComponent(userSlug)}/${encodeURIComponent(d.pageUid)}?tab=read`
     : item.entity_type === "mcp"
       ? `/mcp-market/${item.entity_id}`
       : `/skill-market/${item.entity_id}`
@@ -353,7 +354,7 @@ function EditPinnedDialog({
 
 // ===== Main Component =====
 
-export function ProfilePinnedSection({ pinnedItems, isOwnProfile }: ProfilePinnedSectionProps) {
+export function ProfilePinnedSection({ pinnedItems, isOwnProfile, userSlug }: ProfilePinnedSectionProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -429,7 +430,7 @@ export function ProfilePinnedSection({ pinnedItems, isOwnProfile }: ProfilePinne
           <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {items.map((item) => (
-                <SortableCard key={item.id} item={item} />
+                <SortableCard key={item.id} item={item} userSlug={userSlug} />
               ))}
             </div>
           </SortableContext>
