@@ -592,11 +592,9 @@ export default async function UserSlugPage({
 
   return (
     <div className="grid gap-4">
-      <ProfileTabs
-        overview={
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
-            {/* Left sidebar */}
-            <div className="space-y-3 px-3">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+        {/* Left sidebar — shared across all tabs */}
+        <div className="space-y-3 px-3">
               {/* Avatar + identity */}
               <div className="flex flex-col items-center gap-2">
                 {avatarUrl && (
@@ -680,11 +678,14 @@ export default async function UserSlugPage({
                   <T tKey="profile.editProfile" fallback="编辑资料" />
                 </Link>
               )}
-            </div>
+        </div>
 
-            {/* Right area */}
-            <div className="space-y-4 min-w-0">
-              {/* Profile README */}
+        {/* Right area — tabs */}
+        <div className="min-w-0">
+          <ProfileTabs
+            overview={
+              <div className="space-y-4">
+                {/* Profile README */}
               {readmePage && (
                 <section>
                   <iframe
@@ -722,10 +723,9 @@ export default async function UserSlugPage({
                   <p>暂无内容</p>
                 </div>
               )}
-            </div>
-          </div>
-        }
-        pages={
+              </div>
+            }
+            pages={
           <ProfilePagesList
             pages={pageContentItems}
             total={pageTotal}
@@ -760,6 +760,8 @@ export default async function UserSlugPage({
         mcpCount={mcpTotal}
         skillCount={skillTotal}
       />
+        </div>
+      </div>
     </div>
   )
 }
