@@ -459,12 +459,14 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                       onClick={() => jumpToHistory(item.historyIndex)}
                       className="gap-2"
                     >
-                      {item.icon && (
+                      {item.icon ? (
                         <IconDisplay
                           icon={item.icon}
                           size="sm"
                           className="shrink-0 text-muted-foreground"
                         />
+                      ) : (
+                        <span className="w-4 h-4 shrink-0" />
                       )}
                       <span className="truncate max-w-[220px]">
                         {item.titleKey
@@ -477,12 +479,14 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                     <>
                       <ContextMenuSeparator />
                       <ContextMenuItem disabled className="gap-2 font-medium">
-                        {currentPageItem.icon && (
+                        {currentPageItem.icon ? (
                           <IconDisplay
                             icon={currentPageItem.icon}
                             size="sm"
                             className="shrink-0 text-muted-foreground"
                           />
+                        ) : (
+                          <span className="w-4 h-4 shrink-0" />
                         )}
                         <span className="truncate max-w-[220px]">
                           {currentPageItem.titleKey
@@ -529,12 +533,14 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                   {currentPageItem && (
                     <>
                       <ContextMenuItem disabled className="gap-2 font-medium">
-                        {currentPageItem.icon && (
+                        {currentPageItem.icon ? (
                           <IconDisplay
                             icon={currentPageItem.icon}
                             size="sm"
                             className="shrink-0 text-muted-foreground"
                           />
+                        ) : (
+                          <span className="w-4 h-4 shrink-0" />
                         )}
                         <span className="truncate max-w-[220px]">
                           {currentPageItem.titleKey
@@ -551,12 +557,14 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                       onClick={() => jumpToHistory(item.historyIndex)}
                       className="gap-2"
                     >
-                      {item.icon && (
+                      {item.icon ? (
                         <IconDisplay
                           icon={item.icon}
                           size="sm"
                           className="shrink-0 text-muted-foreground"
                         />
+                      ) : (
+                        <span className="w-4 h-4 shrink-0" />
                       )}
                       <span className="truncate max-w-[220px]">
                         {item.titleKey
