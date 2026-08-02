@@ -26,7 +26,6 @@ export const RESERVED_SLUGS = [
   'mcp-market',
   'skill-market',
   'publish',
-  'my-packages',
   'leaderboard',
   'feedback',
   // Profile sub-routes

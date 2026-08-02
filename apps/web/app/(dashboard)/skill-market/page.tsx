@@ -42,7 +42,7 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
       >
         {session && (
           <Button variant="outline" asChild>
-            <Link href="/my-packages">
+            <Link href={`/${session.userSlug}?tab=skill`}>
               <Sparkles className="mr-2 h-4 w-4" />
               <T tKey="community.mySkills" fallback="我的技能" />
             </Link>

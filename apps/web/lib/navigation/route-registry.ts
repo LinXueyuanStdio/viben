@@ -10,7 +10,6 @@ import {
   Bell,
   Clock,
   Upload,
-  PackageSearch,
   BarChart3,
   Search,
   User,
@@ -66,7 +65,6 @@ export const routeRegistry: Record<string, RouteConfig> = {
 
   // 创作者
   "/publish": { label: "发布", icon: Upload, parent: "/", dropdownCategory: "创作" },
-  "/my-packages": { label: "我的包", icon: PackageSearch, parent: "/", dropdownCategory: "创作" },
   "/analytics": { label: "分析", icon: BarChart3, parent: "/", dropdownCategory: "创作" },
 
   // 市场详情（动态段父路由已注册，此处注册静态子页面）
@@ -79,9 +77,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },
 
   // 设置
-  "/settings/favorites": { label: "收藏", icon: Sparkles, parent: "/", dropdownCategory: "我的" },
   "/settings/tokens": { label: "API 密钥", icon: Package, parent: "/", dropdownCategory: "我的" },
-  "/settings/packages": { label: "我的包", icon: PackageSearch, parent: "/", dropdownCategory: "我的" },
 
   // 其他
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },

@@ -30,7 +30,7 @@ export default async function McpPage({ searchParams }: McpPageProps) {
   return (
     <div className="space-y-6">
       <MarketTabBar />
-      <McpPageHeader isAuthenticated={!!session} />
+      <McpPageHeader userSlug={session?.userSlug} />
 
       {/* Source Tabs */}
       <SourceTabs source={source} />

@@ -7,10 +7,10 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 
 interface McpPageHeaderProps {
-  isAuthenticated: boolean;
+  userSlug?: string;
 }
 
-export function McpPageHeader({ isAuthenticated }: McpPageHeaderProps) {
+export function McpPageHeader({ userSlug }: McpPageHeaderProps) {
   const { t } = useTranslation();
 
   return (
@@ -19,9 +19,9 @@ export function McpPageHeader({ isAuthenticated }: McpPageHeaderProps) {
       title={t('marketplace.title')}
       subtitle={t('marketplace.subtitle')}
     >
-      {isAuthenticated && (
+      {userSlug && (
         <Button variant="default" asChild>
-          <Link href="/my-packages">
+          <Link href={`/${userSlug}?tab=mcp`}>
             <Package className="mr-2 h-4 w-4" />
             {t('marketplace.myMcp')}
           </Link>

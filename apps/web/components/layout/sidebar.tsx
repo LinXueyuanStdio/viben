@@ -20,8 +20,6 @@ import {
   BarChart3,
   LayoutDashboard,
   Upload,
-  PackageSearch,
-  Bookmark,
   Key,
   Users,
   Flag,
@@ -39,9 +37,7 @@ import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
 
 // "我的" section - personal account related
 const myNavigation = [
-  { nameKey: 'nav.favorites', href: '/settings/favorites', icon: Bookmark },
   { nameKey: 'nav.apiKeys', href: '/settings/tokens', icon: Key },
-  { nameKey: 'nav.myPackages', href: '/settings/packages', icon: PackageSearch },
 ];
 
 // "浏览" section - community browsing, always visible
@@ -52,7 +48,6 @@ const browseNavigation = [
 // "创作者" section - publishing and analytics
 const creatorNavigation = [
   { nameKey: 'nav.publish', href: '/publish', icon: Upload },
-  { nameKey: 'nav.myPackages', href: '/my-packages', icon: PackageSearch },
   { nameKey: 'nav.analytics', href: '/analytics', icon: BarChart3 },
 ];
 
