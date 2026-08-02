@@ -1,4 +1,4 @@
-# Restart Viben Gateway (Windows PowerShell - apps/cli)
+﻿# Restart Viben Gateway (Windows PowerShell - apps/cli)
 #
 # Automatically builds workspace dependencies if dist/ is missing,
 # then restarts the gateway.
@@ -15,16 +15,6 @@
 param(
     [switch]$Force
 )
-
-# PS 5.1 encoding: aggressively switch to UTF-8 for emoji/CJK display
-# Must run BEFORE any console output (including Write-Host)
-if ($PSVersionTable.PSVersion.Major -lt 6) {
-    $utf8 = New-Object System.Text.UTF8Encoding $true
-    [Console]::OutputEncoding = $utf8
-    [Console]::InputEncoding = $utf8
-    $OutputEncoding = $utf8
-    try { & chcp 65001 >$null 2>&1 } catch { }
-}
 
 $ErrorActionPreference = "Continue"
 
@@ -96,8 +86,8 @@ if ($Force) { $depsArgs += "-Force" }
 # Capture output: stdout (Write-Output) + stderr (Write-Error) for logging
 $buildDepsOutput = & $buildDepsScript @depsArgs 2>&1
 $buildDepsOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
-# Show summary lines to console (filter noise from build sub-processes)
-$buildDepsOutput | Where-Object { $_ -match "^\s*(📦|✓|✅|Usage|error|Error|FAIL)" } | ForEach-Object { Write-Host $_ }
+# Show build-deps output (already filtered to key lines by build-deps.ps1 itself)
+$buildDepsOutput | ForEach-Object { Write-Host $_ }
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR" "Failed to build @viben/core dependencies (exit code $LASTEXITCODE)"
@@ -116,8 +106,8 @@ try {
         $buildOutput | Select-Object -Last 30 | ForEach-Object { Write-Host $_ }
         exit 1
     }
-    # Show summary on success (warnings only, to keep output clean)
-    $buildOutput | Where-Object { $_ -match "(✓|📦|error|Error|warning|Warning)" } | Write-Host
+    # Show summary on success (warnings/errors only, to keep output clean)
+    $buildOutput | Where-Object { $_ -match "(error|Error|warning|Warning|ELIFECYCLE)" } | Write-Host
     Write-Log "INFO" "Build successful"
 }
 finally {
@@ -218,7 +208,7 @@ Write-Log "DEBUG" "Command: node $($nodeArgs -join ' ')"
 Set-Content -Path $RuntimeLog -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Gateway starting..." -Encoding UTF8
 Set-Content -Path $ErrorLog -Value "" -Encoding UTF8
 
-# Start gateway with stdout → gateway.log, stderr → gateway-error.log
+# Start gateway with stdout 鈫?gateway.log, stderr 鈫?gateway-error.log
 Start-Process -FilePath "node" `
     -ArgumentList $nodeArgs `
     -WorkingDirectory $CliDir `

@@ -16,16 +16,6 @@ param(
     [switch]$Force
 )
 
-# PS 5.1 encoding: aggressively switch to UTF-8 for emoji/CJK display
-# Must run BEFORE any console output (including Write-Output)
-if ($PSVersionTable.PSVersion.Major -lt 6) {
-    $utf8 = New-Object System.Text.UTF8Encoding $true
-    [Console]::OutputEncoding = $utf8
-    [Console]::InputEncoding = $utf8
-    $OutputEncoding = $utf8
-    try { & chcp 65001 >$null 2>&1 } catch { }
-}
-
 $ErrorActionPreference = "Continue"
 
 # Resolve paths
@@ -105,7 +95,7 @@ function Build-Package {
         $hasBuild = $true
     }
 
-    # PowerShell 5.1 has no ?? operator — use string interpolation to convert $null → ""
+    # PowerShell 5.1 has no ?? operator - use string interpolation to convert $null to ""
     $main = ("$($pkgJson.main)" -replace "^\./", "")
     $module = ("$($pkgJson.module)" -replace "^\./", "")
     if ($main.StartsWith("dist/") -or $module.StartsWith("dist/")) {
@@ -121,7 +111,7 @@ function Build-Package {
 
         $distDir = Join-Path $PkgDir "dist"
         if ($Force -or -not (Test-Path $distDir)) {
-            Write-Output "  📦 Building $displayName..."
+            Write-Output "  [build] Building $displayName..."
             Push-Location $PkgDir
             try {
                 $buildOutput = & pnpm build 2>&1
@@ -136,11 +126,11 @@ function Build-Package {
             }
         }
         else {
-            Write-Output "  ✓ $displayName (dist/ exists)"
+            Write-Output "  [ok] $displayName (dist/ exists)"
         }
     }
 }
 
-Write-Output "📦 Checking workspace dependencies..."
+Write-Output "[deps] Checking workspace dependencies..."
 Build-Package -PkgDir $TargetDir -RootDir $RootDir -PackagesDir $PackagesDir -Force:$Force
-Write-Output "✅ Dependencies ready"
+Write-Output "[done] Dependencies ready"
