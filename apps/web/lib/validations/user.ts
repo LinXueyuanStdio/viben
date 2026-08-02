@@ -45,7 +45,7 @@ export const ResetPasswordBody = z
   });
 
 export const ChangePasswordBody = z.object({
-  currentPassword: z.string().min(1).describe('当前密码'),
+  currentPassword: z.string().optional().describe('当前密码（已有密码的用户需提供，OAuth 用户首次设置密码可为空）'),
   newPassword: z.string().min(8, 'Password must be at least 8 characters').describe('新密码'),
 });
 

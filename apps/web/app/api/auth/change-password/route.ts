@@ -16,7 +16,7 @@ import { ZodError } from 'zod';
 /**
  * 修改密码
  * @summary 修改密码
- * @description 验证当前密码后更新为新密码，需登录。验证流程：先从数据库获取当前用户的密码哈希，用 `verifyPassword` 验证当前密码正确性，通过后用 `hashPassword` 加密新密码并更新。session 通过 `requireAuth` 中间件获取，AuthError 时返回对应状态码。
+ * @description 验证当前密码后更新为新密码，需登录。OAuth 用户（无现有密码）可直接设置新密码，无需提供当前密码。
  * @body ChangePasswordBody
  * @response 200:SuccessResponse:密码修改成功
  * @response 400:ErrorResponse:当前密码不正确或输入无效
@@ -37,20 +37,25 @@ export async function POST(request: NextRequest) {
       .from(users)
       .where(eq(users.id, session.userId));
 
-    if (!user || !user.passwordHash) {
-      return NextResponse.json(
-        { error: 'Password authentication not available for this account' },
-        { status: 400 }
-      );
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Verify current password
-    const isValid = await verifyPassword(currentPassword, user.passwordHash);
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Current password is incorrect' },
-        { status: 400 }
-      );
+    // If user already has a password, verify current password
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        return NextResponse.json(
+          { error: 'Current password is required' },
+          { status: 400 }
+        );
+      }
+      const isValid = await verifyPassword(currentPassword, user.passwordHash);
+      if (!isValid) {
+        return NextResponse.json(
+          { error: 'Current password is incorrect' },
+          { status: 400 }
+        );
+      }
     }
 
     // Hash and update new password
