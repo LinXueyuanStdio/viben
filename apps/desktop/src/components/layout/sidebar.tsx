@@ -61,7 +61,8 @@ import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
 import { WakeWordTaskButton } from "./wake-word-task-button";
-import { SidebarBottomDrawer } from "./sidebar-bottom-drawer";
+import { StatusIndicator } from "./status-indicator";
+import { SidebarViewStack } from "./sidebar-view-stack";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { AddWorkspaceModal } from "@/components/workspace";
 import { WorkspaceSettingsDialog } from "@/components/workspace/workspace-settings-dialog";
@@ -344,15 +345,6 @@ export function Sidebar() {
       <ScrollArea className="min-h-0 flex-1 px-2 pt-2">
         <SettingsSidebarContent collapsed={false} showExpanded />
       </ScrollArea>
-
-      <div className="px-2 pb-2">
-        <Separator className="mb-2 bg-sidebar-border" />
-        <SidebarBottomDrawer collapsed={false} onOpenChange={handleMenuOpenChange} />
-        <WakeWordTaskButton
-          collapsed={false}
-          disabled={!activeWorkspace}
-        />
-      </div>
     </>
   );
 
@@ -369,17 +361,6 @@ export function Sidebar() {
       <ScrollArea className="min-h-0 flex-1 px-2 pt-2">
         <SettingsSidebarContent collapsed showExpanded={false} />
       </ScrollArea>
-
-      <div className="flex flex-col pb-2">
-        <div className="grid w-full place-items-center py-2">
-          <Separator className="w-10 bg-sidebar-border" />
-        </div>
-        <SidebarBottomDrawer collapsed onOpenChange={handleMenuOpenChange} />
-        <WakeWordTaskButton
-          collapsed
-          disabled={!activeWorkspace}
-        />
-      </div>
     </>
   );
 
@@ -563,15 +544,6 @@ export function Sidebar() {
           )}
         </div>
       </ScrollArea>
-
-      {/* Bottom Navigation - Expanded */}
-      <div className="pb-2 px-2">
-        <SidebarBottomDrawer collapsed={false} onOpenChange={handleMenuOpenChange} />
-        <WakeWordTaskButton
-          collapsed={false}
-          disabled={!activeWorkspace}
-        />
-      </div>
     </>
   );
 
@@ -750,15 +722,6 @@ export function Sidebar() {
           )}
         </div>
       </ScrollArea>
-
-      {/* Bottom Navigation - Collapsed */}
-      <div className="pb-2 flex flex-col">
-        <SidebarBottomDrawer collapsed onOpenChange={handleMenuOpenChange} />
-        <WakeWordTaskButton
-          collapsed
-          disabled={!activeWorkspace}
-        />
-      </div>
     </>
   );
 
@@ -778,13 +741,27 @@ export function Sidebar() {
             collapsed ? "w-16" : "w-48"
           )}
         >
-            {isSettingsMode
-              ? showExpanded
-                ? ExpandedSettingsContent
-                : CollapsedSettingsContent
-              : showExpanded
-                ? ExpandedContent
-                : CollapsedContent}
+            <SidebarViewStack activePanelId={isSettingsMode ? "settings" : "main"}>
+              <SidebarViewStack.Panel id="main">
+                {showExpanded ? ExpandedContent : CollapsedContent}
+              </SidebarViewStack.Panel>
+              <SidebarViewStack.Panel id="settings">
+                {showExpanded ? ExpandedSettingsContent : CollapsedSettingsContent}
+              </SidebarViewStack.Panel>
+            </SidebarViewStack>
+
+            {/* Bottom area — fixed below animated panels */}
+            {collapsed ? (
+              <div className="flex flex-col gap-2 pb-2">
+                <StatusIndicator collapsed onOpenChange={handleMenuOpenChange} />
+                <WakeWordTaskButton collapsed disabled={!activeWorkspace} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 px-2 pb-2">
+                <StatusIndicator collapsed={false} onOpenChange={handleMenuOpenChange} />
+                <WakeWordTaskButton collapsed={false} disabled={!activeWorkspace} />
+              </div>
+            )}
         </aside>
       </div>
 

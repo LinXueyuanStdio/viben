@@ -126,8 +126,8 @@ vi.mock("@/components/layout/page-section", () => ({
   PageSection: () => <div data-testid="page-section" />,
 }));
 
-vi.mock("@/components/layout/sidebar-bottom-drawer", () => ({
-  SidebarBottomDrawer: () => null,
+vi.mock("@/components/layout/status-indicator", () => ({
+  StatusIndicator: () => null,
 }));
 
 vi.mock("@/components/layout/wake-word-task-button", () => ({

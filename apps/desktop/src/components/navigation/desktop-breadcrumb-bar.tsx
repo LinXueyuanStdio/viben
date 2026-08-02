@@ -1,6 +1,7 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import { cn } from "@/lib/utils";
@@ -281,28 +282,37 @@ export function DesktopBreadcrumbBar({
         className
       )}
     >
-      <div className="min-w-0 h-8 overflow-x-auto overflow-y-clip scrollbar-breadcrumb">
+      <div className="min-w-0 h-8 overflow-x-auto scrollbar-breadcrumb">
         <nav
           aria-label={t("common.breadcrumb")}
           className="flex min-w-max items-center gap-0"
         >
-          {allSegments.map((segment, index) => {
-            const isCurrent = index === allSegments.length - 1;
-            const key = segment.id ?? `${segment.href}-${segment.label}-${index}`;
+          <AnimatePresence mode="popLayout">
+            {allSegments.map((segment, index) => {
+              const isCurrent = index === allSegments.length - 1;
+              const key = segment.id ?? `${segment.href}-${segment.label}-${index}`;
 
-            return (
-              <div key={key} className="flex items-center gap-0">
-                {index > 0 ? (
-                  <span className="text-muted-foreground/40 text-sm font-light select-none">/</span>
-                ) : null}
-                {renderDropdown(
-                  segment,
-                  isCurrent,
-                  rootSegment ? index : index + 1
-                )}
-              </div>
-            );
-          })}
+              return (
+                <motion.div
+                  key={key}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex items-center gap-0"
+                >
+                  {index > 0 ? (
+                    <span className="text-muted-foreground/40 text-sm font-light select-none">/</span>
+                  ) : null}
+                  {renderDropdown(
+                    segment,
+                    isCurrent,
+                    rootSegment ? index : index + 1
+                  )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </nav>
       </div>
       {centerSlot ? (

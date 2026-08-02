@@ -107,13 +107,13 @@ export function WakeWordTaskButton({
   }
 
   return (
-    <div className="mt-4">
+    <div>
       <button
         type="button"
         onClick={handleClick}
         disabled={disabled}
         className={cn(
-          "group relative w-full flex items-center justify-center gap-2 rounded-md border-2 px-3 py-2 text-sm font-medium",
+          "group relative w-full flex items-center justify-center gap-2 rounded-md border-2 px-3 py-1 text-sm font-medium",
           "transition-all duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",

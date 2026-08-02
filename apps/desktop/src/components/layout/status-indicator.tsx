@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Settings, FileText, Smartphone, Terminal } from "lucide-react";
+import { Settings, FileText, Smartphone, Terminal, Bell } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { cn } from "@/lib/utils";
 import { ConsoleDialog } from "@/components/console";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
@@ -16,7 +17,10 @@ import {
 } from "@/navigation/settings-sections";
 import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
-interface SidebarBottomDrawerProps {
+/** Platform web URL — settings opens here in browser. */
+const PLATFORM_URL = "https://viben-web.vercel.app";
+
+interface StatusIndicatorProps {
   collapsed: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -45,9 +49,9 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDrawerProps) {
+export function StatusIndicator({ collapsed, onOpenChange }: StatusIndicatorProps) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { openPath, openSettings } = useDesktopRouting();
   const { status, error } = useGatewayStatus();
   const [isOpen, setIsOpen] = useState(false);
@@ -122,7 +126,123 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
     return name.slice(0, 2).toUpperCase();
   };
 
+  const handleOpenSettings = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    openUrl(`${PLATFORM_URL}/settings`);
+  }, []);
+
+  const handleOpenProfile = useCallback(() => {
+    openSettings("account");
+    handleOpenChange(false);
+  }, [openSettings, handleOpenChange]);
+
+  const handleStopPropagation = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const isOnline = isAuthenticated && status === "connected";
+  const displayName = user?.displayName || user?.username || "";
+
+  // ── Popover content (shared) ──────────────────────────────────────────
+
+  const popoverContent = (
+    <div className="flex flex-col gap-0.5">
+      {/* User info */}
+      {user && (
+        <>
+          <button
+            type="button"
+            onClick={handleOpenProfile}
+            className={cn(
+              "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+              "transition-colors duration-200",
+              "hover:bg-accent"
+            )}
+          >
+            <Avatar size="sm">
+              {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={displayName} />}
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+            <span className="min-w-0 flex-1 truncate text-popover-foreground">{displayName}</span>
+            <Settings className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+          <Separator className="my-0.5" />
+        </>
+      )}
+      {/* Nav items */}
+      {NAV_ITEMS.slice(0, 1).map((item) => (
+        <button
+          key={item.href}
+          type="button"
+          onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
+          className={cn(
+            "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+            "transition-colors duration-200",
+            "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+          )}
+        >
+          <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+          <span>{t(item.titleKey)}</span>
+        </button>
+      ))}
+      {/* Console button */}
+      <button
+        type="button"
+        onClick={() => {
+          setConsoleOpen(true);
+          handleOpenChange(false);
+        }}
+        className={cn(
+          "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+          "transition-colors duration-200",
+          "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+        )}
+      >
+        <Terminal className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+        <span>{t("nav.console")}</span>
+      </button>
+      {/* Remaining nav items */}
+      {NAV_ITEMS.slice(1).map((item) => (
+        <button
+          key={item.href}
+          type="button"
+          onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
+          className={cn(
+            "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+            "transition-colors duration-200",
+            "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+          )}
+        >
+          <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+          <span>{t(item.titleKey)}</span>
+        </button>
+      ))}
+      {/* Gateway description */}
+      <Separator className="my-0.5" />
+      <p className="px-3 py-1.5 text-xs text-muted-foreground leading-relaxed">
+        {gatewayDescription}
+      </p>
+    </div>
+  );
+
+  // ── Collapsed trigger ──────────────────────────────────────────────────
+
   if (collapsed) {
+    const collapsedTrigger = isOnline ? (
+      <div className="grid place-items-center w-full">
+        <Avatar size="sm">
+          {user?.avatarUrl && (
+            <AvatarImage src={user.avatarUrl} alt={displayName} />
+          )}
+          <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+        </Avatar>
+      </div>
+    ) : (
+      <div className="grid place-items-center w-full">
+        <GatewayStatusIndicator collapsed disableTooltip={isOpen} />
+      </div>
+    );
+
     return (
       <>
         <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -131,9 +251,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
             onMouseLeave={handleMouseLeave}
           >
             <PopoverTrigger asChild>
-              <div className="grid place-items-center w-full">
-                <GatewayStatusIndicator collapsed disableTooltip={isOpen} />
-              </div>
+              {collapsedTrigger}
             </PopoverTrigger>
             <PopoverContent
               side="right"
@@ -143,79 +261,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
-              <div className="flex flex-col gap-0.5">
-                {/* User info */}
-                {user && (
-                  <button
-                    type="button"
-                    onClick={() => window.open("https://viben-web.vercel.app/profile", "_blank")}
-                    className={cn(
-                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                      "transition-colors duration-200",
-                      "hover:bg-accent"
-                    )}
-                  >
-                    <Avatar size="default">
-                      {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
-                      <AvatarFallback>{getInitials(user.displayName || user.username)}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-popover-foreground">{user.displayName || user.username}</span>
-                  </button>
-                )}
-                {/* Nav items with text labels */}
-                {NAV_ITEMS.slice(0, 1).map((item) => (
-                  <button
-                    key={item.href}
-                    type="button"
-                    onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
-                    className={cn(
-                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                      "transition-colors duration-200",
-                      "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
-                    <span>{t(item.titleKey)}</span>
-                  </button>
-                ))}
-                {/* Console button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConsoleOpen(true);
-                    handleOpenChange(false);
-                  }}
-                  className={cn(
-                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                    "transition-colors duration-200",
-                    "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
-                  )}
-                >
-                  <Terminal className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
-                  <span>{t("nav.console")}</span>
-                </button>
-                {/* Remaining nav items */}
-                {NAV_ITEMS.slice(1).map((item) => (
-                  <button
-                    key={item.href}
-                    type="button"
-                    onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
-                    className={cn(
-                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                      "transition-colors duration-200",
-                      "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
-                    <span>{t(item.titleKey)}</span>
-                  </button>
-                ))}
-                {/* Gateway description */}
-                <Separator className="my-0.5" />
-                <p className="px-3 py-1.5 text-xs text-muted-foreground leading-relaxed">
-                  {gatewayDescription}
-                </p>
-              </div>
+              {popoverContent}
             </PopoverContent>
           </div>
         </Popover>
@@ -224,7 +270,42 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
     );
   }
 
-  // Expanded sidebar
+  // ── Expanded trigger ───────────────────────────────────────────────────
+
+  const expandedTrigger = isOnline ? (
+    <div className="flex items-center gap-2 px-2 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer">
+      <Avatar size="sm">
+        {user?.avatarUrl && (
+          <AvatarImage src={user.avatarUrl} alt={displayName} />
+        )}
+        <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+      </Avatar>
+      <span className="min-w-0 flex-1 truncate text-sm text-sidebar-foreground">
+        {displayName}
+      </span>
+      <button
+        type="button"
+        onClick={handleStopPropagation}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        aria-label={t("common.notifications", "Notifications")}
+      >
+        <Bell className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={handleOpenSettings}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        aria-label={t("common.settings", "Settings")}
+      >
+        <Settings className="h-4 w-4" />
+      </button>
+    </div>
+  ) : (
+    <div>
+      <GatewayStatusIndicator collapsed={false} disableTooltip={isOpen} />
+    </div>
+  );
+
   return (
     <>
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -233,9 +314,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
           onMouseLeave={handleMouseLeave}
         >
           <PopoverTrigger asChild>
-            <div>
-              <GatewayStatusIndicator collapsed={false} disableTooltip={isOpen} />
-            </div>
+            {expandedTrigger}
           </PopoverTrigger>
           <PopoverContent
             side="top"
@@ -245,79 +324,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            <div className="flex flex-col gap-0.5">
-              {/* User info */}
-              {user && (
-                <button
-                  type="button"
-                  onClick={() => window.open("https://viben-web.vercel.app/profile", "_blank")}
-                  className={cn(
-                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                    "transition-colors duration-200",
-                    "hover:bg-accent"
-                  )}
-                >
-                  <Avatar size="default">
-                    {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
-                    <AvatarFallback>{getInitials(user.displayName || user.username)}</AvatarFallback>
-                  </Avatar>
-                  <span className="truncate text-popover-foreground">{user.displayName || user.username}</span>
-                </button>
-              )}
-              {/* Nav items — same gap-3 px-3 py-2 rounded-lg text-sm as NavItemComponent */}
-              {NAV_ITEMS.slice(0, 1).map((item) => (
-                <button
-                  key={item.href}
-                  type="button"
-                  onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
-                  className={cn(
-                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                    "transition-colors duration-200",
-                    "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
-                  <span>{t(item.titleKey)}</span>
-                </button>
-              ))}
-              {/* Console button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setConsoleOpen(true);
-                  handleOpenChange(false);
-                }}
-                className={cn(
-                  "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                  "transition-colors duration-200",
-                  "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
-                )}
-              >
-                <Terminal className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
-                <span>{t("nav.console")}</span>
-              </button>
-              {/* Remaining nav items */}
-              {NAV_ITEMS.slice(1).map((item) => (
-                <button
-                  key={item.href}
-                  type="button"
-                  onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
-                  className={cn(
-                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
-                    "transition-colors duration-200",
-                    "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
-                  <span>{t(item.titleKey)}</span>
-                </button>
-              ))}
-              {/* Gateway description */}
-              <Separator className="my-0.5" />
-              <p className="px-3 py-1.5 text-xs text-muted-foreground leading-relaxed">
-                {gatewayDescription}
-              </p>
-            </div>
+            {popoverContent}
           </PopoverContent>
         </div>
       </Popover>
