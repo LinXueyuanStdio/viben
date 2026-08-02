@@ -241,7 +241,6 @@ export function WorkspaceDetailPage() {
               workspace={workspace}
               showRefresh={false}
               showRemove={false}
-              className="bg-transparent border-white/10 text-white [&_*]:text-white/90 backdrop-blur-xl"
             />
           )}
           {/* Main Desktop - Page App Grid (iPad home screen) */}
