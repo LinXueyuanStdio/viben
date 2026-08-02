@@ -20,7 +20,26 @@ function useCurrentTabStore() {
 export function useTabList(): TabViewModel[] {
   const tabStore = useCurrentTabStore();
   const rawTabs = tabStore((state) => state.tabs);
-  return useMemo(() => rawTabs.map(getTabViewModel), [rawTabs]);
+  const { workspaces } = useLocalWorkspaces();
+  return useMemo(
+    () =>
+      rawTabs.map((tab) => {
+        const vm = getTabViewModel(tab);
+        // Fix tab label for workspace routes: the route entry's title function
+        // returns the raw workspaceId (slug), but we want the display name.
+        if (
+          vm.descriptorId === "/workspace/:workspaceId" &&
+          vm.meta?.workspaceId
+        ) {
+          const ws = workspaces.find((w) => w.id === vm.meta!.workspaceId);
+          if (ws && vm.label === vm.meta!.workspaceId) {
+            return { ...vm, label: ws.name };
+          }
+        }
+        return vm;
+      }),
+    [rawTabs, workspaces],
+  );
 }
 
 // ─── Hook 2: useActiveTabState ──────────────────────────────────────────────
