@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
-import { Maximize2, Flag, MessageSquare, MoreHorizontal } from "lucide-react"
+import { Maximize2, Flag, MessageSquare, MoreHorizontal, X } from "lucide-react"
 import dynamic from "next/dynamic"
 import { cn } from "@/lib/utils/index"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
@@ -111,6 +111,93 @@ function TabContent({ tab }: { tab: ReadDrawerTab }) {
   }
 }
 
+// --- Drawer Header (shared) ---
+
+function DrawerHeader({
+  tabs,
+  activeTab,
+  onTabChange,
+  isMobile,
+  pageId,
+}: {
+  tabs: ReadDrawerTab[]
+  activeTab: string
+  onTabChange: (v: string) => void
+  isMobile?: boolean
+  pageId?: string
+}) {
+  const { t } = useTranslation()
+  const { setOpen, setImmersive } = useDrawer()
+
+  const [moreOpen, setMoreOpen] = React.useState(false)
+  const [reportOpen, setReportOpen] = React.useState(false)
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
+
+  return (
+    <div className="flex items-center gap-2.5 h-[58px] px-3 border-b border-border overflow-hidden whitespace-nowrap">
+      <VibenTabs value={activeTab} onValueChange={onTabChange} className="flex-1">
+        <VibenTabsList variant="drawer">
+          {tabs.map((tab) => (
+            <VibenTabsTrigger key={tab.value} value={tab.value} variant="drawer">
+              {tab.label}
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className="ml-1 text-xs text-muted-foreground">{tab.badge}</span>
+              )}
+            </VibenTabsTrigger>
+          ))}
+        </VibenTabsList>
+      </VibenTabs>
+
+      {/* More menu */}
+      <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
+            aria-label={t("community.moreActions")}
+          >
+            <MoreHorizontal className="h-[18px] w-[18px]" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => {
+            setImmersive(true)
+            trackAnalytics("immersive_enter")
+            trackEngagement("immersive_toggle", { action: "enter" })
+            setMoreOpen(false)
+            setOpen(false)
+          }}>
+            <Maximize2 className="mr-2 h-4 w-4 shrink-0" />
+            {t("community.immersiveReading")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setMoreOpen(false); setReportOpen(true) }}>
+            <Flag className="mr-2 h-4 w-4 shrink-0" />
+            {t("community.report")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setMoreOpen(false); setFeedbackOpen(true) }}>
+            <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
+            {t("community.feedback")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Close button (mobile only) */}
+      {isMobile && (
+        <button
+          className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
+          aria-label={t("community.closeDrawer")}
+          onClick={() => setOpen(false)}
+        >
+          <X className="h-[18px] w-[18px]" />
+        </button>
+      )}
+
+      {/* Dialogs */}
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} entityType="published_page" entityId={pageId ?? ""} />
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} pageId={pageId ?? ""} />
+    </div>
+  )
+}
+
 // --- Drawer component ---
 
 interface ReadDrawerProps {
@@ -118,17 +205,72 @@ interface ReadDrawerProps {
   defaultTab?: string
   pageId?: string
   userSlug?: string
+  isMobile?: boolean
 }
 
-export function ReadDrawer({ tabs, defaultTab, pageId, userSlug }: ReadDrawerProps) {
-  const { t } = useTranslation()
-  const { open, setOpen, setImmersive } = useDrawer()
+export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerProps) {
+  const { open, setOpen } = useDrawer()
   const [activeTab, setActiveTab] = React.useState(defaultTab || "comments")
 
-  const [moreOpen, setMoreOpen] = React.useState(false)
-  const [reportOpen, setReportOpen] = React.useState(false)
-  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
+  // Desktop: auto-open drawer on mount
+  React.useEffect(() => {
+    if (!isMobile) {
+      setOpen(true)
+    }
+  }, [isMobile, setOpen])
 
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className={cn(
+            "fixed inset-0 z-40 transition-opacity duration-[220ms] ease-out bg-black/40",
+            open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          )}
+          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
+          aria-hidden="true"
+        />
+
+        {/* Overlay panel */}
+        <div
+          className={cn(
+            "fixed top-0 right-0 z-50",
+            "w-full sm:w-[min(420px,100vw)]",
+            "grid grid-rows-[auto_1fr]",
+            "bg-background/96 backdrop-blur-[16px]",
+            "border-l border-border shadow-[-18px_0_36px_rgba(8,91,117,0.14)]",
+            "transition-transform duration-[220ms] ease-out",
+            open ? "translate-x-0" : "translate-x-full"
+          )}
+          style={{ height: "100vh", willChange: "transform" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DrawerHeader
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            isMobile
+            pageId={pageId}
+          />
+
+          {/* Content */}
+          <div className="overflow-auto p-3">
+            {tabs.map((tab) => (
+              <div
+                key={tab.value}
+                className={cn(activeTab === tab.value ? "grid gap-3" : "hidden")}
+              >
+                <TabContent tab={tab} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Desktop: embedded
   return (
     <div
       className={cn(
@@ -143,52 +285,12 @@ export function ReadDrawer({ tabs, defaultTab, pageId, userSlug }: ReadDrawerPro
         transition: "width 220ms ease-out, padding-top 180ms ease",
       }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2.5 h-[58px] px-3 border-b border-border overflow-hidden whitespace-nowrap">
-        <VibenTabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <VibenTabsList variant="drawer">
-            {tabs.map((tab) => (
-              <VibenTabsTrigger key={tab.value} value={tab.value} variant="drawer">
-                {tab.label}
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="ml-1 text-xs text-muted-foreground">{tab.badge}</span>
-                )}
-              </VibenTabsTrigger>
-            ))}
-          </VibenTabsList>
-        </VibenTabs>
-
-        {/* More menu */}
-        <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
-              aria-label={t("community.moreActions")}
-            >
-              <MoreHorizontal className="h-[18px] w-[18px]" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => {
-              setImmersive(true)
-              trackAnalytics("immersive_enter")
-              trackEngagement("immersive_toggle", { action: "enter" })
-              setMoreOpen(false)
-            }}>
-              <Maximize2 className="mr-2 h-4 w-4 shrink-0" />
-              {t("community.immersiveReading")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setMoreOpen(false); setReportOpen(true) }}>
-              <Flag className="mr-2 h-4 w-4 shrink-0" />
-              {t("community.report")}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setMoreOpen(false); setFeedbackOpen(true) }}>
-              <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
-              {t("community.feedback")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <DrawerHeader
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        pageId={pageId}
+      />
 
       {/* Content */}
       <div className="overflow-auto p-3">
@@ -201,10 +303,6 @@ export function ReadDrawer({ tabs, defaultTab, pageId, userSlug }: ReadDrawerPro
           </div>
         ))}
       </div>
-
-      {/* Dialogs */}
-      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} entityType="published_page" entityId={pageId ?? ""} />
-      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} pageId={pageId ?? ""} />
     </div>
   )
 }

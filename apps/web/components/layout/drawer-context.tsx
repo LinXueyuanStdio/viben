@@ -10,7 +10,7 @@ interface DrawerContextType {
 }
 
 const DrawerContext = createContext<DrawerContextType>({
-  open: true,
+  open: false,
   toggle: () => {},
   setOpen: () => {},
   immersive: false,
@@ -18,7 +18,7 @@ const DrawerContext = createContext<DrawerContextType>({
 })
 
 export function DrawerProvider({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [immersive, setImmersive] = useState(false)
   const toggle = useCallback(() => setOpen((prev) => !prev), [])
   return (

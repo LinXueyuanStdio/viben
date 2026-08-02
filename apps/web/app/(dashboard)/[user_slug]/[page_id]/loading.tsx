@@ -9,7 +9,7 @@ export default function PageLoading() {
       {/* 左侧：iframe 内容区骨架 */}
       <div
         className="flex-1 min-w-0 bg-white dark:bg-[#0a0a0a] flex items-center justify-center"
-        style={{ paddingTop: "var(--nav-h, 56px)" }}
+        style={{ paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))" }}
       >
         <div className="animate-pulse space-y-4 w-full max-w-2xl px-8">
           {/* 标题 */}
@@ -52,7 +52,7 @@ export default function PageLoading() {
         className="shrink-0 border-l border-border bg-background grid grid-rows-[auto_1fr]"
         style={{
           width: "var(--drawer-w, 420px)",
-          paddingTop: "var(--nav-h, 56px)",
+          paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
         }}
       >
         {/* Tab bar 骨架 */}

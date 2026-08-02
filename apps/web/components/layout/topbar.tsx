@@ -1,10 +1,9 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Maximize2, FileText, Columns2, PanelRight, Settings, MoreHorizontal, Flag, MessageSquare, PanelLeftOpen, PanelLeftClose } from "lucide-react"
+import { FileText, Columns2, PanelRight, Settings, PanelLeftOpen, PanelLeftClose } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { trackAnalytics } from "@/lib/analytics/track"
@@ -24,23 +23,8 @@ import { HistoryPopover } from "./history-popover"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
 import { CreateDropdown } from "./create-dropdown"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { HeaderAuthButtons } from "./header-auth-buttons"
 import type { Session } from "@/lib/auth/types"
-
-// Lazy-loaded for mobile read mode "More" dropdown
-import dynamic from "next/dynamic"
-const ReportDialog = dynamic(
-  () => import("@/components/content/report-dialog").then(m => ({ default: m.ReportDialog })),
-)
-const FeedbackDialog = dynamic(
-  () => import("@/components/content/feedback-dialog").then(m => ({ default: m.FeedbackDialog })),
-)
 
 interface TopbarProps {
   session: Session | null
@@ -90,11 +74,6 @@ export function Topbar({
 
   const [pageMeta] = React.useState(() => getPageMeta())
   const hasSidePage = pageMeta?.hasSidePage ?? false
-
-  // 移动端阅读模式 "更多" 下拉中的举报/反馈弹窗状态
-  const [mobileMoreOpen, setMobileMoreOpen] = React.useState(false)
-  const [mobileReportOpen, setMobileReportOpen] = React.useState(false)
-  const [mobileFeedbackOpen, setMobileFeedbackOpen] = React.useState(false)
 
   // 阅读模式：仅通过 URL 判定
   const isRead = isReadPageFromUrl
@@ -284,39 +263,14 @@ export function Topbar({
             // 阅读模式
             rightContent ?? topbarSlots?.rightContent ?? (
               isMobile ? (
-                // 移动端阅读模式 — 所有操作收进 "更多" 下拉
-                <>
-                  <DropdownMenu open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
-                        aria-label={t("community.moreActions")}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem onClick={() => { toggleDrawer(); trackAnalytics("drawer_open"); setMobileMoreOpen(false) }}>
-                        <PanelRight className="mr-2 h-4 w-4 shrink-0" />
-                        {t("community.expandDetails")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setImmersive(true); trackAnalytics("immersive_enter"); setMobileMoreOpen(false) }}>
-                        <Maximize2 className="mr-2 h-4 w-4 shrink-0" />
-                        {t("community.immersiveReading")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setMobileMoreOpen(false); setMobileReportOpen(true) }}>
-                        <Flag className="mr-2 h-4 w-4 shrink-0" />
-                        {t("community.report")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setMobileMoreOpen(false); setMobileFeedbackOpen(true) }}>
-                        <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
-                        {t("community.feedback")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <ReportDialog open={mobileReportOpen} onOpenChange={setMobileReportOpen} entityType="published_page" entityId={urlPageId ?? ""} />
-                  <FeedbackDialog open={mobileFeedbackOpen} onOpenChange={setMobileFeedbackOpen} pageId={urlPageId ?? ""} />
-                </>
+                // 移动端阅读模式 — 展开详情按钮
+                <button
+                  className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+                  aria-label={t("community.expandDetails")}
+                  onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}
+                >
+                  <PanelRight className="h-4 w-4" />
+                </button>
               ) : (
                 // 桌面端阅读模式 — 创建/动态/通知/历史/头像 + 展开侧栏
                 <>
