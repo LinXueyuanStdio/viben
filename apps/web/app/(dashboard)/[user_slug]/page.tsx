@@ -36,6 +36,14 @@ interface PageRow {
   authorDisplayName: string | null
   authorAvatarUrl: string | null
   authorSlug: string
+  visibility?: string | null
+}
+
+/** Convert a visibility value to a human-readable label */
+function visibilityToLabel(v?: string | null): string | undefined {
+  if (!v || v === "public") return "公开"
+  if (v === "private" || v === "unlisted") return "私有"
+  return undefined
 }
 
 function mapPageToCard(
@@ -108,11 +116,19 @@ export async function generateMetadata({
 
 export default async function UserSlugPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ user_slug: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const { user_slug: slug } = await params
+  const sp = await searchParams
   const session = await getSession()
+
+  // Visibility filters from search params
+  const pagesVisibility = typeof sp.visibility === "string" ? sp.visibility : "all"
+  const mcpVisibility = typeof sp.mcp_visibility === "string" ? sp.mcp_visibility : "all"
+  const skillVisibility = typeof sp.skill_visibility === "string" ? sp.skill_visibility : "all"
 
   const user = await db.query.users.findFirst({
     where: eq(users.userSlug, slug),
@@ -142,6 +158,23 @@ export default async function UserSlugPage({
     .from(userFollows)
     .where(eq(userFollows.followerUserId, user.id))
 
+  // Build visibility filter arrays for use in .where(and(...)) spread
+  const pagesVisFilter: Parameters<typeof and>[0][] =
+    pagesVisibility === "public"
+      ? [eq(publishedPages.visibility, "public")]
+      : pagesVisibility === "private" && isOwnProfile
+        ? [inArray(publishedPages.visibility, ["private", "unlisted"])]
+        : !isOwnProfile
+          ? [eq(publishedPages.visibility, "public")]
+          : [] // "all" on own profile
+
+  function mcpSkillVisFilter(table: typeof mcpPackages | typeof skillPackages, visFilter: string): Parameters<typeof and>[0][] {
+    if (visFilter === "public") return [eq(table.visibility, "public")]
+    if (visFilter === "private" && isOwnProfile) return [inArray(table.visibility, ["private", "unlisted"])]
+    if (!isOwnProfile) return [eq(table.visibility, "public")]
+    return []
+  }
+
   // Columns to select from publishedPages in joined queries
   const pageColumns = {
     uid: publishedPages.uid,
@@ -156,6 +189,7 @@ export default async function UserSlugPage({
     authorDisplayName: publishedPages.authorDisplayName,
     authorAvatarUrl: publishedPages.authorAvatarUrl,
     authorSlug: publishedPages.authorSlug,
+    visibility: publishedPages.visibility,
   }
 
   const [
@@ -177,7 +211,7 @@ export default async function UserSlugPage({
     db.select(pageColumns).from(publishedPages)
       .where(and(
         eq(publishedPages.userId, user.id),
-        eq(publishedPages.visibility, "public"),
+        ...pagesVisFilter,
         eq(publishedPages.moderationStatus, "approved")
       ))
       .orderBy(desc(publishedPages.lastPublishedAt))
@@ -193,7 +227,7 @@ export default async function UserSlugPage({
     db.select({ count: count() }).from(publishedPages)
       .where(and(
         eq(publishedPages.userId, user.id),
-        eq(publishedPages.visibility, "public"),
+        ...pagesVisFilter,
         eq(publishedPages.moderationStatus, "approved")
       )),
     db.select().from(collections)
@@ -209,7 +243,7 @@ export default async function UserSlugPage({
         eq(communityReactions.reactionType, "like"),
         eq(communityEntities.entityType, "published_page"),
         eq(communityEntities.status, "active"),
-        eq(publishedPages.visibility, "public"),
+        ...pagesVisFilter,
         eq(publishedPages.moderationStatus, "approved")
       ))
       .orderBy(desc(communityReactions.createdAt))
@@ -222,7 +256,7 @@ export default async function UserSlugPage({
         eq(communityBookmarks.userId, user.id),
         eq(communityEntities.entityType, "published_page"),
         eq(communityEntities.status, "active"),
-        eq(publishedPages.visibility, "public"),
+        ...pagesVisFilter,
         eq(publishedPages.moderationStatus, "approved")
       ))
       .orderBy(desc(communityBookmarks.createdAt))
@@ -232,7 +266,7 @@ export default async function UserSlugPage({
       .where(and(
         eq(publishedPages.userId, user.id),
         eq(publishedPages.isPinned, true),
-        eq(publishedPages.visibility, "public"),
+        ...pagesVisFilter,
         eq(publishedPages.moderationStatus, "approved")
       ))
       .orderBy(desc(publishedPages.pinnedAt))
@@ -249,7 +283,8 @@ export default async function UserSlugPage({
     db.select().from(mcpPackages)
       .where(and(
         eq(mcpPackages.authorId, user.id),
-        eq(mcpPackages.isPublished, true)
+        eq(mcpPackages.isPublished, true),
+        ...mcpSkillVisFilter(mcpPackages, mcpVisibility)
       ))
       .orderBy(desc(mcpPackages.createdAt))
       .limit(20),
@@ -257,7 +292,8 @@ export default async function UserSlugPage({
     db.select().from(skillPackages)
       .where(and(
         eq(skillPackages.authorId, user.id),
-        eq(skillPackages.isPublished, true)
+        eq(skillPackages.isPublished, true),
+        ...mcpSkillVisFilter(skillPackages, skillVisibility)
       ))
       .orderBy(desc(skillPackages.createdAt))
       .limit(20),
@@ -265,13 +301,15 @@ export default async function UserSlugPage({
     db.select({ count: count() }).from(mcpPackages)
       .where(and(
         eq(mcpPackages.authorId, user.id),
-        eq(mcpPackages.isPublished, true)
+        eq(mcpPackages.isPublished, true),
+        ...mcpSkillVisFilter(mcpPackages, mcpVisibility)
       )),
     // Skill package count
     db.select({ count: count() }).from(skillPackages)
       .where(and(
         eq(skillPackages.authorId, user.id),
-        eq(skillPackages.isPublished, true)
+        eq(skillPackages.isPublished, true),
+        ...mcpSkillVisFilter(skillPackages, skillVisibility)
       )),
     // Bookmarked MCPs (from bookmarks table)
     db.select({
@@ -400,6 +438,7 @@ export default async function UserSlugPage({
       },
       timeAgo: timeAgo(p.lastPublishedAt),
       stats: { views: p.viewCount, likes: p.likeCount, comments: p.commentCount },
+      visibilityLabel: visibilityToLabel(p.visibility),
       pageUid: p.uid,
     }
   }
@@ -417,6 +456,7 @@ export default async function UserSlugPage({
     timeAgo: timeAgo(m.createdAt),
     stats: { downloads: m.downloadsCount },
     badges: [`v${m.version}`, m.transport?.toUpperCase()].filter(Boolean),
+    visibilityLabel: visibilityToLabel(m.visibility),
     id: m.id,
   }))
 
@@ -428,6 +468,7 @@ export default async function UserSlugPage({
     timeAgo: timeAgo(s.createdAt),
     stats: { downloads: s.downloadsCount },
     badges: [`v${s.version}`, s.skillType].filter(Boolean),
+    visibilityLabel: visibilityToLabel(s.visibility),
     id: s.id,
   }))
 

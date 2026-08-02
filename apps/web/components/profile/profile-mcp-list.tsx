@@ -22,6 +22,12 @@ const SORT_OPTIONS = [
   { value: "popular", label: "最受欢迎" },
 ] as const
 
+const VISIBILITY_OPTIONS = [
+  { value: "all", label: "全部类型" },
+  { value: "public", label: "公开" },
+  { value: "private", label: "私有" },
+] as const
+
 const PAGE_SIZE = 20
 
 interface ProfileMcpListProps {
@@ -34,6 +40,7 @@ export function ProfileMcpList({ mcps, total }: ProfileMcpListProps) {
   const searchParams = useSearchParams()
   const currentPage = Number(searchParams.get("mcp_page") ?? 1)
   const currentSort = searchParams.get("mcp_sort") ?? "latest"
+  const currentVisibility = searchParams.get("mcp_visibility") ?? "all"
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -47,8 +54,8 @@ export function ProfileMcpList({ mcps, total }: ProfileMcpListProps) {
         params.set(key, value)
       }
     }
-    // Reset page when changing sort
-    if (updates.mcp_sort !== undefined && !("mcp_page" in updates)) {
+    // Reset page when changing sort or visibility
+    if ((updates.mcp_sort !== undefined || updates.mcp_visibility !== undefined) && !("mcp_page" in updates)) {
       params.delete("mcp_page")
     }
     router.push(`?${params.toString()}`, { scroll: false })
@@ -73,6 +80,19 @@ export function ProfileMcpList({ mcps, total }: ProfileMcpListProps) {
             className="pl-9"
           />
         </div>
+        <Select
+          value={currentVisibility}
+          onValueChange={(value) => updateParams({ mcp_visibility: value === "all" ? null : value })}
+        >
+          <SelectTrigger className="w-[110px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VISIBILITY_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select
           value={currentSort}
           onValueChange={(value) => updateParams({ mcp_sort: value === "latest" ? null : value })}

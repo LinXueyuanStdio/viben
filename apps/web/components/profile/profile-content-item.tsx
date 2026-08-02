@@ -25,6 +25,8 @@ export interface ProfileContentItemData {
   }
   /** 类型标签，如 "MCP"、"技能"、"v1.0.0" */
   badges?: string[]
+  /** 可见性标签，如 "公开"、"私有"，显示为彩色胶囊 */
+  visibilityLabel?: string
 }
 
 interface ProfileContentItemProps {
@@ -41,7 +43,7 @@ interface ProfileContentItemProps {
 }
 
 export function ProfileContentItem({ data, href, className, moreMenuItems }: ProfileContentItemProps) {
-  const { coverUrl, title, description, author, timeAgo, stats, badges } = data
+  const { coverUrl, title, description, author, timeAgo, stats, badges, visibilityLabel } = data
   const [menuOpen, setMenuOpen] = useState(false)
   const hasMenu = moreMenuItems && moreMenuItems.length > 0
 
@@ -61,6 +63,16 @@ export function ProfileContentItem({ data, href, className, moreMenuItems }: Pro
       <div className="grid gap-[7px] content-start">
         <div className="flex items-center gap-[7px] flex-wrap">
           <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
+          {visibilityLabel && (
+            <span className={cn(
+              "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
+              visibilityLabel === "公开"
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            )}>
+              {visibilityLabel}
+            </span>
+          )}
           {badges?.map((badge, i) => (
             <span key={i} className="inline-flex items-center rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
               {badge}

@@ -22,6 +22,12 @@ const SORT_OPTIONS = [
   { value: "popular", label: "最受欢迎" },
 ] as const
 
+const VISIBILITY_OPTIONS = [
+  { value: "all", label: "全部类型" },
+  { value: "public", label: "公开" },
+  { value: "private", label: "私有" },
+] as const
+
 const PAGE_SIZE = 20
 
 interface ProfileSkillsListProps {
@@ -34,6 +40,7 @@ export function ProfileSkillsList({ skills, total }: ProfileSkillsListProps) {
   const searchParams = useSearchParams()
   const currentPage = Number(searchParams.get("skill_page") ?? 1)
   const currentSort = searchParams.get("skill_sort") ?? "latest"
+  const currentVisibility = searchParams.get("skill_visibility") ?? "all"
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -47,8 +54,8 @@ export function ProfileSkillsList({ skills, total }: ProfileSkillsListProps) {
         params.set(key, value)
       }
     }
-    // Reset page when changing sort
-    if (updates.skill_sort !== undefined && !("skill_page" in updates)) {
+    // Reset page when changing sort or visibility
+    if ((updates.skill_sort !== undefined || updates.skill_visibility !== undefined) && !("skill_page" in updates)) {
       params.delete("skill_page")
     }
     router.push(`?${params.toString()}`, { scroll: false })
@@ -73,6 +80,19 @@ export function ProfileSkillsList({ skills, total }: ProfileSkillsListProps) {
             className="pl-9"
           />
         </div>
+        <Select
+          value={currentVisibility}
+          onValueChange={(value) => updateParams({ skill_visibility: value === "all" ? null : value })}
+        >
+          <SelectTrigger className="w-[110px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VISIBILITY_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select
           value={currentSort}
           onValueChange={(value) => updateParams({ skill_sort: value === "latest" ? null : value })}

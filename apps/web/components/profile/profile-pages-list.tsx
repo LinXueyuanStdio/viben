@@ -22,6 +22,12 @@ const SORT_OPTIONS = [
   { value: "likes", label: "最多喜欢" },
 ] as const
 
+const VISIBILITY_OPTIONS = [
+  { value: "all", label: "全部类型" },
+  { value: "public", label: "公开" },
+  { value: "private", label: "私有" },
+] as const
+
 const PAGE_SIZE = 20
 
 interface ProfilePagesListProps {
@@ -35,6 +41,7 @@ export function ProfilePagesList({ pages, total, userSlug }: ProfilePagesListPro
   const searchParams = useSearchParams()
   const currentPage = Number(searchParams.get("page") ?? 1)
   const currentSort = searchParams.get("sort") ?? "latest"
+  const currentVisibility = searchParams.get("visibility") ?? "all"
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -48,8 +55,8 @@ export function ProfilePagesList({ pages, total, userSlug }: ProfilePagesListPro
         params.set(key, value)
       }
     }
-    // Reset page when changing sort
-    if (updates.sort !== undefined && !("page" in updates)) {
+    // Reset page when changing sort or visibility
+    if ((updates.sort !== undefined || updates.visibility !== undefined) && !("page" in updates)) {
       params.delete("page")
     }
     router.push(`?${params.toString()}`, { scroll: false })
@@ -76,6 +83,19 @@ export function ProfilePagesList({ pages, total, userSlug }: ProfilePagesListPro
             className="pl-9"
           />
         </div>
+        <Select
+          value={currentVisibility}
+          onValueChange={(value) => updateParams({ visibility: value === "all" ? null : value })}
+        >
+          <SelectTrigger className="w-[110px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VISIBILITY_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select
           value={currentSort}
           onValueChange={(value) => updateParams({ sort: value === "latest" ? null : value })}
