@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useTranslation } from "react-i18next"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { FileText, Columns2, PanelRight, Settings, PanelLeftOpen, PanelLeftClose } from "lucide-react"
+import { FileText, Columns2, PanelRight, PanelRightClose, Settings, PanelLeftOpen, PanelLeftClose } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { trackAnalytics } from "@/lib/analytics/track"
@@ -270,7 +270,7 @@ export function Topbar({
                   aria-label={t("community.expandDetails")}
                   onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}
                 >
-                  <PanelRight className="h-4 w-4" />
+                  {drawerOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
                 </button>
               ) : (
                 // 桌面端阅读模式 — 创建/动态/通知/历史/头像 + 展开侧栏
@@ -291,7 +291,7 @@ export function Topbar({
                     aria-label={t("community.expandDetails")}
                     onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}
                   >
-                    <PanelRight className="h-4 w-4" />
+                    {drawerOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
                   </button>
                 </>
               )
