@@ -4,20 +4,23 @@ import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks, userFollows } from "@/lib/db"
+import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks, userFollows, mcpPackages, skillPackages, bookmarks } from "@/lib/db"
 import { eq, desc, and, count, inArray } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { EmptyState, T } from "@/components/content/i18n-text"
-import { CollectionCard } from "@/components/collections/collection-card"
 import { FollowButton } from "@/components/content/follow-button"
 import Link from "next/link"
 import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
 import type { FeedCardData } from "@/components/content/feed-card"
-import type { ProfileHeroData } from "@/components/content/profile-hero"
 import type { Metadata } from "next"
 import { mapMomentRowToFeedCard, timeAgo, type MomentAttachmentData } from "@/lib/services/moment-mapper"
+import { ProfilePagesList } from "@/components/profile/profile-pages-list"
+import { ProfileMcpList } from "@/components/profile/profile-mcp-list"
+import { ProfileSkillsList } from "@/components/profile/profile-skills-list"
+import { ProfileLikesMerged } from "@/components/profile/profile-likes-merged"
+import type { ProfileContentItemData } from "@/components/profile/profile-content-item"
 
 /** Minimal shared shape between full publishedPages row and joined query results */
 interface PageRow {
@@ -161,9 +164,15 @@ export default async function UserSlugPage({
     pageCountResult,
     createdCollections,
     likedPageRows,
-    favoritedPageRows,
+    bookmarkedPageRows,
     pinnedPageRows,
     profileReadmePage,
+    authorMcps,
+    authorSkills,
+    mcpCountResult,
+    skillCountResult,
+    bookmarkedMcpsRaw,
+    bookmarkedSkillsRaw,
   ] = await Promise.all([
     db.select(pageColumns).from(publishedPages)
       .where(and(
@@ -236,6 +245,56 @@ export default async function UserSlugPage({
         eq(publishedPages.moderationStatus, "approved")
       ))
       .limit(1),
+    // Published MCP packages
+    db.select().from(mcpPackages)
+      .where(and(
+        eq(mcpPackages.authorId, user.id),
+        eq(mcpPackages.isPublished, true)
+      ))
+      .orderBy(desc(mcpPackages.createdAt))
+      .limit(20),
+    // Published Skill packages
+    db.select().from(skillPackages)
+      .where(and(
+        eq(skillPackages.authorId, user.id),
+        eq(skillPackages.isPublished, true)
+      ))
+      .orderBy(desc(skillPackages.createdAt))
+      .limit(20),
+    // MCP package count
+    db.select({ count: count() }).from(mcpPackages)
+      .where(and(
+        eq(mcpPackages.authorId, user.id),
+        eq(mcpPackages.isPublished, true)
+      )),
+    // Skill package count
+    db.select({ count: count() }).from(skillPackages)
+      .where(and(
+        eq(skillPackages.authorId, user.id),
+        eq(skillPackages.isPublished, true)
+      )),
+    // Bookmarked MCPs (from bookmarks table)
+    db.select({
+      entityId: bookmarks.entityId,
+      createdAt: bookmarks.createdAt,
+    }).from(bookmarks)
+      .where(and(
+        eq(bookmarks.userId, user.id),
+        eq(bookmarks.entityType, "mcp")
+      ))
+      .orderBy(desc(bookmarks.createdAt))
+      .limit(50),
+    // Bookmarked Skills (from bookmarks table)
+    db.select({
+      entityId: bookmarks.entityId,
+      createdAt: bookmarks.createdAt,
+    }).from(bookmarks)
+      .where(and(
+        eq(bookmarks.userId, user.id),
+        eq(bookmarks.entityType, "skill")
+      ))
+      .orderBy(desc(bookmarks.createdAt))
+      .limit(50),
   ])
 
   // Fetch attachments for author moments (for cover images)
@@ -267,11 +326,110 @@ export default async function UserSlugPage({
     }
   }
 
+  // Fetch full MCP/Skill package details for bookmarked items
+  let bookmarkedMcpData: Array<{
+    id: string; type: "mcp"; name: string; slug: string; version: string;
+    description: string | null; transport?: string;
+    author: { username: string; avatarUrl: string | null } | null;
+    favoritedAt: Date;
+  }> = []
+  let bookmarkedSkillData: Array<{
+    id: string; type: "skill"; name: string; slug: string; version: string;
+    description: string | null; skillType?: string;
+    author: { username: string; avatarUrl: string | null } | null;
+    favoritedAt: Date;
+  }> = []
+
+  if (bookmarkedMcpsRaw.length > 0) {
+    const mcpIds = bookmarkedMcpsRaw.map((b) => b.entityId)
+    const mcpDetails = await db.query.mcpPackages.findMany({
+      where: inArray(mcpPackages.id, mcpIds),
+      with: { author: { columns: { username: true, userSlug: true, avatarUrl: true } } },
+    })
+    const mcpMap = new Map(mcpDetails.map((m) => [m.id, m]))
+    // Preserve bookmark order
+    for (const bm of bookmarkedMcpsRaw) {
+      const pkg = mcpMap.get(bm.entityId)
+      if (pkg) {
+        bookmarkedMcpData.push({
+          id: pkg.id, type: "mcp", name: pkg.name, slug: pkg.slug,
+          version: pkg.version, description: pkg.description,
+          transport: pkg.transport ?? undefined,
+          author: pkg.author,
+          favoritedAt: bm.createdAt,
+        })
+      }
+    }
+  }
+
+  if (bookmarkedSkillsRaw.length > 0) {
+    const skillIds = bookmarkedSkillsRaw.map((b) => b.entityId)
+    const skillDetails = await db.query.skillPackages.findMany({
+      where: inArray(skillPackages.id, skillIds),
+      with: { author: { columns: { username: true, userSlug: true, avatarUrl: true } } },
+    })
+    const skillMap = new Map(skillDetails.map((s) => [s.id, s]))
+    for (const bs of bookmarkedSkillsRaw) {
+      const pkg = skillMap.get(bs.entityId)
+      if (pkg) {
+        bookmarkedSkillData.push({
+          id: pkg.id, type: "skill", name: pkg.name, slug: pkg.slug,
+          version: pkg.version, description: pkg.description,
+          skillType: pkg.skillType ?? undefined,
+          author: pkg.author,
+          favoritedAt: bs.createdAt,
+        })
+      }
+    }
+  }
+
   const pageCards = authorPages.map((p) => mapPageToCard(p, displayName, avatarUrl))
   const pinnedCards = pinnedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
   const readmePage = profileReadmePage[0]
-  const likedCards = likedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
-  const favoritedCards = favoritedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
+
+  // Map pages to ProfileContentItemData for new list components
+  function mapPageToContentItem(p: PageRow, fallbackName: string, fallbackAvatar: string | null | undefined): ProfileContentItemData & { pageUid: string } {
+    const authorDisplayName = p.authorDisplayName ?? fallbackName ?? p.authorSlug
+    return {
+      coverUrl: p.coverUrl,
+      title: p.title,
+      description: p.description ?? undefined,
+      author: {
+        name: authorDisplayName,
+        avatarUrl: p.authorAvatarUrl ?? fallbackAvatar ?? undefined,
+      },
+      timeAgo: timeAgo(p.lastPublishedAt),
+      stats: { views: p.viewCount, likes: p.likeCount, comments: p.commentCount },
+      pageUid: p.uid,
+    }
+  }
+
+  const pageContentItems = authorPages.map((p) => mapPageToContentItem(p, displayName, avatarUrl))
+  const likedContentItems = likedPageRows.map((p) => mapPageToContentItem(p, displayName, avatarUrl))
+  const bookmarkedContentItems = bookmarkedPageRows.map((p) => mapPageToContentItem(p, displayName, avatarUrl))
+
+  // Map MCP/Skill packages to ProfileContentItemData
+  const mcpContentItems = authorMcps.map((m) => ({
+    coverUrl: null as string | null,
+    title: m.name,
+    description: m.description ?? undefined,
+    author: { name: displayName, avatarUrl: avatarUrl ?? undefined },
+    timeAgo: timeAgo(m.createdAt),
+    stats: { downloads: m.downloadsCount },
+    badges: [`v${m.version}`, m.transport?.toUpperCase()].filter(Boolean),
+    id: m.id,
+  }))
+
+  const skillContentItems = authorSkills.map((s) => ({
+    coverUrl: null as string | null,
+    title: s.name,
+    description: s.description ?? undefined,
+    author: { name: displayName, avatarUrl: avatarUrl ?? undefined },
+    timeAgo: timeAgo(s.createdAt),
+    stats: { downloads: s.downloadsCount },
+    badges: [`v${s.version}`, s.skillType].filter(Boolean),
+    id: s.id,
+  }))
 
   const feedCards: FeedCardData[] = authorMoments.map((m) =>
     mapMomentRowToFeedCard(m, {
@@ -283,24 +441,15 @@ export default async function UserSlugPage({
     }),
   )
 
-  const createdCollectionCards = createdCollections.map((c) => ({
-    collection: {
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description ?? null,
-      isPublic: c.isPublic,
-      itemCount: c.itemCount,
-      forksCount: c.forksCount,
-      bookmarksCount: c.bookmarksCount,
-      owner: {
-        id: user.id,
-        username: user.username ?? user.userSlug,
-        displayName: user.displayName ?? user.userSlug,
-        avatarUrl: user.avatarUrl,
-      },
-    },
+  const collectionListData = createdCollections.map((c) => ({
+    id: c.id,
+    name: c.name,
+    itemCount: c.itemCount,
   }))
+
+  const pageTotal = pageCountResult[0]?.count ?? 0
+  const mcpTotal = mcpCountResult[0]?.count ?? 0
+  const skillTotal = skillCountResult[0]?.count ?? 0
 
   return (
     <div className="grid gap-4">
@@ -445,46 +594,22 @@ export default async function UserSlugPage({
           </div>
         }
         pages={
-          <>
-            <SectionHead title="公开页面" />
-            {pageCards.length === 0 ? (
-              <EmptyState tKey="community.noPages" fallback="暂无公开页面" />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {pageCards.map((item, i) => (
-                  <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
-                ))}
-              </div>
-            )}
-          </>
+          <ProfilePagesList
+            pages={pageContentItems}
+            total={pageTotal}
+            userSlug={user.userSlug}
+          />
         }
         likes={
-          <>
-            <SectionHead title="喜欢的页面" />
-            {likedCards.length === 0 ? (
-              <EmptyState tKey="community.noLikedPages" fallback="暂无喜欢的页面" />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {likedCards.map((item, i) => (
-                  <PageCard key={i} data={item.card} variant="default" href={item.href} />
-                ))}
-              </div>
-            )}
-          </>
-        }
-        favorites={
-          <>
-            <SectionHead title="收藏的页面" />
-            {favoritedCards.length === 0 ? (
-              <EmptyState tKey="community.noFavoritedPages" fallback="暂无收藏的页面" />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {favoritedCards.map((item, i) => (
-                  <PageCard key={i} data={item.card} variant="default" href={item.href} />
-                ))}
-              </div>
-            )}
-          </>
+          <ProfileLikesMerged
+            likedPages={likedContentItems}
+            bookmarkedPages={bookmarkedContentItems}
+            bookmarkedMcps={bookmarkedMcpData}
+            bookmarkedSkills={bookmarkedSkillData}
+            collections={collectionListData}
+            userSlug={user.userSlug}
+            isOwnProfile={isOwnProfile}
+          />
         }
         moments={
           feedCards.length === 0 ? (
@@ -497,25 +622,23 @@ export default async function UserSlugPage({
             </div>
           )
         }
-        collections={
-          <>
-            <SectionHead title="创建的合集" />
-            {createdCollectionCards.length === 0 ? (
-              <EmptyState tKey="community.noCollections" fallback="暂无创建的合集" />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {createdCollectionCards.map((item, i) => (
-                  <CollectionCard key={i} collection={item.collection} isOwner />
-                ))}
-              </div>
-            )}
-          </>
+        mcp={
+          <ProfileMcpList
+            mcps={mcpContentItems}
+            total={mcpTotal}
+          />
         }
-        pageCount={pageCountResult[0]?.count ?? 0}
-        likeCount={likedCards.length}
-        bookmarkCount={favoritedCards.length}
+        skills={
+          <ProfileSkillsList
+            skills={skillContentItems}
+            total={skillTotal}
+          />
+        }
+        pageCount={pageTotal}
+        likeCount={likedContentItems.length}
         momentCount={feedCards.length}
-        collectionCount={createdCollectionCards.length}
+        mcpCount={mcpTotal}
+        skillCount={skillTotal}
       />
     </div>
   )
