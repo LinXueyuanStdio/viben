@@ -770,6 +770,37 @@ export const publishedPagesRelations = relations(publishedPages, ({ one }) => ({
   }),
 }));
 
+// ============================================
+// Profile Pins — unified pin for pages/MCP/skills
+// ============================================
+
+export const profilePins = pgTable(
+  'profile_pins',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    entityType: text('entity_type', {
+      enum: ['page', 'mcp', 'skill'],
+    }).notNull(),
+    entityId: text('entity_id').notNull(),
+    position: integer('position').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('profile_pins_user_entity_idx').on(table.userId, table.entityType, table.entityId),
+    index('profile_pins_user_id_idx').on(table.userId),
+  ]
+);
+
+export const profilePinsRelations = relations(profilePins, ({ one }) => ({
+  user: one(users, {
+    fields: [profilePins.userId],
+    references: [users.id],
+  }),
+}));
+
 export const publishedPageVersions = pgTable(
   'published_page_versions',
   {
