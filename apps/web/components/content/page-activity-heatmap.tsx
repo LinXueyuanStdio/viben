@@ -81,11 +81,15 @@ export function PageActivityHeatmap({ data }: PageActivityHeatmapProps) {
   const leftPad = 28;
   const topPad = 14;
 
+  const svgWidth = leftPad + weeks.length * (cellSize + cellGap)
+  const svgHeight = topPad + 7 * (cellSize + cellGap) + 24
+
   return (
     <div className="overflow-x-auto">
       <svg
-        width={leftPad + weeks.length * (cellSize + cellGap)}
-        height={topPad + 7 * (cellSize + cellGap) + 24}
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        className="w-full"
+        preserveAspectRatio="xMinYMin meet"
       >
         {/* Month labels */}
         {monthLabels.map(({ weekIndex, label }) => (

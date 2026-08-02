@@ -678,7 +678,7 @@ export default async function UserSlugPage({
         <div className="min-w-0">
           <ProfileTabs
             overview={
-              <div className="space-y-4">
+              <div className="space-y-4 min-w-0">
                 {/* Profile README */}
               {readmePage && (
                 <section>
