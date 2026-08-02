@@ -1733,6 +1733,7 @@
       "backToProfile": "Back to Profile",
       "nav": {
         "profile": "Profile",
+        "account": "Account",
         "apiKeys": "API Keys"
       }
     },
@@ -1795,7 +1796,8 @@
       "confirmDesc": "This action cannot be undone. All your data will be permanently removed.",
       "deleteConfirm": "Delete my account",
       "deleted": "Account deleted",
-      "deleteFailed": "Failed to delete account"
+      "deleteFailed": "Failed to delete account",
+      "typeToConfirm": "Type <strong>{{username}}</strong> to confirm:"
     },
     "header": {
       "memberSince": "Member since {{date}}",

@@ -1732,6 +1732,7 @@
       "backToProfile": "返回个人资料",
       "nav": {
         "profile": "用户资料",
+        "account": "账户",
         "apiKeys": "API 密钥"
       }
     },
@@ -1794,7 +1795,8 @@
       "confirmDesc": "此操作不可撤销。你的所有数据将被永久删除。",
       "deleteConfirm": "删除我的账户",
       "deleted": "账户已删除",
-      "deleteFailed": "删除账户失败"
+      "deleteFailed": "删除账户失败",
+      "typeToConfirm": "输入 <strong>{{username}}</strong> 以确认："
     },
     "header": {
       "memberSince": "注册于 {{date}}",
