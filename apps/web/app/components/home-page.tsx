@@ -129,17 +129,17 @@ function Nav() {
           <span className="text-lg font-bold tracking-tight">Viben</span>
         </Link>
         <div className="flex items-center gap-1 text-sm">
-          <Link href="/mcp-market" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
-            {t('homepage.nav.mcpMarket')}
-          </Link>
-          <Link href="/skill-market" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
-            {t('homepage.nav.skills')}
-          </Link>
           <LanguageSwitcher />
           <a href="https://github.com/LinXueyuanStdio/viben" target="_blank" rel="noopener noreferrer"
-            className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 px-3 py-1.5 text-amber-300 transition-colors hover:bg-amber-300/10 hover:text-amber-200">
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 px-3 py-1.5 text-amber-300 transition-colors hover:bg-amber-300/10 hover:text-amber-200">
             <Github className="h-3.5 w-3.5" />GitHub
           </a>
+          <Link href="/login" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
+            {t('auth.signIn')}
+          </Link>
+          <Link href="/register" className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 px-3 py-1.5 text-amber-300 transition-colors hover:bg-amber-300/10 hover:text-amber-200">
+            {t('auth.signUp')}
+          </Link>
         </div>
       </div>
     </header>
@@ -192,13 +192,10 @@ export function HomePage() {
           <h1 className="mx-auto max-w-4xl text-balance text-4xl font-bold leading-tight text-white sm:text-6xl">{t('homepage.hero.title')}</h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">{t('homepage.hero.description')}</p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/mcp-market" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+            <Link href="/" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
               {t('homepage.hero.cta.getStarted')}<ArrowRight className="h-4 w-4" />
             </Link>
             <DownloadButton />
-            <Link href="/code-stats" className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
-              {t('homepage.hero.cta.viewStats')}<ChevronRight className="h-4 w-4" />
-            </Link>
           </div>
         </div>
       </section>
@@ -293,8 +290,8 @@ export function HomePage() {
             <p className="mt-2 text-zinc-300">{t('homepage.cta.description')}</p>
           </div>
           <div className="flex gap-3">
-            <Link href="/mcp-market" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
-              {t('homepage.cta.enterMarket')}<ArrowRight className="h-4 w-4" />
+            <Link href="/" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+              {t('homepage.hero.cta.getStarted')}<ArrowRight className="h-4 w-4" />
             </Link>
             <a href="https://github.com/LinXueyuanStdio/viben/tree/main/apps/docs" target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/10">
@@ -303,6 +300,42 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 bg-[#0b0b10]">
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <div className="grid gap-8 sm:grid-cols-3">
+            {/* 产品 */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-white">Viben</h3>
+              <p className="text-sm leading-relaxed text-zinc-400">
+                {t('homepage.hero.badge')}
+              </p>
+            </div>
+            {/* 链接 */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-white">{t('homepage.footer.links')}</h3>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><Link href="/code-stats" className="transition hover:text-zinc-200">{t('homepage.hero.cta.viewStats')}</Link></li>
+                <li><a href="https://github.com/LinXueyuanStdio/viben" target="_blank" rel="noopener noreferrer" className="transition hover:text-zinc-200">GitHub</a></li>
+                <li><Link href="/mcp-market" className="transition hover:text-zinc-200">{t('homepage.nav.mcpMarket')}</Link></li>
+                <li><Link href="/skill-market" className="transition hover:text-zinc-200">{t('homepage.nav.skills')}</Link></li>
+              </ul>
+            </div>
+            {/* 社区 */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-white">{t('homepage.footer.community')}</h3>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><a href="https://github.com/LinXueyuanStdio/viben/issues" target="_blank" rel="noopener noreferrer" className="transition hover:text-zinc-200">{t('homepage.footer.issues')}</a></li>
+                <li><a href="https://github.com/LinXueyuanStdio/viben/discussions" target="_blank" rel="noopener noreferrer" className="transition hover:text-zinc-200">{t('homepage.footer.discussions')}</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-10 border-t border-white/5 pt-6 text-center text-xs text-zinc-500">
+            {t('homepage.footer.copyright', { year: new Date().getFullYear() })}
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

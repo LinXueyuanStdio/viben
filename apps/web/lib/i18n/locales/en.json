@@ -1730,7 +1730,11 @@
     "settings": {
       "title": "Profile Settings",
       "description": "Manage your account settings and preferences",
-      "backToProfile": "Back to Profile"
+      "backToProfile": "Back to Profile",
+      "nav": {
+        "profile": "Profile",
+        "apiKeys": "API Keys"
+      }
     },
     "form": {
       "username": "Username",
@@ -1780,7 +1784,9 @@
       "mismatch": "Passwords do not match",
       "changed": "Password changed successfully",
       "changeFailed": "Failed to change password",
-      "incorrectCurrent": "Current password is incorrect"
+      "incorrectCurrent": "Current password is incorrect",
+      "oauthDesc": "Your account uses third-party login and has no password yet. Set a password to enable email and password login.",
+      "setPassword": "Set password"
     },
     "danger": {
       "deleteAccount": "Delete Account",
@@ -2034,6 +2040,13 @@
       "description": "Start today and turn multi-agent collaboration into stable team productivity.",
       "enterMarket": "Enter MCP Market",
       "readDocs": "Read Documentation"
+    },
+    "footer": {
+      "links": "Links",
+      "community": "Community",
+      "issues": "Issues",
+      "discussions": "Discussions",
+      "copyright": "© {{year}} Viben. Built by LinXueyuanStdio."
     },
     "demo": {
       "title": "Task Orchestration Demo",

@@ -1729,7 +1729,11 @@
     "settings": {
       "title": "个人资料设置",
       "description": "管理您的账户设置和偏好",
-      "backToProfile": "返回个人资料"
+      "backToProfile": "返回个人资料",
+      "nav": {
+        "profile": "用户资料",
+        "apiKeys": "API 密钥"
+      }
     },
     "form": {
       "username": "用户名",
@@ -1779,7 +1783,9 @@
       "mismatch": "两次输入的密码不一致",
       "changed": "密码修改成功",
       "changeFailed": "密码修改失败",
-      "incorrectCurrent": "当前密码不正确"
+      "incorrectCurrent": "当前密码不正确",
+      "oauthDesc": "你的账户通过第三方登录，尚未设置密码。设置密码后可使用邮箱和密码登录。",
+      "setPassword": "设置密码"
     },
     "danger": {
       "deleteAccount": "删除账户",
@@ -2058,6 +2064,13 @@
       "description": "从今天开始，把多智能体协作变成团队稳定产能。",
       "enterMarket": "进入 MCP 市场",
       "readDocs": "阅读文档"
+    },
+    "footer": {
+      "links": "链接",
+      "community": "社区",
+      "issues": "问题反馈",
+      "discussions": "讨论区",
+      "copyright": "© {{year}} Viben，由 LinXueyuanStdio 构建。"
     },
     "demo": {
       "title": "任务编排 Demo",
