@@ -71,6 +71,7 @@ import { PagePreview } from "./components";
 import type { PageViewMode } from "./components/page-preview";
 import { usePage } from "@/hooks/use-pages";
 import { toast } from "@/hooks/use-toast";
+import { WindowControls } from "@/components/global-tab-bar/window-controls";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import { useTheme } from "@/hooks/use-theme";
 import { useChatList } from "@/hooks/use-workspace-resources";
@@ -1323,6 +1324,7 @@ function PagePreviewWindowTabBar({
                 />
               </>
             }
+            windowControls={<WindowControls />}
             rightControls={
               <>
                 <BrowserTabFrameIconButton
