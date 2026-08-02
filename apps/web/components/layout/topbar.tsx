@@ -164,11 +164,11 @@ export function Topbar({
       className={cn(
         "top-0 z-50 h-[var(--nav-h)] border-b border-border transition-transform duration-[220ms] ease-out",
         isRead
-          ? "fixed left-0 bg-background/68 backdrop-blur-[18px] saturate-[1.18] border-border/52"
+          ? "fixed left-0 right-0 bg-background/68 backdrop-blur-[18px] saturate-[1.18] border-border/52"
           : "sticky bg-background/88 backdrop-blur-[14px]",
         immersive && "-translate-y-full"
       )}
-      style={isRead ? { right: drawerOpen ? "var(--drawer-w, 420px)" : 0 } : undefined}
+      style={isRead && !isMobile ? { right: drawerOpen ? "var(--drawer-w, 420px)" : 0 } : undefined}
     >
       <div
         className={cn(

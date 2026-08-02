@@ -72,19 +72,21 @@ function Body({
         open={sidebarOpen}
         onClose={onClose}
       />
-      {/* Drawer slot — portal target, width syncs with drawer open state */}
-      <div
-        id="viben-drawer-slot"
-        className="absolute right-0 top-0 bottom-0 z-50 transition-[width] duration-[220ms] ease-out"
-        style={{ width: drawerOpen ? "var(--drawer-w, 420px)" : 0 }}
-      />
+      {/* Drawer slot — portal target for desktop right panel, pure overlay */}
+      {!isMobile && (
+        <div
+          id="viben-drawer-slot"
+          className="absolute right-0 top-0 bottom-0 z-50 transition-[width] duration-[220ms] ease-out"
+          style={{ width: drawerOpen ? "var(--drawer-w, 420px)" : 0 }}
+        />
+      )}
 
       <main
         className={cn(
           "h-full",
           "transition-[margin] duration-[220ms] ease-out",
           desktopSidebarVisible && "ml-[var(--sidebar-w)]",
-          isRead && drawerOpen && "mr-[var(--drawer-w,420px)]",
+          isRead && !isMobile && drawerOpen && "mr-[var(--drawer-w,420px)]",
           isRead ? "overflow-hidden" : "overflow-y-auto"
         )}
       >
