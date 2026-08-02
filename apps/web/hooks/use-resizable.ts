@@ -16,7 +16,7 @@ interface UseResizableOptions {
 
 interface UseResizableReturn {
   handleProps: {
-    onMouseDown: (e: React.MouseEvent) => void
+    onPointerDown: (e: React.PointerEvent) => void
     className: string
   }
   isDragging: boolean
@@ -45,20 +45,17 @@ export function useResizable({
           widthRef.current = val
         }
       }
-    } catch {
-      // localStorage unavailable
-    }
+    } catch { /* localStorage unavailable */ }
     document.documentElement.style.setProperty(cssVar, `${widthRef.current}px`)
   }, [cssVar, storageKey, minWidth, maxWidth])
 
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      const el = e.currentTarget as HTMLElement
+      el.setPointerCapture(e.pointerId)
       startXRef.current = e.clientX
       startWidthRef.current = widthRef.current
       setIsDragging(true)
-
-      // Prevent text selection during drag
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
     },
@@ -68,45 +65,37 @@ export function useResizable({
   useEffect(() => {
     if (!isDragging) return
 
-    const onMouseMove = (e: MouseEvent) => {
+    const onPointerMove = (e: PointerEvent) => {
       const delta = e.clientX - startXRef.current
-      // direction 'right': drag right → wider; 'left': drag left → wider
       const newWidth =
         direction === "right"
           ? startWidthRef.current + delta
           : startWidthRef.current - delta
-
       const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth))
       widthRef.current = clamped
       document.documentElement.style.setProperty(cssVar, `${clamped}px`)
     }
 
-    const onMouseUp = () => {
+    const onPointerUp = () => {
       setIsDragging(false)
       document.body.style.userSelect = ""
       document.body.style.cursor = ""
-
-      // Persist to localStorage
-      try {
-        localStorage.setItem(storageKey, String(widthRef.current))
-      } catch {
-        // localStorage unavailable
-      }
+      try { localStorage.setItem(storageKey, String(widthRef.current)) } catch { /* */ }
     }
 
-    window.addEventListener("mousemove", onMouseMove)
-    window.addEventListener("mouseup", onMouseUp)
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointerup", onPointerUp)
     return () => {
-      window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("mouseup", onMouseUp)
+      window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("pointerup", onPointerUp)
     }
   }, [isDragging, cssVar, storageKey, minWidth, maxWidth, direction])
 
   return {
     handleProps: {
-      onMouseDown,
+      onPointerDown,
       className: isDragging
-        ? "bg-primary/40"
+        ? "bg-primary/40 touch-none"
         : "hover:bg-primary/20",
     },
     isDragging,

@@ -7,6 +7,7 @@ import dynamic from "next/dynamic"
 import { cn } from "@/lib/utils/index"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { useDrawer } from "./drawer-context"
+import { useResizable } from "@/hooks/use-resizable"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,6 +213,16 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
   const { open, setOpen } = useDrawer()
   const [activeTab, setActiveTab] = React.useState(defaultTab || "comments")
 
+  // Resizable drawer width (desktop only)
+  const { handleProps, isDragging } = useResizable({
+    cssVar: "--drawer-w",
+    storageKey: "viben-drawer-w",
+    minWidth: 280,
+    maxWidth: 600,
+    defaultWidth: 420,
+    direction: "left",
+  })
+
   // Desktop: auto-open drawer on mount
   React.useEffect(() => {
     if (!isMobile) {
@@ -270,21 +281,29 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
     )
   }
 
-  // Desktop: embedded
+  // Desktop: embedded full-height, z-51 sits above header (z-50)
   return (
     <div
       className={cn(
-        "shrink-0 border-l border-border bg-background",
-        "transition-[width] duration-[220ms] ease-out",
+        "shrink-0 border-l border-border bg-background relative z-[51]",
         "grid grid-rows-[auto_1fr]",
         open ? "w-[var(--drawer-w,420px)]" : "w-0 overflow-hidden border-l-0"
       )}
       style={{
         willChange: "width",
-        paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
-        transition: "width 220ms ease-out, padding-top 180ms ease",
+        transition: !isDragging ? "width 220ms ease-out" : "none",
       }}
     >
+      {/* Resize handle — left edge */}
+      {open && (
+        <div
+          {...handleProps}
+          className={cn(
+            "absolute left-0 top-0 bottom-0 w-[5px] cursor-col-resize transition-colors z-10",
+            handleProps.className
+          )}
+        />
+      )}
       <DrawerHeader
         tabs={tabs}
         activeTab={activeTab}
