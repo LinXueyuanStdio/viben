@@ -202,7 +202,13 @@ export function DesktopBreadcrumbBar({
           segment.onClick();
           return;
         }
-        if (!isCurrent && stackIndex >= 0) {
+        // Current segment is a no-op for navigation — the PopoverTrigger
+        // (BreadcrumbDropdown) already handles opening/closing the dropdown
+        // on click via Radix UI's built-in trigger behavior.
+        if (isCurrent) {
+          return;
+        }
+        if (stackIndex >= 0) {
           popToBreadcrumb(stackIndex);
           return;
         }
