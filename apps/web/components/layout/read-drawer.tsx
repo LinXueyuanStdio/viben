@@ -2,12 +2,19 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
-import { ArrowRight } from "lucide-react"
+import { Maximize2, Flag, MessageSquare, MoreHorizontal } from "lucide-react"
 import dynamic from "next/dynamic"
 import { cn } from "@/lib/utils/index"
-import { IconButton } from "@/components/ui/icon-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { useDrawer } from "./drawer-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { trackAnalytics } from "@/lib/analytics/track"
+import { trackEngagement } from "@/lib/analytics/behavior"
 import type { PageMetaData } from "@/components/content/page-meta"
 import type { CommunityComment } from "@/components/content/comments-panel"
 
@@ -34,6 +41,14 @@ const LazyCommentsPanel = dynamic(
 const LazyNotesPanel = dynamic(
   () => import("@/components/content/notes-panel").then((m) => ({ default: m.NotesPanel })),
   { loading: () => loadingSkeleton },
+)
+
+const ReportDialog = dynamic(
+  () => import("@/components/content/report-dialog").then(m => ({ default: m.ReportDialog })),
+)
+
+const FeedbackDialog = dynamic(
+  () => import("@/components/content/feedback-dialog").then(m => ({ default: m.FeedbackDialog })),
 )
 
 // --- Typed tab interfaces ---
@@ -101,87 +116,95 @@ function TabContent({ tab }: { tab: ReadDrawerTab }) {
 interface ReadDrawerProps {
   tabs: ReadDrawerTab[]
   defaultTab?: string
+  pageId?: string
+  userSlug?: string
 }
 
-export function ReadDrawer({ tabs, defaultTab }: ReadDrawerProps) {
+export function ReadDrawer({ tabs, defaultTab, pageId, userSlug }: ReadDrawerProps) {
   const { t } = useTranslation()
-  const { open, setOpen } = useDrawer()
-  const [activeTab, setActiveTab] = React.useState(defaultTab || tabs[0]?.value || "")
+  const { open, setOpen, setImmersive } = useDrawer()
+  const [activeTab, setActiveTab] = React.useState(defaultTab || "comments")
 
-  // Escape key + body scroll lock
-  React.useEffect(() => {
-    if (!open) return
-    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false) }
-    document.body.style.overflow = "hidden"
-    window.addEventListener("keydown", handleKey)
-    return () => {
-      document.body.style.overflow = ""
-      window.removeEventListener("keydown", handleKey)
-    }
-  }, [open, setOpen])
+  const [moreOpen, setMoreOpen] = React.useState(false)
+  const [reportOpen, setReportOpen] = React.useState(false)
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
 
   return (
-    <>
-      {/* Backdrop — always rendered, opacity transition */}
-      <div
-        className={cn(
-          "fixed inset-0 z-30 transition-opacity duration-180",
-          open ? "opacity-100 pointer-events-auto bg-black/15 dark:bg-black/30" : "opacity-0 pointer-events-none"
-        )}
-        style={{ top: "var(--nav-h, 56px)" }}
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-      />
+    <div
+      className={cn(
+        "shrink-0 border-l border-border bg-background",
+        "transition-[width] duration-[220ms] ease-out",
+        "grid grid-rows-[auto_1fr]",
+        open ? "w-[var(--drawer-w,420px)]" : "w-0 overflow-hidden border-l-0"
+      )}
+      style={{
+        willChange: "width",
+        paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
+        transition: "width 220ms ease-out, padding-top 180ms ease",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2.5 h-[58px] px-3 border-b border-border overflow-hidden whitespace-nowrap">
+        <VibenTabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <VibenTabsList variant="drawer">
+            {tabs.map((tab) => (
+              <VibenTabsTrigger key={tab.value} value={tab.value} variant="drawer">
+                {tab.label}
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className="ml-1 text-xs text-muted-foreground">{tab.badge}</span>
+                )}
+              </VibenTabsTrigger>
+            ))}
+          </VibenTabsList>
+        </VibenTabs>
 
-      {/* Drawer — always rendered, transform transition */}
-      <div
-        className={cn(
-          "fixed right-0 z-30",
-          "w-[min(420px,calc(100vw-22px))]",
-          "grid grid-rows-[auto_1fr]",
-          "border-l border-border",
-          "bg-background/96 backdrop-blur-[16px]",
-          "shadow-[-18px_0_36px_rgba(8,91,117,0.14)] dark:shadow-[-18px_0_36px_rgba(0,0,0,0.3)]",
-          "transition-transform duration-[220ms] ease-out",
-          open ? "translate-x-0" : "translate-x-[104%]"
-        )}
-        style={{
-          top: "var(--nav-h, 56px)",
-          height: "calc(100vh - var(--nav-h, 56px))",
-          willChange: "transform",
-        }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2.5 h-[58px] px-3 border-b border-border">
-          <VibenTabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-            <VibenTabsList variant="drawer">
-              {tabs.map((tab) => (
-                <VibenTabsTrigger key={tab.value} value={tab.value} variant="drawer">
-                  {tab.label}
-                  {tab.badge !== undefined && tab.badge > 0 && (
-                    <span className="ml-1 text-xs text-muted-foreground">{tab.badge}</span>
-                  )}
-                </VibenTabsTrigger>
-              ))}
-            </VibenTabsList>
-          </VibenTabs>
-          <IconButton size="compact" label={t("community.closeDrawer")} onClick={() => setOpen(false)}>
-            <ArrowRight className="h-[18px] w-[18px]" />
-          </IconButton>
-        </div>
-
-        {/* Content — always rendered, visibility via CSS */}
-        <div className="overflow-auto p-3">
-          {tabs.map((tab) => (
-            <div
-              key={tab.value}
-              className={cn(activeTab === tab.value ? "grid gap-3" : "hidden")}
+        {/* More menu */}
+        <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
+              aria-label={t("community.moreActions")}
             >
-              <TabContent tab={tab} />
-            </div>
-          ))}
-        </div>
+              <MoreHorizontal className="h-[18px] w-[18px]" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => {
+              setImmersive(true)
+              trackAnalytics("immersive_enter")
+              trackEngagement("immersive_toggle", { action: "enter" })
+              setMoreOpen(false)
+            }}>
+              <Maximize2 className="mr-2 h-4 w-4 shrink-0" />
+              {t("community.immersiveReading")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setMoreOpen(false); setReportOpen(true) }}>
+              <Flag className="mr-2 h-4 w-4 shrink-0" />
+              {t("community.report")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setMoreOpen(false); setFeedbackOpen(true) }}>
+              <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
+              {t("community.feedback")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </>
+
+      {/* Content */}
+      <div className="overflow-auto p-3">
+        {tabs.map((tab) => (
+          <div
+            key={tab.value}
+            className={cn(activeTab === tab.value ? "grid gap-3" : "hidden")}
+          >
+            <TabContent tab={tab} />
+          </div>
+        ))}
+      </div>
+
+      {/* Dialogs */}
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} entityType="published_page" entityId={pageId ?? ""} />
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} pageId={pageId ?? ""} />
+    </div>
   )
 }

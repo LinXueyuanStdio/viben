@@ -24,7 +24,6 @@ import { HistoryPopover } from "./history-popover"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { UserMenu } from "./user-menu"
 import { CreateDropdown } from "./create-dropdown"
-import { ReadMoreMenu } from "@/components/pages/read-more-menu"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,7 +75,7 @@ export function Topbar({
   const searchParams = useSearchParams()
   const router = useRouter()
   const mode = getTopbarMode(pathname)
-  const { toggle: toggleDrawer } = useDrawer()
+  const { toggle: toggleDrawer, immersive, setImmersive } = useDrawer()
   const { sidebarOpen, closeSidebar } = useAppShell()
 
   // URL 同步判定阅读模式（0ms，不等任何异步数据）
@@ -91,8 +90,6 @@ export function Topbar({
 
   const [pageMeta] = React.useState(() => getPageMeta())
   const hasSidePage = pageMeta?.hasSidePage ?? false
-
-  const [immersive, setImmersive] = React.useState(false)
 
   // 移动端阅读模式 "更多" 下拉中的举报/反馈弹窗状态
   const [mobileMoreOpen, setMobileMoreOpen] = React.useState(false)
@@ -321,8 +318,19 @@ export function Topbar({
                   <FeedbackDialog open={mobileFeedbackOpen} onOpenChange={setMobileFeedbackOpen} pageId={urlPageId ?? ""} />
                 </>
               ) : (
-                // 桌面端阅读模式 — 三个独立按钮
+                // 桌面端阅读模式 — 创建/动态/通知/历史/头像 + 展开侧栏
                 <>
+                  {session ? (
+                    <>
+                      <CreateDropdown />
+                      <MomentPopover />
+                      <NotificationPopover />
+                      <HistoryPopover />
+                      <UserMenu session={session} />
+                    </>
+                  ) : (
+                    <HeaderAuthButtons />
+                  )}
                   <button
                     className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
                     aria-label={t("community.expandDetails")}
@@ -330,14 +338,6 @@ export function Topbar({
                   >
                     <PanelRight className="h-4 w-4" />
                   </button>
-                  <button
-                    className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
-                    aria-label={t("community.immersiveReading")}
-                    onClick={() => { setImmersive(true); trackAnalytics("immersive_enter") }}
-                  >
-                    <Maximize2 className="h-4 w-4" />
-                  </button>
-                  <ReadMoreMenu pageId={urlPageId ?? ""} userSlug={urlUserSlug ?? ""} />
                 </>
               )
             )

@@ -281,73 +281,75 @@ export function ReadPageClient({
 
   return (
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
-      <ReadDrawer
-        tabs={[
-          { value: "details", label: t("community.read"), type: "meta" as const, pageMeta, currentUserSlug: sessionUserSlug },
-          { value: "comments", label: t("community.comments"), badge: pageCommentCount, type: "comments" as const, communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialNextCursor: initialCommentsNextCursor },
-          { value: "notes", label: t("community.notes"), type: "notes" as const, pageId: pageUid },
-        ]}
-        defaultTab={activeTab === "settings" && isAuthor ? "details" : "details"}
-      />
-
-      {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
-      {activeTab === "settings" && isAuthor ? (
-        <div
-          className="w-full overflow-auto"
-          style={{
-            height: "100vh",
-            paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
-            transition: "padding-top 180ms ease",
-          }}
-        >
-          <div className="max-w-2xl mx-auto px-4 py-8">
-            <LazyPageSettingsPanel
-              userSlug={userSlug}
-              pageId={pageId}
-              pageTitle={pageTitle}
-              pageDescription={pageDescription ?? ""}
-              pageUid={pageUid}
-              pageTags={pageTags}
-              pageVisibility={pageVisibility}
-              pagePublishedAt={pagePublishedAt}
-              pageHtml={pageHtml}
-              pageViewCount={pageViewCount}
-              pageLikeCount={pageLikeCount}
-              pageCommentCount={pageCommentCount}
-              pageSeoTitle={pageSeoTitle}
-              pageSeoDescription={pageSeoDescription}
-              pageSeoKeywords={pageSeoKeywords}
-              pageIsDiscoverable={pageIsDiscoverable}
-              pageDbId={pageDbId}
+      <div className="flex h-full">
+        {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
+        {activeTab === "settings" && isAuthor ? (
+          <div
+            className="flex-1 min-w-0 overflow-auto"
+            style={{
+              paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
+              transition: "padding-top 180ms ease",
+            }}
+          >
+            <div className="max-w-2xl mx-auto px-4 py-8">
+              <LazyPageSettingsPanel
+                userSlug={userSlug}
+                pageId={pageId}
+                pageTitle={pageTitle}
+                pageDescription={pageDescription ?? ""}
+                pageUid={pageUid}
+                pageTags={pageTags}
+                pageVisibility={pageVisibility}
+                pagePublishedAt={pagePublishedAt}
+                pageHtml={pageHtml}
+                pageViewCount={pageViewCount}
+                pageLikeCount={pageLikeCount}
+                pageCommentCount={pageCommentCount}
+                pageSeoTitle={pageSeoTitle}
+                pageSeoDescription={pageSeoDescription}
+                pageSeoKeywords={pageSeoKeywords}
+                pageIsDiscoverable={pageIsDiscoverable}
+                pageDbId={pageDbId}
+              />
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex-1 min-w-0 bg-white dark:bg-[#0a0a0a] overflow-x-hidden"
+            style={{
+              paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
+              transition: "padding-top 180ms ease",
+            }}
+          >
+            <iframe
+              title={pageTitle}
+              srcDoc={wrappedHtml}
+              onLoad={() => {
+                // iframe 加载后触发 topbar 重测 --reader-header-safe
+                window.dispatchEvent(new Event("resize"))
+              }}
+              sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+              className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
+              style={{
+                height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+                minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+                transition: "height 180ms ease, min-height 180ms ease",
+              }}
             />
           </div>
-        </div>
-      ) : (
-        <div
-          className="w-full bg-white dark:bg-[#0a0a0a] overflow-x-hidden"
-          style={{
-            height: "100vh",
-            paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
-            transition: "padding-top 180ms ease",
-          }}
-        >
-          <iframe
-            title={pageTitle}
-            srcDoc={wrappedHtml}
-            onLoad={() => {
-              // iframe 加载后触发 topbar 重测 --reader-header-safe
-              window.dispatchEvent(new Event("resize"))
-            }}
-            sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-            className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
-            style={{
-              height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
-              minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
-              transition: "height 180ms ease, min-height 180ms ease",
-            }}
-          />
-        </div>
-      )}
+        )}
+
+        <ReadDrawer
+          tabs={[
+            { value: "details", label: t("community.read"), type: "meta" as const, pageMeta, currentUserSlug: sessionUserSlug },
+            { value: "comments", label: t("community.comments"), badge: pageCommentCount, type: "comments" as const, communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialNextCursor: initialCommentsNextCursor },
+            { value: "notes", label: t("community.notes"), type: "notes" as const, pageId: pageUid },
+          ]}
+          defaultTab={activeTab === "settings" && isAuthor ? "details" : "comments"}
+          pageId={pageId}
+          userSlug={userSlug}
+        />
+      </div>
     </BreadcrumbDynamicContext.Provider>
   )
 }
