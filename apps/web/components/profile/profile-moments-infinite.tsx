@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useTranslation } from "react-i18next"
 import { FeedCard } from "@/components/content/feed-card"
 import { SectionHead } from "@/components/content/section-head"
 import { mapMomentRowToFeedCard, type MomentAttachmentData } from "@/lib/services/moment-mapper"
@@ -25,6 +26,7 @@ export function ProfileMomentsInfinite({
   initialMoments, initialAttachments, initialCursor,
   session,
 }: ProfileMomentsInfiniteProps) {
+  const { t } = useTranslation()
   const [moments, setMoments] = useState<MomentRow[]>(initialMoments)
   const [attachments, setAttachments] = useState<Map<string, MomentAttachmentData[]>>(initialAttachments)
   const [cursor, setCursor] = useState<string | null>(initialCursor)
@@ -84,7 +86,7 @@ export function ProfileMomentsInfinite({
 
   return (
     <section>
-      <SectionHead title="最近动态" />
+      <SectionHead title={t("profile.moments.recentActivity")} />
       <div className="grid gap-2">
         {feedCards.map((feed, i) => (
           <FeedCard key={i} data={feed} variant="rich" session={session} />

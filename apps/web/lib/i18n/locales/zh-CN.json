@@ -1867,6 +1867,31 @@
         "failedToCreate": "创建 API 密钥失败",
         "failedToDelete": "删除 API 密钥失败"
       }
+    },
+    "pinned": {
+      "title": "置顶",
+      "customize": "自定义你的置顶",
+      "emptyGuide": "选择最多六个项目——页面、MCP 或技能——展示在你的个人资料上。",
+      "editTitle": "编辑置顶项",
+      "editSubtitle": "选择最多六个公开页面、MCP、技能展示给所有人。",
+      "search": "搜索...",
+      "remaining": "{{count}} remaining",
+      "typePage": "页面",
+      "typeMcp": "MCP",
+      "typeSkill": "技能",
+      "sectionPages": "Pages",
+      "sectionMcp": "MCP",
+      "sectionSkills": "Skills",
+      "noItems": "未找到项目",
+      "save": "保存置顶项",
+      "saving": "保存中...",
+      "saved": "置顶项已保存",
+      "saveFailed": "保存失败",
+      "loadFailed": "加载可置顶项失败",
+      "reorderFailed": "排序保存失败"
+    },
+    "moments": {
+      "recentActivity": "最近动态"
     }
   },
   "workspaceSettings": {
