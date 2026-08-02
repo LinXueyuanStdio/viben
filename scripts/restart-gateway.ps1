@@ -5,15 +5,26 @@
 #
 # Usage: .\scripts\restart-gateway.ps1 [-Force]
 #
-#   -Force   Pass --force to `viben gateway restart`
+#   -Force   Pass --force to `viben gateway restart` AND to build-deps.ps1
 #
 # Log files (in %USERPROFILE%\.viben\logs\):
-#   gateway.log          - Gateway runtime output
+#   gateway.log          - Gateway runtime stdout
+#   gateway-error.log    - Gateway runtime stderr
 #   gateway-restart.log  - Restart script operations log
 
 param(
     [switch]$Force
 )
+
+# PS 5.1 encoding: aggressively switch to UTF-8 for emoji/CJK display
+# Must run BEFORE any console output (including Write-Host)
+if ($PSVersionTable.PSVersion.Major -lt 6) {
+    $utf8 = New-Object System.Text.UTF8Encoding $true
+    [Console]::OutputEncoding = $utf8
+    [Console]::InputEncoding = $utf8
+    $OutputEncoding = $utf8
+    try { & chcp 65001 >$null 2>&1 } catch { }
+}
 
 $ErrorActionPreference = "Continue"
 
@@ -23,6 +34,7 @@ $CoreDir     = Join-Path $ProjectRoot "packages\core"
 $CliDir      = Join-Path $ProjectRoot "apps\cli"
 $LogDir      = Join-Path $env:USERPROFILE ".viben\logs"
 $RuntimeLog  = Join-Path $LogDir "gateway.log"
+$ErrorLog    = Join-Path $LogDir "gateway-error.log"
 $RestartLog  = Join-Path $LogDir "gateway-restart.log"
 $Port        = 18790
 $MaxLogSize  = 10 * 1024 * 1024  # 10MB
@@ -43,7 +55,6 @@ function Write-Log {
     Add-Content -Path $RestartLog -Value $line -Encoding UTF8
 }
 
-# Log rotation function
 function Rotate-LogIfNeeded {
     param([string]$LogFile)
     if (Test-Path $LogFile) {
@@ -56,80 +67,94 @@ function Rotate-LogIfNeeded {
     }
 }
 
-# Rotate logs if needed
+# ============================================================
+# Rotate logs
+# ============================================================
 Rotate-LogIfNeeded $RestartLog
 Rotate-LogIfNeeded $RuntimeLog
+Rotate-LogIfNeeded $ErrorLog
 
 Add-Content -Path $RestartLog -Value "" -Encoding UTF8
 Write-Log "INFO" "=========================================="
 Write-Log "INFO" "=== Viben Gateway Restart Started ==="
 Write-Log "INFO" "=========================================="
 Write-Log "DEBUG" "System: Windows $([System.Environment]::OSVersion.Version)"
-Write-Log "DEBUG" "Node version: $(node --version 2>$null)"
+Write-Log "DEBUG" "Node version: $(node --version 2>&1)"
 Write-Log "DEBUG" "Working directory: $ProjectRoot"
 
-# -------------------------------------------------------
-# Build core package, CLI package, and re-link CLI
-# -------------------------------------------------------
+# ============================================================
+# Build dependencies and core package
+# ============================================================
 Write-Log "INFO" "Building @viben/core workspace dependencies..."
-Set-Location $ProjectRoot
 
-# Build dependencies for core package
-$packagesDir = Join-Path $ProjectRoot "packages"
-$corePkgJson = Get-Content (Join-Path $CoreDir "package.json") | ConvertFrom-Json
-$allDeps = @{}
-if ($corePkgJson.dependencies) { $corePkgJson.dependencies.PSObject.Properties | ForEach-Object { $allDeps[$_.Name] = $_.Value } }
-if ($corePkgJson.devDependencies) { $corePkgJson.devDependencies.PSObject.Properties | ForEach-Object { $allDeps[$_.Name] = $_.Value } }
+# Use build-deps.ps1 for recursive dependency resolution (mirrors build-deps.sh)
+$buildDepsScript = Join-Path $ScriptDir "build-deps.ps1"
 
-# Build @viben/* workspace deps
-$vibenDeps = $allDeps.Keys | Where-Object { $_ -like "@viben/*" -and $allDeps[$_] -like "workspace:*" }
-foreach ($dep in $vibenDeps) {
-    $depName = $dep -replace "@viben/", ""
-    $depDir = Join-Path $packagesDir $depName
-    if (Test-Path $depDir) {
-        $distDir = Join-Path $depDir "dist"
-        if (-not (Test-Path $distDir)) {
-            Write-Log "INFO" "  Building $dep..."
-            $buildOutput = & pnpm --filter $dep build 2>&1
-            $buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
-        } else {
-            Write-Log "INFO" "  $dep (dist/ exists)"
-        }
-    }
+# Run in-process to avoid sub-process encoding issues on PS 5.1
+$depsArgs = @($CoreDir)
+if ($Force) { $depsArgs += "-Force" }
+# Capture output: stdout (Write-Output) + stderr (Write-Error) for logging
+$buildDepsOutput = & $buildDepsScript @depsArgs 2>&1
+$buildDepsOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
+# Show summary lines to console (filter noise from build sub-processes)
+$buildDepsOutput | Where-Object { $_ -match "^\s*(📦|✓|✅|Usage|error|Error|FAIL)" } | ForEach-Object { Write-Host $_ }
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Log "ERROR" "Failed to build @viben/core dependencies (exit code $LASTEXITCODE)"
+    exit 1
 }
 
 # Always rebuild core itself (gateway needs latest code)
 Write-Log "INFO" "Rebuilding @viben/core..."
-Set-Location $CoreDir
-$buildOutput = & pnpm build 2>&1
-$buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
-$buildOutput | Where-Object { $_ -match "(✓|📦|error|Error|warning|Warning)" } | Write-Host
-if ($LASTEXITCODE -ne 0) {
-    Write-Log "ERROR" "Failed to build @viben/core (exit code $LASTEXITCODE)"
-    exit 1
-} else {
+Push-Location $CoreDir
+try {
+    $buildOutput = & pnpm build 2>&1
+    $buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "ERROR" "Failed to build @viben/core (exit code $LASTEXITCODE)"
+        Write-Log "ERROR" "Last 30 lines of build output:"
+        $buildOutput | Select-Object -Last 30 | ForEach-Object { Write-Host $_ }
+        exit 1
+    }
+    # Show summary on success (warnings only, to keep output clean)
+    $buildOutput | Where-Object { $_ -match "(✓|📦|error|Error|warning|Warning)" } | Write-Host
     Write-Log "INFO" "Build successful"
+}
+finally {
+    Pop-Location
 }
 
 Write-Log "INFO" "Building viben CLI..."
-Set-Location $CliDir
-$buildOutput = & pnpm build 2>&1
-$buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
-if ($LASTEXITCODE -ne 0) {
-    Write-Log "ERROR" "Failed to build viben CLI (exit code $LASTEXITCODE)"
-    exit 1
+Push-Location $CliDir
+try {
+    $buildOutput = & pnpm build 2>&1
+    $buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "ERROR" "Failed to build viben CLI (exit code $LASTEXITCODE)"
+        Write-Log "ERROR" "Last 30 lines of build output:"
+        $buildOutput | Select-Object -Last 30 | ForEach-Object { Write-Host $_ }
+        exit 1
+    }
+    Write-Log "INFO" "CLI build successful"
 }
-Write-Log "INFO" "CLI build successful"
+finally {
+    Pop-Location
+}
 
 # npm link (non-fatal)
 Write-Log "INFO" "Linking viben CLI..."
-Set-Location $CliDir
-& npm link 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) { Write-Log "WARN" "npm link failed (non-fatal)" }
+Push-Location $CliDir
+try {
+    & npm link 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Log "WARN" "npm link failed (non-fatal)" }
+}
+finally {
+    Pop-Location
+}
 
-# -------------------------------------------------------
-# Stop existing gateway processes on port $Port
-# -------------------------------------------------------
+# ============================================================
+# Stop existing gateway processes
+# ============================================================
 Write-Log "INFO" "Stopping existing gateway processes..."
 
 function Stop-MatchingProcesses {
@@ -145,7 +170,8 @@ function Stop-MatchingProcesses {
             Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
         }
         Start-Sleep -Milliseconds 500
-    } else {
+    }
+    else {
         Write-Log "DEBUG" $EmptyMessage
     }
 }
@@ -173,10 +199,9 @@ if ($stillBusy) {
 }
 Write-Log "INFO" "Port $Port is free"
 
-# -------------------------------------------------------
+# ============================================================
 # Start gateway
-# -------------------------------------------------------
-Set-Location $CliDir
+# ============================================================
 $cliBin = Join-Path $CliDir "dist\index.js"
 if (-not (Test-Path $cliBin)) {
     Write-Log "ERROR" "CLI binary not found after build: $cliBin"
@@ -189,14 +214,21 @@ if ($Force) { $nodeArgs += "--force" }
 Write-Log "INFO" "Starting Node.js gateway on port $Port...$(if ($Force) { ' (force mode)' })"
 Write-Log "DEBUG" "Command: node $($nodeArgs -join ' ')"
 
-# Clear runtime log
+# Clear previous runtime logs
 Set-Content -Path $RuntimeLog -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Gateway starting..." -Encoding UTF8
+Set-Content -Path $ErrorLog -Value "" -Encoding UTF8
 
-Start-Process -FilePath "node" -ArgumentList $nodeArgs -WorkingDirectory $CliDir -WindowStyle Hidden
+# Start gateway with stdout → gateway.log, stderr → gateway-error.log
+Start-Process -FilePath "node" `
+    -ArgumentList $nodeArgs `
+    -WorkingDirectory $CliDir `
+    -WindowStyle Hidden `
+    -RedirectStandardOutput $RuntimeLog `
+    -RedirectStandardError $ErrorLog
 
-# -------------------------------------------------------
+# ============================================================
 # Wait for gateway health endpoint
-# -------------------------------------------------------
+# ============================================================
 Write-Log "INFO" "Waiting for gateway to start..."
 $maxRetries = 15
 $retryCount = 0
@@ -210,7 +242,8 @@ while ($retryCount -lt $maxRetries) {
             $started = $true
             break
         }
-    } catch { }
+    }
+    catch { }
     $retryCount++
     Write-Log "DEBUG" "Retry $retryCount/$maxRetries - waiting for gateway..."
 }
@@ -226,16 +259,19 @@ if ($started) {
     Write-Log "INFO" "Health:      http://127.0.0.1:$Port/health"
     Write-Log "INFO" "API:         http://127.0.0.1:$Port/api"
     Write-Log "INFO" "Runtime Log: $RuntimeLog"
+    Write-Log "INFO" "Error Log:   $ErrorLog"
     Write-Log "INFO" "Restart Log: $RestartLog"
 
     # Log health check response
     try {
         $healthResp = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
         Write-Log "DEBUG" "Health response: $($healthResp.Content)"
-    } catch { }
+    }
+    catch { }
 
     exit 0
-} else {
+}
+else {
     Write-Log "ERROR" "=========================================="
     Write-Log "ERROR" "Gateway failed to start after $maxRetries retries"
     Write-Log "ERROR" "=========================================="
@@ -247,23 +283,37 @@ if ($started) {
     $portCheck = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
     if ($portCheck) {
         Write-Log "DEBUG" "Something is listening on port $Port but not responding to health check"
-    } else {
+    }
+    else {
         Write-Log "ERROR" "Nothing is listening on port $Port"
     }
 
-    # Show last log lines (equivalent to tail -50)
-    Write-Log "ERROR" "Last 50 lines of runtime log:"
+    # Show last log lines from both stdout and stderr logs
+    Write-Log "ERROR" "Last 50 lines of runtime log (stdout):"
     Add-Content -Path $RestartLog -Value "--- Runtime Log Start ---" -Encoding UTF8
     if (Test-Path $RuntimeLog) {
-        $logLines = Get-Content $RuntimeLog -Tail 50 -ErrorAction SilentlyContinue
-        $logLines | ForEach-Object {
+        Get-Content $RuntimeLog -Tail 50 -ErrorAction SilentlyContinue | ForEach-Object {
             Write-Host $_
             Add-Content -Path $RestartLog -Value $_ -Encoding UTF8
         }
-    } else {
+    }
+    else {
         Write-Host "(no log output)"
     }
     Add-Content -Path $RestartLog -Value "--- Runtime Log End ---" -Encoding UTF8
+
+    Write-Log "ERROR" "Last 20 lines of error log (stderr):"
+    Add-Content -Path $RestartLog -Value "--- Error Log Start ---" -Encoding UTF8
+    if (Test-Path $ErrorLog) {
+        Get-Content $ErrorLog -Tail 20 -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host $_
+            Add-Content -Path $RestartLog -Value $_ -Encoding UTF8
+        }
+    }
+    else {
+        Write-Host "(no error output)"
+    }
+    Add-Content -Path $RestartLog -Value "--- Error Log End ---" -Encoding UTF8
 
     exit 1
 }

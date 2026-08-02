@@ -2,9 +2,14 @@
  * Dashboard 路由组加载骨架屏
  * 在客户端导航时立即显示，提供即时视觉反馈
  */
+
+import { TabBarSkeleton } from "@/components/shared/skeletons";
+
 export default function DashboardLoading() {
   return (
-    <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
+    <>
+      <TabBarSkeleton />
+      <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
       {/* 主内容区 */}
       <div className="grid gap-3">
         {/* Hero / 页面头部骨架 */}
@@ -53,5 +58,6 @@ export default function DashboardLoading() {
         ))}
       </aside>
     </div>
+    </>
   )
 }

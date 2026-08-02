@@ -2,6 +2,26 @@
  * 可复用的骨架屏组件
  * 用于 Suspense fallback，在数据加载期间展示
  */
+
+/** 顶部导航 TabBar 骨架屏，匹配 HomeTabBar / MarketTabBar 布局 */
+export function TabBarSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="mb-3">
+      <div className="inline-flex h-9 items-center gap-1 rounded-lg bg-muted p-1">
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1"
+          >
+            <div className="size-4 animate-pulse rounded bg-muted-foreground/20" />
+            <div className="h-3.5 w-10 animate-pulse rounded bg-muted-foreground/20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CardsSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">

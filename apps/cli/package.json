@@ -48,7 +48,7 @@
     "build:sidecar": "tsx scripts/build-sidecar.ts",
     "build:sidecar:current": "tsx scripts/build-sidecar.ts --platform current",
     "build:sidecar:macos-x64": "tsx scripts/build-sidecar.ts --platform macos-x64",
-    "copy-templates": "rm -rf dist/templates && cp -r ../../packages/core/templates dist/templates",
+    "copy-templates": "node -e \"const{rmSync,cpSync}=require('fs');const d='dist/templates';try{rmSync(d,{recursive:true})}catch{};cpSync('../../packages/core/templates',d,{recursive:true})\"",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
