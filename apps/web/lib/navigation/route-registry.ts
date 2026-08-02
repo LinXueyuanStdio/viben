@@ -77,11 +77,11 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },
 
   // 设置
-  "/settings/tokens": { label: "API 密钥", icon: Package, parent: "/", dropdownCategory: "我的" },
+  "/settings/api_keys": { label: "API 密钥", icon: Package, parent: "/", dropdownCategory: "我的" },
 
   // 其他
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
-  "/home": { label: "落地页", icon: Home, parent: "/" },
+  "/home": { label: "产品首页", icon: Home, parent: "/" },
   "/web": { label: "Web", icon: FileText, parent: "/" },
 
   // 管理员路由（仅 role=admin 可见）
