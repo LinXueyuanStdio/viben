@@ -147,6 +147,9 @@ export const mcpPackages = pgTable(
 
     // Status
     isPublished: boolean('is_published').default(false).notNull(),
+    visibility: text('visibility', {
+      enum: ['public', 'unlisted', 'private'],
+    }).default('public').notNull(),
 
     // Moderation status
     status: text('status', {
@@ -212,6 +215,9 @@ export const skillPackages = pgTable(
 
     // Status
     isPublished: boolean('is_published').default(false).notNull(),
+    visibility: text('visibility', {
+      enum: ['public', 'unlisted', 'private'],
+    }).default('public').notNull(),
 
     // Moderation status
     status: text('status', {
