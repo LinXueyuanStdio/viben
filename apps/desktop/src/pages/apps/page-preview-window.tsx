@@ -3,6 +3,7 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { homeDir } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
 import {
@@ -92,7 +93,7 @@ import { withNewTabRequest } from "@/navigation/new-tab-request";
 import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import type { TabNavigationState } from "@/stores/tab-store";
 
-const NEW_TAB_URL = "/workspace";
+const NEW_TAB_URL = "/workspace/global";
 const DEFAULT_ZOOM_SCALE = 1;
 const ZOOM_STEP = 0.1;
 const MIN_ZOOM_SCALE = 0.5;
@@ -133,6 +134,24 @@ interface ForwardPayload {
   title: string;
   url: string;
   message: string;
+}
+
+/** Per-tab page context — each tab shows a different page. */
+interface PageTabContext {
+  workspaceId: string;
+  workspacePath: string;
+  uid: string;
+  viewMode: PageViewMode;
+  title?: string;
+}
+
+/** Payload received from the backend when a page is opened in the existing window. */
+interface PagePreviewOpenPayload {
+  workspace_id: string;
+  workspace_path: string;
+  uid: string;
+  title?: string | null;
+  view: string;
 }
 
 function getSearchParam(name: string): string | undefined {
@@ -353,14 +372,13 @@ export function PagePreviewWindow({
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const previewSurfaceRef = useRef<HTMLDivElement>(null);
-  const workspaceId = getSearchParam("workspace_id");
-  const workspacePath = getSearchParam("workspace_path");
-  const uid = getSearchParam("uid");
   const initialViewMode = useMemo(
     () => normalizeViewMode(getSearchParam("view")),
     [],
   );
-  const [viewMode] = useState<PageViewMode>(initialViewMode);
+
+  // ── Per-tab page context ──────────────────────────────────────────────
+  const [pageContexts, setPageContexts] = useState<Record<string, PageTabContext>>({});
   const [iframeKey, setIframeKey] = useState(0);
   const [isMacOS, setIsMacOS] = useState(false);
   const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] =
@@ -372,15 +390,19 @@ export function PagePreviewWindow({
   const [forwardMessage, setForwardMessage] = useState("");
   const [forwardTargetId, setForwardTargetId] = useState<string | null>(null);
   const [isForwarding, setIsForwarding] = useState(false);
+  const initializedRef = useRef(false);
   const previewTabStore = useMemo(() => getCurrentWindowTabStore(), []);
   const activeTabId = previewTabStore((state) => state.activeTabId);
   const activeTab = previewTabStore((state) =>
     activeTabId ? state.tabs.find((tab) => tab.id === activeTabId) : null,
   );
+  const allTabs = previewTabStore((state) => state.tabs);
   const canReopenClosedTab = previewTabStore(
     (state) => state.recentlyClosedTabs.length > 0,
   );
   const openTabInStore = previewTabStore((state) => state.openTab);
+  const closeTabInStore = previewTabStore((state) => state.closeTab);
+  const setActiveTabInStore = previewTabStore((state) => state.setActiveTab);
   const goBackInStore = previewTabStore((state) => state.goBack);
   const goForwardInStore = previewTabStore((state) => state.goForward);
   const jumpToHistoryInStore = previewTabStore((state) => state.jumpToHistory);
@@ -388,6 +410,18 @@ export function PagePreviewWindow({
   const reopenClosedTabInStore = previewTabStore(
     (state) => state.reopenClosedTab,
   );
+
+  // ── Active page context (derived from active tab) ────────────────────
+  const activePageCtx: PageTabContext | undefined = useMemo(
+    () => (activeTabId ? pageContexts[activeTabId] : undefined),
+    [activeTabId, pageContexts],
+  );
+
+  const workspacePath = activePageCtx?.workspacePath;
+  const uid = activePageCtx?.uid;
+  const workspaceId = activePageCtx?.workspaceId;
+  const viewMode = activePageCtx?.viewMode ?? initialViewMode;
+
   const chatList = useChatList({ workspacePath, includeGlobal: true });
 
   const {
@@ -461,6 +495,63 @@ export function PagePreviewWindow({
       }
     };
   }, []);
+
+  // ── Create a new page tab from a PageTabContext ─────────────────────
+  const createPageTab = useCallback(
+    (ctx: PageTabContext) => {
+      const url = `/page-preview-window.html?workspace_id=${encodeURIComponent(ctx.workspaceId)}&workspace_path=${encodeURIComponent(ctx.workspacePath)}&uid=${encodeURIComponent(ctx.uid)}&view=${encodeURIComponent(ctx.viewMode)}`;
+      const tabId = openTabInStore({
+        navigationState: {
+          url,
+          breadcrumbStack: buildColdStartBreadcrumb(url),
+        },
+        viewMode: ctx.viewMode,
+      });
+      setPageContexts((prev) => ({ ...prev, [tabId]: ctx }));
+      return tabId;
+    },
+    [openTabInStore],
+  );
+
+  // ── Initialize first tab from URL params (on mount) ────────────────
+  useEffect(() => {
+    if (initializedRef.current) return;
+
+    const urlWorkspaceId = getSearchParam("workspace_id");
+    const urlWorkspacePath = getSearchParam("workspace_path");
+    const urlUid = getSearchParam("uid");
+
+    if (urlWorkspaceId && urlWorkspacePath && urlUid) {
+      initializedRef.current = true;
+      createPageTab({
+        workspaceId: urlWorkspaceId,
+        workspacePath: urlWorkspacePath,
+        uid: urlUid,
+        viewMode: initialViewMode,
+      });
+    }
+  }, [createPageTab, initialViewMode]);
+
+  // ── Listen for page-preview:open events from backend ────────────────
+  useEffect(() => {
+    const unlistenPromise = listen<PagePreviewOpenPayload>(
+      "page-preview:open",
+      (event) => {
+        const { workspace_id, workspace_path, uid: eventUid, title, view } = event.payload;
+        createPageTab({
+          workspaceId: workspace_id,
+          workspacePath: workspace_path,
+          uid: eventUid,
+          viewMode: normalizeViewMode(view),
+          title: title ?? undefined,
+        });
+      },
+    );
+
+    return () => {
+      unlistenPromise.then((fn) => fn());
+    };
+  }, [createPageTab]);
 
   const handleStartLivePreview = useCallback(() => {
     if (!workspacePath || !page) return;
@@ -568,13 +659,47 @@ export function PagePreviewWindow({
     }
   }, [externalUrl]);
 
+  const handleCloseTab = useCallback(
+    async (tabId: string) => {
+      // Check if this is the last tab
+      const remainingCount = Object.keys(pageContexts).length - (pageContexts[tabId] ? 1 : 0);
+      if (remainingCount === 0) {
+        try {
+          await getCurrentWindow().close();
+        } catch (error) {
+          console.error("Failed to close preview window:", error);
+        }
+        return;
+      }
+
+      // Remove page context
+      setPageContexts((prev) => {
+        const next = { ...prev };
+        delete next[tabId];
+        return next;
+      });
+      // Close tab in store
+      closeTabInStore(tabId);
+    },
+    [closeTabInStore, pageContexts],
+  );
+
+  // Close the active tab, or the window if no tabs left
   const handleCloseWindow = useCallback(async () => {
-    try {
-      await getCurrentWindow().close();
-    } catch (error) {
-      console.error("Failed to close preview window:", error);
+    if (!activeTabId) return;
+
+    const remainingTabs = allTabs.filter((tab) => tab.id !== activeTabId);
+    if (remainingTabs.length === 0) {
+      try {
+        await getCurrentWindow().close();
+      } catch (error) {
+        console.error("Failed to close preview window:", error);
+      }
+      return;
     }
-  }, []);
+
+    handleCloseTab(activeTabId);
+  }, [activeTabId, allTabs, handleCloseTab]);
 
   const handleNewTab = useCallback(() => {
     openTabInStore({
@@ -737,10 +862,15 @@ export function PagePreviewWindow({
     }
   }, [t]);
 
-  const handleCloseAllTabs = useCallback(() => {
+  const handleCloseAllTabs = useCallback(async () => {
+    setPageContexts({});
     closeAllTabsInStore();
-    void handleCloseWindow();
-  }, [closeAllTabsInStore, handleCloseWindow]);
+    try {
+      await getCurrentWindow().close();
+    } catch (error) {
+      console.error("Failed to close preview window:", error);
+    }
+  }, [closeAllTabsInStore]);
 
   const handleReopenClosedTab = useCallback(() => {
     const restoredTabId = reopenClosedTabInStore();
@@ -757,7 +887,33 @@ export function PagePreviewWindow({
     [activeTabId, jumpToHistoryInStore, navigateToStoreTab],
   );
 
-  if (!workspaceId || !workspacePath || !uid) {
+  // ── Derived: page tabs for the tab bar (must be before early returns) ──
+  const pageTabs = useMemo(() => {
+    return Object.entries(pageContexts).map(([tabId, ctx]) => ({
+      id: tabId,
+      label: ctx.title || ctx.uid,
+      icon: (
+        <IconDisplay
+          icon={{ type: "lucide", value: "file-text" }}
+          size="sm"
+          className="text-muted-foreground"
+        />
+      ),
+    }));
+  }, [pageContexts]);
+
+  if (!initializedRef.current && Object.keys(pageContexts).length === 0) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm">{t("common.loading")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activePageCtx) {
     return (
       <WindowState
         title={t("page.invalidPath", "Invalid Page Path")}
@@ -797,6 +953,9 @@ export function PagePreviewWindow({
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
       <PagePreviewWindowTabBar
         page={page}
+        pageTabs={pageTabs}
+        activeTabId={activeTabId}
+        onSelectTab={setActiveTabInStore}
         isMacOS={isMacOS}
         reserveMacOSControlsSpace={shouldReserveMacOSControlsSpace}
         canOpenExternal={!!externalUrl}
@@ -820,7 +979,7 @@ export function PagePreviewWindow({
         onCloseAllTabs={handleCloseAllTabs}
         onReopenClosedTab={handleReopenClosedTab}
         onHistorySelect={handleHistorySelect}
-        onCloseTab={() => void handleCloseWindow()}
+        onCloseTab={(tabId) => handleCloseTab(tabId)}
         onNewTab={handleNewTab}
       />
       <div
@@ -1099,6 +1258,9 @@ function ForwardToSessionDialog({
 
 function PagePreviewWindowTabBar({
   page,
+  pageTabs,
+  activeTabId,
+  onSelectTab,
   isMacOS,
   reserveMacOSControlsSpace,
   canOpenExternal,
@@ -1126,6 +1288,9 @@ function PagePreviewWindowTabBar({
   onNewTab,
 }: {
   page: PageConfig;
+  pageTabs: Array<{ id: string; label: string; icon?: ReactNode }>;
+  activeTabId: string | null;
+  onSelectTab: (tabId: string) => void;
   isMacOS: boolean;
   reserveMacOSControlsSpace: boolean;
   canOpenExternal: boolean;
@@ -1149,7 +1314,7 @@ function PagePreviewWindowTabBar({
   onCloseAllTabs: () => void;
   onReopenClosedTab: () => void;
   onHistorySelect: (historyIndex: number) => void;
-  onCloseTab: () => void;
+  onCloseTab: (tabId: string) => void;
   onNewTab: () => void;
 }) {
   const { t } = useTranslation();
@@ -1301,18 +1466,22 @@ function PagePreviewWindowTabBar({
             }
             tabs={
               <>
-                <BrowserTabFrameTab
-                  label={page.name || page.uid}
-                  icon={tabIcon}
-                  active
-                  closable
-                  onClose={onCloseTab}
-                  data-preview-window-tab="true"
-                  className={cn(
-                    "border border-primary/25 bg-primary/10 text-foreground",
-                    "shadow-none ring-0 hover:bg-primary/15",
-                  )}
-                />
+                {pageTabs.map((tab) => (
+                  <BrowserTabFrameTab
+                    key={tab.id}
+                    label={tab.label}
+                    icon={tab.icon}
+                    active={tab.id === activeTabId}
+                    closable
+                    onSelect={() => onSelectTab(tab.id)}
+                    onClose={() => onCloseTab(tab.id)}
+                    data-preview-window-tab="true"
+                    className={cn(
+                      tab.id === activeTabId &&
+                        "border border-primary/25 bg-primary/10 text-foreground shadow-none ring-0 hover:bg-primary/15",
+                    )}
+                  />
+                ))}
                 <BrowserTabFrameIconButton
                   aria-label={t("common.newTab", "New Tab")}
                   tooltip={t("common.newTab", "New Tab")}
@@ -1358,7 +1527,7 @@ function PagePreviewWindowTabBar({
                       />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuContent align="end" className="w-80">
                     <PreviewDropdownMenuItems
                       canOpenExternal={canOpenExternal}
                       zoomScale={zoomScale}
@@ -1386,7 +1555,7 @@ function PagePreviewWindowTabBar({
                       onCloseAllTabs={onCloseAllTabs}
                       onReopenClosedTab={onReopenClosedTab}
                       onHistorySelect={onHistorySelect}
-                      onCloseTab={onCloseTab}
+                      onCloseTab={() => { if (activeTabId) onCloseTab(activeTabId); }}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1395,7 +1564,7 @@ function PagePreviewWindowTabBar({
           />
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-64">
+      <ContextMenuContent className="w-80">
         <PreviewContextMenuItems
           canOpenExternal={canOpenExternal}
           zoomScale={zoomScale}
@@ -1423,7 +1592,7 @@ function PagePreviewWindowTabBar({
           onCloseAllTabs={onCloseAllTabs}
           onReopenClosedTab={onReopenClosedTab}
           onHistorySelect={onHistorySelect}
-          onCloseTab={onCloseTab}
+          onCloseTab={() => { if (activeTabId) onCloseTab(activeTabId); }}
         />
       </ContextMenuContent>
     </ContextMenu>
@@ -1493,17 +1662,17 @@ function PreviewDropdownMenuItems({
   return (
     <>
       <DropdownMenuItem onClick={onRefresh}>
-        {t("common.refresh", "Refresh")}
+        <span className="w-4 h-4 mr-2" />{t("common.refresh", "Refresh")}
         <DropdownMenuShortcut>{refreshShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={onCopyLink} disabled={!canOpenExternal}>
-        {t("tabBar.copyLink", "Copy Link")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.copyLink", "Copy Link")}
       </DropdownMenuItem>
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>
-          {t("pagePreview.textSize", "Adjust Text Size")}
+          <span className="w-4 h-4 mr-2" />{t("pagePreview.textSize", "Adjust Text Size")}
         </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="w-52">
+        <DropdownMenuSubContent className="w-60">
           <DropdownMenuCheckboxItem
             checked={isActualSize}
             onCheckedChange={onActualSize}
@@ -1524,11 +1693,11 @@ function PreviewDropdownMenuItems({
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       <DropdownMenuItem onClick={onFind}>
-        {t("common.find", "Find...")}
+        <span className="w-4 h-4 mr-2" />{t("common.find", "Find...")}
         <DropdownMenuShortcut>{findShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={onPrint}>
-        {t("common.print", "Print")}
+        <span className="w-4 h-4 mr-2" />{t("common.print", "Print")}
         <DropdownMenuShortcut>{printShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
@@ -1538,14 +1707,14 @@ function PreviewDropdownMenuItems({
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={onOpenExternal} disabled={!canOpenExternal}>
-        {t("page.openExternalDefault", "Open with Default Browser")}
+        <span className="w-4 h-4 mr-2" />{t("page.openExternalDefault", "Open with Default Browser")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>
-          {t("pagePreview.history", "History")}
+          <span className="w-4 h-4 mr-2" />{t("pagePreview.history", "History")}
         </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="w-64">
+        <DropdownMenuSubContent className="w-72">
           {historyItems.length > 0 ? (
             historyItems.map((item) => (
               <DropdownMenuCheckboxItem
@@ -1564,23 +1733,23 @@ function PreviewDropdownMenuItems({
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       <DropdownMenuItem onClick={onOpenDownloads}>
-        {t("pagePreview.downloads", "Downloads")}
+        <span className="w-4 h-4 mr-2" />{t("pagePreview.downloads", "Downloads")}
         <DropdownMenuShortcut>{downloadsShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={onCloseAllTabs}>
-        {t("tabBar.closeAllTabs", "Close All Tabs")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.closeAllTabs", "Close All Tabs")}
         <DropdownMenuShortcut>{closeTabsShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={onReopenClosedTab}
         disabled={!canReopenClosedTab}
       >
-        {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
         <DropdownMenuShortcut>{reopenClosedTabShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={onCloseTab}>
-        {t("tabBar.closeTab", "Close Tab")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.closeTab", "Close Tab")}
       </DropdownMenuItem>
     </>
   );
@@ -1649,17 +1818,17 @@ function PreviewContextMenuItems({
   return (
     <>
       <ContextMenuItem onClick={onRefresh}>
-        {t("common.refresh", "Refresh")}
+        <span className="w-4 h-4 mr-2" />{t("common.refresh", "Refresh")}
         <ContextMenuShortcut>{refreshShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem onClick={onCopyLink} disabled={!canOpenExternal}>
-        {t("tabBar.copyLink", "Copy Link")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.copyLink", "Copy Link")}
       </ContextMenuItem>
       <ContextMenuSub>
         <ContextMenuSubTrigger>
-          {t("pagePreview.textSize", "Adjust Text Size")}
+          <span className="w-4 h-4 mr-2" />{t("pagePreview.textSize", "Adjust Text Size")}
         </ContextMenuSubTrigger>
-        <ContextMenuSubContent className="w-52">
+        <ContextMenuSubContent className="w-60">
           <ContextMenuCheckboxItem
             checked={isActualSize}
             onCheckedChange={onActualSize}
@@ -1680,11 +1849,11 @@ function PreviewContextMenuItems({
         </ContextMenuSubContent>
       </ContextMenuSub>
       <ContextMenuItem onClick={onFind}>
-        {t("common.find", "Find...")}
+        <span className="w-4 h-4 mr-2" />{t("common.find", "Find...")}
         <ContextMenuShortcut>{findShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem onClick={onPrint}>
-        {t("common.print", "Print")}
+        <span className="w-4 h-4 mr-2" />{t("common.print", "Print")}
         <ContextMenuShortcut>{printShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuSeparator />
@@ -1694,14 +1863,14 @@ function PreviewContextMenuItems({
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={onOpenExternal} disabled={!canOpenExternal}>
-        {t("page.openExternalDefault", "Open with Default Browser")}
+        <span className="w-4 h-4 mr-2" />{t("page.openExternalDefault", "Open with Default Browser")}
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuSub>
         <ContextMenuSubTrigger>
-          {t("pagePreview.history", "History")}
+          <span className="w-4 h-4 mr-2" />{t("pagePreview.history", "History")}
         </ContextMenuSubTrigger>
-        <ContextMenuSubContent className="w-64">
+        <ContextMenuSubContent className="w-72">
           {historyItems.length > 0 ? (
             historyItems.map((item) => (
               <ContextMenuCheckboxItem
@@ -1720,23 +1889,23 @@ function PreviewContextMenuItems({
         </ContextMenuSubContent>
       </ContextMenuSub>
       <ContextMenuItem onClick={onOpenDownloads}>
-        {t("pagePreview.downloads", "Downloads")}
+        <span className="w-4 h-4 mr-2" />{t("pagePreview.downloads", "Downloads")}
         <ContextMenuShortcut>{downloadsShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem onClick={onCloseAllTabs}>
-        {t("tabBar.closeAllTabs", "Close All Tabs")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.closeAllTabs", "Close All Tabs")}
         <ContextMenuShortcut>{closeTabsShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem
         onClick={onReopenClosedTab}
         disabled={!canReopenClosedTab}
       >
-        {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
         <ContextMenuShortcut>{reopenClosedTabShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={onCloseTab}>
-        {t("tabBar.closeTab", "Close Tab")}
+        <span className="w-4 h-4 mr-2" />{t("tabBar.closeTab", "Close Tab")}
       </ContextMenuItem>
     </>
   );

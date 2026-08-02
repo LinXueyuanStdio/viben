@@ -2,7 +2,8 @@
 //!
 //! Handles creating new windows for workspaces.
 
-use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+use serde::Serialize;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
 
@@ -138,7 +139,23 @@ pub async fn open_workspace_in_new_window<R: Runtime>(
     Ok(window_label)
 }
 
+/// Fixed label for the singleton page-preview window.
+const PAGE_PREVIEW_LABEL: &str = "page-preview";
+
+/// Event payload for opening a new page tab in the preview window.
+#[derive(Clone, Serialize)]
+struct PagePreviewOpenPayload {
+    workspace_id: String,
+    workspace_path: String,
+    uid: String,
+    title: Option<String>,
+    view: String,
+}
+
 /// Open a workspace page preview in a dedicated content-only window.
+///
+/// If a page-preview window already exists, the page is opened as a new tab
+/// inside it via a Tauri event. Otherwise a new window is created.
 #[tauri::command]
 pub async fn open_workspace_page_preview_window<R: Runtime>(
     app: AppHandle<R>,
@@ -148,11 +165,30 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
     title: Option<String>,
     view: Option<String>,
 ) -> Result<String, String> {
-    let window_num = WINDOW_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-    let window_label = format!("page-preview-{}", window_num);
     let view_mode = view
         .filter(|value| value == "skill" || value == "page")
         .unwrap_or_else(|| "page".to_string());
+
+    // Reuse existing page-preview window if it exists
+    if let Some(window) = app.get_webview_window(PAGE_PREVIEW_LABEL) {
+        let payload = PagePreviewOpenPayload {
+            workspace_id,
+            workspace_path,
+            uid,
+            title,
+            view: view_mode,
+        };
+        app.emit_to(PAGE_PREVIEW_LABEL, "page-preview:open", payload)
+            .map_err(|e| format!("Failed to emit event: {}", e))?;
+
+        window
+            .set_focus()
+            .map_err(|e| format!("Failed to focus page preview window: {}", e))?;
+
+        return Ok(PAGE_PREVIEW_LABEL.to_string());
+    }
+
+    // Create new window
     let url = format!(
         "/page-preview-window.html?workspace_id={}&workspace_path={}&uid={}&view={}",
         urlencoding::encode(&workspace_id),
@@ -164,7 +200,7 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
     #[allow(unused_mut)]
     let mut builder = WebviewWindowBuilder::new(
         &app,
-        &window_label,
+        PAGE_PREVIEW_LABEL,
         WebviewUrl::App(url.into()),
     )
     .title(title.as_deref().unwrap_or("Page Preview"))
@@ -192,7 +228,7 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
         .set_focus()
         .map_err(|e| format!("Failed to focus page preview window: {}", e))?;
 
-    Ok(window_label)
+    Ok(PAGE_PREVIEW_LABEL.to_string())
 }
 
 /// Get list of all open workspace windows

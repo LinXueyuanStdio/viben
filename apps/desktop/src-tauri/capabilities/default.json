@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Common capabilities for all platforms",
-  "windows": ["main", "tray-popup", "screenshot-overlay", "pet-window", "chat-window", "page-preview-*", "workspace-*"],
+  "windows": ["main", "tray-popup", "screenshot-overlay", "pet-window", "chat-window", "page-preview-*", "page-preview", "workspace-*"],
   "permissions": [
     "core:default",
     "core:event:default",
