@@ -7,15 +7,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
+  /** URL search param name for page number, defaults to "page" */
+  paramKey?: string;
 }
 
-export function Pagination({ currentPage, totalPages }: PaginationProps) {
+export function Pagination({ currentPage, totalPages, paramKey = "page" }: PaginationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   function goToPage(page: number) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
+    params.set(paramKey, String(page));
     router.push(`?${params.toString()}`);
   }
 
