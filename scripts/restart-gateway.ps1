@@ -208,13 +208,29 @@ Write-Log "DEBUG" "Command: node $($nodeArgs -join ' ')"
 Set-Content -Path $RuntimeLog -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Gateway starting..." -Encoding UTF8
 Set-Content -Path $ErrorLog -Value "" -Encoding UTF8
 
-# Start gateway with stdout 鈫?gateway.log, stderr 鈫?gateway-error.log
-Start-Process -FilePath "node" `
-    -ArgumentList $nodeArgs `
-    -WorkingDirectory $CliDir `
-    -WindowStyle Hidden `
-    -RedirectStandardOutput $RuntimeLog `
-    -RedirectStandardError $ErrorLog
+# Start gateway using .NET Process API to properly disconnect stdin.
+# Start-Process inherits parent's stdin by default, which causes the gateway
+# process to steal keyboard input from the terminal.
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = "node"
+$psi.Arguments = $nodeArgs -join ' '
+$psi.WorkingDirectory = $CliDir
+$psi.UseShellExecute = $false          # Required for stream redirection
+$psi.RedirectStandardInput = $true     # Disconnect from parent's stdin
+$psi.RedirectStandardOutput = $true    # Capture stdout -> log file
+$psi.RedirectStandardError = $true     # Capture stderr -> log file
+$psi.CreateNoWindow = $true
+
+$proc = New-Object System.Diagnostics.Process
+$proc.StartInfo = $psi
+$proc.Start() | Out-Null
+
+# Close stdin immediately so the process never steals console input
+$proc.StandardInput.Close()
+
+# Begin async read of stdout/stderr to prevent buffer deadlocks
+$stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+$stderrTask = $proc.StandardError.ReadToEndAsync()
 
 # ============================================================
 # Wait for gateway health endpoint
