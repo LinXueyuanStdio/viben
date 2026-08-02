@@ -150,18 +150,6 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
     }
   }, [])
 
-  // 分段按钮：pageuid 段切换页面下拉
-  if (pageSwitcher && isLast) {
-    return (
-      <PageSwitcherPopover
-        userSlug={pageSwitcher.userSlug}
-        currentPageId={pageSwitcher.currentPageId}
-        label={label}
-        icon={Icon}
-      />
-    )
-  }
-
   const segmentContent = (
     <>
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
@@ -176,9 +164,10 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
       className={cn(
         "h-8 max-w-[220px] gap-1.5 rounded-lg px-2 font-extrabold",
         variant === "read" && "max-w-[170px]",
-        isLast && variant === "read" && "max-w-[210px]"
+        isLast && variant === "read" && "max-w-[210px]",
+        pageSwitcher && isLast && "rounded-r-none pr-1.5 max-w-[170px]"
       )}
-      asChild={hasDropdown ? false : isLast ? false : true}
+      asChild={hasDropdown ? false : isLast && !pageSwitcher ? false : true}
     >
       {hasDropdown ? (
         <span className="flex items-center gap-1.5 min-w-0">{segmentContent}</span>
@@ -189,6 +178,19 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
       )}
     </Button>
   )
+
+  // 页面切换下拉：popover 挂在按钮外部
+  if (pageSwitcher && isLast) {
+    return (
+      <span className="inline-flex items-center">
+        {segment}
+        <PageSwitcherPopover
+          userSlug={pageSwitcher.userSlug}
+          currentPageId={pageSwitcher.currentPageId}
+        />
+      </span>
+    )
+  }
 
   if (!hasDropdown) return segment
 

@@ -17,15 +17,11 @@ interface PageItem {
 interface PageSwitcherPopoverProps {
   userSlug: string
   currentPageId: string
-  label: string
-  icon?: React.ComponentType<{ className?: string }>
 }
 
 export function PageSwitcherPopover({
   userSlug,
   currentPageId,
-  label,
-  icon: Icon,
 }: PageSwitcherPopoverProps) {
   const [open, setOpen] = useState(false)
   const [pages, setPages] = useState<PageItem[]>([])
@@ -83,31 +79,17 @@ export function PageSwitcherPopover({
     return () => clearTimeout(timer)
   }, [search, open, fetchPages])
 
-  const pageUrl = `/${encodeURIComponent(userSlug)}/${encodeURIComponent(currentPageId)}?tab=read`
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <span className="inline-flex items-stretch rounded-lg overflow-hidden border-0 h-8">
-        {/* 主标签链接 */}
-        <Link
-          href={pageUrl}
-          className="flex items-center gap-1.5 min-w-0 px-2 hover:bg-surface-secondary font-extrabold max-w-[160px]"
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center w-6 h-8 rounded-r-lg transition-colors hover:bg-accent hover:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0"
+          aria-label="切换页面"
         >
-          {Icon && <Icon className="h-4 w-4 shrink-0" />}
-          <span className="truncate">{label}</span>
-        </Link>
-        {/* 分隔和下拉按钮 */}
-        <span className="w-px h-5 bg-border self-center" />
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center justify-center w-6 hover:bg-surface-secondary"
-            aria-label="切换页面"
-          >
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-      </span>
+          <ChevronDown className="h-4 w-4" />
+        </button>
+      </PopoverTrigger>
 
       <PopoverContent
         className="w-[min(280px,calc(100vw-28px))] p-0"
