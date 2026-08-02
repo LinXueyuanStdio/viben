@@ -22,7 +22,7 @@ import {
   AuthApiError,
 } from "../../auth";
 
-const TOKEN_URL = `${VIBEN_WEB_URL}/settings/tokens`;
+const TOKEN_URL = `${VIBEN_WEB_URL}/settings/api_keys`;
 
 /**
  * Prompt user for input

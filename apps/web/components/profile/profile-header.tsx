@@ -67,7 +67,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
           </Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/settings/tokens">
+          <Link href="/settings/api_keys">
             <Settings className="mr-2 h-4 w-4" />
             {t('common.settings')}
           </Link>

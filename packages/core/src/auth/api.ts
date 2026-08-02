@@ -50,7 +50,7 @@ export async function verifyToken(token: string): Promise<UserInfo> {
     const apiError = error as { status?: number; message?: string };
     if (apiError.status === 401) {
       throw new AuthApiError(
-        "Invalid or expired token. Generate a new one at https://viben-web.vercel.app/settings/tokens",
+        "Invalid or expired token. Generate a new one at https://viben-web.vercel.app/settings/api_keys",
         "INVALID_TOKEN"
       );
     }

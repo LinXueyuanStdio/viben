@@ -11,7 +11,7 @@ import { createClient } from "../client-factory";
 import { readToken, writeToken, deleteToken, validateTokenFormat } from "../utils/token";
 import { getWebUrl } from "../utils/config";
 
-const TOKEN_URL = `${getWebUrl()}/settings/tokens`;
+const TOKEN_URL = `${getWebUrl()}/settings/api_keys`;
 
 async function promptInput(prompt: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });

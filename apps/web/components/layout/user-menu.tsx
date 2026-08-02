@@ -264,7 +264,7 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
 
         {/* API Keys */}
         <DropdownMenuItem asChild>
-          <Link href="/settings/tokens">
+          <Link href="/settings/api_keys">
             <Key className="mr-2 h-4 w-4 shrink-0" />
             {t("nav.apiKeys")}
           </Link>

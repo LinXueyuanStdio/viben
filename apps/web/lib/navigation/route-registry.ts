@@ -15,6 +15,7 @@ import {
   User,
   Heart,
   Key,
+  Shield,
   Flag,
   ScrollText,
   Image,
@@ -65,7 +66,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
 
   // 创作者
   "/publish": { label: "发布", icon: Upload, parent: "/", dropdownCategory: "创作" },
-  "/analytics": { label: "创作平台", icon: BarChart3, parent: "/", dropdownCategory: "浏览" },
+  "/analytics": { label: "创作平台", icon: BarChart3, parent: "/", dropdownCategory: "创作" },
 
   // 市场详情（动态段父路由已注册，此处注册静态子页面）
   "/mcp-market/official": { label: "官方精选", icon: Package, parent: "/mcp-market" },
@@ -77,7 +78,10 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },
 
   // 设置
-  "/settings/api_keys": { label: "API 密钥", icon: Package, parent: "/", dropdownCategory: "我的" },
+  "/settings": { label: "设置", titleKey: "common.settings", icon: User, parent: "/", dropdownCategory: "我的" },
+  "/settings/profile": { label: "用户资料", titleKey: "profile.settings.nav.profile", icon: User, parent: "/settings" },
+  "/settings/account": { label: "账户", titleKey: "profile.settings.nav.account", icon: Shield, parent: "/settings" },
+  "/settings/api_keys": { label: "API 密钥", titleKey: "nav.apiKeys", icon: Key, parent: "/settings" },
 
   // 其他
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
