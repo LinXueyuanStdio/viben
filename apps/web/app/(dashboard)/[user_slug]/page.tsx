@@ -699,7 +699,10 @@ export default async function UserSlugPage({
               />
 
               {/* Activity heatmap (lazy-loaded) */}
-              <ActivityHeatmapLoader userSlug={user.userSlug} />
+              <section>
+                <SectionHead title="活动" />
+                <ActivityHeatmapLoader userSlug={user.userSlug} />
+              </section>
 
               {/* Recent moments (infinite scroll) */}
               <ProfileMomentsInfinite
