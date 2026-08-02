@@ -131,8 +131,8 @@ function Nav() {
         <div className="flex items-center gap-1 text-sm">
           <LanguageSwitcher />
           <a href="https://github.com/LinXueyuanStdio/viben" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 px-3 py-1.5 text-amber-300 transition-colors hover:bg-amber-300/10 hover:text-amber-200">
-            <Github className="h-3.5 w-3.5" />GitHub
+            className="rounded-md p-2 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
+            <Github className="h-4 w-4" />
           </a>
           <Link href="/login" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
             {t('auth.signIn')}
