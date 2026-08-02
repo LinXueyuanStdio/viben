@@ -757,7 +757,7 @@ export function Sidebar() {
                 <WakeWordTaskButton collapsed disabled={!activeWorkspace} />
               </div>
             ) : (
-              <div className="flex flex-col gap-2 px-2 pb-2">
+              <div className="flex flex-col gap-3 px-2 pb-2">
                 <StatusIndicator collapsed={false} onOpenChange={handleMenuOpenChange} />
                 <WakeWordTaskButton collapsed={false} disabled={!activeWorkspace} />
               </div>

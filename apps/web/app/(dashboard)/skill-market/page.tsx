@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
+import { MarketTabBar } from '@/components/layout/market-tab-bar';
 import { SkillsGrid } from '@/components/skills/skills-grid';
 import { SkillsFilters } from '@/components/skills/skills-filters';
 import { SearchInput } from '@/components/shared/search-input';
@@ -33,6 +34,7 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
 
   return (
     <div className="space-y-6">
+      <MarketTabBar />
       <PageHeader
         icon={Sparkles}
         title={<T tKey="skillsMarket.title" fallback="技能市场" />}

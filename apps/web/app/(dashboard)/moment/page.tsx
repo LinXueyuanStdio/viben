@@ -3,6 +3,7 @@ import { FeedList } from "@/components/content/feed-list"
 import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
+import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { listMoments } from "@/lib/services/community"
 import { EmptyState, T } from "@/components/content/i18n-text"
 import { db, users } from "@/lib/db"
@@ -75,7 +76,11 @@ export default async function MomentPage() {
   }))
 
   return (
-    <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
+    <>
+      <div className="mb-3">
+        <HomeTabBar />
+      </div>
+      <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         <div className="rounded-[12px] border border-border bg-background shadow-sm p-2.5">
           <Composer userFallbackText={session?.username?.[0] ?? "你"} userAvatarUrl={session?.avatarUrl} />
@@ -117,5 +122,6 @@ export default async function MomentPage() {
         ))}
       </aside>
     </div>
+    </>
   )
 }

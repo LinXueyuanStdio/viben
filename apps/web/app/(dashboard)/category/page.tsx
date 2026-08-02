@@ -3,6 +3,7 @@ import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { RefreshButton } from "@/components/content/refresh-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
+import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { db, publishedPages, pageCategories, users } from "@/lib/db"
 import { eq, desc, and, asc, ne } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
@@ -101,16 +102,59 @@ export default async function CategoryPage() {
   // If no categories exist, show all pages without tabs
   if (categories.length === 0) {
     return (
+      <>
+        <div className="mb-3">
+          <HomeTabBar />
+        </div>
+        <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
+          <div className="grid gap-3">
+            <SectionHead title="全部页面">
+              <RefreshButton />
+            </SectionHead>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {(pagesByCategory["__uncategorized__"] ?? []).slice(0, 8).map((item, i) => (
+                <PageCard key={i} data={item.card} variant="default" href={item.href} />
+              ))}
+            </div>
+          </div>
+          <aside className="grid gap-2 content-start">
+            <SectionHead title="相关作者" />
+            {authorCards.map((author, i) => (
+              <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
+            ))}
+          </aside>
+        </div>
+      </>
+    )
+  }
+
+  // Normal flow with categories
+  return (
+    <>
+      <div className="mb-3">
+        <HomeTabBar />
+      </div>
       <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
         <div className="grid gap-3">
-          <SectionHead title="全部页面">
-            <RefreshButton />
-          </SectionHead>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {(pagesByCategory["__uncategorized__"] ?? []).slice(0, 8).map((item, i) => (
-              <PageCard key={i} data={item.card} variant="default" href={item.href} />
+          <VibenTabs defaultValue={categories[0]?.slug ?? ""}>
+            <VibenTabsList>
+              {categories.map((cat) => (
+                <VibenTabsTrigger key={cat.slug} value={cat.slug}>{cat.name}</VibenTabsTrigger>
+              ))}
+            </VibenTabsList>
+            {categories.map((cat) => (
+              <VibenTabsContent key={cat.slug} value={cat.slug}>
+                <SectionHead title={cat.name}>
+                  <RefreshButton />
+                </SectionHead>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                  {(pagesByCategory[cat.id] ?? []).slice(0, 4).map((item, i) => (
+                    <PageCard key={i} data={item.card} variant="default" href={item.href} />
+                  ))}
+                </div>
+              </VibenTabsContent>
             ))}
-          </div>
+          </VibenTabs>
         </div>
         <aside className="grid gap-2 content-start">
           <SectionHead title="相关作者" />
@@ -119,39 +163,6 @@ export default async function CategoryPage() {
           ))}
         </aside>
       </div>
-    )
-  }
-
-  // Normal flow with categories
-  return (
-    <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
-      <div className="grid gap-3">
-        <VibenTabs defaultValue={categories[0]?.slug ?? ""}>
-          <VibenTabsList>
-            {categories.map((cat) => (
-              <VibenTabsTrigger key={cat.slug} value={cat.slug}>{cat.name}</VibenTabsTrigger>
-            ))}
-          </VibenTabsList>
-          {categories.map((cat) => (
-            <VibenTabsContent key={cat.slug} value={cat.slug}>
-              <SectionHead title={cat.name}>
-                <RefreshButton />
-              </SectionHead>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
-                {(pagesByCategory[cat.id] ?? []).slice(0, 4).map((item, i) => (
-                  <PageCard key={i} data={item.card} variant="default" href={item.href} />
-                ))}
-              </div>
-            </VibenTabsContent>
-          ))}
-        </VibenTabs>
-      </div>
-      <aside className="grid gap-2 content-start">
-        <SectionHead title="相关作者" />
-        {authorCards.map((author, i) => (
-          <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
-        ))}
-      </aside>
-    </div>
+    </>
   )
 }

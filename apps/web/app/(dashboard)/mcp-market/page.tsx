@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { MarketTabBar } from '@/components/layout/market-tab-bar';
 import { McpGrid } from '@/components/mcp/mcp-grid';
 import { McpFilters } from '@/components/mcp/mcp-filters';
 import { McpPageHeader } from '@/components/mcp/mcp-page-header';
@@ -28,6 +29,7 @@ export default async function McpPage({ searchParams }: McpPageProps) {
 
   return (
     <div className="space-y-6">
+      <MarketTabBar />
       <McpPageHeader isAuthenticated={!!session} />
 
       {/* Source Tabs */}

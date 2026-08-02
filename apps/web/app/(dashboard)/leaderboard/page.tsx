@@ -1,6 +1,7 @@
 import { RankItem } from "@/components/content/rank-item"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
+import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { listRanking } from "@/lib/services/community"
 import { EmptyState } from "@/components/content/i18n-text"
 import type { RankItemData } from "@/components/content/rank-item"
@@ -46,7 +47,11 @@ export default async function LeaderboardPage() {
   }, {} as Record<string, { card: RankItemData; href: string }[]>)
 
   return (
-    <div className="grid gap-3">
+    <>
+      <div className="mb-3">
+        <HomeTabBar />
+      </div>
+      <div className="grid gap-3">
       <SectionHead title="热门页面" />
       <VibenTabs defaultValue="热门页面">
         <VibenTabsList>
@@ -69,5 +74,6 @@ export default async function LeaderboardPage() {
         ))}
       </VibenTabs>
     </div>
+    </>
   )
 }

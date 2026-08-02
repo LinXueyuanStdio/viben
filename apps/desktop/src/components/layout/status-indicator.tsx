@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Settings, FileText, Smartphone, Terminal, Bell } from "lucide-react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { Settings, FileText, Smartphone, Terminal, Bell, RefreshCw, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsoleDialog } from "@/components/console";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
@@ -16,9 +15,6 @@ import {
   getSettingsSectionConfig,
 } from "@/navigation/settings-sections";
 import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
-
-/** Platform web URL — settings opens here in browser. */
-const PLATFORM_URL = "https://viben-web.vercel.app";
 
 interface StatusIndicatorProps {
   collapsed: boolean;
@@ -51,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function StatusIndicator({ collapsed, onOpenChange }: StatusIndicatorProps) {
   const { t } = useTranslation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const { openPath, openSettings } = useDesktopRouting();
   const { status, error } = useGatewayStatus();
   const [isOpen, setIsOpen] = useState(false);
@@ -125,11 +121,6 @@ export function StatusIndicator({ collapsed, onOpenChange }: StatusIndicatorProp
     }
     return name.slice(0, 2).toUpperCase();
   };
-
-  const handleOpenSettings = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    openUrl(`${PLATFORM_URL}/settings`);
-  }, []);
 
   const handleOpenProfile = useCallback(() => {
     openSettings("account");
@@ -217,6 +208,40 @@ export function StatusIndicator({ collapsed, onOpenChange }: StatusIndicatorProp
           <span>{t(item.titleKey)}</span>
         </button>
       ))}
+      {/* Check for updates */}
+      <button
+        type="button"
+        onClick={() => {
+          openSettings("about");
+          handleOpenChange(false);
+        }}
+        className={cn(
+          "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+          "transition-colors duration-200",
+          "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+        )}
+      >
+        <RefreshCw className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+        <span>{t("about.checkForUpdates")}</span>
+      </button>
+      {/* Sign out — only when logged in */}
+      {isAuthenticated && (
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            handleOpenChange(false);
+          }}
+          className={cn(
+            "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+            "transition-colors duration-200",
+            "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+          <span>{t("auth.signOut")}</span>
+        </button>
+      )}
       {/* Gateway description */}
       <Separator className="my-0.5" />
       <p className="px-3 py-1.5 text-xs text-muted-foreground leading-relaxed">
@@ -290,14 +315,6 @@ export function StatusIndicator({ collapsed, onOpenChange }: StatusIndicatorProp
         aria-label={t("common.notifications", "Notifications")}
       >
         <Bell className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={handleOpenSettings}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        aria-label={t("common.settings", "Settings")}
-      >
-        <Settings className="h-4 w-4" />
       </button>
     </div>
   ) : (

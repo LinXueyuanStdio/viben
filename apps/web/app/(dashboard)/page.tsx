@@ -7,6 +7,7 @@ import { T } from "@/components/content/i18n-text"
 import { HomeFeedSection } from "@/components/home/home-feed-section"
 import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
+import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { listRanking } from "@/lib/services/community"
 import { timeAgo } from "@/lib/services/moment-mapper"
 import { db, publishedPages } from "@/lib/db"
@@ -118,7 +119,11 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
+    <>
+      <div className="mb-3">
+        <HomeTabBar />
+      </div>
+      <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
 
@@ -160,5 +165,6 @@ export default async function HomePage() {
         <HomeSidebarSection />
       </Suspense>
     </div>
+    </>
   )
 }
