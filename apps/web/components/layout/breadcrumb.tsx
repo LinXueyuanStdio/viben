@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ChevronRight, Check, type LucideIcon } from "lucide-react"
+import { Check, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -75,7 +75,7 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
   }
 
   return (
-    <nav aria-label={t("community.breadcrumb")} className={cn("flex items-center gap-0.5 min-w-0", className)}>
+    <nav aria-label={t("community.breadcrumb")} className={cn("flex items-center gap-0 min-w-0", className)}>
       {/* 品牌标记 — icon 始终显示（点击回首页），/[user_slug] 路由隐藏文字 */}
       <Link
         href="/"
@@ -93,7 +93,7 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
           readPageInfo.isPage && seg.isLast && readPageInfo.userSlug && readPageInfo.pageId
         return (
           <React.Fragment key={seg.href}>
-            <ChevronRight className="h-4 w-4 text-[#93b4bf] dark:text-muted-foreground shrink-0" />
+            <span className="text-[#93b4bf] dark:text-muted-foreground shrink-0">/</span>
             <BreadcrumbSegment
               href={seg.href}
               label={label}
