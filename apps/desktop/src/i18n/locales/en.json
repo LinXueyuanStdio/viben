@@ -2958,6 +2958,7 @@
     }
   },
   "workspace": {
+    "global": "Global Workspace",
     "workspaces": "Workspaces",
     "addWorkspace": "Add Workspace",
     "noWorkspaces": "No workspaces yet",
@@ -6261,7 +6262,7 @@
     "showToc": "Show Table of Contents",
     "editConfig": "Edit Page Settings",
     "openInNewWindow": "Open in New Window",
-    "moveToNewWindow": "Move to New Window",
+    "detachToNewWindow": "Detach to New Window",
     "openExternal": "Open in Browser",
     "openExternalDefault": "Open with Default Browser",
     "fullscreen": "Fullscreen",
