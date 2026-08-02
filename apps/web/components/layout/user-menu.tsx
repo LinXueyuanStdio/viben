@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileText, ThumbsUp, Globe, Monitor, Sun, Moon, SunMoon, Bell, Clock, MessageSquareText, FilePlus2, Package, Sparkles } from "lucide-react"
+import { FileText, ThumbsUp, Globe, Monitor, Sun, Moon, SunMoon, Key, Bell, Clock, MessageSquareText, FilePlus2, Package, Sparkles } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -261,6 +261,14 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
             </ScrollArea>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        {/* API Keys */}
+        <DropdownMenuItem asChild>
+          <Link href="/settings/tokens">
+            <Key className="mr-2 h-4 w-4 shrink-0" />
+            {t("nav.apiKeys")}
+          </Link>
+        </DropdownMenuItem>
 
         {/* Settings */}
         <DropdownMenuItem asChild>
