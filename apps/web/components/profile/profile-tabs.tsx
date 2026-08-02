@@ -4,12 +4,11 @@ import { useCallback } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 
-const TAB_KEYS = ["pages", "likes", "moments", "mcp", "skills"] as const
+const TAB_KEYS = ["pages", "likes", "mcp", "skills"] as const
 
 const TAB_LABELS: Record<string, string> = {
   pages: "页面",
   likes: "喜欢",
-  moments: "动态",
   mcp: "MCP",
   skills: "技能",
 }
@@ -18,12 +17,10 @@ interface ProfileTabsProps {
   overview: React.ReactNode
   pages: React.ReactNode
   likes: React.ReactNode
-  moments: React.ReactNode
   mcp: React.ReactNode
   skills: React.ReactNode
   pageCount?: number
   likeCount?: number
-  momentCount?: number
   mcpCount?: number
   skillCount?: number
 }
@@ -34,12 +31,10 @@ export function ProfileTabs({
   overview,
   pages,
   likes,
-  moments,
   mcp,
   skills,
   pageCount,
   likeCount,
-  momentCount,
   mcpCount,
   skillCount,
 }: ProfileTabsProps) {
@@ -64,7 +59,6 @@ export function ProfileTabs({
   const countMap: Record<string, number | undefined> = {
     "页面": pageCount,
     "喜欢": likeCount,
-    "动态": momentCount,
     "MCP": mcpCount,
     "技能": skillCount,
   }
@@ -73,7 +67,6 @@ export function ProfileTabs({
     "概览": overview,
     "页面": pages,
     "喜欢": likes,
-    "动态": moments,
     "MCP": mcp,
     "技能": skills,
   }

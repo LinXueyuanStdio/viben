@@ -4,8 +4,8 @@ import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks, userFollows, mcpPackages, skillPackages, bookmarks } from "@/lib/db"
-import { eq, desc, and, count, inArray } from "drizzle-orm"
+import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks, userFollows, mcpPackages, skillPackages, bookmarks, profilePins } from "@/lib/db"
+import { eq, desc, and, count, inArray, asc } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { EmptyState, T } from "@/components/content/i18n-text"
@@ -20,10 +20,13 @@ import { ProfilePagesList } from "@/components/profile/profile-pages-list"
 import { ProfileMcpList } from "@/components/profile/profile-mcp-list"
 import { ProfileSkillsList } from "@/components/profile/profile-skills-list"
 import { ProfileLikesMerged } from "@/components/profile/profile-likes-merged"
+import { ProfilePinnedSection } from "@/components/profile/profile-pinned-section"
+import { ProfileMomentsInfinite } from "@/components/profile/profile-moments-infinite"
 import type { ProfileContentItemData } from "@/components/profile/profile-content-item"
 
 /** Minimal shared shape between full publishedPages row and joined query results */
 interface PageRow {
+  id?: string
   uid: string
   title: string
   description: string | null
@@ -177,6 +180,7 @@ export default async function UserSlugPage({
 
   // Columns to select from publishedPages in joined queries
   const pageColumns = {
+    id: publishedPages.id,
     uid: publishedPages.uid,
     title: publishedPages.title,
     description: publishedPages.description,
@@ -207,6 +211,8 @@ export default async function UserSlugPage({
     skillCountResult,
     bookmarkedMcpsRaw,
     bookmarkedSkillsRaw,
+    pinnedRows,
+    initialMomentsCursorRow,
   ] = await Promise.all([
     db.select(pageColumns).from(publishedPages)
       .where(and(
@@ -333,6 +339,19 @@ export default async function UserSlugPage({
       ))
       .orderBy(desc(bookmarks.createdAt))
       .limit(50),
+    // Profile pins
+    db.select().from(profilePins)
+      .where(eq(profilePins.userId, user.id))
+      .orderBy(asc(profilePins.position)),
+    // Initial moments cursor (fetch 11 to determine hasMore)
+    db.select({ createdAt: moments.createdAt }).from(moments)
+      .where(and(
+        eq(moments.authorUserId, user.id),
+        eq(moments.visibility, "public"),
+        eq(moments.isDeleted, false)
+      ))
+      .orderBy(desc(moments.createdAt))
+      .limit(11),
   ])
 
   // Fetch attachments for author moments (for cover images)
@@ -482,6 +501,85 @@ export default async function UserSlugPage({
     }),
   )
 
+  // Build pinned items with full entity data
+  const pinnedItems: Array<{
+    id: string; entity_type: "page" | "mcp" | "skill"; entity_id: string; position: number;
+    data: ProfileContentItemData & { pageUid?: string }
+  }> = []
+
+  if (pinnedRows.length > 0) {
+    const pageIds = pinnedRows.filter((p) => p.entityType === "page").map((p) => p.entityId)
+    const mcpIds = pinnedRows.filter((p) => p.entityType === "mcp").map((p) => p.entityId)
+    const skillIds = pinnedRows.filter((p) => p.entityType === "skill").map((p) => p.entityId)
+
+    // Fetch page details
+    const pageDetails = pageIds.length > 0
+      ? await db.select(pageColumns).from(publishedPages)
+          .where(and(inArray(publishedPages.id, pageIds), eq(publishedPages.moderationStatus, "approved")))
+      : []
+    const pageMap = new Map(pageDetails.map((p) => [p.id, p]))
+
+    // Fetch MCP details
+    const mcpDetails = mcpIds.length > 0
+      ? await db.select().from(mcpPackages).where(inArray(mcpPackages.id, mcpIds))
+      : []
+    const mcpMap = new Map(mcpDetails.map((m) => [m.id, m]))
+
+    // Fetch Skill details
+    const skillDetails = skillIds.length > 0
+      ? await db.select().from(skillPackages).where(inArray(skillPackages.id, skillIds))
+      : []
+    const skillMap = new Map(skillDetails.map((s) => [s.id, s]))
+
+    for (const pin of pinnedRows) {
+      if (pin.entityType === "page") {
+        const p = pageMap.get(pin.entityId)
+        if (p) {
+          pinnedItems.push({
+            id: pin.id, entity_type: "page", entity_id: pin.entityId, position: pin.position,
+            data: { ...mapPageToContentItem(p, displayName, avatarUrl), pageUid: p.uid },
+          })
+        }
+      } else if (pin.entityType === "mcp") {
+        const m = mcpMap.get(pin.entityId)
+        if (m) {
+          pinnedItems.push({
+            id: pin.id, entity_type: "mcp", entity_id: pin.entityId, position: pin.position,
+            data: {
+              coverUrl: null, title: m.name, description: m.description ?? undefined,
+              author: { name: displayName, avatarUrl: avatarUrl ?? undefined },
+              timeAgo: timeAgo(m.createdAt),
+              stats: { downloads: m.downloadsCount },
+              badges: [`v${m.version}`, m.transport?.toUpperCase()].filter(Boolean),
+              visibilityLabel: visibilityToLabel(m.visibility),
+            },
+          })
+        }
+      } else if (pin.entityType === "skill") {
+        const s = skillMap.get(pin.entityId)
+        if (s) {
+          pinnedItems.push({
+            id: pin.id, entity_type: "skill", entity_id: pin.entityId, position: pin.position,
+            data: {
+              coverUrl: null, title: s.name, description: s.description ?? undefined,
+              author: { name: displayName, avatarUrl: avatarUrl ?? undefined },
+              timeAgo: timeAgo(s.createdAt),
+              stats: { downloads: s.downloadsCount },
+              badges: [`v${s.version}`, s.skillType].filter(Boolean),
+              visibilityLabel: visibilityToLabel(s.visibility),
+            },
+          })
+        }
+      }
+    }
+  }
+
+  // Initial moments cursor
+  const initialMomentsHasMore = initialMomentsCursorRow.length > 10
+  const initialMomentsCursor = initialMomentsHasMore
+    ? initialMomentsCursorRow[9]?.createdAt.toISOString() ?? null
+    : null
+
   const collectionListData = createdCollections.map((c) => ({
     id: c.id,
     name: c.name,
@@ -599,34 +697,27 @@ export default async function UserSlugPage({
                 </section>
               )}
 
-              {/* Pinned pages */}
-              {pinnedCards.length > 0 && (
-                <section>
-                  <SectionHead title="置顶页面" />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {pinnedCards.map((item, i) => (
-                      <PageCard key={i} data={item.card} variant="default" href={item.href} hideAuthor />
-                    ))}
-                  </div>
-                </section>
-              )}
+              {/* Pinned items (unified: pages + MCP + skills) */}
+              <ProfilePinnedSection
+                pinnedItems={pinnedItems}
+                isOwnProfile={isOwnProfile}
+              />
 
               {/* Activity heatmap (lazy-loaded) */}
               <ActivityHeatmapLoader userSlug={user.userSlug} />
 
-              {/* Recent moments */}
-              {feedCards.length > 0 && (
-                <section>
-                  <SectionHead title="最近动态" />
-                  <div className="grid gap-2">
-                    {feedCards.slice(0, 5).map((feed, i) => (
-                      <FeedCard key={i} data={feed} variant="rich" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
-                    ))}
-                  </div>
-                </section>
-              )}
+              {/* Recent moments (infinite scroll) */}
+              <ProfileMomentsInfinite
+                userSlug={user.userSlug}
+                displayName={user.displayName}
+                avatarUrl={user.avatarUrl}
+                initialMoments={authorMoments.slice(0, 10)}
+                initialAttachments={attachmentsMap}
+                initialCursor={initialMomentsCursor}
+                session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null}
+              />
 
-              {!readmePage && pinnedCards.length === 0 && feedCards.length === 0 && (
+              {!readmePage && pinnedItems.length === 0 && feedCards.length === 0 && (
                 <div className="flex items-center justify-center py-16 text-muted-foreground">
                   <p>暂无内容</p>
                 </div>
@@ -652,17 +743,6 @@ export default async function UserSlugPage({
             isOwnProfile={isOwnProfile}
           />
         }
-        moments={
-          feedCards.length === 0 ? (
-            <EmptyState tKey="community.noMoments" fallback="暂无动态" />
-          ) : (
-            <div className="grid gap-2">
-              {feedCards.map((feed, i) => (
-                <FeedCard key={i} data={feed} variant="rich" session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null} />
-              ))}
-            </div>
-          )
-        }
         mcp={
           <ProfileMcpList
             mcps={mcpContentItems}
@@ -677,7 +757,6 @@ export default async function UserSlugPage({
         }
         pageCount={pageTotal}
         likeCount={likedContentItems.length}
-        momentCount={feedCards.length}
         mcpCount={mcpTotal}
         skillCount={skillTotal}
       />
