@@ -115,7 +115,7 @@ export function ProfilePagesList({ pages, total, userSlug }: ProfilePagesListPro
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center pt-2">
-          <Pagination currentPage={currentPage} totalPages={totalPages} />
+          <Pagination currentPage={currentPage} totalPages={totalPages} paramKey="page" />
         </div>
       )}
     </div>
