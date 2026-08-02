@@ -5,7 +5,7 @@ import { createContext, useContext } from "react"
 import { usePathname } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
-import { DrawerProvider } from "./drawer-context"
+import { DrawerProvider, useDrawer } from "./drawer-context"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
@@ -35,6 +35,71 @@ const AppShellContext = createContext<AppShellContextType>({
 
 export function useAppShell() {
   return useContext(AppShellContext)
+}
+
+// ===== Body (inner content with drawer context access) =====
+
+function Body({
+  children,
+  desktopSidebarVisible,
+  isRead,
+  isMobile,
+  session,
+  adminStats,
+  sidebarCollapsed,
+  sidebarOpen,
+  onClose,
+}: {
+  children: React.ReactNode
+  desktopSidebarVisible: boolean
+  isRead: boolean
+  isMobile: boolean
+  session: Session | null
+  adminStats?: { pendingPackagesCount: number }
+  sidebarCollapsed: boolean
+  sidebarOpen: boolean
+  onClose: () => void
+}) {
+  const { open: drawerOpen } = useDrawer()
+
+  return (
+    <div className="relative flex-1 overflow-hidden">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        session={session}
+        pendingPackagesCount={adminStats?.pendingPackagesCount}
+        isMobile={isMobile}
+        open={sidebarOpen}
+        onClose={onClose}
+      />
+      {/* Drawer slot — portal target, width syncs with drawer open state */}
+      <div
+        id="viben-drawer-slot"
+        className="absolute right-0 top-0 bottom-0 z-50 transition-[width] duration-[220ms] ease-out"
+        style={{ width: drawerOpen ? "var(--drawer-w, 420px)" : 0 }}
+      />
+
+      <main
+        className={cn(
+          "h-full",
+          "transition-[margin] duration-[220ms] ease-out",
+          desktopSidebarVisible && "ml-[var(--sidebar-w)]",
+          isRead && drawerOpen && "mr-[var(--drawer-w,420px)]",
+          isRead ? "overflow-hidden" : "overflow-y-auto"
+        )}
+      >
+        <div
+          className={cn(
+            isRead
+              ? "p-0 max-w-none"
+              : "w-[min(1280px,100%)] mx-auto px-4 py-4"
+          )}
+        >
+          {children}
+        </div>
+      </main>
+    </div>
+  )
 }
 
 // ===== AppShell Component =====
@@ -119,37 +184,18 @@ export function AppShell({
             isMobile={isMobile}
             onOpenSidebar={openSidebar}
           />
-          <div className="relative flex-1 overflow-hidden">
-            {/* Sidebar — fixed overlay on all breakpoints.
-                Desktop: margin-left on main compensates so content is not overlapped.
-                Mobile: backdrop + overlay pattern, no margin. */}
-            <Sidebar
-              collapsed={sidebarCollapsed}
-              session={session}
-              pendingPackagesCount={adminStats?.pendingPackagesCount}
-              isMobile={isMobile}
-              open={sidebarOpen}
-              onClose={closeSidebar}
-            />
-            <main
-              className={cn(
-                "h-full",
-                "transition-[margin] duration-200 ease-out",
-                desktopSidebarVisible && "ml-[var(--sidebar-w)]",
-                isRead ? "overflow-hidden" : "overflow-y-auto"
-              )}
-            >
-              <div
-                className={cn(
-                  isRead
-                    ? "p-0 max-w-none"
-                    : "w-[min(1280px,100%)] mx-auto px-4 py-4"
-                )}
-              >
-                {children}
-              </div>
-            </main>
-          </div>
+          <Body
+            sidebarCollapsed={sidebarCollapsed}
+            desktopSidebarVisible={desktopSidebarVisible}
+            isRead={isRead}
+            isMobile={isMobile}
+            session={session}
+            adminStats={adminStats}
+            sidebarOpen={sidebarOpen}
+            onClose={closeSidebar}
+          >
+            {children}
+          </Body>
         </div>
       </DrawerProvider>
     </AppShellContext.Provider>

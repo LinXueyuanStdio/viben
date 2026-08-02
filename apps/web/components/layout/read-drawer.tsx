@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { useTranslation } from "react-i18next"
 import { Maximize2, Flag, MessageSquare, MoreHorizontal, X } from "lucide-react"
 import dynamic from "next/dynamic"
@@ -281,18 +282,17 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
     )
   }
 
-  // Desktop: embedded full-height, z-51 sits above header (z-50)
-  return (
+  // Desktop: portal into AppShell's drawer slot (sibling of main)
+  const slot = typeof document !== "undefined" ? document.getElementById("viben-drawer-slot") : null
+  if (!slot) return null
+
+  return createPortal(
     <div
       className={cn(
-        "shrink-0 border-l border-border bg-background relative z-[51]",
+        "h-full w-full border-l border-border bg-background relative",
         "grid grid-rows-[auto_1fr]",
-        open ? "w-[var(--drawer-w,420px)]" : "w-0 overflow-hidden border-l-0"
+        !open && "hidden"
       )}
-      style={{
-        willChange: "width",
-        transition: !isDragging ? "width 220ms ease-out" : "none",
-      }}
     >
       {/* Resize handle — left edge */}
       {open && (
@@ -322,6 +322,7 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
           </div>
         ))}
       </div>
-    </div>
+    </div>,
+    slot
   )
 }
