@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileText, Star, ThumbsUp, Globe, Monitor, Sun, Moon, Bell, Clock, MessageSquareText, FilePlus2 } from "lucide-react"
+import { FileText, ThumbsUp, Globe, Monitor, Sun, Moon, SunMoon, Bell, Clock, MessageSquareText, FilePlus2, Package, Sparkles } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -65,17 +65,44 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
     changeLanguage(langCode)
   }, [])
 
+  const [open, setOpen] = useState(false)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleOpen = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setOpen(true)
+  }, [])
+
+  const handleClose = useCallback(() => {
+    closeTimerRef.current = setTimeout(() => {
+      setOpen(false)
+    }, 150)
+  }, [])
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={session.avatarUrl} alt={displayLabel} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-        </Button>
+        <span onMouseEnter={handleOpen}>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full" asChild>
+            <span tabIndex={0}>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={session.avatarUrl} alt={displayLabel} />
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+            </span>
+          </Button>
+        </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent
+        className="w-56"
+        align="end"
+        forceMount
+        onMouseEnter={handleOpen}
+        onMouseLeave={handleClose}
+      >
         {/* Header: avatar + displayName + userSlug */}
         <div
           className="flex items-center gap-3 px-2 py-2 rounded-lg cursor-pointer hover:bg-surface-secondary transition-colors"
@@ -144,7 +171,7 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
         {/* 桌面端使用原来的简单分隔线 */}
         {!isMobile && <DropdownMenuSeparator />}
 
-        {/* Section 1: Profile, Pages, Likes, Favorites */}
+        {/* Section 1: Profile, Pages, Likes, MCP, Skills */}
         <DropdownMenuItem asChild>
           <Link href={`/${session.userSlug}`}>
             <Spacer />
@@ -164,32 +191,42 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/${session.userSlug}?tab=favorites`}>
-            <Star className="mr-2 h-4 w-4 shrink-0" />
-            {t("nav.favorites", "收藏")}
+          <Link href={`/${session.userSlug}?tab=mcp`}>
+            <Package className="mr-2 h-4 w-4 shrink-0" />
+            {t("nav.mcp", "MCP")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/${session.userSlug}?tab=skills`}>
+            <Sparkles className="mr-2 h-4 w-4 shrink-0" />
+            {t("nav.skills", "技能")}
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
-        {/* Theme segmented control */}
-        <div className="px-2 py-1">
-          <div className="flex items-center rounded-lg bg-surface-secondary p-0.5">
+        {/* Theme */}
+        <div className="flex items-center justify-between px-2 py-1.5">
+          <div className="flex items-center gap-2 text-sm">
+            <SunMoon className="mr-2 h-4 w-4 shrink-0" />
+            <span>{t("settings.theme")}</span>
+          </div>
+          <div className="flex items-center gap-0.5">
             {THEME_OPTIONS.map((opt) => {
               const isActive = theme === opt.value
               return (
                 <button
                   key={opt.value}
                   onClick={() => setTheme(opt.value)}
+                  title={opt.label}
                   className={cn(
-                    "flex-1 inline-flex flex-col items-center justify-center gap-0.5 py-2 rounded-[7px] text-[11px] font-medium transition-colors",
+                    "inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors",
                     isActive
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-surface-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface-secondary"
                   )}
                 >
-                  <opt.icon className="h-3.5 w-3.5" />
-                  <span>{opt.label}</span>
+                  <opt.icon className="h-4 w-4" />
                 </button>
               )
             })}
@@ -198,7 +235,7 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
 
         {/* Language submenu */}
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="flex items-center">
+          <DropdownMenuSubTrigger className="transition-colors focus:text-accent-foreground data-[state=open]:text-accent-foreground">
             <Globe className="mr-2 h-4 w-4 shrink-0" />
             <span>{t("settings.language")}</span>
             <span className="ml-auto text-xs text-muted-foreground">
@@ -212,7 +249,11 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
                 onValueChange={handleLanguageChange}
               >
                 {LANGUAGES.map((lang) => (
-                  <DropdownMenuRadioItem key={lang.code} value={lang.code}>
+                  <DropdownMenuRadioItem
+                    key={lang.code}
+                    value={lang.code}
+                    className="data-[state=checked]:text-foreground"
+                  >
                     {lang.nativeName}
                   </DropdownMenuRadioItem>
                 ))}
