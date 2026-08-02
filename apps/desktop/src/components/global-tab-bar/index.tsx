@@ -371,7 +371,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
   // Handle new tab creation
   const handleNewTab = useCallback(() => {
-    const url = "/workspace";
+    const url = "/workspace/global";
     openTab({
       navigationState: createTabNavigationState(
         url,
