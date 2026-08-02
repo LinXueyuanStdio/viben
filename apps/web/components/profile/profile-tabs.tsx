@@ -4,28 +4,28 @@ import { useCallback } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 
-const TAB_KEYS = ["pages", "likes", "favorites", "moments", "collections"] as const
+const TAB_KEYS = ["pages", "likes", "moments", "mcp", "skills"] as const
 
 const TAB_LABELS: Record<string, string> = {
   pages: "页面",
   likes: "喜欢",
-  favorites: "收藏",
   moments: "动态",
-  collections: "合集",
+  mcp: "MCP",
+  skills: "技能",
 }
 
 interface ProfileTabsProps {
   overview: React.ReactNode
   pages: React.ReactNode
   likes: React.ReactNode
-  favorites: React.ReactNode
   moments: React.ReactNode
-  collections: React.ReactNode
+  mcp: React.ReactNode
+  skills: React.ReactNode
   pageCount?: number
   likeCount?: number
-  bookmarkCount?: number
   momentCount?: number
-  collectionCount?: number
+  mcpCount?: number
+  skillCount?: number
 }
 
 const DEFAULT_TAB = "概览"
@@ -34,14 +34,14 @@ export function ProfileTabs({
   overview,
   pages,
   likes,
-  favorites,
   moments,
-  collections,
+  mcp,
+  skills,
   pageCount,
   likeCount,
-  bookmarkCount,
   momentCount,
-  collectionCount,
+  mcpCount,
+  skillCount,
 }: ProfileTabsProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -64,18 +64,18 @@ export function ProfileTabs({
   const countMap: Record<string, number | undefined> = {
     "页面": pageCount,
     "喜欢": likeCount,
-    "收藏": bookmarkCount,
     "动态": momentCount,
-    "合集": collectionCount,
+    "MCP": mcpCount,
+    "技能": skillCount,
   }
 
   const content: Record<string, React.ReactNode> = {
     "概览": overview,
     "页面": pages,
     "喜欢": likes,
-    "收藏": favorites,
     "动态": moments,
-    "合集": collections,
+    "MCP": mcp,
+    "技能": skills,
   }
 
   return (
