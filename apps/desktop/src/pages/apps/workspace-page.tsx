@@ -247,7 +247,7 @@ function PageToolbar({
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => void onDetach()}>
             <PanelTopOpen className="mr-2 h-4 w-4" />
-            {t("page.moveToNewWindow", "Move to New Window")}
+            {t("page.detachToNewWindow", "分离到新窗口")}
           </DropdownMenuItem>
           {viewMode === "page" && (
             <DropdownMenuItem onClick={handleOpenExternal}>
