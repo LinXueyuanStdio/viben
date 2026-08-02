@@ -15,7 +15,7 @@ export function usePageTracking() {
 
     const { isPage } = isPublishedPageRoute(pathname)
     const pageType = isPage ? "read"
-      : pathname.startsWith("/landing") ? "landing"
+      : pathname.startsWith("/home") ? "landing"
       : pathname === "/" ? "dashboard"
       : "other"
 

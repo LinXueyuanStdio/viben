@@ -134,7 +134,7 @@ export async function CommunityHome({ session }: CommunityHomeProps) {
           <div className="rounded-lg border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">营销页面</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              产品营销页面现位于 <Link href="/landing" className="text-primary hover:underline">/landing</Link>。
+              产品营销页面现位于 <Link href="/home" className="text-primary hover:underline">/home</Link>。
             </p>
           </div>
         </aside>

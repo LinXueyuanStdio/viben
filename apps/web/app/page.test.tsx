@@ -10,7 +10,7 @@ vi.mock('./components/community/community-home', () => ({
   CommunityHome: ({ session }: { session: unknown }) => (
     <main>
       <h1>Discover published work</h1>
-      <a href="/landing">/landing</a>
+      <a href="/home">/home</a>
       <div data-testid="session-state">{session ? 'signed-in' : 'anonymous'}</div>
     </main>
   ),
@@ -30,7 +30,7 @@ describe('CommunityHomePage', () => {
     render(await Page());
 
     expect(screen.getByRole('heading', { name: 'Discover published work' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '/landing' })).toHaveAttribute('href', '/landing');
+    expect(screen.getByRole('link', { name: '/home' })).toHaveAttribute('href', '/home');
     expect(screen.getByTestId('session-state')).toHaveTextContent('anonymous');
   });
 

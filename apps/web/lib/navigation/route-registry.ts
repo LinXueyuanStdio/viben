@@ -81,7 +81,7 @@ export const routeRegistry: Record<string, RouteConfig> = {
 
   // 其他
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
-  "/landing": { label: "落地页", icon: Home, parent: "/" },
+  "/home": { label: "落地页", icon: Home, parent: "/" },
   "/web": { label: "Web", icon: FileText, parent: "/" },
 
   // 管理员路由（仅 role=admin 可见）
