@@ -77,13 +77,8 @@ function SortableCard({ item }: { item: PinnedItem }) {
           <div className="flex items-center gap-1.5 flex-wrap">
             <h3 className="font-['Lexend'] text-[14px] font-bold leading-snug line-clamp-2">{d.title}</h3>
             <span className="inline-flex items-center rounded-md border border-border px-1 py-0.5 text-[10px] font-semibold text-muted-foreground shrink-0">{entityLabel}</span>
-            {d.visibilityLabel && (
-              <span className={cn(
-                "inline-flex items-center rounded-md px-1 py-0.5 text-[10px] font-semibold shrink-0",
-                d.visibilityLabel === "公开"
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-              )}>
+            {d.visibilityLabel && d.visibilityLabel !== "公开" && (
+              <span className="inline-flex items-center rounded-md px-1 py-0.5 text-[10px] font-semibold shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                 {d.visibilityLabel}
               </span>
             )}

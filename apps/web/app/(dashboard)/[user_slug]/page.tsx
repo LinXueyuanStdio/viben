@@ -318,10 +318,7 @@ export default async function UserSlugPage({
         ...mcpSkillVisFilter(skillPackages, skillVisibility)
       )),
     // Bookmarked MCPs (from bookmarks table)
-    db.select({
-      entityId: bookmarks.entityId,
-      createdAt: bookmarks.createdAt,
-    }).from(bookmarks)
+    db.select().from(bookmarks)
       .where(and(
         eq(bookmarks.userId, user.id),
         eq(bookmarks.entityType, "mcp")
@@ -329,10 +326,7 @@ export default async function UserSlugPage({
       .orderBy(desc(bookmarks.createdAt))
       .limit(50),
     // Bookmarked Skills (from bookmarks table)
-    db.select({
-      entityId: bookmarks.entityId,
-      createdAt: bookmarks.createdAt,
-    }).from(bookmarks)
+    db.select().from(bookmarks)
       .where(and(
         eq(bookmarks.userId, user.id),
         eq(bookmarks.entityType, "skill")

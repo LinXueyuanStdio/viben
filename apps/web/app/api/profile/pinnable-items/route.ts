@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, publishedPages, mcpPackages, skillPackages, users } from '@/lib/db';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * 获取当前用户可置顶的项目
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       const conditions = [
         eq(publishedPages.userId, session.userId),
         eq(publishedPages.moderationStatus, 'approved'),
-        inArray(publishedPages.visibility, ['public', 'unlisted', 'private']),
+        eq(publishedPages.visibility, 'public'),
       ];
       const pages = await db
         .select({
