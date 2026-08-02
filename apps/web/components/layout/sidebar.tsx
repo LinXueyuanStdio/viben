@@ -208,7 +208,7 @@ export function Sidebar({
 
       <aside
         className={cn(
-          "fixed left-0 z-50 flex flex-col border-r bg-background relative",
+          "fixed left-0 z-50 flex flex-col border-r bg-background",
           "w-[var(--sidebar-w)]",
           "transition-transform duration-[220ms] ease-out",
           visible ? "translate-x-0" : "-translate-x-full"
@@ -219,6 +219,7 @@ export function Sidebar({
           willChange: "transform",
         }}
       >
+        <div className="relative flex-1 flex flex-col min-h-0">
         <SidebarViewStack activePanelId={adminPanelOpen ? 'admin' : 'main'}>
           {/* ─── Main Panel ──────────────────────────────────────── */}
           <SidebarViewStack.Panel id="main">
@@ -336,6 +337,7 @@ export function Sidebar({
             )}
           />
         )}
+        </div>
       </aside>
     </>
   );
