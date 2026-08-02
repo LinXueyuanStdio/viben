@@ -6261,6 +6261,7 @@
     "showToc": "显示目录",
     "editConfig": "编辑页面配置",
     "openInNewWindow": "在新窗口中打开",
+    "moveToNewWindow": "移动到新窗口",
     "openExternal": "在浏览器中打开",
     "openExternalDefault": "用默认浏览器打开",
     "fullscreen": "全屏",

@@ -121,6 +121,7 @@ function PageToolbar({
   onStopLivePreview,
   onRefresh,
   onDetach,
+  onOpenInNewWindow,
   isFullscreen,
   onToggleFullscreen,
   onEditConfig,
@@ -137,6 +138,7 @@ function PageToolbar({
   onStopLivePreview?: () => void;
   onRefresh: () => void;
   onDetach: () => void | Promise<void>;
+  onOpenInNewWindow: () => void | Promise<void>;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onEditConfig: () => void;
@@ -239,9 +241,13 @@ function PageToolbar({
             <CopyPlus className="mr-2 h-4 w-4" />
             {t("page.openInNewTab", "Open in New Tab")}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => void onDetach()}>
+          <DropdownMenuItem onClick={() => void onOpenInNewWindow()}>
             <PanelTopOpen className="mr-2 h-4 w-4" />
             {t("page.openInNewWindow", "Open in New Window")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void onDetach()}>
+            <PanelTopOpen className="mr-2 h-4 w-4" />
+            {t("page.moveToNewWindow", "Move to New Window")}
           </DropdownMenuItem>
           {viewMode === "page" && (
             <DropdownMenuItem onClick={handleOpenExternal}>
@@ -387,6 +393,27 @@ export function WorkspacePage() {
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
   }, []);
+
+  const openPageInNewWindow = useCallback(async () => {
+    const workspacePath = workspace?.path;
+    if (!workspaceId || !workspacePath || !page?.uid) {
+      toast.error(t("tabBar.detachUnavailable", "This tab cannot be detached"));
+      return;
+    }
+
+    try {
+      await invoke("open_workspace_page_preview_window", {
+        workspaceId,
+        workspacePath,
+        uid: page.uid,
+        title: page.name,
+        view: viewMode,
+      });
+    } catch (error) {
+      console.error("Failed to open page in new window:", error);
+      toast.error(t("common.error"));
+    }
+  }, [page, t, viewMode, workspace?.path, workspaceId]);
 
   const handleDetach = useCallback(async () => {
     const workspacePath = workspace?.path;
@@ -677,6 +704,7 @@ export function WorkspacePage() {
               onStopLivePreview={stopPreview}
               onRefresh={handleRefresh}
               onDetach={handleDetach}
+              onOpenInNewWindow={openPageInNewWindow}
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
               onEditConfig={() => setEditDialogOpen(true)}
