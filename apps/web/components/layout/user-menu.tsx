@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileText, ThumbsUp, Globe, Monitor, Sun, Moon, SunMoon, Key, Bell, Clock, MessageSquareText, FilePlus2, Package, Sparkles } from "lucide-react"
+import { FileText, ThumbsUp, Monitor, Sun, Moon, Key, Bell, Clock, MessageSquareText, FilePlus2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -192,13 +192,13 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={`/${session.userSlug}?tab=mcp`}>
-            <Package className="mr-2 h-4 w-4 shrink-0" />
+            <Spacer />
             {t("nav.mcp", "MCP")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={`/${session.userSlug}?tab=skills`}>
-            <Sparkles className="mr-2 h-4 w-4 shrink-0" />
+            <Spacer />
             {t("nav.skills", "技能")}
           </Link>
         </DropdownMenuItem>
@@ -208,7 +208,7 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
         {/* Theme */}
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="flex items-center gap-2 text-sm">
-            <SunMoon className="mr-2 h-4 w-4 shrink-0" />
+            <Spacer />
             <span>{t("settings.theme")}</span>
           </div>
           <div className="flex items-center gap-0.5">
@@ -236,7 +236,7 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
         {/* Language submenu */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="transition-colors focus:text-accent-foreground data-[state=open]:text-accent-foreground">
-            <Globe className="mr-2 h-4 w-4 shrink-0" />
+            <Spacer />
             <span>{t("settings.language")}</span>
             <span className="ml-auto text-xs text-muted-foreground">
               {currentLanguage?.nativeName ?? currentLang}
