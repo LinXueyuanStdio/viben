@@ -105,7 +105,7 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
   const { t } = useTranslation()
   const parentPath = href === "/" ? "/" : href
   const siblings = getSiblingRoutes(parentPath, customSiblings)
-  const hasDropdown = siblings.length > 0
+  const hasDropdown = siblings.length > 1
   const [open, setOpen] = React.useState(false)
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
