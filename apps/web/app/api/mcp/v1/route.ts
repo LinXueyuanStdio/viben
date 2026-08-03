@@ -1,7 +1,7 @@
 import { createMcpHandler, withMcpAuth, protectedResourceHandler, metadataCorsOptionsRequestHandler } from "mcp-handler";
 import { z } from "zod";
 import { AsyncLocalStorage } from "async_hooks";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, asc, sql } from "drizzle-orm";
 import { db, publishedPages, publishedPageVersions, publishedPageRecords, users } from "@/lib/db";
 import { ensurePublishedPagesTable } from "@/lib/db/published-pages";
 import { validateApiKey } from "@/lib/auth/api-key";
@@ -79,15 +79,25 @@ const mcpHandler = createMcpHandler(
       {
         query: z.string().min(1).describe("搜索关键词"),
         author_slug: z.string().optional().describe("按作者 slug 过滤"),
+        tags: z.array(z.string()).max(12).optional().describe("按标签过滤，所有标签必须同时匹配（AND 逻辑）"),
+        sort_by: z.enum(["published_at", "title"]).optional().describe("排序字段，默认 published_at"),
+        sort_order: z.enum(["desc", "asc"]).optional().describe("排序方向，默认 desc"),
         limit: z.number().int().min(1).max(50).optional().describe("返回数量，默认 20"),
+        offset: z.number().int().min(0).optional().describe("分页偏移，默认 0"),
       },
-      async ({ query, author_slug, limit = 20 }) => {
+      async ({ query, author_slug, tags, sort_by, sort_order, limit = 20, offset = 0 }) => {
         const conditions: ReturnType<typeof sql>[] = [
           eq(publishedPages.visibility, "public"),
           eq(publishedPages.moderationStatus, "approved"),
           sql`(${publishedPages.title} ILIKE ${`%${query}%`} OR ${publishedPages.uid} ILIKE ${`%${query}%`} OR COALESCE(${publishedPages.description}, '') ILIKE ${`%${query}%`})`,
         ];
         if (author_slug) conditions.push(eq(publishedPages.authorSlug, author_slug));
+        if (tags && tags.length > 0) {
+          conditions.push(sql`${publishedPages.tags} @> ARRAY[${sql.join(tags.map((t) => sql`${t}`), sql`, `)}]`);
+        }
+
+        const orderColumn = sort_by === "title" ? publishedPages.title : publishedPages.lastPublishedAt;
+        const orderFn = sort_order === "asc" ? asc : desc;
 
         const pages = await db
           .select({
@@ -97,8 +107,9 @@ const mcpHandler = createMcpHandler(
           })
           .from(publishedPages)
           .where(and(...conditions))
-          .orderBy(desc(publishedPages.lastPublishedAt))
-          .limit(limit);
+          .orderBy(orderFn(orderColumn))
+          .limit(limit)
+          .offset(offset);
 
         return { content: [{ type: "text" as const, text: JSON.stringify({ pages }) }] };
       },
