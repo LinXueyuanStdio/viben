@@ -1,111 +1,77 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Check, Copy, ExternalLink, AlertTriangle, Info, FileText, Plus, Key, Terminal, BookOpen, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, ExternalLink, AlertTriangle, Info, FileText, Plus, Key, Terminal, BookOpen } from "lucide-react";
 
 const MCP_ENDPOINT = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/mcp/v1`;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // ═══════════════════════════════════════════════════════════
-// Lightweight JSON / bash syntax highlighter
+// Syntax highlighting
 // ═══════════════════════════════════════════════════════════
-const JSON_KEY = /("(?:[^"\\]|\\.)*")\s*:/g;
-const JSON_STRING = /("(?:[^"\\]|\\.)*")/g;
-const JSON_NUMBER = /(-?\b\d+\.?\d*\b)(?=\s*[,}\]\n\r])/g;
-const JSON_BOOL_NULL = /(\b(?:true|false|null)\b)/g;
-
-function highlightJson(code: string): React.ReactNode[] {
-  // Split by keys first
+function highlightJson(code: string) {
+  const regex = /("(?:\\.|[^"\\])*")\s*:|("(?:\\.|[^"\\])*")|(-?\b\d+\.?\d*\b(?:[eE][+-]?\d+)?)(?=\s*[,}\]\n\r])|(\b(?:true|false|null)\b)/g;
   const parts: React.ReactNode[] = [];
-  let remaining = code;
-  let key = 0;
-
-  // Tokenize: keys, strings, numbers, bool/null, punctuation
-  const tokens: { text: string; className: string }[] = [];
-  let lastIndex = 0;
-  const regex = /("(?:[^"\\]|\\.)*")\s*:|("(?:[^"\\]|\\.)*")|(-?\b\d+\.?\d*\b)(?=\s*[,}\]\n\r])|(\b(?:true|false|null)\b)/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(code)) !== null) {
-    if (match.index > lastIndex) {
-      tokens.push({ text: code.slice(lastIndex, match.index), className: "text-zinc-300" });
-    }
-    const [full, keyMatch, strMatch, numMatch, boolMatch] = match;
-    if (keyMatch) {
-      tokens.push({ text: full.slice(0, -1), className: "text-sky-400" }); // key without colon
-      tokens.push({ text: ":", className: "text-zinc-400" });
-    } else if (strMatch) {
-      tokens.push({ text: strMatch, className: "text-emerald-400" });
-    } else if (numMatch) {
-      tokens.push({ text: numMatch, className: "text-amber-400" });
-    } else if (boolMatch) {
-      tokens.push({ text: boolMatch, className: "text-purple-400" });
-    }
-    lastIndex = match.index + full.length;
+  let last = 0, m: RegExpExecArray | null;
+  while ((m = regex.exec(code)) !== null) {
+    if (m.index > last) parts.push(<span key={last} className="text-zinc-300">{code.slice(last, m.index)}</span>);
+    if (m[1]) parts.push(<span key={m.index} className="text-[#0550ae] dark:text-sky-400">{m[1]}</span>, <span key={m.index + "c"} className="text-foreground/60">:</span>);
+    else if (m[2]) parts.push(<span key={m.index} className="text-[#0a3069] dark:text-emerald-400">{m[2]}</span>);
+    else if (m[3]) parts.push(<span key={m.index} className="text-[#953800] dark:text-amber-400">{m[3]}</span>);
+    else if (m[4]) parts.push(<span key={m.index} className="text-[#8250df] dark:text-purple-400">{m[4]}</span>);
+    last = m.index + m[0].length;
   }
-  if (lastIndex < code.length) {
-    tokens.push({ text: code.slice(lastIndex), className: "text-zinc-300" });
-  }
-
-  return tokens.map((t, i) => (
-    <span key={i} className={t.className}>{t.text}</span>
-  ));
+  if (last < code.length) parts.push(<span key={last} className="text-foreground">{code.slice(last)}</span>);
+  return parts;
 }
 
-function highlightBash(code: string): React.ReactNode[] {
-  // Simple bash highlighting: comments, commands, strings, flags
-  const lines = code.split("\n");
-  return lines.flatMap((line, li) => {
-    const result: React.ReactNode[] = [];
-    // Comments
+function highlightBash(code: string) {
+  return code.split("\n").flatMap((line, li) => {
     const commentIdx = line.indexOf("#");
+    const parts: React.ReactNode[] = [];
     if (commentIdx >= 0) {
-      result.push(<span key={`${li}-cmd`} className="text-zinc-300">{line.slice(0, commentIdx)}</span>);
-      result.push(<span key={`${li}-cmt`} className="text-zinc-500">{line.slice(commentIdx)}</span>);
+      parts.push(<span key={`${li}c`} className="text-foreground">{line.slice(0, commentIdx)}</span>);
+      parts.push(<span key={`${li}cm`} className="text-muted-foreground">{line.slice(commentIdx)}</span>);
     } else {
-      // Flag highlighting
-      const parts = line.split(/(--?[a-zA-Z][\w-]*)/g);
-      result.push(...parts.map((p, pi) => {
-        if (/^--?[a-zA-Z]/.test(p)) return <span key={`${li}-${pi}`} className="text-amber-400">{p}</span>;
-        return <span key={`${li}-${pi}`} className="text-zinc-300">{p}</span>;
-      }));
+      const segs = line.split(/(--?[a-zA-Z][\w-]*)/g);
+      parts.push(...segs.map((s, pi) => /^--?[a-zA-Z]/.test(s)
+        ? <span key={`${li}${pi}`} className="text-[#953800] dark:text-amber-400">{s}</span>
+        : <span key={`${li}${pi}`} className="text-foreground">{s}</span>));
     }
-    if (li < lines.length - 1) result.push(<span key={`${li}-nl`}>{"\n"}</span>);
-    return result;
+    if (li < code.split("\n").length - 1) parts.push("\n");
+    return parts;
   });
 }
 
-function highlightHttp(code: string): React.ReactNode[] {
-  return [<span key="h" className="text-emerald-400">{code}</span>];
-}
-
-function highlightCode(code: string, lang?: string): React.ReactNode[] {
+function highlightCode(code: string, lang?: string) {
   switch (lang) {
     case "json": return highlightJson(code);
     case "bash": return highlightBash(code);
-    case "http": return highlightHttp(code);
-    default: return [<span key="d" className="text-zinc-300">{code}</span>];
+    default: return <span className="text-foreground">{code}</span>;
   }
 }
 
 // ═══════════════════════════════════════════════════════════
-// Copy Button
+// Code Block
 // ═══════════════════════════════════════════════════════════
-function CopyButton({ text }: { text: string }) {
+function CodeBlock({ code, lang }: { code: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
-  const copy = useCallback(async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [text]);
   return (
-    <button
-      onClick={copy}
-      className="absolute right-1.5 top-1.5 rounded p-1 text-zinc-500 opacity-0 transition-all hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
-      aria-label="复制"
-    >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
-    </button>
+    <div className="group relative overflow-hidden rounded-lg border bg-muted/30">
+      <div className="flex items-center justify-between border-b px-3 py-1.5">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground select-none">{lang || "text"}</span>
+        <button
+          onClick={async () => { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+          className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {copied ? <Check size={11} /> : <Copy size={11} />}
+          {copied ? "已复制" : "复制"}
+        </button>
+      </div>
+      <pre className="overflow-x-auto p-4">
+        <code className="font-mono text-[13px] leading-relaxed text-foreground">{highlightCode(code, lang)}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -113,100 +79,52 @@ function CopyButton({ text }: { text: string }) {
 // Inline Code
 // ═══════════════════════════════════════════════════════════
 function InlineCode({ children }: { children: string }) {
-  return <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground">{children}</code>;
+  return <code className="relative rounded-sm bg-surface px-[0.3rem] py-[0.2rem] font-mono text-[13px] text-text">{children}</code>;
 }
 
 // ═══════════════════════════════════════════════════════════
-// Code Block — syntax highlighted, always visible
+// Endpoint Copy
 // ═══════════════════════════════════════════════════════════
-function CodeBlock({ code, lang }: { code: string; lang?: string }) {
+function EndpointCopy({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-[#0d1117]">
-      {/* header bar */}
-      <div className="flex items-center justify-between border-b border-zinc-800/60 bg-[#161b22]/50 px-3 py-1.5">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-zinc-500">{lang || "text"}</span>
-        <button
-          onClick={async () => {
-            await navigator.clipboard.writeText(code);
-          }}
-          className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-        >
-          <Copy size={11} />
-          复制
-        </button>
-      </div>
-      {/* code */}
-      <pre className="overflow-x-auto p-4">
-        <code className="font-mono text-[13px] leading-relaxed">
-          {highlightCode(code, lang)}
-        </code>
-      </pre>
-    </div>
+    <span className="inline-flex items-center gap-2">
+      <code className="rounded bg-surface px-2 py-1 font-mono text-sm break-all">{url}</code>
+      <button
+        onClick={async () => { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+        className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    </span>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
-// Parameter Table
+// Parameter List (NOT a table — inline list, alphaXiv style)
 // ═══════════════════════════════════════════════════════════
 interface Param { name: string; type: string; required: string; desc: string; }
 
-function ParamTable({ params }: { params: Param[] }) {
+function ParamList({ params }: { params: Param[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="px-3 py-2 text-left text-xs font-semibold">参数</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">类型</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">必填</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">说明</th>
-          </tr>
-        </thead>
-        <tbody>
-          {params.map((p) => (
-            <tr key={p.name} className="border-b border-border last:border-0">
-              <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium">{p.name}</td>
-              <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-muted-foreground">{p.type}</td>
-              <td className="whitespace-nowrap px-3 py-2 text-xs">
-                {p.required === "是"
-                  ? <span className="font-semibold text-amber-600 dark:text-amber-400">必需</span>
-                  : <span className="text-muted-foreground">可选</span>}
-              </td>
-              <td className="px-3 py-2 text-xs text-muted-foreground leading-relaxed">{p.desc}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// Collapsible Examples — folded by default
-// ═══════════════════════════════════════════════════════════
-function ExamplesSection({ examples }: {
-  examples: { label: string; params: Record<string, unknown> }[];
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-lg border border-border">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/30"
-      >
-        <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? "rotate-0" : "-rotate-90"}`} />
-        示例（{examples.length}）
-      </button>
-      {open && (
-        <div className="border-t border-border px-4 py-4 space-y-4">
-          {examples.map((ex, i) => (
-            <div key={i}>
-              <div className="mb-2 text-xs font-medium text-muted-foreground">{ex.label}</div>
-              <CodeBlock code={JSON.stringify(ex.params, null, 2)} lang="json" />
+    <div>
+      <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h4>
+      <div className="space-y-5">
+        {params.map((p) => (
+          <div key={p.name}>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <code className="font-mono text-sm font-semibold text-foreground">{p.name}</code>
+              <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-muted-foreground">{p.type}</code>
+              {p.required === "是" ? (
+                <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">required</span>
+              ) : (
+                <span className="text-xs text-muted-foreground">optional</span>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -222,27 +140,52 @@ function ToolSection({
   examples: { label: string; params: Record<string, unknown> }[];
 }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <code className="rounded-lg bg-zinc-950 px-2.5 py-1 font-mono text-sm font-semibold text-zinc-50">{name}</code>
-        {badge && (
-          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-[11px] font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-            {badge}
-          </span>
-        )}
+    <div className="space-y-5">
+      {/* tool name — monospace, like alphaXiv */}
+      <h3 className="font-mono text-base font-semibold break-all text-foreground">{name}</h3>
+
+      {/* description */}
+      <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+
+      {/* parameters — stacked, not table */}
+      <ParamList params={params} />
+
+      {/* returns */}
+      <div>
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Returns</h4>
+        <p className="text-sm leading-relaxed text-muted-foreground">{returns}</p>
       </div>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-      <ParamTable params={params} />
-      <div className="text-sm text-muted-foreground">
-        <strong className="text-foreground">返回</strong>{" "}{returns}
-      </div>
+
+      {/* notes */}
       {notes && (
         <div className="flex gap-2.5 rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-300">
           <Info size={15} className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
           <div>{notes}</div>
         </div>
       )}
-      <ExamplesSection examples={examples} />
+
+      {/* examples — collapsible with <details> */}
+      <details className="group rounded-lg border border-border">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground select-none hover:bg-muted/30 transition-colors">
+          <span className="transition-transform group-open:rotate-90">▸</span>
+          Examples ({examples.length})
+        </summary>
+        <div className="border-t border-border px-4 py-4 space-y-4">
+          {examples.map((ex, i) => (
+            <div key={i}>
+              <p className="mb-2 text-sm font-medium text-foreground">{ex.label}</p>
+              <CodeBlock code={JSON.stringify(ex.params, null, 2)} lang="json" />
+            </div>
+          ))}
+        </div>
+      </details>
+
+      {/* badge marker */}
+      {badge && (
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
+          <AlertTriangle size={12} />{badge}
+        </div>
+      )}
     </div>
   );
 }
@@ -253,46 +196,10 @@ function ToolSection({
 interface ClientTab { name: string; command?: string; config?: Record<string, unknown>; }
 
 const CLIENT_TABS: ClientTab[] = [
-  {
-    name: "Claude Code",
-    command: `claude mcp add --transport http viben ${MCP_ENDPOINT}`,
-  },
-  {
-    name: "Codex",
-    config: {
-      mcpServers: {
-        viben: {
-          type: "streamableHttp",
-          url: MCP_ENDPOINT,
-          headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" },
-        },
-      },
-    },
-  },
-  {
-    name: "Claude Desktop",
-    config: {
-      mcpServers: {
-        viben: {
-          type: "streamableHttp",
-          url: MCP_ENDPOINT,
-          headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" },
-        },
-      },
-    },
-  },
-  {
-    name: "VS Code / Cursor",
-    config: {
-      servers: {
-        viben: {
-          type: "streamableHttp",
-          url: MCP_ENDPOINT,
-          headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" },
-        },
-      },
-    },
-  },
+  { name: "Claude Code", command: `claude mcp add --transport http viben ${MCP_ENDPOINT}` },
+  { name: "Codex", config: { mcpServers: { viben: { type: "streamableHttp", url: MCP_ENDPOINT, headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" } } } } },
+  { name: "Claude Desktop", config: { mcpServers: { viben: { type: "streamableHttp", url: MCP_ENDPOINT, headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" } } } } },
+  { name: "VS Code / Cursor", config: { servers: { viben: { type: "streamableHttp", url: MCP_ENDPOINT, headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" } } } } },
 ];
 
 function ClientTabs() {
@@ -327,7 +234,7 @@ function ClientTabs() {
 const READ_TOOLS = [
   {
     name: "search_pages",
-    description: "搜索 viben 上已发布的公开页面。同时匹配标题、页面标识符（uid）和描述内容。结果按最近发布时间降序排列。",
+    description: "搜索 viben 上已发布的公开页面。同时匹配标题、页面标识符（uid）和描述内容。结果按最近发布时间降序排列。适合内容发现和检索。",
     params: [
       { name: "query", type: "string", required: "是", desc: "搜索关键词。ILIKE 模糊匹配，支持中英文。同时匹配标题、uid 和描述。最小 1 字符。" },
       { name: "author_slug", type: "string", required: "否", desc: "按作者 slug 过滤。不传则搜索全站公开页面。" },
@@ -342,7 +249,7 @@ const READ_TOOLS = [
   },
   {
     name: "get_page",
-    description: "获取指定页面的完整内容，包括 HTML 源码、元数据（标题、描述、标签、封面图）、可见性设置和作者信息。",
+    description: "获取指定页面的完整内容，包括 HTML 源码、元数据（标题、描述、标签、封面图）、可见性设置和作者信息。适合深度阅读和内容分析。",
     params: [
       { name: "author_slug", type: "string", required: "是", desc: "页面作者的 slug。从 search_pages 返回结果获取。" },
       { name: "page_uid", type: "string", required: "是", desc: "页面唯一标识符。从 search_pages 返回的 uid 字段获取。" },
@@ -368,17 +275,11 @@ const WRITE_TOOLS = [
       { name: "visibility", type: '"public" | "unlisted" | "private"', required: "否", desc: "可见性。public 公开；unlisted 不在列表显示但可链接访问；private 仅作者可见。默认 public。" },
       { name: "cover_url", type: "string", required: "否", desc: "封面图片 URL。" },
     ] as Param[],
-    returns: "success、page_uid、url、read_url。updated 标识是新建（false）还是更新已有页面（true）。",
+    returns: "success、page_uid、url、read_url。updated 标识新建（false）或更新已有页面（true）。",
     notes: "upsert 语义：uid 已存在时自动更新，版本号递增。private 或 unlisted 页面可被作者本人搜索到。",
     examples: [
-      {
-        label: "发布公开页面",
-        params: { uid: "hello-world", title: "Hello, Viben!", html: "<h1>Hello World</h1><p>我的第一篇文章</p>", description: "一篇入门文章", tags: ["intro"], visibility: "public" },
-      },
-      {
-        label: "创建私有笔记",
-        params: { uid: "private-notes", title: "个人笔记", html: "<h2>待办</h2><ul><li>完成文档</li></ul>", visibility: "private" },
-      },
+      { label: "发布公开页面", params: { uid: "hello-world", title: "Hello, Viben!", html: "<h1>Hello World</h1><p>我的第一篇文章</p>", description: "一篇入门文章", tags: ["intro"], visibility: "public" } },
+      { label: "创建私有笔记", params: { uid: "private-notes", title: "个人笔记", html: "<h2>待办</h2><ul><li>完成文档</li></ul>", visibility: "private" } },
     ],
   },
   {
@@ -437,92 +338,98 @@ export default function McpDocsPage() {
     <div className="mx-auto max-w-4xl px-6 py-12">
       {/* Hero */}
       <div className="mb-14">
-        <div className="mb-3 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Terminal size={20} className="text-primary" />
-          </div>
-          <h1 className="font-bold text-3xl tracking-tight">Viben MCP 服务</h1>
-        </div>
-        <p className="max-w-2xl text-base text-muted-foreground leading-relaxed">
+        <h1 className="font-bold text-2xl text-foreground md:text-3xl">Viben MCP 服务</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
           Viben MCP 服务基于 Model Context Protocol (MCP) v1.0.0，为 AI 应用、智能体和自动化工作流
           提供对 Viben 页面系统的程序化访问。AI 助手可以直接搜索、读取、创建和更新页面，无需离开对话上下文。
         </p>
       </div>
 
-      {/* 连接信息 */}
+      {/* 连接信息 — using <dl> like alphaXiv */}
       <section className="mb-14">
-        <h2 className="mb-4 font-semibold text-2xl">连接信息</h2>
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <table className="w-full text-sm">
-            <tbody>
-              {[
-                ["端点", <span key="1" className="inline-flex items-center gap-2"><code className="font-mono text-xs break-all">{MCP_ENDPOINT}</code><CopyButton text={MCP_ENDPOINT} /></span>],
-                ["传输方式", "Streamable HTTP"],
-                ["认证", "Bearer Token（API Key，bmcp_ 前缀）"],
-                ["协议版本", "Model Context Protocol (MCP) v1.0.0"],
-                ["支持的客户端", "Claude Code、Codex、Claude Desktop、VS Code、Cursor 及 mcp-remote 桥接"],
-              ].map(([label, value]) => (
-                <tr key={label as string} className="border-b border-border last:border-0">
-                  <td className="w-32 px-4 py-2.5 text-xs font-medium">{label}</td>
-                  <td className="px-4 py-2.5 text-xs text-muted-foreground leading-relaxed">{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+        <h2 className="font-semibold text-xl text-foreground">连接信息</h2>
+        <dl className="mt-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:gap-4">
+            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">端点</dt>
+            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">
+              <EndpointCopy url={MCP_ENDPOINT} />
+            </dd>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:gap-4">
+            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">传输方式</dt>
+            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">Streamable HTTP</dd>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:gap-4">
+            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">认证</dt>
+            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">
+              默认使用 Bearer Token 认证（API Key，bmcp_ 前缀）。可通过{" "}
+              <a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 text-primary underline hover:no-underline">
+                API 密钥管理 <ExternalLink size={11} />
+              </a>{" "}
+              页面创建。
+            </dd>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:gap-4">
+            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">协议版本</dt>
+            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">Model Context Protocol (MCP) v1.0.0</dd>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:gap-4">
+            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">支持的客户端</dt>
+            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">
+              原生 MCP 客户端 — Claude Code、Codex、Claude Desktop、VS Code、Cursor，以及{" "}
+              <InlineCode>mcp-remote</InlineCode> 等 CLI 桥接工具。
+            </dd>
+          </div>
+        </dl>
+        <div className="mt-4 flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
           <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
-          <div>
-            浏览器中运行的 MCP 集成（如直接在 claude.ai 或 chatgpt.com 添加）因 CORS 策略无法直接连接。
-            请通过 <InlineCode>{`npx mcp-remote ${MCP_ENDPOINT}`}</InlineCode> 使用本地桥接。
+          <div className="text-sm text-amber-800 dark:text-amber-300">
+            浏览器中运行的 MCP 集成（如直接在 claude.ai 或 chatgpt.com 添加）因 CORS 策略<strong>无法</strong>直接连接。
+            请通过 <InlineCode>{`npx mcp-remote ${MCP_ENDPOINT}`}</InlineCode> 使用本地桥接，然后将助手指向桥接地址。
           </div>
         </div>
       </section>
 
       {/* 快速开始 */}
       <section className="mb-14">
-        <h2 className="mb-4 font-semibold text-2xl">快速开始</h2>
-        <ClientTabs />
-        <div className="mt-4 flex gap-2.5 rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-300">
-          <Info size={15} className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
-          <div>
-            API Key 可在{" "}
-            <a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 font-medium underline hover:no-underline">
-              API 密钥管理 <ExternalLink size={11} />
-            </a>{" "}
-            页面创建。写入操作需要认证，搜索和读取操作可选。
-          </div>
+        <h2 className="font-semibold text-xl text-foreground">快速开始</h2>
+        <div className="mt-4">
+          <ClientTabs />
         </div>
       </section>
 
       {/* 工具参考 */}
       <section className="mb-14">
-        <h2 className="mb-2 font-semibold text-2xl">工具参考</h2>
-        <p className="mb-10 text-sm text-muted-foreground">
-          Viben MCP 服务提供 <strong>4 个工具</strong>，分为读取工具和写入工具。
+        <h2 className="font-semibold text-xl text-foreground">工具参考</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          Viben MCP 服务提供 <strong>4 个工具</strong>，分为读取工具和写入工具。将它们组合使用即可构建完整的内容管理工作流。
         </p>
 
-        <h3 className="mb-1 flex items-center gap-2 font-medium text-lg">
+        <h3 className="mt-10 mb-1 flex items-center gap-2 font-semibold text-lg text-foreground">
           <FileText size={18} className="text-primary/70" /> 读取工具
         </h3>
-        <p className="mb-6 text-sm text-muted-foreground">搜索和获取页面内容。无需认证即可访问公开页面。</p>
-        <div className="mb-12 space-y-14">
+        <p className="mb-8 mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          搜索和获取页面内容。无需认证即可访问公开页面；传入 API Key 后可额外访问本人的私有页面。
+        </p>
+        <div className="mb-12 space-y-16">
           {READ_TOOLS.map((t) => <ToolSection key={t.name} {...t} />)}
         </div>
 
-        <h3 className="mb-1 flex items-center gap-2 font-medium text-lg">
+        <h3 className="mt-10 mb-1 flex items-center gap-2 font-semibold text-lg text-foreground">
           <Plus size={18} className="text-primary/70" /> 写入工具
         </h3>
-        <p className="mb-6 text-sm text-muted-foreground">创建和更新页面。需要 API Key 认证，仅操作者本人的页面。</p>
-        <div className="space-y-14">
-          {WRITE_TOOLS.map((t) => <ToolSection key={t.name} {...t} badge="需认证" />)}
+        <p className="mb-8 mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          创建和更新页面内容。需要 API Key 认证，操作者只能管理自己的页面。
+        </p>
+        <div className="space-y-16">
+          {WRITE_TOOLS.map((t) => <ToolSection key={t.name} {...t} badge="需要认证" />)}
         </div>
       </section>
 
       {/* 常见工作流 */}
       <section className="mb-14">
-        <h2 className="mb-4 flex items-center gap-2.5 font-semibold text-2xl">
-          <BookOpen size={22} className="text-primary/70" /> 常见工作流
+        <h2 className="mb-4 flex items-center gap-2.5 font-semibold text-xl text-foreground">
+          <BookOpen size={20} className="text-primary/70" /> 常见工作流
         </h2>
         <div className="space-y-4">
           {WORKFLOWS.map((wf) => (
@@ -545,26 +452,22 @@ export default function McpDocsPage() {
 
       {/* 限制 */}
       <section>
-        <h2 className="mb-4 font-semibold text-2xl">限制与注意事项</h2>
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <table className="w-full text-sm">
-            <tbody>
-              {[
-                ["请求超时", "最大 300 秒"],
-                ["页面大小", "HTML 建议控制在 5MB 以内"],
-                ["标签数量", "每页最多 12 个，超出自动截断"],
-                ["传输协议", "仅支持 Streamable HTTP，不支持旧版 SSE"],
-                ["并发限制", "与 REST API 共享频率限制策略"],
-                ["可见性", "private 页面仅作者可见，不会暴露给未认证请求"],
-              ].map(([label, value]) => (
-                <tr key={label as string} className="border-b border-border last:border-0">
-                  <td className="w-36 px-4 py-2.5 text-xs font-medium">{label}</td>
-                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <h2 className="font-semibold text-xl text-foreground">限制与注意事项</h2>
+        <dl className="mt-4 space-y-3">
+          {[
+            ["请求超时", "最大 300 秒"],
+            ["页面大小", "HTML 建议控制在 5MB 以内"],
+            ["标签数量", "每页最多 12 个，超出自动截断"],
+            ["传输协议", "仅支持 Streamable HTTP，不支持旧版 SSE"],
+            ["并发限制", "与 REST API 共享频率限制策略"],
+            ["可见性", "private 页面仅作者可见，不会暴露给未认证请求"],
+          ].map(([label, value]) => (
+            <div key={label} className="flex flex-col sm:flex-row sm:gap-4">
+              <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">{label}</dt>
+              <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
     </div>
   );
