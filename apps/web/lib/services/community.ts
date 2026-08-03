@@ -138,6 +138,52 @@ export const getPublishedPageContext = cache(
   }
 )
 
+/**
+ * 带时间戳比对的页面缓存：
+ * - 先用轻量查询获取 lastPublishedAt
+ * - 以时间戳作为 cache key 的一部分，发布新版本时自动换 key → 缓存失效
+ * - 如果时间戳没变，命中缓存，跳过 page+author 双表 JOIN
+ */
+export async function getCachedPublishedPageContext(
+  userSlug: string,
+  pageId: string,
+): Promise<PublicPageContext | null> {
+  const dbPage = await db.query.publishedPages.findFirst({
+    where: and(
+      eq(publishedPages.authorSlug, userSlug),
+      eq(publishedPages.uid, pageId),
+    ),
+    columns: { userId: true, lastPublishedAt: true },
+  });
+  if (!dbPage) return null;
+
+  const cacheKey = `page-ctx-${userSlug}-${pageId}`;
+  const timestamp = dbPage.lastPublishedAt?.toISOString() ?? "never";
+
+  const getCtx = unstable_cache(
+    async (ts: string) => {
+      const page = await db.query.publishedPages.findFirst({
+        where: and(
+          eq(publishedPages.authorSlug, userSlug),
+          eq(publishedPages.uid, pageId),
+        ),
+      });
+      if (!page) return null;
+
+      const author = await db.query.users.findFirst({
+        where: eq(users.id, dbPage.userId),
+      });
+      if (!author) return null;
+
+      return { page, author };
+    },
+    [cacheKey],
+    { revalidate: false, tags: [cacheKey] },
+  );
+
+  return getCtx(timestamp);
+}
+
 export async function searchPublishedPagesByAuthor(
   authorSlug: string,
   opts?: { query?: string; limit?: number }

@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { Suspense } from "react"
-import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments, getReadPageRecommendations } from "@/lib/services/community"
+import { getCachedPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments, getReadPageRecommendations } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound, redirect } from "next/navigation"
 import { ReadPageClient } from "@/components/pages/read-page-client"
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic"
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { user_slug, page_id } = await params
-  const ctx = await getPublishedPageContext(user_slug, page_id)
+  const ctx = await getCachedPublishedPageContext(user_slug, page_id)
 
   if (!ctx) return { title: "页面未找到" }
 
@@ -68,7 +68,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
 
   // T1: Blocking — page context + permission check
   const t_start = Date.now()
-  const ctx = await getPublishedPageContext(user_slug, page_id)
+  const ctx = await getCachedPublishedPageContext(user_slug, page_id)
   const t_t1 = Date.now()
   if (!ctx || !canReadPage(ctx.page, session)) {
     notFound()
