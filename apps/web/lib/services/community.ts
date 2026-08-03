@@ -2026,20 +2026,11 @@ export interface HomePageData {
     likeCount: number;
     commentCount: number;
   }>;
-  topAuthors: Array<{
-    id: string;
-    userSlug: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-    bio: string | null;
-    pageCount: number | null;
-    followersCount: number;
-  }>;
 }
 
 export const getHomePageData = unstable_cache(
-  async (sessionUserId: string | null): Promise<HomePageData> => {
-    const [rankingResult, latestPages, topAuthors] = await Promise.all([
+  async (): Promise<HomePageData> => {
+    const [rankingResult, latestPages] = await Promise.all([
       listRanking({ rankingKey: "published_page", timeWindow: "7d", limit: 10 }),
       db
         .select({
@@ -2064,15 +2055,34 @@ export const getHomePageData = unstable_cache(
         )
         .orderBy(desc(publishedPages.lastPublishedAt))
         .limit(6),
-      sessionUserId
-        ? db.select().from(users).where(ne(users.id, sessionUserId)).orderBy(desc(users.followersCount)).limit(3)
-        : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
     ]);
 
-    return { rankingItems: rankingResult.items, latestPages, topAuthors };
+    return { rankingItems: rankingResult.items, latestPages };
   },
   [HOMEPAGE_CACHE_TAG],
   { revalidate: false, tags: [HOMEPAGE_CACHE_TAG] },
+);
+
+const HOMEPAGE_AUTHORS_TAG = "homepage-authors";
+
+export interface HomePageAuthors {
+  id: string;
+  userSlug: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  pageCount: number | null;
+  followersCount: number;
+}
+
+export const getHomeTopAuthors = unstable_cache(
+  async (sessionUserId: string | null): Promise<HomePageAuthors[]> => {
+    return sessionUserId
+      ? db.select().from(users).where(ne(users.id, sessionUserId)).orderBy(desc(users.followersCount)).limit(3)
+      : db.select().from(users).orderBy(desc(users.followersCount)).limit(3);
+  },
+  [HOMEPAGE_AUTHORS_TAG],
+  { revalidate: false, tags: [HOMEPAGE_AUTHORS_TAG] },
 );
 
 const PAGE_RECOMMENDATIONS_TAG = "page-recommendations";

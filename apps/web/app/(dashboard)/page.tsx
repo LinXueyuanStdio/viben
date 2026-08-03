@@ -9,8 +9,9 @@ import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
 import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { Footer } from "@/components/layout/footer"
-import { getHomePageData } from "@/lib/services/community"
-import type { HomePageData } from "@/lib/services/community"
+import { getHomePageData, getHomeTopAuthors } from "@/lib/services/community"
+import type { HomePageData, HomePageAuthors } from "@/lib/services/community"
+import { getSession } from "@/lib/auth/cookies"
 import { timeAgo } from "@/lib/services/moment-mapper"
 import type { HeroSlideData } from "@/components/content/hero-carousel"
 import type { PageCardData } from "@/components/content/page-card"
@@ -46,15 +47,20 @@ const HERO_COLORS = [
 ]
 
 export default async function HomePage() {
+  const session = await getSession()
+
   let heroSlides: HeroSlideData[] = []
   let featuredPages: PageCardData[] = []
   let recommendedEntries: Array<{ data: PageCardData; href: string }> = []
   let rankingItemsReadUrls: Array<{ user_slug: string; page_id: string }> = []
-  let sidebarAuthors: HomePageData["topAuthors"] = []
+  let sidebarAuthors: HomePageAuthors[] = []
   let sidebarRankingPages: Array<{ title: string; stats: { views: number } }> = []
 
   try {
-    const data = await getHomePageData(null)
+    const [data, authors] = await Promise.all([
+      getHomePageData(),
+      getHomeTopAuthors(session?.userId ?? null),
+    ])
 
     const rankingItems = data.rankingItems.filter((item) => item.cover_url != null)
 
@@ -103,7 +109,7 @@ export default async function HomePage() {
       href: `/${encodeURIComponent(p.authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
     }))
 
-    sidebarAuthors = data.topAuthors
+    sidebarAuthors = authors
     sidebarRankingPages = data.rankingItems.slice(0, 3).map((item) => ({
       title: item.title,
       stats: { views: item.view_count ?? 0 },

@@ -257,8 +257,9 @@ export async function POST(request: NextRequest) {
       throw innerError;
     }
 
-    // 重建完成后刷新首页和推荐缓存
+    // 重建完成后刷新首页缓存
     revalidateTag("homepage");
+    revalidateTag("homepage-authors");
     revalidateTag("page-recommendations");
 
     // Fetch the final snapshot
