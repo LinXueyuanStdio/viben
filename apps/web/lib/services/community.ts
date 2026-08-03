@@ -11,7 +11,6 @@ import {
   momentTopics,
   moments,
   notifications,
-  operationRevisions,
   pageSubscriptions,
   pageUpdateEvents,
   publishedPages,
@@ -1963,84 +1962,6 @@ export const listRanking = cache(async (params: {
     seed: null,
   };
 });
-
-export async function getHomeConfig(surface: string, locale: string) {
-  const revision = (await db.query.operationRevisions.findFirst({
-    where: and(
-      eq(operationRevisions.surface, surface),
-      eq(operationRevisions.status, 'published'),
-      eq(operationRevisions.locale, locale)
-    ),
-    orderBy: [desc(operationRevisions.revisionNumber)],
-  })) ?? (locale === 'default'
-    ? null
-    : await db.query.operationRevisions.findFirst({
-        where: and(
-          eq(operationRevisions.surface, surface),
-          eq(operationRevisions.status, 'published'),
-          eq(operationRevisions.locale, 'default')
-        ),
-        orderBy: [desc(operationRevisions.revisionNumber)],
-      }));
-
-  if (revision) {
-    return {
-      surface,
-      locale,
-      resolved_locale: revision.locale,
-      revision_id: revision.id,
-      revision_number: revision.revisionNumber,
-      generated_at: new Date().toISOString(),
-      slots: (revision.snapshot as { slots?: unknown[] }).slots ?? [],
-      fallback_used: false,
-    };
-  }
-
-  const pages = await db
-    .select({
-      page: publishedPages,
-      author: users,
-    })
-    .from(publishedPages)
-    .innerJoin(users, eq(users.id, publishedPages.userId))
-    .where(and(eq(publishedPages.visibility, 'public'), eq(publishedPages.moderationStatus, 'approved')))
-    .orderBy(desc(publishedPages.lastPublishedAt))
-    .limit(12);
-
-  return {
-    surface,
-    locale,
-    resolved_locale: 'default',
-    revision_id: null,
-    revision_number: null,
-    generated_at: new Date().toISOString(),
-    slots: [
-      {
-        slot_key: 'latest_public_pages',
-        layout_type: 'grid',
-        metadata: {},
-        items: pages.map(({ page, author }) => ({
-          item_type: 'published_page',
-          title: page.title,
-          description: page.description,
-          target_url: `/${encodeURIComponent(author.userSlug)}/${encodeURIComponent(page.uid)}?tab=read`,
-          entity_type: 'published_page',
-          entity_id: page.uid,
-          user_slug: author.userSlug,
-          page_id: page.uid,
-          stats: {
-            view_count: page.viewCount,
-            read_count: page.readCount,
-            like_count: page.likeCount,
-            bookmark_count: page.bookmarkCount,
-            comment_count: page.commentCount,
-          },
-        })),
-      },
-    ],
-    fallback_used: true,
-  };
-}
 
 export async function listPagesByTag(tag: string, limit: number = 20) {
   const rows = await db
