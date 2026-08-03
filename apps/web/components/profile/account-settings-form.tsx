@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useTranslation, Trans } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Shield, Clock, Calendar, Key, Activity, BarChart3, ExternalLink } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,10 +27,6 @@ interface AccountSettingsFormProps {
     username: string;
     email: string;
     hasPassword: boolean;
-    createdAt: string | null;
-    lastLoginAt: string | null;
-    role: string;
-    keyCount: number;
   };
 }
 
@@ -206,107 +201,7 @@ export function AccountSettingsForm({ user }: AccountSettingsFormProps) {
         </div>
       </section>
 
-      {/* Section 3: Activity */}
-      <section className="rounded-lg border">
-        <div className="border-b px-6 py-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Activity size={18} className="text-muted-foreground" />
-            {t('profile.sections.activity', '活动记录')}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {t('profile.sections.activityDesc', '账户活动和统计信息')}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-4 p-6">
-          <div className="flex items-center gap-3 rounded-lg border p-4">
-            <Calendar size={20} className="text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {t('profile.activity.createdAt', '注册时间')}
-              </p>
-              <p className="text-sm font-medium">
-                {user.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
-                  : '—'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-4">
-            <Clock size={20} className="text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {t('profile.activity.lastLogin', '最后登录')}
-              </p>
-              <p className="text-sm font-medium">
-                {user.lastLoginAt
-                  ? new Date(user.lastLoginAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
-                  : '—'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-4">
-            <Shield size={20} className="text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {t('profile.activity.role', '账户角色')}
-              </p>
-              <p className="text-sm font-medium capitalize">{user.role}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-4">
-            <Key size={20} className="text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {t('profile.activity.apiKeys', 'API 密钥')}
-              </p>
-              <p className="text-sm font-medium">{user.keyCount} {t('profile.activity.apiKeysCount', '个')}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 4: Analytics */}
-      <section className="rounded-lg border">
-        <div className="border-b px-6 py-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <BarChart3 size={18} className="text-muted-foreground" />
-            {t('profile.sections.analytics', '数据分析')}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {t('profile.sections.analyticsDesc', '了解我们如何收集和使用数据')}
-          </p>
-        </div>
-        <div className="p-6 space-y-4 text-sm">
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <p className="font-medium">Vercel Analytics</p>
-            <p className="mt-1 text-muted-foreground">
-              {t('profile.analytics.vercelDesc', '我们使用 Vercel Analytics 收集匿名的页面访问数据，帮助我们了解用户行为并改进产品。不包含任何个人身份信息。')}
-            </p>
-          </div>
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <p className="font-medium">Web Vitals</p>
-            <p className="mt-1 text-muted-foreground">
-              {t('profile.analytics.webVitalsDesc', '我们监控页面性能指标（LCP、FID、CLS），以确保最佳的用户体验。')}
-            </p>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div>
-              <p className="font-medium">{t('profile.analytics.mcpTitle', 'MCP 服务')}</p>
-              <p className="text-muted-foreground">
-                {t('profile.analytics.mcpDesc', '通过 MCP 协议将页面管理能力接入 AI 助手')}
-              </p>
-            </div>
-            <Link
-              href="/docs/mcp/v1"
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary underline hover:no-underline"
-            >
-              {t('profile.analytics.viewDocs', '查看文档')} <ExternalLink size={11} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 5: Danger Zone */}
+      {/* Section 3: Danger Zone */}
       <section className="rounded-lg border border-destructive/30">
         <div className="border-b border-destructive/20 px-6 py-4">
           <h2 className="text-lg font-semibold text-destructive">{t('profile.sections.danger')}</h2>

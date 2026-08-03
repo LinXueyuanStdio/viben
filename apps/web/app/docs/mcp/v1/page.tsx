@@ -277,12 +277,6 @@ function useCurrentLang(): Lang {
   return (i18n.language?.startsWith("en") ? "en" : "zh") as Lang;
 }
 
-function TableIcon({ Icon }: { Icon: React.ElementType }) {
-  return <Icon size={13} className="mr-2 inline text-muted-foreground" />;
-}
-
-// Fix Icon typing — use React.ComponentType
-type IconComponent = React.ComponentType<{ size?: number; className?: string }>;
 
 // ═══════════════════════════════════════════════════════════
 // Parameter Table
