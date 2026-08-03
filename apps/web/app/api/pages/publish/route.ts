@@ -330,6 +330,14 @@ export async function POST(request: NextRequest) {
       description: description ?? null,
     });
 
+    // 首次发布时更新用户页面计数
+    if (eventType === 'published') {
+      await db
+        .update(users)
+        .set({ pageCount: sql`COALESCE(${users.pageCount}, 0) + 1` })
+        .where(eq(users.id, session.userId));
+    }
+
     await recordPageUpdateAndNotify(db, {
       publishedPageId: updatedPublishedPage.id,
       userId: session.userId,
