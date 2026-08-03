@@ -1,10 +1,92 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Check, Copy, ExternalLink, AlertTriangle, Info, FileText, Plus, Key, Terminal, BookOpen } from "lucide-react";
+import { Check, Copy, ExternalLink, AlertTriangle, Info, FileText, Plus, Key, Terminal, BookOpen, ChevronDown } from "lucide-react";
 
 const MCP_ENDPOINT = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/mcp/v1`;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+// ═══════════════════════════════════════════════════════════
+// Lightweight JSON / bash syntax highlighter
+// ═══════════════════════════════════════════════════════════
+const JSON_KEY = /("(?:[^"\\]|\\.)*")\s*:/g;
+const JSON_STRING = /("(?:[^"\\]|\\.)*")/g;
+const JSON_NUMBER = /(-?\b\d+\.?\d*\b)(?=\s*[,}\]\n\r])/g;
+const JSON_BOOL_NULL = /(\b(?:true|false|null)\b)/g;
+
+function highlightJson(code: string): React.ReactNode[] {
+  // Split by keys first
+  const parts: React.ReactNode[] = [];
+  let remaining = code;
+  let key = 0;
+
+  // Tokenize: keys, strings, numbers, bool/null, punctuation
+  const tokens: { text: string; className: string }[] = [];
+  let lastIndex = 0;
+  const regex = /("(?:[^"\\]|\\.)*")\s*:|("(?:[^"\\]|\\.)*")|(-?\b\d+\.?\d*\b)(?=\s*[,}\]\n\r])|(\b(?:true|false|null)\b)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(code)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({ text: code.slice(lastIndex, match.index), className: "text-zinc-300" });
+    }
+    const [full, keyMatch, strMatch, numMatch, boolMatch] = match;
+    if (keyMatch) {
+      tokens.push({ text: full.slice(0, -1), className: "text-sky-400" }); // key without colon
+      tokens.push({ text: ":", className: "text-zinc-400" });
+    } else if (strMatch) {
+      tokens.push({ text: strMatch, className: "text-emerald-400" });
+    } else if (numMatch) {
+      tokens.push({ text: numMatch, className: "text-amber-400" });
+    } else if (boolMatch) {
+      tokens.push({ text: boolMatch, className: "text-purple-400" });
+    }
+    lastIndex = match.index + full.length;
+  }
+  if (lastIndex < code.length) {
+    tokens.push({ text: code.slice(lastIndex), className: "text-zinc-300" });
+  }
+
+  return tokens.map((t, i) => (
+    <span key={i} className={t.className}>{t.text}</span>
+  ));
+}
+
+function highlightBash(code: string): React.ReactNode[] {
+  // Simple bash highlighting: comments, commands, strings, flags
+  const lines = code.split("\n");
+  return lines.flatMap((line, li) => {
+    const result: React.ReactNode[] = [];
+    // Comments
+    const commentIdx = line.indexOf("#");
+    if (commentIdx >= 0) {
+      result.push(<span key={`${li}-cmd`} className="text-zinc-300">{line.slice(0, commentIdx)}</span>);
+      result.push(<span key={`${li}-cmt`} className="text-zinc-500">{line.slice(commentIdx)}</span>);
+    } else {
+      // Flag highlighting
+      const parts = line.split(/(--?[a-zA-Z][\w-]*)/g);
+      result.push(...parts.map((p, pi) => {
+        if (/^--?[a-zA-Z]/.test(p)) return <span key={`${li}-${pi}`} className="text-amber-400">{p}</span>;
+        return <span key={`${li}-${pi}`} className="text-zinc-300">{p}</span>;
+      }));
+    }
+    if (li < lines.length - 1) result.push(<span key={`${li}-nl`}>{"\n"}</span>);
+    return result;
+  });
+}
+
+function highlightHttp(code: string): React.ReactNode[] {
+  return [<span key="h" className="text-emerald-400">{code}</span>];
+}
+
+function highlightCode(code: string, lang?: string): React.ReactNode[] {
+  switch (lang) {
+    case "json": return highlightJson(code);
+    case "bash": return highlightBash(code);
+    case "http": return highlightHttp(code);
+    default: return [<span key="d" className="text-zinc-300">{code}</span>];
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // Copy Button
@@ -19,7 +101,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="absolute right-2 top-2 rounded p-1 text-zinc-500 opacity-0 transition-all hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
+      className="absolute right-1.5 top-1.5 rounded p-1 text-zinc-500 opacity-0 transition-all hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
       aria-label="复制"
     >
       {copied ? <Check size={13} /> : <Copy size={13} />}
@@ -35,26 +117,36 @@ function InlineCode({ children }: { children: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Code Block (always visible, no collapse)
+// Code Block — syntax highlighted, always visible
 // ═══════════════════════════════════════════════════════════
 function CodeBlock({ code, lang }: { code: string; lang?: string }) {
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-zinc-950">
-      {lang && (
-        <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-1">
-          <span className="font-mono text-[11px] text-zinc-500">{lang}</span>
-        </div>
-      )}
-      <CopyButton text={code} />
-      <pre className="overflow-x-auto p-3">
-        <code className="font-mono text-sm leading-relaxed text-zinc-100">{code}</code>
+    <div className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-[#0d1117]">
+      {/* header bar */}
+      <div className="flex items-center justify-between border-b border-zinc-800/60 bg-[#161b22]/50 px-3 py-1.5">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-zinc-500">{lang || "text"}</span>
+        <button
+          onClick={async () => {
+            await navigator.clipboard.writeText(code);
+          }}
+          className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+        >
+          <Copy size={11} />
+          复制
+        </button>
+      </div>
+      {/* code */}
+      <pre className="overflow-x-auto p-4">
+        <code className="font-mono text-[13px] leading-relaxed">
+          {highlightCode(code, lang)}
+        </code>
       </pre>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
-// Parameter Table — always visible
+// Parameter Table
 // ═══════════════════════════════════════════════════════════
 interface Param { name: string; type: string; required: string; desc: string; }
 
@@ -90,6 +182,36 @@ function ParamTable({ params }: { params: Param[] }) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Collapsible Examples — folded by default
+// ═══════════════════════════════════════════════════════════
+function ExamplesSection({ examples }: {
+  examples: { label: string; params: Record<string, unknown> }[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-border">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/30"
+      >
+        <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? "rotate-0" : "-rotate-90"}`} />
+        示例（{examples.length}）
+      </button>
+      {open && (
+        <div className="border-t border-border px-4 py-4 space-y-4">
+          {examples.map((ex, i) => (
+            <div key={i}>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">{ex.label}</div>
+              <CodeBlock code={JSON.stringify(ex.params, null, 2)} lang="json" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // Tool Section
 // ═══════════════════════════════════════════════════════════
 function ToolSection({
@@ -101,7 +223,6 @@ function ToolSection({
 }) {
   return (
     <div className="space-y-4">
-      {/* name + badge */}
       <div className="flex items-center gap-3">
         <code className="rounded-lg bg-zinc-950 px-2.5 py-1 font-mono text-sm font-semibold text-zinc-50">{name}</code>
         {badge && (
@@ -110,40 +231,18 @@ function ToolSection({
           </span>
         )}
       </div>
-
-      {/* description */}
       <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-
-      {/* parameters */}
       <ParamTable params={params} />
-
-      {/* returns */}
       <div className="text-sm text-muted-foreground">
         <strong className="text-foreground">返回</strong>{" "}{returns}
       </div>
-
-      {/* notes */}
       {notes && (
         <div className="flex gap-2.5 rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-300">
           <Info size={15} className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
           <div>{notes}</div>
         </div>
       )}
-
-      {/* examples */}
-      <div>
-        <span className="mb-3 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          示例（{examples.length}）
-        </span>
-        <div className="space-y-4">
-          {examples.map((ex, i) => (
-            <div key={i}>
-              <div className="mb-2 text-xs font-medium text-muted-foreground">{ex.label}</div>
-              <CodeBlock code={JSON.stringify(ex.params, null, 2)} lang="json" />
-            </div>
-          ))}
-        </div>
-      </div>
+      <ExamplesSection examples={examples} />
     </div>
   );
 }
@@ -151,11 +250,7 @@ function ToolSection({
 // ═══════════════════════════════════════════════════════════
 // Client Tabs
 // ═══════════════════════════════════════════════════════════
-interface ClientTab {
-  name: string;
-  command?: string;
-  config?: Record<string, unknown>;
-}
+interface ClientTab { name: string; command?: string; config?: Record<string, unknown>; }
 
 const CLIENT_TABS: ClientTab[] = [
   {
@@ -205,28 +300,22 @@ function ClientTabs() {
   const tab = CLIENT_TABS[active];
   return (
     <div>
-      {/* Tab bar */}
       <div className="flex border-b border-border">
         {CLIENT_TABS.map((t, i) => (
           <button
             key={t.name}
             onClick={() => setActive(i)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
-              i === active
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              i === active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {t.name}
           </button>
         ))}
       </div>
-      {/* Tab content */}
       <div className="pt-4">
         {tab.command && <CodeBlock code={tab.command} lang="bash" />}
-        {tab.config && (
-          <CodeBlock code={JSON.stringify(tab.config, null, 2)} lang="json" />
-        )}
+        {tab.config && <CodeBlock code={JSON.stringify(tab.config, null, 2)} lang="json" />}
       </div>
     </div>
   );
@@ -238,28 +327,22 @@ function ClientTabs() {
 const READ_TOOLS = [
   {
     name: "search_pages",
-    description: "搜索 viben 上已发布的公开页面。同时匹配标题、页面标识符（uid）和描述内容。结果按最近发布时间降序排列。适合内容发现和检索。",
+    description: "搜索 viben 上已发布的公开页面。同时匹配标题、页面标识符（uid）和描述内容。结果按最近发布时间降序排列。",
     params: [
       { name: "query", type: "string", required: "是", desc: "搜索关键词。ILIKE 模糊匹配，支持中英文。同时匹配标题、uid 和描述。最小 1 字符。" },
       { name: "author_slug", type: "string", required: "否", desc: "按作者 slug 过滤。不传则搜索全站公开页面。" },
       { name: "limit", type: "number", required: "否", desc: "返回数量上限。默认 20，最小 1，最大 50。" },
     ] as Param[],
     returns: "pages 数组，每项含 uid、title、author_slug、description、tags、published_at。按 lastPublishedAt 降序。",
-    notes: "建议先用简短关键词初步搜索，再根据结果调整。结合 author_slug 可精确查找特定作者页面。",
+    notes: "建议先用简短关键词初步搜索。结合 author_slug 可精确查找特定作者页面。",
     examples: [
-      {
-        label: "按关键词搜索",
-        params: { query: "前端性能优化" },
-      },
-      {
-        label: "按作者过滤并限制数量",
-        params: { query: "React", author_slug: "LinXueyuanStdio", limit: 10 },
-      },
+      { label: "按关键词搜索", params: { query: "前端性能优化" } },
+      { label: "按作者过滤并限制数量", params: { query: "React", author_slug: "LinXueyuanStdio", limit: 10 } },
     ],
   },
   {
     name: "get_page",
-    description: "获取指定页面的完整内容，包括 HTML 源码、元数据（标题、描述、标签、封面图）、可见性设置和作者信息。适合深度阅读和内容分析。",
+    description: "获取指定页面的完整内容，包括 HTML 源码、元数据（标题、描述、标签、封面图）、可见性设置和作者信息。",
     params: [
       { name: "author_slug", type: "string", required: "是", desc: "页面作者的 slug。从 search_pages 返回结果获取。" },
       { name: "page_uid", type: "string", required: "是", desc: "页面唯一标识符。从 search_pages 返回的 uid 字段获取。" },
@@ -267,10 +350,7 @@ const READ_TOOLS = [
     returns: "uid、title、html、description、tags、visibility、cover_url、published_at、version，以及 author 对象（display_name、avatar_url、slug）。",
     notes: "author_slug + page_uid 唯一确定页面。html 最大约 5MB。页面不存在或不可访问时返回错误。",
     examples: [
-      {
-        label: "获取公开页面",
-        params: { author_slug: "LinXueyuanStdio", page_uid: "react-patterns" },
-      },
+      { label: "获取公开页面", params: { author_slug: "LinXueyuanStdio", page_uid: "react-patterns" } },
     ],
   },
 ];
@@ -303,7 +383,7 @@ const WRITE_TOOLS = [
   },
   {
     name: "update_page",
-    description: "更新已有页面的内容或元数据。仅更新指定字段，未指定字段保持原值。比 create_page 更轻量——修改标题或标签无需重新发送完整 HTML。需要 API Key 认证，仅页面作者可操作。",
+    description: "更新已有页面的内容或元数据。仅更新指定字段，未指定字段保持原值。比 create_page 更轻量。需要 API Key 认证，仅页面作者可操作。",
     params: [
       { name: "uid", type: "string", required: "是", desc: "页面唯一标识符。页面必须已存在且属于当前用户。" },
       { name: "title", type: "string", required: "否", desc: "新标题。1-500 字符。不传则保持原标题。" },
@@ -316,14 +396,8 @@ const WRITE_TOOLS = [
     returns: "success、page_uid、url、read_url。updated 始终为 true。页面不存在或不属于当前用户时返回错误。",
     notes: "与 create_page 不同，update_page 要求页面已存在，不存在时返回错误。每次更新递增版本号并通知订阅者。",
     examples: [
-      {
-        label: "更新标题和标签",
-        params: { uid: "hello-world", title: "Hello, Viben! (2026 版)", tags: ["intro", "hello", "2026"] },
-      },
-      {
-        label: "仅修改可见性",
-        params: { uid: "draft-post", visibility: "unlisted" },
-      },
+      { label: "更新标题和标签", params: { uid: "hello-world", title: "Hello, Viben! (2026 版)", tags: ["intro", "hello", "2026"] } },
+      { label: "仅修改可见性", params: { uid: "draft-post", visibility: "unlisted" } },
     ],
   },
 ];
@@ -349,7 +423,7 @@ const WORKFLOWS = [
     title: "批量更新元数据",
     steps: [
       { tool: "search_pages", desc: "搜索需要更新的页面列表" },
-      { tool: "update_page", desc: "对每个页面仅传入需要修改的字段（如 tags 或 description）" },
+      { tool: "update_page", desc: "对每个页面仅传入需要修改的字段" },
       { desc: "无需重新发送 html，高效完成批量更新" },
     ],
   },
@@ -361,7 +435,7 @@ const WORKFLOWS = [
 export default function McpDocsPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
-      {/* ── Hero ── */}
+      {/* Hero */}
       <div className="mb-14">
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -375,15 +449,15 @@ export default function McpDocsPage() {
         </p>
       </div>
 
-      {/* ── 连接信息 ── */}
+      {/* 连接信息 */}
       <section className="mb-14">
         <h2 className="mb-4 font-semibold text-2xl">连接信息</h2>
         <div className="overflow-hidden rounded-xl border bg-card">
           <table className="w-full text-sm">
             <tbody>
               {[
-                ["端点", <code key="1" className="font-mono text-xs break-all">{MCP_ENDPOINT}</code>],
-                ["传输方式", "Streamable HTTP（POST 发送请求，GET 用于 SSE 流，DELETE 终止会话）"],
+                ["端点", <span key="1" className="inline-flex items-center gap-2"><code className="font-mono text-xs break-all">{MCP_ENDPOINT}</code><CopyButton text={MCP_ENDPOINT} /></span>],
+                ["传输方式", "Streamable HTTP"],
                 ["认证", "Bearer Token（API Key，bmcp_ 前缀）"],
                 ["协议版本", "Model Context Protocol (MCP) v1.0.0"],
                 ["支持的客户端", "Claude Code、Codex、Claude Desktop、VS Code、Cursor 及 mcp-remote 桥接"],
@@ -405,7 +479,7 @@ export default function McpDocsPage() {
         </div>
       </section>
 
-      {/* ── 快速开始 ── */}
+      {/* 快速开始 */}
       <section className="mb-14">
         <h2 className="mb-4 font-semibold text-2xl">快速开始</h2>
         <ClientTabs />
@@ -421,37 +495,31 @@ export default function McpDocsPage() {
         </div>
       </section>
 
-      {/* ── 工具参考 ── */}
+      {/* 工具参考 */}
       <section className="mb-14">
         <h2 className="mb-2 font-semibold text-2xl">工具参考</h2>
         <p className="mb-10 text-sm text-muted-foreground">
           Viben MCP 服务提供 <strong>4 个工具</strong>，分为读取工具和写入工具。
         </p>
 
-        {/* 读取工具 */}
         <h3 className="mb-1 flex items-center gap-2 font-medium text-lg">
           <FileText size={18} className="text-primary/70" /> 读取工具
         </h3>
         <p className="mb-6 text-sm text-muted-foreground">搜索和获取页面内容。无需认证即可访问公开页面。</p>
         <div className="mb-12 space-y-14">
-          {READ_TOOLS.map((t) => (
-            <ToolSection key={t.name} {...t} />
-          ))}
+          {READ_TOOLS.map((t) => <ToolSection key={t.name} {...t} />)}
         </div>
 
-        {/* 写入工具 */}
         <h3 className="mb-1 flex items-center gap-2 font-medium text-lg">
           <Plus size={18} className="text-primary/70" /> 写入工具
         </h3>
         <p className="mb-6 text-sm text-muted-foreground">创建和更新页面。需要 API Key 认证，仅操作者本人的页面。</p>
         <div className="space-y-14">
-          {WRITE_TOOLS.map((t) => (
-            <ToolSection key={t.name} {...t} badge="需认证" />
-          ))}
+          {WRITE_TOOLS.map((t) => <ToolSection key={t.name} {...t} badge="需认证" />)}
         </div>
       </section>
 
-      {/* ── 常见工作流 ── */}
+      {/* 常见工作流 */}
       <section className="mb-14">
         <h2 className="mb-4 flex items-center gap-2.5 font-semibold text-2xl">
           <BookOpen size={22} className="text-primary/70" /> 常见工作流
@@ -475,7 +543,7 @@ export default function McpDocsPage() {
         </div>
       </section>
 
-      {/* ── 限制 ── */}
+      {/* 限制 */}
       <section>
         <h2 className="mb-4 font-semibold text-2xl">限制与注意事项</h2>
         <div className="overflow-hidden rounded-xl border bg-card">
