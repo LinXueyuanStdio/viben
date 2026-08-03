@@ -54,8 +54,8 @@ export default async function CategoryPage() {
       .orderBy(desc(publishedPages.lastPublishedAt))
       .limit(50),
     session?.userId
-      ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
-      : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
+      ? db.select({ id: users.id, userSlug: users.userSlug, displayName: users.displayName, avatarUrl: users.avatarUrl, bio: users.bio, pageCount: users.pageCount, followersCount: users.followersCount }).from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
+      : db.select({ id: users.id, userSlug: users.userSlug, displayName: users.displayName, avatarUrl: users.avatarUrl, bio: users.bio, pageCount: users.pageCount, followersCount: users.followersCount }).from(users).orderBy(desc(users.followersCount)).limit(3),
   ])
 
   const pagesByCategory: Record<string, { card: PageCardData; href: string }[]> = {}

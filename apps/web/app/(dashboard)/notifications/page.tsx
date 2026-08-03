@@ -55,7 +55,7 @@ export default async function NotificationsPage() {
 
   const [notifResult, topAuthors] = await Promise.all([
     listNotifications(session, 50, false, null),
-    db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(2),
+    db.select({ id: users.id, userSlug: users.userSlug, displayName: users.displayName, avatarUrl: users.avatarUrl, bio: users.bio, pageCount: users.pageCount, followersCount: users.followersCount }).from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(2),
   ])
 
   const rawNotifs = notifResult.items
