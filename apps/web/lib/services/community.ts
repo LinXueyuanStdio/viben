@@ -1,5 +1,6 @@
 import { cache } from "react";
-import { and, count, desc, eq, gt, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { unstable_cache } from "next/cache";
+import { and, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import {
   communityComments,
   communityEntities,
@@ -1962,6 +1963,71 @@ export const listRanking = cache(async (params: {
     seed: null,
   };
 });
+
+const HOMEPAGE_CACHE_TAG = "homepage";
+
+export interface HomePageData {
+  rankingItems: Awaited<ReturnType<typeof listRanking>>["items"];
+  latestPages: Array<{
+    uid: string;
+    title: string;
+    coverUrl: string | null;
+    authorDisplayName: string | null;
+    authorAvatarUrl: string | null;
+    authorSlug: string;
+    lastPublishedAt: Date;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+  }>;
+  topAuthors: Array<{
+    id: string;
+    userSlug: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    bio: string | null;
+    pageCount: number | null;
+    followersCount: number;
+  }>;
+}
+
+export const getHomePageData = unstable_cache(
+  async (sessionUserId: string | null): Promise<HomePageData> => {
+    const [rankingResult, latestPages, topAuthors] = await Promise.all([
+      listRanking({ rankingKey: "published_page", timeWindow: "7d", limit: 10 }),
+      db
+        .select({
+          uid: publishedPages.uid,
+          title: publishedPages.title,
+          coverUrl: publishedPages.coverUrl,
+          authorDisplayName: publishedPages.authorDisplayName,
+          authorAvatarUrl: publishedPages.authorAvatarUrl,
+          authorSlug: publishedPages.authorSlug,
+          lastPublishedAt: publishedPages.lastPublishedAt,
+          viewCount: publishedPages.viewCount,
+          likeCount: publishedPages.likeCount,
+          commentCount: publishedPages.commentCount,
+        })
+        .from(publishedPages)
+        .where(
+          and(
+            eq(publishedPages.visibility, "public"),
+            eq(publishedPages.moderationStatus, "approved"),
+            isNotNull(publishedPages.coverUrl),
+          ),
+        )
+        .orderBy(desc(publishedPages.lastPublishedAt))
+        .limit(6),
+      sessionUserId
+        ? db.select().from(users).where(ne(users.id, sessionUserId)).orderBy(desc(users.followersCount)).limit(3)
+        : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
+    ]);
+
+    return { rankingItems: rankingResult.items, latestPages, topAuthors };
+  },
+  [HOMEPAGE_CACHE_TAG],
+  { revalidate: 300, tags: [HOMEPAGE_CACHE_TAG] },
+);
 
 export async function listPagesByTag(tag: string, limit: number = 20) {
   const rows = await db
