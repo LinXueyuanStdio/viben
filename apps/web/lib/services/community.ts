@@ -144,29 +144,17 @@ export const getPublishedPageContext = cache(
 )
 
 /**
- * 带时间戳比对的页面缓存：
- * - 先用轻量查询获取 lastPublishedAt
- * - 以时间戳作为 cache key 的一部分，发布新版本时自动换 key → 缓存失效
- * - 如果时间戳没变，命中缓存，跳过 page+author 双表 JOIN
+ * 页面内容缓存：
+ * - 直接缓存 page + author 双表 JOIN 结果
+ * - 发布时通过 revalidateTag 失效，无需每次请求查时间戳
  */
-export async function getCachedPublishedPageContext(
+export const getCachedPublishedPageContext = async (
   userSlug: string,
   pageId: string,
-): Promise<PublicPageContext | null> {
-  const dbPage = await db.query.publishedPages.findFirst({
-    where: and(
-      eq(publishedPages.authorSlug, userSlug),
-      eq(publishedPages.uid, pageId),
-    ),
-    columns: { userId: true, lastPublishedAt: true },
-  });
-  if (!dbPage) return null;
-
+): Promise<PublicPageContext | null> => {
   const cacheKey = `page-ctx-${userSlug}-${pageId}`;
-  const timestamp = dbPage.lastPublishedAt?.toISOString() ?? "never";
-
-  const getCtx = unstable_cache(
-    async (ts: string) => {
+  return unstable_cache(
+    async (): Promise<PublicPageContext | null> => {
       const page = await db.query.publishedPages.findFirst({
         where: and(
           eq(publishedPages.authorSlug, userSlug),
@@ -176,7 +164,7 @@ export async function getCachedPublishedPageContext(
       if (!page) return null;
 
       const author = await db.query.users.findFirst({
-        where: eq(users.id, dbPage.userId),
+        where: eq(users.id, page.userId),
       });
       if (!author) return null;
 
@@ -184,9 +172,57 @@ export async function getCachedPublishedPageContext(
     },
     [cacheKey],
     { revalidate: false, tags: [cacheKey] },
-  );
+  )();
+};
 
-  return getCtx(timestamp);
+/**
+ * 社区实体 ID 缓存：
+ * - 页面首次访问时创建（UPSERT），后续命中缓存跳过写入
+ * - 与页面内容缓存共用 tag，发布时同时失效
+ */
+export async function getCachedCommunityEntityId(ctx: PublicPageContext): Promise<string> {
+  const cacheKey = `page-entity-${ctx.page.id}`;
+  const getEntity = unstable_cache(
+    async (): Promise<string> => {
+      const canonicalPath = `/${encodeURIComponent(ctx.author.userSlug)}/${encodeURIComponent(ctx.page.uid)}?tab=read`;
+      const status = isPublicPage(ctx.page) ? 'active' : 'hidden';
+
+      await db
+        .insert(communityEntities)
+        .values({
+          entityType: 'published_page',
+          entityId: ctx.page.id,
+          ownerUserId: ctx.page.userId,
+          visibility: ctx.page.visibility,
+          status,
+          title: ctx.page.title,
+          canonicalPath,
+        })
+        .onConflictDoUpdate({
+          target: [communityEntities.entityType, communityEntities.entityId],
+          set: {
+            ownerUserId: ctx.page.userId,
+            visibility: ctx.page.visibility,
+            status,
+            title: ctx.page.title,
+            canonicalPath,
+            updatedAt: sql`now()`,
+          },
+        });
+
+      const entity = await db.query.communityEntities.findFirst({
+        where: and(
+          eq(communityEntities.entityType, 'published_page'),
+          eq(communityEntities.entityId, ctx.page.id),
+        ),
+      });
+      if (!entity) throw new Error('Community entity was not found after upsert');
+      return entity.id;
+    },
+    [cacheKey],
+    { revalidate: false, tags: [cacheKey] },
+  );
+  return getEntity();
 }
 
 export async function searchPublishedPagesByAuthor(

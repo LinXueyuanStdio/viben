@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { Suspense } from "react"
-import { getCachedPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments, getReadPageRecommendations } from "@/lib/services/community"
+import { getCachedPublishedPageContext, canReadPage, getCommunitySummary, getCachedCommunityEntityId, recordPageView, listCommunityComments, getReadPageRecommendations } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound, redirect } from "next/navigation"
 import { ReadPageClient } from "@/components/pages/read-page-client"
@@ -86,8 +86,8 @@ export default async function PagePage({ params, searchParams }: PageProps) {
     redirect(`/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}?tab=read`)
   }
 
-  // Ensure community entity exists (lightweight upsert, needed for ReadPageClient prop)
-  const communityEntity = await ensureCommunityEntityForPage(ctx)
+  // 社区实体 ID（首次创建后缓存，后续命中跳过写入）
+  const communityEntityId = await getCachedCommunityEntityId(ctx)
 
   // Record page view (fire-and-forget via after())
   after(async () => {
@@ -180,7 +180,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
             authorName: ctx.page.authorDisplayName ?? ctx.author.displayName,
             authorAvatarUrl: ctx.page.authorAvatarUrl ?? ctx.author.avatarUrl,
             pageDbId: ctx.page.id,
-            communityEntityId: communityEntity.id,
+            communityEntityId,
             pageUid: ctx.page.uid,
             visibility: ctx.page.visibility,
           }),
@@ -217,7 +217,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
         sessionAvatarUrl={session?.avatarUrl}
         sessionUserSlug={session?.userSlug}
         sessionUserId={session?.userId}
-        communityEntityId={communityEntity.id}
+        communityEntityId={communityEntityId}
         pageDbId={ctx.page.id}
         // T2/T3 data: defaults — real data streams via Suspense and is bridged
         // to the client via injected <script> tags. Phase 6 will switch
@@ -235,8 +235,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       <Suspense fallback={null}>
         <CommunitySummaryInjector
           pageId={ctx.page.id}
-          pageUid={ctx.page.uid}
-          userSlug={ctx.author.userSlug}
+          communityEntityId={communityEntityId}
           session={session}
         />
       </Suspense>
@@ -262,28 +261,14 @@ export default async function PagePage({ params, searchParams }: PageProps) {
 
 async function CommunitySummaryInjector({
   pageId,
-  pageUid,
-  userSlug,
+  communityEntityId,
   session,
 }: {
   pageId: string
-  pageUid: string
-  userSlug: string
+  communityEntityId: string
   session: Session | null
 }) {
   const summary = await getCommunitySummary("published_page", pageId, session)
-
-  // Ensure community entity exists for this page (idempotent upsert)
-  let communityEntityId = pageId
-  try {
-    const entity = await ensureCommunityEntityForPage({
-      page: { id: pageId, uid: pageUid, userId: session?.userId ?? "", visibility: "public", title: "" } as any,
-      author: { userSlug } as any,
-    })
-    communityEntityId = entity.id
-  } catch {
-    // Silently fail — the page body already ensured the entity
-  }
 
   return (
     <script

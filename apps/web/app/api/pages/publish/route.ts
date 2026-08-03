@@ -345,6 +345,7 @@ export async function POST(request: NextRequest) {
 
     // 发布/更新页面后刷新该页面及作者主页的内容缓存
     revalidateTag(`page-ctx-${session.userSlug}-${uid}`);
+    revalidateTag(`page-entity-${updatedPublishedPage.id}`);
     revalidateTag(`profile-${session.userSlug}`);
 
     return NextResponse.json({
