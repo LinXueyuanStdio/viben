@@ -45,7 +45,7 @@ export function AuthorCard({ data, className, currentUserSlug }: AuthorCardProps
       </Avatar>
       <div className="min-w-0">
         <div className="font-bold leading-[1.2] truncate">{name}</div>
-        <div className="text-[13px] text-muted-foreground leading-[1.3] mt-[3px] mb-[6px]">
+        <div className="text-[13px] text-muted-foreground leading-[1.3] mt-1 space-y-0.5">
           <span className="block truncate">{description}</span>
           <span className="block truncate">
             {pageCount} {t("community.pages")} · {t("community.followersCountWithFormat", { formattedCount: formatCount(followerCount) })}
