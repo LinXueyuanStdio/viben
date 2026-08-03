@@ -16,7 +16,7 @@ const RANK_TABS = [
 ] as const
 
 const DEFAULT_TAB = "7d"
-const STALE_TIME = 5 * 60 * 1000 // 5 分钟前端缓存
+const STALE_TIME = 60 * 60 * 1000 // 1 小时，对齐 GitHub Action 刷新周期
 
 async function fetchRanking(timeWindow: string) {
   const res = await fetch(`/api/leaderboard?timeWindow=${timeWindow}`)
