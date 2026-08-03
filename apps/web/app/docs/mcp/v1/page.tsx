@@ -277,6 +277,13 @@ function useCurrentLang(): Lang {
   return (i18n.language?.startsWith("en") ? "en" : "zh") as Lang;
 }
 
+function TableIcon({ Icon }: { Icon: React.ElementType }) {
+  return <Icon size={13} className="mr-2 inline text-muted-foreground" />;
+}
+
+// Fix Icon typing — use React.ComponentType
+type IconComponent = React.ComponentType<{ size?: number; className?: string }>;
+
 // ═══════════════════════════════════════════════════════════
 // Parameter Table
 // ═══════════════════════════════════════════════════════════
@@ -576,18 +583,11 @@ export default function McpDocsPage() {
         <div className="mt-4 overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm">
             <tbody>
-              {[
-                [t[l].endpoint, <EndpointCopy key="ep" url={MCP_ENDPOINT} />, Globe],
-                [t[l].transport, <span key="tr" className="text-muted-foreground">{t[l].transportVal}</span>, Wifi],
-                [t[l].auth, <span key="au" className="text-muted-foreground">{t[l].authVal}{" "}<a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 text-primary underline hover:no-underline">{t[l].apiKeyManage} <ExternalLink size={11} /></a></span>, Key],
-                [t[l].protocol, <span key="pr" className="text-muted-foreground">{t[l].protocolVal}</span>, Server],
-                [t[l].clients, <span key="cl" className="text-muted-foreground">{t[l].clientsVal}</span>, Terminal],
-              ].map(([label, value, Icon]) => (
-                <tr key={label as string} className="border-b border-border last:border-0">
-                  <td className="w-40 px-4 py-2.5 text-xs font-medium">{(Icon as any) && <Icon size={13} className="mr-2 inline text-muted-foreground" />}{label}</td>
-                  <td className="px-4 py-2.5 text-xs">{value}</td>
-                </tr>
-              ))}
+              <tr className="border-b border-border"><td className="w-40 px-4 py-2.5 text-xs font-medium"><Globe size={13} className="mr-2 inline text-muted-foreground" />{t[l].endpoint}</td><td className="px-4 py-2.5 text-xs"><EndpointCopy url={MCP_ENDPOINT} /></td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><Wifi size={13} className="mr-2 inline text-muted-foreground" />{t[l].transport}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].transportVal}</td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><Key size={13} className="mr-2 inline text-muted-foreground" />{t[l].auth}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].authVal}{" "}<a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 text-primary underline hover:no-underline">{t[l].apiKeyManage} <ExternalLink size={11} /></a></td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><Server size={13} className="mr-2 inline text-muted-foreground" />{t[l].protocol}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].protocolVal}</td></tr>
+              <tr><td className="px-4 py-2.5 text-xs font-medium"><Terminal size={13} className="mr-2 inline text-muted-foreground" />{t[l].clients}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].clientsVal}</td></tr>
             </tbody>
           </table>
         </div>
@@ -650,7 +650,7 @@ export default function McpDocsPage() {
                 [t[l].limitVisibility, t[l].limitVisibilityV, Key],
               ].map(([label, value, Icon]) => (
                 <tr key={label as string} className="border-b border-border last:border-0">
-                  <td className="w-36 px-4 py-2.5 text-xs font-medium">{(Icon as any) && <Icon size={13} className="mr-2 inline text-muted-foreground" />}{label}</td>
+                  <td className="w-36 px-4 py-2.5 text-xs font-medium"><TableIcon Icon={Icon as IconComponent} />{label}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">{value as any}</td>
                 </tr>
               ))}

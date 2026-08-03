@@ -1,4 +1,4 @@
-import { createMcpHandler } from "mcp-handler";
+import { createMcpHandler, withMcpAuth, protectedResourceHandler, metadataCorsOptionsRequestHandler } from "mcp-handler";
 import { z } from "zod";
 import { AsyncLocalStorage } from "async_hooks";
 import { and, eq, desc, sql } from "drizzle-orm";
@@ -6,37 +6,69 @@ import { db, publishedPages, publishedPageVersions, publishedPageRecords, users 
 import { ensurePublishedPagesTable } from "@/lib/db/published-pages";
 import { validateApiKey } from "@/lib/auth/api-key";
 import { decryptSession } from "@/lib/auth/jwe";
+import { verifyAccessToken } from "@/lib/auth/oauth";
 import { recordPageUpdateAndNotify } from "@/lib/services/community";
 import type { Session } from "@/lib/auth/types";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const sessionStore = new AsyncLocalStorage<Session | null>();
 
 function requireSession(): Session {
   const session = sessionStore.getStore();
   if (!session) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     throw new Error(
-      "Authentication required. Provide an API key via Authorization: Bearer bmcp_xxx header. " +
-        `Create one at ${appUrl}/settings/api_keys`,
+      "Authentication required. Provide an API key via Authorization: Bearer bmcp_xxx header, " +
+        `or sign in via OAuth. Create an API key at ${APP_URL}/settings/api_keys`,
     );
   }
   return session;
 }
 
-async function extractSession(req: Request): Promise<Session | null> {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  const token = authHeader.slice(7);
+// ── Token verification for withMcpAuth ──────────────────
+async function verifyToken(_req: Request, bearerToken?: string) {
+  if (!bearerToken) return undefined;
 
-  if (token.startsWith("bmcp_")) {
-    const user = await validateApiKey(token);
-    if (!user) return null;
-    return {
-      userId: user.id, username: user.username, userSlug: user.userSlug,
-      email: user.email, role: user.role as Session["role"], expiresAt: 0,
-    };
+  // API Key (bmcp_ prefix)
+  if (bearerToken.startsWith("bmcp_")) {
+    const user = await validateApiKey(bearerToken);
+    if (!user) return undefined;
+    return { token: bearerToken, userId: user.id, clientId: "api-key", scopes: ["read", "write"] };
   }
-  return decryptSession(token);
+
+  // OAuth access token
+  const oauth = await verifyAccessToken(bearerToken);
+  if (oauth) {
+    return { token: bearerToken, userId: oauth.userId, clientId: "oauth", scopes: oauth.scopes.split(" ") };
+  }
+
+  // JWE session token
+  const session = await decryptSession(bearerToken);
+  if (session) {
+    return { token: bearerToken, userId: session.userId, clientId: "jwe", scopes: ["read", "write"] };
+  }
+
+  return undefined;
+}
+
+// ── Resolve Session from AuthInfo + API Key details ─────
+async function resolveSession(req: Request): Promise<Session | null> {
+  const auth = (req as any).auth;
+  if (!auth?.userId) return null;
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, auth.userId),
+    columns: { id: true, username: true, userSlug: true, email: true, role: true },
+  });
+  if (!user) return null;
+
+  return {
+    userId: user.id,
+    username: user.username,
+    userSlug: user.userSlug,
+    email: user.email ?? "",
+    role: user.role as Session["role"],
+    expiresAt: 0,
+  };
 }
 
 const mcpHandler = createMcpHandler(
@@ -279,9 +311,36 @@ const mcpHandler = createMcpHandler(
   { streamableHttpEndpoint: "/api/mcp/v1" },
 );
 
+// ── Route handler: OAuth metadata → MCP ────────────────
+const corsOptions = metadataCorsOptionsRequestHandler()();
+const resourceMetadata = protectedResourceHandler({
+  authServerUrls: [APP_URL],
+});
+
+// Wrap with OAuth 2.1 Bearer token verification
+const protectedHandler = withMcpAuth(
+  async (req: Request) => {
+    const session = await resolveSession(req);
+    return sessionStore.run(session, () => mcpHandler(req));
+  },
+  verifyToken,
+  { required: false, resourceUrl: APP_URL },
+);
+
 async function handle(req: Request): Promise<Response> {
-  const session = await extractSession(req);
-  return sessionStore.run(session, () => mcpHandler(req));
+  const url = new URL(req.url);
+
+  // RFC 9728 Protected Resource Metadata
+  if (url.pathname === `${new URL(APP_URL).pathname}/api/mcp/v1/.well-known/oauth-protected-resource`) {
+    return resourceMetadata(req);
+  }
+
+  // CORS preflight for metadata
+  if (req.method === "OPTIONS" && url.pathname.includes("/.well-known/")) {
+    return corsOptions;
+  }
+
+  return protectedHandler(req);
 }
 
 export { handle as GET, handle as POST, handle as DELETE };

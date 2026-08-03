@@ -1834,3 +1834,60 @@ export const notesRelations = relations(notes, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ============================================
+// OAuth 2.1 Authorization Server Tables
+// ============================================
+
+export const oauthGrants = pgTable(
+  'oauth_grants',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    code: text('code').notNull().unique(),
+    codeChallenge: text('code_challenge'),
+    codeChallengeMethod: text('code_challenge_method'), // "S256"
+    clientId: text('client_id'),
+    redirectUri: text('redirect_uri'),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    scopes: text('scopes'), // space-separated "read write"
+    expiresAt: timestamp('expires_at').notNull(),
+    used: boolean('used').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('oauth_grants_code_idx').on(table.code),
+    index('oauth_grants_user_idx').on(table.userId),
+  ]
+);
+
+export const oauthTokens = pgTable(
+  'oauth_tokens',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    clientId: text('client_id'),
+    scopes: text('scopes'), // space-separated
+    tokenHash: text('token_hash').notNull().unique(),
+    refreshTokenHash: text('refresh_token_hash').unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    revoked: boolean('revoked').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('oauth_tokens_hash_idx').on(table.tokenHash),
+    index('oauth_tokens_user_idx').on(table.userId),
+    index('oauth_tokens_refresh_idx').on(table.refreshTokenHash),
+  ]
+);
+
+export const oauthGrantsRelations = relations(oauthGrants, ({ one }) => ({
+  user: one(users, { fields: [oauthGrants.userId], references: [users.id] }),
+}));
+
+export const oauthTokensRelations = relations(oauthTokens, ({ one }) => ({
+  user: one(users, { fields: [oauthTokens.userId], references: [users.id] }),
+}));
