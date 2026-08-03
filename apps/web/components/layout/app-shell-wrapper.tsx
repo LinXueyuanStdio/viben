@@ -7,7 +7,7 @@ import { GoogleOneTap } from '@/components/auth/google-one-tap';
 import type { Session } from '@/lib/auth/types';
 
 const SESSION_CACHE_KEY = 'viben_session';
-const SESSION_CACHE_TTL = 30 * 60 * 1000; // 30 分钟
+const SESSION_CACHE_TTL = 3 * 24 * 60 * 60 * 1000; // 3 天
 
 interface CachedSession {
   session: Session;
@@ -19,6 +19,9 @@ let __sessionCache: CachedSession | null = null;
 
 function readCache(): CachedSession | null {
   if (__sessionCache && Date.now() - __sessionCache.ts < SESSION_CACHE_TTL) {
+    // 命中后刷新过期时间，活跃用户永不过期
+    __sessionCache.ts = Date.now();
+    try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(__sessionCache)); } catch { /* ignore */ }
     return __sessionCache;
   }
   try {
@@ -26,7 +29,10 @@ function readCache(): CachedSession | null {
     if (raw) {
       const cached: CachedSession = JSON.parse(raw);
       if (Date.now() - cached.ts < SESSION_CACHE_TTL) {
+        // 命中后刷新过期时间
+        cached.ts = Date.now();
         __sessionCache = cached;
+        try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cached)); } catch { /* ignore */ }
         return cached;
       }
     }
