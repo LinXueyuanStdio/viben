@@ -641,19 +641,12 @@ export default function McpDocsPage() {
         <div className="mt-4 overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm">
             <tbody>
-              {[
-                [t[l].limitTimeout, t[l].limitTimeoutV, Clock],
-                [t[l].limitSize, t[l].limitSizeV, FileText],
-                [t[l].limitTags, t[l].limitTagsV, Tags],
-                [t[l].limitProtocol, t[l].limitProtocolV, Wifi],
-                [t[l].limitRate, t[l].limitRateV, Shield],
-                [t[l].limitVisibility, t[l].limitVisibilityV, Key],
-              ].map(([label, value, Icon]) => (
-                <tr key={label as string} className="border-b border-border last:border-0">
-                  <td className="w-36 px-4 py-2.5 text-xs font-medium"><TableIcon Icon={Icon as IconComponent} />{label}</td>
-                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{value as any}</td>
-                </tr>
-              ))}
+              <tr className="border-b border-border"><td className="w-36 px-4 py-2.5 text-xs font-medium"><Clock size={13} className="mr-2 inline text-muted-foreground" />{t[l].limitTimeout}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].limitTimeoutV}</td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><FileText size={13} className="mr-2 inline text-muted-foreground" />{t[l].limitSize}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].limitSizeV}</td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><Tags size={13} className="mr-2 inline text-muted-foreground" />{t[l].limitTags}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].limitTagsV}</td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><Wifi size={13} className="mr-2 inline text-muted-foreground" />{t[l].limitProtocol}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].limitProtocolV}</td></tr>
+              <tr className="border-b border-border"><td className="px-4 py-2.5 text-xs font-medium"><Shield size={13} className="mr-2 inline text-muted-foreground" />{t[l].limitRate}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].limitRateV}</td></tr>
+              <tr><td className="px-4 py-2.5 text-xs font-medium"><Key size={13} className="mr-2 inline text-muted-foreground" />{t[l].limitVisibility}</td><td className="px-4 py-2.5 text-xs text-muted-foreground">{t[l].limitVisibilityV}</td></tr>
             </tbody>
           </table>
         </div>

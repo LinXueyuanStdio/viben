@@ -23,7 +23,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Copy, Trash2, Loader2, Terminal, Check } from 'lucide-react';
+import { Plus, Copy, Trash2, Loader2, Terminal, Check, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 interface ApiKey {
@@ -218,6 +219,19 @@ export function ProfileApiKeys() {
           </code>
         </AlertDescription>
       </Alert>
+
+      <div className="flex items-center gap-2 rounded-lg border bg-card p-3 text-sm">
+        <Terminal className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="text-muted-foreground">
+          API Key 可用于 MCP 客户端（Claude Code、Codex、Cursor 等）连接 Viben MCP 服务。
+        </span>
+        <Link
+          href="/docs/mcp/v1"
+          className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary underline hover:no-underline"
+        >
+          MCP 文档 <ExternalLink size={11} />
+        </Link>
+      </div>
 
       {keys.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
