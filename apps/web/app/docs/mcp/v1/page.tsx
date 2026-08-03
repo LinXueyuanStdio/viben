@@ -448,6 +448,10 @@ const READ_TOOLS = [
       p("query", "搜索关键词。ILIKE 模糊匹配，支持中英文。同时匹配标题、uid 和描述。最小 1 字符。", "Search keyword. ILIKE fuzzy matching. Matches title, uid, and description. Min 1 char.", "是", "string"),
       p("author_slug", "按作者 slug 过滤。不传则搜索全站公开页面。", "Filter by author slug. Omit to search all public pages.", "否", "string"),
       p("limit", "返回数量上限。默认 20，最小 1，最大 50。", "Max results. Default 20, min 1, max 50.", "否", "number"),
+      p("tags", "按标签过滤，所有指定标签必须同时匹配（AND 逻辑）。最多 12 个标签。", "Filter by tags. All specified tags must match (AND logic). Max 12 tags.", "否", "string[]"),
+      p("sort_by", "排序字段。published_at 按发布时间排序；title 按标题字母序。默认 published_at。", "Sort field: published_at or title. Default published_at.", "否", '"published_at" | "title"'),
+      p("sort_order", "排序方向。desc 降序，asc 升序。默认 desc。", "Sort order: desc or asc. Default desc.", "否", '"desc" | "asc"'),
+      p("offset", "分页偏移量，配合 limit 实现翻页。默认 0（第一页）。", "Pagination offset, use with limit. Default 0 (first page).", "否", "number"),
     ],
     examples: [
       { labelKey: "searchPagesEx1", params: { query: "前端性能优化" } },
