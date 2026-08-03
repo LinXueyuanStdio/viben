@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { Check, type LucideIcon } from "lucide-react"
+import { Check, ExternalLink, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -214,26 +214,36 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
       >
           <ScrollArea className="max-h-[320px]">
             <div className="grid gap-0.5">
-              {siblings.map((sib) => (
-                <Link
-                  key={sib.href}
-                  href={sib.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "grid grid-cols-[18px_1fr] items-center gap-2 min-h-[38px] rounded-[9px] px-2 py-1 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground",
-                    sib.href === href && "bg-surface-secondary text-foreground"
-                  )}
-                >
-                  {(() => {
-                    const Icon = sib.config.icon
-                    return Icon ? <Icon className="h-4 w-4" /> : <span className="w-[18px]" />
-                  })()}
-                  <span className="truncate">
-                    {sib.config.titleKey ? t(sib.config.titleKey) : sib.config.label}
-                  </span>
-                  {sib.href === href && <Check className="h-3.5 w-3.5 ml-auto" />}
-                </Link>
-              ))}
+              {siblings.map((sib) => {
+                const isExternal = sib.config.external ?? false;
+                const Comp = isExternal ? "a" : Link;
+                const isCurrent = sib.href === href;
+                return (
+                  <Comp
+                    key={sib.href}
+                    href={sib.href}
+                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "grid grid-cols-[18px_1fr_auto] items-center gap-2 min-h-[38px] rounded-[9px] px-2 py-1 text-left font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground",
+                      isCurrent && "bg-surface-secondary text-foreground"
+                    )}
+                  >
+                    {(() => {
+                      const Icon = sib.config.icon
+                      return Icon ? <Icon className="h-4 w-4" /> : <span className="w-[18px]" />
+                    })()}
+                    <span className="truncate">
+                      {sib.config.titleKey ? t(sib.config.titleKey) : sib.config.label}
+                    </span>
+                    {isCurrent ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : isExternal ? (
+                      <ExternalLink className="h-3 w-3 text-muted-foreground/50" />
+                    ) : null}
+                  </Comp>
+                );
+              })}
             </div>
           </ScrollArea>
         </PopoverContent>

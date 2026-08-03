@@ -26,6 +26,7 @@ import {
   Star,
   FileEdit,
   ShoppingBag,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react"
 
@@ -36,6 +37,7 @@ export interface RouteConfig {
   dropdownCategory?: string // 下拉菜单分组
   parent?: string           // 父路由路径
   mode?: "global" | "author" | "read"
+  external?: boolean        // 外链，面包屑下拉用 <a target="_blank">
 }
 
 /** 动态段标签映射：路径段 → {label, icon?, href?} */
@@ -94,6 +96,9 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/web": { label: "Web", icon: FileText, parent: "/" },
   "/docs/api/v1": { label: "API 文档", icon: ScrollText, parent: "/" },
   "/docs/mcp/v1": { label: "MCP 文档", icon: Package, parent: "/" },
+  "/docs": { label: "文档", icon: FileText, parent: "/" },
+  "/docs/api": { label: "API 文档", icon: ScrollText },
+  "/docs/mcp": { label: "MCP 文档", icon: Package },
 
   // 管理员路由（仅 role=admin 可见）
   "/admin": {
@@ -255,6 +260,14 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/read": { label: "页面", icon: FileText, mode: "read" },
 }
 
+/** 页面级自定义面包屑下拉项（无需 Context，直接静态注册） */
+export const pageDropdownRegistry: Record<string, Array<{ href: string; config: RouteConfig }>> = {
+  "/docs/mcp": [
+    { href: "/docs/api", config: { label: "API 文档", icon: ScrollText } },
+    { href: "https://linxueyuan.online/viben/", config: { label: "用户文档", icon: BookOpen, external: true } },
+  ],
+}
+
 /** 获取面包屑段，支持传入动态段标签 */
 export function resolveBreadcrumbSegments(
   pathname: string,
@@ -347,6 +360,12 @@ export function getSiblingRoutes(
     if (config.parent === parentPath || (!config.parent && parentPath === "/")) {
       siblings.push({ href, config })
     }
+  }
+
+  // 最后检查页面级静态注册表
+  if (siblings.length === 0) {
+    const registered = pageDropdownRegistry[parentPath]
+    if (registered) return registered
   }
 
   return siblings
