@@ -9,6 +9,12 @@ import type { Metadata } from "next"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import type { Session } from "@/lib/auth/types"
 
+/** JSON 序列化安全：unstable_cache 会将 Date 转为 string */
+function iso(d: Date | string | null | undefined): string | undefined {
+  if (!d) return undefined;
+  return typeof d === "string" ? d : (d as Date).toISOString();
+}
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 interface PageProps {
@@ -127,8 +133,8 @@ export default async function PagePage({ params, searchParams }: PageProps) {
                 headline: ctx.page.title,
                 description: ctx.page.description,
                 ...(ctx.page.coverUrl ? { image: ctx.page.coverUrl } : {}),
-                datePublished: ctx.page.publishedAt?.toISOString(),
-                dateModified: ctx.page.lastPublishedAt?.toISOString(),
+                datePublished: iso(ctx.page.publishedAt),
+                dateModified: iso(ctx.page.lastPublishedAt),
                 author: {
                   "@type": "Person",
                   name: ctx.page.authorDisplayName ?? ctx.author.displayName,
