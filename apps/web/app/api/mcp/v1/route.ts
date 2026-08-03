@@ -15,7 +15,7 @@ const sessionStore = new AsyncLocalStorage<Session | null>();
 function requireSession(): Session {
   const session = sessionStore.getStore();
   if (!session) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://viben-web.vercel.app";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     throw new Error(
       "Authentication required. Provide an API key via Authorization: Bearer bmcp_xxx header. " +
         `Create one at ${appUrl}/settings/api_keys`,
