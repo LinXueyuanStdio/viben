@@ -73,15 +73,15 @@ export default function LeaderboardPage() {
         {RANK_TABS.map((tab) => (
           <VibenTabsContent key={tab.key} value={tab.key} className="mt-2">
             {activeTab !== tab.key ? null : isLoading ? (
-              <div className="grid gap-2">
-                {Array.from({ length: 5 }).map((_, i) => (
+              <div className="grid gap-2 md:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="h-[72px] animate-pulse rounded-xl bg-muted" />
                 ))}
               </div>
             ) : items.length === 0 ? (
               <EmptyState tKey="community.noRankingData" fallback="暂无排行数据" />
             ) : (
-              <div className="grid gap-2">
+              <div className="grid gap-2 md:grid-cols-2">
                 {items.map((item, i) => (
                   <RankItem key={i} data={item.card} href={item.href} />
                 ))}
