@@ -50,7 +50,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
         "hover:bg-accent/50 transition-colors duration-150",
         className
       )}
-      style={{ gridTemplateColumns: "46px 150px minmax(0, 1fr)" }}
+      style={{ gridTemplateColumns: "46px 180px minmax(0, 1fr)" }}
     >
       {/* Rank — SVG 艺术字 */}
       <div className="flex items-center justify-center">
