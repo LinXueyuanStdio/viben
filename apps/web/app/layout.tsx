@@ -23,7 +23,17 @@ export const metadata: Metadata = {
     default: 'Viben',
     template: '%s | Viben',
   },
-  description: 'Agent Swarm × Code Evolution - Multi-agent collaboration platform for controllable AI workflows',
+  description:
+    'Agent Swarm × Code Evolution - Multi-agent collaboration platform for controllable AI workflows',
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    siteName: 'Viben',
+    type: 'website',
+    locale: 'zh_CN',
+  },
 };
 
 export default function RootLayout({
