@@ -8,10 +8,9 @@ import { HomeFeedSection } from "@/components/home/home-feed-section"
 import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
 import { HomeTabBar } from "@/components/layout/home-tab-bar"
-import { listRanking } from "@/lib/services/community"
+import { getHomePageData } from "@/lib/services/community"
+import type { HomePageData } from "@/lib/services/community"
 import { timeAgo } from "@/lib/services/moment-mapper"
-import { db, publishedPages } from "@/lib/db"
-import { desc, eq, and } from "drizzle-orm"
 import type { HeroSlideData } from "@/components/content/hero-carousel"
 import type { PageCardData } from "@/components/content/page-card"
 import type { Metadata } from "next"
@@ -46,36 +45,17 @@ const HERO_COLORS = [
 ]
 
 export default async function HomePage() {
-  // 独立数据获取（hero + 精选 + 推荐区块共享排名和最新页面数据）
   let heroSlides: HeroSlideData[] = []
   let featuredPages: PageCardData[] = []
   let recommendedEntries: Array<{ data: PageCardData; href: string }> = []
   let rankingItemsReadUrls: Array<{ user_slug: string; page_id: string }> = []
+  let sidebarAuthors: HomePageData["topAuthors"] = []
+  let sidebarRankingPages: Array<{ title: string; stats: { views: number } }> = []
 
   try {
-    const [rankingResult, latestPages] = await Promise.all([
-      listRanking({ rankingKey: "published_page", timeWindow: "7d", limit: 10 }),
-      db.select({
-        uid: publishedPages.uid,
-        title: publishedPages.title,
-        coverUrl: publishedPages.coverUrl,
-        authorDisplayName: publishedPages.authorDisplayName,
-        authorAvatarUrl: publishedPages.authorAvatarUrl,
-        authorSlug: publishedPages.authorSlug,
-        lastPublishedAt: publishedPages.lastPublishedAt,
-        viewCount: publishedPages.viewCount,
-        likeCount: publishedPages.likeCount,
-        commentCount: publishedPages.commentCount,
-      }).from(publishedPages)
-        .where(and(
-          eq(publishedPages.visibility, "public"),
-          eq(publishedPages.moderationStatus, "approved")
-        ))
-        .orderBy(desc(publishedPages.lastPublishedAt))
-        .limit(6),
-    ])
+    const data = await getHomePageData(null)
 
-    const rankingItems = rankingResult.items
+    const rankingItems = data.rankingItems.filter((item) => item.cover_url != null)
 
     heroSlides = rankingItems.slice(0, 4).map((item, i) => ({
       title: item.title,
@@ -106,7 +86,7 @@ export default async function HomePage() {
       page_id: item.page_id,
     }))
 
-    const recommendedPages: PageCardData[] = latestPages.map((p) => ({
+    const recommendedPages: PageCardData[] = data.latestPages.map((p) => ({
       coverUrl: p.coverUrl,
       title: p.title,
       author: {
@@ -117,9 +97,15 @@ export default async function HomePage() {
       stats: { views: p.viewCount, likes: p.likeCount, comments: p.commentCount },
     }))
 
-    recommendedEntries = latestPages.map((p, i) => ({
+    recommendedEntries = data.latestPages.map((p, i) => ({
       data: recommendedPages[i],
       href: `/${encodeURIComponent(p.authorSlug)}/${encodeURIComponent(p.uid)}?tab=read`,
+    }))
+
+    sidebarAuthors = data.topAuthors
+    sidebarRankingPages = data.rankingItems.slice(0, 3).map((item) => ({
+      title: item.title,
+      stats: { views: item.view_count ?? 0 },
     }))
   } catch (error) {
     console.error("[Home] Failed to fetch page data:", error)
@@ -161,16 +147,10 @@ export default async function HomePage() {
         </section>
       </div>
 
-      {/* 侧边栏：Suspense 流式加载 */}
-      <Suspense fallback={
-        <aside className="grid gap-3 content-start">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-[96px] animate-pulse rounded-xl bg-muted" />
-          ))}
-        </aside>
-      }>
-        <HomeSidebarSection />
-      </Suspense>
+      <HomeSidebarSection
+        authorCards={sidebarAuthors}
+        rankingPages={sidebarRankingPages}
+      />
     </div>
     </>
   )

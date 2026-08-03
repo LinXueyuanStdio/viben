@@ -1,56 +1,45 @@
-import { db, users, publishedPages } from "@/lib/db"
-import { desc, eq, ne, and } from "drizzle-orm"
-import { getSession } from "@/lib/auth/cookies"
 import { AuthorCard } from "@/components/content/author-card"
 import { Pill } from "@/components/content/pill"
 import { Stat } from "@/components/content/stats-row"
 import { SectionHead } from "@/components/content/section-head"
 import { T } from "@/components/content/i18n-text"
-import { listRanking } from "@/lib/services/community"
 import { Eye } from "lucide-react"
 import type { AuthorCardData } from "@/components/content/author-card"
 
-export async function HomeSidebarSection() {
-  const session = await getSession()
+interface HomeSidebarSectionProps {
+  authorCards: Array<{
+    id: string
+    userSlug: string
+    displayName: string | null
+    avatarUrl: string | null
+    bio: string | null
+    pageCount: number | null
+    followersCount: number
+  }>
+  rankingPages: Array<{ title: string; stats: { views: number } }>
+  sessionUserSlug?: string
+}
 
-  let authorCards: AuthorCardData[] = []
-  let rankingPages: Array<{ title: string; stats: { views: number } }> = []
-
-  try {
-    const [topAuthors, rankingResult] = await Promise.all([
-      session?.userId
-        ? db.select().from(users).where(ne(users.id, session.userId)).orderBy(desc(users.followersCount)).limit(3)
-        : db.select().from(users).orderBy(desc(users.followersCount)).limit(3),
-      listRanking({ rankingKey: "published_page", timeWindow: "7d", limit: 10 }),
-    ])
-
-    authorCards = topAuthors.map((u) => ({
-      fallbackText: u.displayName ?? u.userSlug,
-      avatarUrl: u.avatarUrl ?? undefined,
-      name: u.displayName ?? u.userSlug,
-      handle: `@${u.userSlug}`,
-      userSlug: u.userSlug,
-      description: u.bio ?? "",
-      pageCount: u.pageCount ?? 0,
-      followerCount: u.followersCount,
-    }))
-
-    rankingPages = rankingResult.items.slice(0, 3).map((item) => ({
-      title: item.title,
-      stats: { views: item.view_count ?? 0 },
-    }))
-  } catch (error) {
-    console.error("[Home] Failed to fetch sidebar data:", error)
-  }
+export function HomeSidebarSection({ authorCards, rankingPages, sessionUserSlug }: HomeSidebarSectionProps) {
+  const mappedAuthors: AuthorCardData[] = authorCards.map((u) => ({
+    fallbackText: u.displayName ?? u.userSlug,
+    avatarUrl: u.avatarUrl ?? undefined,
+    name: u.displayName ?? u.userSlug,
+    handle: `@${u.userSlug}`,
+    userSlug: u.userSlug,
+    description: u.bio ?? "",
+    pageCount: u.pageCount ?? 0,
+    followerCount: u.followersCount,
+  }))
 
   return (
     <aside className="grid gap-3 content-start">
-      {authorCards.length > 0 && (
+      {mappedAuthors.length > 0 && (
         <section>
           <SectionHead title="推荐关注" actionLabel={<T tKey="community.viewAll" fallback="查看全部" />} actionHref="/search" />
           <div className="grid gap-2">
-            {authorCards.map((author, i) => (
-              <AuthorCard key={i} data={author} currentUserSlug={session?.userSlug} />
+            {mappedAuthors.map((author, i) => (
+              <AuthorCard key={i} data={author} currentUserSlug={sessionUserSlug} />
             ))}
           </div>
         </section>
