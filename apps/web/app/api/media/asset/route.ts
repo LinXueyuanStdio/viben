@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(result.stream, {
       headers: {
-        "Cache-Control": "private, no-cache",
+        // 前端长久缓存：图片上传后内容不变，1 年有效期
+        "Cache-Control": "public, max-age=31536000, immutable",
         "Content-Type": result.blob.contentType ?? "application/octet-stream",
         "X-Content-Type-Options": "nosniff",
       },
