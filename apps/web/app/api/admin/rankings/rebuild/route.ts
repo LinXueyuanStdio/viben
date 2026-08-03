@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { requirePermission, AuthError } from '@/lib/auth';
 import { db, rankingSnapshots, rankingItems, publishedPages } from '@/lib/db';
 import { eq, and, desc } from 'drizzle-orm';
@@ -255,6 +256,10 @@ export async function POST(request: NextRequest) {
       await db.delete(rankingSnapshots).where(eq(rankingSnapshots.id, snapshotId)).catch(() => {});
       throw innerError;
     }
+
+    // 重建完成后刷新首页和推荐缓存
+    revalidateTag("homepage");
+    revalidateTag("page-recommendations");
 
     // Fetch the final snapshot
     const [result] = await db

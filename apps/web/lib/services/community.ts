@@ -2026,7 +2026,7 @@ export const getHomePageData = unstable_cache(
     return { rankingItems: rankingResult.items, latestPages, topAuthors };
   },
   [HOMEPAGE_CACHE_TAG],
-  { revalidate: 300, tags: [HOMEPAGE_CACHE_TAG] },
+  { revalidate: false, tags: [HOMEPAGE_CACHE_TAG] },
 );
 
 const PAGE_RECOMMENDATIONS_TAG = "page-recommendations";
@@ -2063,7 +2063,7 @@ export const getReadPageRecommendations = unstable_cache(
     return rows;
   },
   [PAGE_RECOMMENDATIONS_TAG],
-  { revalidate: 300, tags: [PAGE_RECOMMENDATIONS_TAG] },
+  { revalidate: false, tags: [PAGE_RECOMMENDATIONS_TAG] },
 );
 
 export async function listPagesByTag(tag: string, limit: number = 20) {
