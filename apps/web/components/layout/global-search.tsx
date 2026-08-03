@@ -65,7 +65,7 @@ export function GlobalSearch({
           onKeyDown={handleKeyDown}
           onFocus={() => { setOpen(true); onFocus?.() }}
           placeholder={t("community.searchPlaceholder")}
-          className="flex-1 border-0 outline-none bg-transparent text-foreground font-inherit text-[15px] placeholder:text-muted-foreground"
+          className="flex-1 min-w-0 border-0 outline-none bg-transparent text-foreground font-inherit text-[15px] placeholder:text-muted-foreground truncate"
         />
         {query && (
           <button

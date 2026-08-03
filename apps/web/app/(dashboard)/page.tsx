@@ -8,6 +8,7 @@ import { HomeFeedSection } from "@/components/home/home-feed-section"
 import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
 import { HomeTabBar } from "@/components/layout/home-tab-bar"
+import { Footer } from "@/components/layout/footer"
 import { getHomePageData } from "@/lib/services/community"
 import type { HomePageData } from "@/lib/services/community"
 import { timeAgo } from "@/lib/services/moment-mapper"
@@ -161,6 +162,7 @@ export default async function HomePage() {
         rankingPages={sidebarRankingPages}
       />
     </div>
+    <Footer />
     </>
   )
 }

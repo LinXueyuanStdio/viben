@@ -2048,11 +2048,14 @@
       "readDocs": "Read Documentation"
     },
     "footer": {
+      "brandDesc": "A multi-agent collaboration and content platform for creators.",
+      "product": "Product",
+      "docs": "Docs",
       "links": "Links",
       "community": "Community",
       "issues": "Issues",
       "discussions": "Discussions",
-      "copyright": "© {{year}} Viben. Built by LinXueyuanStdio."
+      "copyright": "© {{year}} Viben. Built by <author>LinXueyuanStdio</author>."
     },
     "demo": {
       "title": "Task Orchestration Demo",

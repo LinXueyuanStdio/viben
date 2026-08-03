@@ -2072,11 +2072,14 @@
       "readDocs": "阅读文档"
     },
     "footer": {
+      "brandDesc": "面向创作者的多智能体协作与内容平台。",
+      "product": "产品",
+      "docs": "文档",
       "links": "链接",
       "community": "社区",
       "issues": "问题反馈",
       "discussions": "讨论区",
-      "copyright": "© {{year}} Viben，由 LinXueyuanStdio 构建。"
+      "copyright": "© {{year}} Viben，由 <author>LinXueyuanStdio</author> 构建。"
     },
     "demo": {
       "title": "任务编排 Demo",
