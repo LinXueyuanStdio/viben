@@ -281,7 +281,7 @@ export function Topbar({
                       <MomentPopover />
                       <NotificationPopover />
                       <HistoryPopover />
-                      <UserMenu session={session} />
+                      <UserMenu session={session} isRead={isRead} />
                     </>
                   ) : (
                     <HeaderAuthButtons />
@@ -300,7 +300,7 @@ export function Topbar({
             // 移动端非阅读模式 — 仅显示用户菜单（整合了创建/通知/动态/历史）
             <>
               {session ? (
-                <UserMenu session={session} isMobile />
+                <UserMenu session={session} isMobile isRead={isRead} />
               ) : (
                 <HeaderAuthButtons />
               )}
@@ -314,7 +314,7 @@ export function Topbar({
                   <MomentPopover />
                   <NotificationPopover />
                   <HistoryPopover />
-                  <UserMenu session={session} />
+                  <UserMenu session={session} isRead={isRead} />
                 </>
               ) : (
                 <HeaderAuthButtons />

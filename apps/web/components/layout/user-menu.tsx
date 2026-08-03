@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { FileText, ThumbsUp, Monitor, Sun, Moon, Key, Bell, Clock, MessageSquareText, FilePlus2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
@@ -29,13 +29,14 @@ import type { Session } from "@/lib/auth/types"
 interface UserMenuProps {
   session: Session
   isMobile?: boolean
+  isRead?: boolean
 }
 
 function Spacer() {
   return <span className="mr-2 h-4 w-4 shrink-0" />
 }
 
-export function UserMenu({ session, isMobile = false }: UserMenuProps) {
+export function UserMenu({ session, isMobile = false, isRead = false }: UserMenuProps) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
 
@@ -57,7 +58,6 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
     } catch {
       // ignore network errors
     }
-    // Force full page reload to clear all client state
     window.location.href = "/"
   }, [])
 
@@ -65,22 +65,21 @@ export function UserMenu({ session, isMobile = false }: UserMenuProps) {
     changeLanguage(langCode)
   }, [])
 
+  // Hover behavior: enabled on all pages except read mode
   const [open, setOpen] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoverEnabled = !isRead
 
   const handleOpen = useCallback(() => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
+    if (!hoverEnabled) return
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
     setOpen(true)
-  }, [])
+  }, [hoverEnabled])
 
   const handleClose = useCallback(() => {
-    closeTimerRef.current = setTimeout(() => {
-      setOpen(false)
-    }, 150)
-  }, [])
+    if (!hoverEnabled) return
+    closeTimerRef.current = setTimeout(() => setOpen(false), 150)
+  }, [hoverEnabled])
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
