@@ -1,6 +1,5 @@
+import { Suspense } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { PageCard } from "@/components/content/page-card"
-import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
@@ -15,15 +14,13 @@ import { FollowButton } from "@/components/content/follow-button"
 import Link from "next/link"
 import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
-import type { FeedCardData } from "@/components/content/feed-card"
 import type { Metadata } from "next"
-import { mapMomentRowToFeedCard, timeAgo, type MomentAttachmentData } from "@/lib/services/moment-mapper"
+import { timeAgo } from "@/lib/services/moment-mapper"
 import { ProfilePagesList } from "@/components/profile/profile-pages-list"
 import { ProfileMcpList } from "@/components/profile/profile-mcp-list"
 import { ProfileSkillsList } from "@/components/profile/profile-skills-list"
 import { ProfileLikesMerged } from "@/components/profile/profile-likes-merged"
 import { ProfilePinnedSection } from "@/components/profile/profile-pinned-section"
-import { ProfileMomentsInfinite } from "@/components/profile/profile-moments-infinite"
 import type { ProfileContentItemData } from "@/components/profile/profile-content-item"
 
 /** Minimal shared shape between full publishedPages row and joined query results */
@@ -153,10 +150,8 @@ export default async function UserSlugPage({
   const [
     followResult,
     followingCountResult,
-    authorMoments,
     bookmarkedMcps,
     bookmarkedSkills,
-    initialMomentsCursorRow,
   ] = await Promise.all([
     session && !isOwnProfile
       ? db.query.userFollows.findFirst({
@@ -168,28 +163,12 @@ export default async function UserSlugPage({
       : Promise.resolve(null),
     db.select({ count: count() }).from(userFollows)
       .where(eq(userFollows.followerUserId, user.id)),
-    db.select().from(moments)
-      .where(and(
-        eq(moments.authorUserId, user.id),
-        eq(moments.visibility, "public"),
-        eq(moments.isDeleted, false),
-      ))
-      .orderBy(desc(moments.createdAt))
-      .limit(10),
     db.select({ entityId: bookmarks.entityId, createdAt: bookmarks.createdAt }).from(bookmarks)
       .where(and(eq(bookmarks.userId, user.id), eq(bookmarks.entityType, "mcp")))
       .orderBy(desc(bookmarks.createdAt)).limit(50),
     db.select({ entityId: bookmarks.entityId, createdAt: bookmarks.createdAt }).from(bookmarks)
       .where(and(eq(bookmarks.userId, user.id), eq(bookmarks.entityType, "skill")))
       .orderBy(desc(bookmarks.createdAt)).limit(50),
-    db.select({ createdAt: moments.createdAt }).from(moments)
-      .where(and(
-        eq(moments.authorUserId, user.id),
-        eq(moments.visibility, "public"),
-        eq(moments.isDeleted, false),
-      ))
-      .orderBy(desc(moments.createdAt))
-      .limit(11),
   ])
 
   isFollowing = !!followResult
@@ -217,34 +196,6 @@ export default async function UserSlugPage({
   const skillTotal = skillCountValue
   const readmePage = readmePageArr
 
-  // Fetch attachments for author moments (for cover images)
-  let attachmentsMap = new Map<string, MomentAttachmentData[]>()
-  if (authorMoments.length > 0) {
-    const momentIds = authorMoments.map((m) => m.id)
-    const attachmentRows = await db.select({
-      momentId: momentAttachments.momentId,
-      coverUrl: momentAttachments.coverUrlSnapshot,
-      title: momentAttachments.titleSnapshot,
-      authorName: momentAttachments.authorNameSnapshot,
-      viewCount: momentAttachments.viewCountSnapshot,
-      commentCount: momentAttachments.commentCountSnapshot,
-    })
-      .from(momentAttachments)
-      .where(inArray(momentAttachments.momentId, momentIds))
-      .orderBy(momentAttachments.sortOrder)
-
-    for (const a of attachmentRows) {
-      const list = attachmentsMap.get(a.momentId) ?? []
-      list.push({
-        cover_url: a.coverUrl,
-        title: a.title,
-        author_name: a.authorName,
-        view_count: a.viewCount,
-        comment_count: a.commentCount,
-      })
-      attachmentsMap.set(a.momentId, list)
-    }
-  }
 
   // Fetch full MCP/Skill package details for bookmarked items
   let bookmarkedMcpData: Array<{
@@ -364,16 +315,6 @@ export default async function UserSlugPage({
     id: s.id,
   }))
 
-  const feedCards: FeedCardData[] = authorMoments.map((m) =>
-    mapMomentRowToFeedCard(m, {
-      displayName: user.displayName,
-      userSlug: user.userSlug,
-      avatarUrl: user.avatarUrl,
-    }, {
-      attachments: attachmentsMap.get(m.id),
-    }),
-  )
-
   // Build pinned items with full entity data
   const pinnedItems: Array<{
     id: string; entity_type: "page" | "mcp" | "skill"; entity_id: string; position: number;
@@ -446,12 +387,6 @@ export default async function UserSlugPage({
       }
     }
   }
-
-  // Initial moments cursor
-  const initialMomentsHasMore = initialMomentsCursorRow.length > 10
-  const initialMomentsCursor = initialMomentsHasMore
-    ? initialMomentsCursorRow[9]?.createdAt.toISOString() ?? null
-    : null
 
   const collectionListData = createdCollections.map((c) => ({
     id: c.id,
@@ -576,24 +511,29 @@ export default async function UserSlugPage({
                 userSlug={user.userSlug}
               />
 
-              {/* Activity heatmap (lazy-loaded) */}
+              {/* Activity heatmap — 异步加载，不阻塞首屏 */}
               <section>
                 <SectionHead title="活动" />
-                <ActivityHeatmapLoader userSlug={user.userSlug} />
+                <Suspense fallback={<div className="h-[128px] animate-pulse rounded-xl bg-muted" />}>
+                  <ActivityHeatmapLoader userSlug={user.userSlug} />
+                </Suspense>
               </section>
 
-              {/* Recent moments (infinite scroll) */}
-              <ProfileMomentsInfinite
-                userSlug={user.userSlug}
-                displayName={user.displayName}
-                avatarUrl={user.avatarUrl}
-                initialMoments={authorMoments.slice(0, 10)}
-                initialAttachments={attachmentsMap}
-                initialCursor={initialMomentsCursor}
-                session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl } : null}
-              />
+              {/* Recent moments — 异步加载，不阻塞首屏 */}
+              <section>
+                <SectionHead title="动态" />
+                <Suspense fallback={<div className="h-[200px] animate-pulse rounded-xl bg-muted" />}>
+                  <ProfileMomentsServerLoader
+                    userId={user.id}
+                    displayName={user.displayName}
+                    userSlug={user.userSlug}
+                    avatarUrl={user.avatarUrl ?? undefined}
+                    session={session}
+                  />
+                </Suspense>
+              </section>
 
-              {!readmePage && pinnedItems.length === 0 && feedCards.length === 0 && (
+              {!readmePage && pinnedItems.length === 0 && (
                 <div className="flex items-center justify-center py-16 text-muted-foreground">
                   <p>暂无内容</p>
                 </div>
@@ -638,5 +578,92 @@ export default async function UserSlugPage({
         </div>
       </div>
     </div>
+  )
+}
+
+// ============================================
+// Async loader: moments (Suspense 异步加载)
+// ============================================
+
+import { ProfileMomentsInfinite } from "@/components/profile/profile-moments-infinite"
+import { mapMomentRowToFeedCard } from "@/lib/services/moment-mapper"
+import type { MomentAttachmentData } from "@/lib/services/moment-mapper"
+import type { Session } from "@/lib/auth/types"
+
+interface ProfileMomentsServerLoaderProps {
+  userId: string
+  displayName: string
+  userSlug: string
+  avatarUrl?: string
+  session: Session | null
+}
+
+async function ProfileMomentsServerLoader({
+  userId, displayName, userSlug, avatarUrl, session,
+}: ProfileMomentsServerLoaderProps) {
+  const [authorMoments, cursorRows] = await Promise.all([
+    db.select().from(moments)
+      .where(and(
+        eq(moments.authorUserId, userId),
+        eq(moments.visibility, "public"),
+        eq(moments.isDeleted, false),
+      ))
+      .orderBy(desc(moments.createdAt))
+      .limit(10),
+    db.select({ createdAt: moments.createdAt }).from(moments)
+      .where(and(
+        eq(moments.authorUserId, userId),
+        eq(moments.visibility, "public"),
+        eq(moments.isDeleted, false),
+      ))
+      .orderBy(desc(moments.createdAt))
+      .limit(11),
+  ])
+
+  let attachmentsMap = new Map<string, MomentAttachmentData[]>()
+  if (authorMoments.length > 0) {
+    const momentIds = authorMoments.map((m) => m.id)
+    const attachmentRows = await db.select({
+      momentId: momentAttachments.momentId,
+      coverUrl: momentAttachments.coverUrlSnapshot,
+      title: momentAttachments.titleSnapshot,
+      authorName: momentAttachments.authorNameSnapshot,
+      viewCount: momentAttachments.viewCountSnapshot,
+      commentCount: momentAttachments.commentCountSnapshot,
+    })
+      .from(momentAttachments)
+      .where(inArray(momentAttachments.momentId, momentIds))
+      .orderBy(momentAttachments.sortOrder)
+
+    for (const a of attachmentRows) {
+      const list = attachmentsMap.get(a.momentId) ?? []
+      list.push({
+        cover_url: a.coverUrl,
+        title: a.title,
+        author_name: a.authorName,
+        view_count: a.viewCount,
+        comment_count: a.commentCount,
+      })
+      attachmentsMap.set(a.momentId, list)
+    }
+  }
+
+  const hasMore = cursorRows.length > 10
+  const initialCursor = hasMore
+    ? (cursorRows[9]?.createdAt instanceof Date
+        ? cursorRows[9].createdAt.toISOString()
+        : null)
+    : null
+
+  return (
+    <ProfileMomentsInfinite
+      userSlug={userSlug}
+      displayName={displayName}
+      avatarUrl={avatarUrl ?? null}
+      initialMoments={authorMoments.slice(0, 10)}
+      initialAttachments={attachmentsMap}
+      initialCursor={initialCursor}
+      session={session ? { username: session.username, userSlug: session.userSlug, avatarUrl: session.avatarUrl ?? undefined } : null}
+    />
   )
 }
