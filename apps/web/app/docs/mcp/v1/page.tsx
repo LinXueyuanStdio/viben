@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, ExternalLink, AlertTriangle, Info, FileText, Plus, Key, Terminal, BookOpen } from "lucide-react";
+import { Check, Copy, ExternalLink, AlertTriangle, Info, FileText, Plus, Key, Terminal, BookOpen, List, ArrowRightLeft, Globe, Clock, Tags, Shield, Wifi, Server, TableProperties } from "lucide-react";
 
 const MCP_ENDPOINT = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/mcp/v1`;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -108,7 +108,7 @@ interface Param { name: string; type: string; required: string; desc: string; }
 function ParamTable({ params }: { params: Param[] }) {
   return (
     <div>
-      <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h4>
+      <h4 className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><TableProperties size={12} />Parameters</h4>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead>
@@ -151,18 +151,27 @@ function ToolSection({
 }) {
   return (
     <div className="space-y-5">
-      {/* tool name — monospace, like alphaXiv */}
-      <h3 className="font-mono text-base font-semibold break-all text-foreground">{name}</h3>
+      {/* tool name + badge */}
+      <h3 className="flex items-center gap-3 font-mono text-base font-semibold break-all text-foreground">
+        {name}
+        {badge && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
+            <Key size={10} />{badge}
+          </span>
+        )}
+      </h3>
 
       {/* description */}
       <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
 
-      {/* parameters — stacked, not table */}
+      {/* parameters */}
       <ParamTable params={params} />
 
       {/* returns */}
       <div>
-        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Returns</h4>
+        <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <ArrowRightLeft size={12} />Returns
+        </h4>
         <p className="text-sm leading-relaxed text-muted-foreground">{returns}</p>
       </div>
 
@@ -178,6 +187,7 @@ function ToolSection({
       <details className="group rounded-lg border border-border">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground select-none hover:bg-muted/30 transition-colors">
           <span className="transition-transform group-open:rotate-90">▸</span>
+          <List size={13} />
           Examples ({examples.length})
         </summary>
         <div className="border-t border-border px-4 py-4 space-y-4">
@@ -189,13 +199,6 @@ function ToolSection({
           ))}
         </div>
       </details>
-
-      {/* badge marker */}
-      {badge && (
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
-          <AlertTriangle size={12} />{badge}
-        </div>
-      )}
     </div>
   );
 }
@@ -446,15 +449,15 @@ export default function McpDocsPage() {
           <table className="w-full text-sm">
             <tbody>
               <tr className="border-b border-border">
-                <td className="w-32 px-4 py-2.5 text-xs font-medium">端点</td>
+                <td className="w-40 px-4 py-2.5 text-xs font-medium"><Globe size={13} className="mr-2 inline text-muted-foreground" />端点</td>
                 <td className="px-4 py-2.5 text-xs"><EndpointCopy url={MCP_ENDPOINT} /></td>
               </tr>
               <tr className="border-b border-border">
-                <td className="px-4 py-2.5 text-xs font-medium">传输方式</td>
+                <td className="px-4 py-2.5 text-xs font-medium"><Wifi size={13} className="mr-2 inline text-muted-foreground" />传输方式</td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">Streamable HTTP</td>
               </tr>
               <tr className="border-b border-border">
-                <td className="px-4 py-2.5 text-xs font-medium">认证</td>
+                <td className="px-4 py-2.5 text-xs font-medium"><Key size={13} className="mr-2 inline text-muted-foreground" />认证</td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">
                   Bearer Token 认证（API Key，bmcp_ 前缀）。可通过{" "}
                   <a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 text-primary underline hover:no-underline">
@@ -464,11 +467,11 @@ export default function McpDocsPage() {
                 </td>
               </tr>
               <tr className="border-b border-border">
-                <td className="px-4 py-2.5 text-xs font-medium">协议版本</td>
+                <td className="px-4 py-2.5 text-xs font-medium"><Server size={13} className="mr-2 inline text-muted-foreground" />协议版本</td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">Model Context Protocol (MCP) v1.0.0</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 text-xs font-medium">支持的客户端</td>
+                <td className="px-4 py-2.5 text-xs font-medium"><Terminal size={13} className="mr-2 inline text-muted-foreground" />支持的客户端</td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">
                   原生 MCP 客户端 — Claude Code、Codex、Claude Desktop、VS Code、Cursor，以及 <InlineCode>mcp-remote</InlineCode> 等 CLI 桥接工具。
                 </td>
@@ -552,15 +555,15 @@ export default function McpDocsPage() {
           <table className="w-full text-sm">
             <tbody>
               {[
-                ["请求超时", "最大 300 秒"],
-                ["页面大小", "HTML 建议控制在 5MB 以内"],
-                ["标签数量", "每页最多 12 个，超出自动截断"],
-                ["传输协议", "仅支持 Streamable HTTP，不支持旧版 SSE"],
-                ["并发限制", "与 REST API 共享频率限制策略"],
-                ["可见性", "private 页面仅作者可见，不会暴露给未认证请求"],
-              ].map(([label, value]) => (
-                <tr key={label} className="border-b border-border last:border-0">
-                  <td className="w-36 px-4 py-2.5 text-xs font-medium">{label}</td>
+                ["请求超时", "最大 300 秒", Clock],
+                ["页面大小", "HTML 建议控制在 5MB 以内", FileText],
+                ["标签数量", "每页最多 12 个，超出自动截断", Tags],
+                ["传输协议", "仅支持 Streamable HTTP，不支持旧版 SSE", Wifi],
+                ["并发限制", "与 REST API 共享频率限制策略", Shield],
+                ["可见性", "private 页面仅作者可见，不会暴露给未认证请求", Key],
+              ].map(([label, value, Icon]) => (
+                <tr key={label as string} className="border-b border-border last:border-0">
+                  <td className="w-36 px-4 py-2.5 text-xs font-medium">{(Icon as React.ElementType) && <Icon size={13} className="mr-2 inline text-muted-foreground" />}{label}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">{value}</td>
                 </tr>
               ))}
