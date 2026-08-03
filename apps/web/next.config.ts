@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // 客户端路由缓存：页面在浏览器端缓存 5 分钟
+  staleTimes: {
+    dynamic: 300,
+    static: 300,
+  },
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
