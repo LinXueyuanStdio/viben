@@ -111,8 +111,17 @@ export default async function HomePage() {
     console.error("[Home] Failed to fetch page data:", error)
   }
 
+  // 预加载跑马灯前 2 张封面图，减少切换闪烁
+  const preloadUrls = heroSlides
+    .filter((s) => s.coverUrl)
+    .slice(0, 2)
+    .map((s) => s.coverUrl!)
+
   return (
     <>
+      {preloadUrls.map((url) => (
+        <link key={url} rel="preload" as="image" href={url} />
+      ))}
       <div className="mb-3">
         <HomeTabBar />
       </div>
