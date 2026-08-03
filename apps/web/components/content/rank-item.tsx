@@ -52,8 +52,8 @@ export function RankItem({ data, href, className }: RankItemProps) {
       )}
       style={{ gridTemplateColumns: "46px 180px minmax(0, 1fr)" }}
     >
-      {/* Rank — SVG 艺术字 */}
-      <div className="flex items-center justify-center">
+      {/* Rank — SVG 艺术字 + 排名变化 */}
+      <div className="flex flex-col items-center justify-center gap-0.5">
         <svg viewBox="0 0 32 40" className="h-10 w-8">
           <text
             x="16" y="30"
@@ -67,6 +67,9 @@ export function RankItem({ data, href, className }: RankItemProps) {
             {rank}
           </text>
         </svg>
+        {delta !== "—" && (
+          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{delta}</span>
+        )}
       </div>
 
       {/* Cover */}
@@ -78,7 +81,6 @@ export function RankItem({ data, href, className }: RankItemProps) {
       <div className="grid gap-[7px]">
         <div className="flex items-center gap-[7px]">
           <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{delta}</span>
         </div>
         <p className="text-[13px] text-muted-foreground truncate">{description}</p>
         <MetaRow author={author} />
