@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { db, publishedPages } from "@/lib/db"
+import { db, publishedPages, users } from "@/lib/db"
 import { requireAuth, AuthError } from "@/lib/auth/middleware"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 
 /**
  * 删除已发布页面
@@ -42,6 +42,14 @@ export async function DELETE(
         { error: { code: "forbidden", message: "You can only delete your own pages" } },
         { status: 403 }
       )
+    }
+
+    // 删除前扣减用户 pageCount（仅公开且已审核的页面才计入）
+    if (page.visibility === "public" && page.moderationStatus === "approved") {
+      await db
+        .update(users)
+        .set({ pageCount: sql`GREATEST(COALESCE(${users.pageCount}, 0) - 1, 0)` })
+        .where(eq(users.id, page.userId));
     }
 
     // Delete the page (cascading deletes are handled at the DB level)
