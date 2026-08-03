@@ -84,16 +84,20 @@ export function UserMenu({ session, isMobile = false, isRead = false }: UserMenu
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <span onMouseEnter={handleOpen}>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full" asChild>
-            <span tabIndex={0}>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={session.avatarUrl} alt={displayLabel} />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </span>
-          </Button>
-        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-8 w-8 rounded-full"
+          onMouseEnter={handleOpen}
+          asChild
+        >
+          <span tabIndex={0}>
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={session.avatarUrl} alt={displayLabel} />
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+          </span>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-56"
