@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import {
   db,
   publishedPageRecords,
@@ -342,10 +341,6 @@ export async function POST(request: NextRequest) {
       description: description ?? null,
       visibility: normalizedVisibility,
     });
-
-    // 发布/更新页面后主动失效首页和推荐缓存
-    revalidateTag("homepage");
-    revalidateTag("page-recommendations");
 
     return NextResponse.json({
       success: true,
