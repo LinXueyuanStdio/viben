@@ -439,42 +439,43 @@ export default function McpDocsPage() {
         </p>
       </div>
 
-      {/* 连接信息 — using <dl> like alphaXiv */}
+      {/* 连接信息 */}
       <section className="mb-14">
         <h2 className="font-semibold text-xl text-foreground">连接信息</h2>
-        <dl className="mt-4 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">端点</dt>
-            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">
-              <EndpointCopy url={MCP_ENDPOINT} />
-            </dd>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">传输方式</dt>
-            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">Streamable HTTP</dd>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">认证</dt>
-            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">
-              默认使用 Bearer Token 认证（API Key，bmcp_ 前缀）。可通过{" "}
-              <a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 text-primary underline hover:no-underline">
-                API 密钥管理 <ExternalLink size={11} />
-              </a>{" "}
-              页面创建。
-            </dd>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">协议版本</dt>
-            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">Model Context Protocol (MCP) v1.0.0</dd>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">支持的客户端</dt>
-            <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">
-              原生 MCP 客户端 — Claude Code、Codex、Claude Desktop、VS Code、Cursor，以及{" "}
-              <InlineCode>mcp-remote</InlineCode> 等 CLI 桥接工具。
-            </dd>
-          </div>
-        </dl>
+        <div className="mt-4 overflow-hidden rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className="border-b border-border">
+                <td className="w-32 px-4 py-2.5 text-xs font-medium">端点</td>
+                <td className="px-4 py-2.5 text-xs"><EndpointCopy url={MCP_ENDPOINT} /></td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-4 py-2.5 text-xs font-medium">传输方式</td>
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">Streamable HTTP</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-4 py-2.5 text-xs font-medium">认证</td>
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                  Bearer Token 认证（API Key，bmcp_ 前缀）。可通过{" "}
+                  <a href={`${APP_URL}/settings/api_keys`} className="inline-flex items-center gap-0.5 text-primary underline hover:no-underline">
+                    API 密钥管理 <ExternalLink size={11} />
+                  </a>{" "}
+                  页面创建。
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-4 py-2.5 text-xs font-medium">协议版本</td>
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">Model Context Protocol (MCP) v1.0.0</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2.5 text-xs font-medium">支持的客户端</td>
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                  原生 MCP 客户端 — Claude Code、Codex、Claude Desktop、VS Code、Cursor，以及 <InlineCode>mcp-remote</InlineCode> 等 CLI 桥接工具。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div className="mt-4 flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
           <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="text-sm text-amber-800 dark:text-amber-300">
@@ -547,21 +548,25 @@ export default function McpDocsPage() {
       {/* 限制 */}
       <section>
         <h2 className="font-semibold text-xl text-foreground">限制与注意事项</h2>
-        <dl className="mt-4 space-y-3">
-          {[
-            ["请求超时", "最大 300 秒"],
-            ["页面大小", "HTML 建议控制在 5MB 以内"],
-            ["标签数量", "每页最多 12 个，超出自动截断"],
-            ["传输协议", "仅支持 Streamable HTTP，不支持旧版 SSE"],
-            ["并发限制", "与 REST API 共享频率限制策略"],
-            ["可见性", "private 页面仅作者可见，不会暴露给未认证请求"],
-          ].map(([label, value]) => (
-            <div key={label} className="flex flex-col sm:flex-row sm:gap-4">
-              <dt className="shrink-0 text-sm font-medium text-foreground sm:w-32">{label}</dt>
-              <dd className="min-w-0 text-sm leading-relaxed text-muted-foreground">{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-4 overflow-hidden rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <tbody>
+              {[
+                ["请求超时", "最大 300 秒"],
+                ["页面大小", "HTML 建议控制在 5MB 以内"],
+                ["标签数量", "每页最多 12 个，超出自动截断"],
+                ["传输协议", "仅支持 Streamable HTTP，不支持旧版 SSE"],
+                ["并发限制", "与 REST API 共享频率限制策略"],
+                ["可见性", "private 页面仅作者可见，不会暴露给未认证请求"],
+              ].map(([label, value]) => (
+                <tr key={label} className="border-b border-border last:border-0">
+                  <td className="w-36 px-4 py-2.5 text-xs font-medium">{label}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );
