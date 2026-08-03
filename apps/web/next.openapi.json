@@ -13,7 +13,7 @@
   "schemaDir": "lib/validations",
   "schemaType": "zod",
   "outputFile": "openapi.json",
-  "docsUrl": "/api-docs",
+  "docsUrl": "/docs/api/v1",
   "ui": "scalar",
   "exclude": [
     "mcp/**",
@@ -23,7 +23,8 @@
     "releases/**",
     "clawhub-registry/**",
     "official-registry/**",
-    "admin/**"
+    "admin/**",
+    "../docs/**"
   ],
   "authPresets": {
     "bearer": {

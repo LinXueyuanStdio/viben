@@ -92,7 +92,8 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
   "/home": { label: "产品首页", icon: Home, parent: "/" },
   "/web": { label: "Web", icon: FileText, parent: "/" },
-  "/api-docs": { label: "API 文档", icon: ScrollText, parent: "/" },
+  "/docs/api/v1": { label: "API 文档", icon: ScrollText, parent: "/" },
+  "/docs/mcp/v1": { label: "MCP 文档", icon: Package, parent: "/" },
 
   // 管理员路由（仅 role=admin 可见）
   "/admin": {

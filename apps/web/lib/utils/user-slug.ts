@@ -3,7 +3,7 @@ export const USER_SLUG_REGEX = /^[A-Za-z_][A-Za-z0-9_-]{2,29}$/;
 /** Reserved words that cannot be used as user slugs */
 export const RESERVED_SLUGS = [
   // Next.js app router paths
-  'api-docs',
+  'docs',
   'analytics',
   'page',
   'pages',
