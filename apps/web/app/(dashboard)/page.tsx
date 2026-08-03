@@ -19,6 +19,13 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Viben - 创作 · 分享 · 连接",
   description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
+  alternates: {
+    canonical: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: "Viben - 创作 · 分享 · 连接",
     description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
