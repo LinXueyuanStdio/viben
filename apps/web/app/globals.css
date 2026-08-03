@@ -317,6 +317,15 @@
   color: var(--color-foreground);
 }
 
+.viben-trigger-underline[data-state="active"] {
+  color: var(--color-foreground);
+  font-weight: 700;
+}
+
+.viben-trigger-underline[data-state="inactive"]:hover {
+  color: var(--color-foreground);
+}
+
 /* ===== Syntax Highlighting (highlight.js) ===== */
 /* Light mode (github) */
 @import "highlight.js/styles/github.css";

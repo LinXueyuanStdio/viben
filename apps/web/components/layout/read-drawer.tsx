@@ -136,11 +136,11 @@ function DrawerHeader({
   const [feedbackOpen, setFeedbackOpen] = React.useState(false)
 
   return (
-    <div className="flex items-center gap-2.5 h-[58px] px-3 border-b border-border overflow-hidden whitespace-nowrap">
+    <div className="flex items-center gap-2.5 h-[44px] px-3 border-b border-border overflow-hidden whitespace-nowrap">
       <VibenTabs value={activeTab} onValueChange={onTabChange} className="flex-1">
-        <VibenTabsList variant="drawer">
+        <VibenTabsList variant="underline">
           {tabs.map((tab) => (
-            <VibenTabsTrigger key={tab.value} value={tab.value} variant="drawer">
+            <VibenTabsTrigger key={tab.value} value={tab.value} variant="underline">
               {tab.label}
               {tab.badge !== undefined && tab.badge > 0 && (
                 <span className="ml-1 text-xs text-muted-foreground">{tab.badge}</span>

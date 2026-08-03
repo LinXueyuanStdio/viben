@@ -214,32 +214,31 @@ export function Topbar({
 
         {/* ===== Center ===== */}
         <div
-          className={cn(
-            "flex items-center",
+          className={
             isRead
-              ? "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-2 pointer-events-none w-max"
-              : cn("justify-center min-w-0", isMobile ? "flex-1" : "")
-          )}
+              ? "absolute left-1/2 -translate-x-1/2 inset-y-0 z-2 pointer-events-none w-max grid place-items-center"
+              : cn("flex items-center justify-center min-w-0", isMobile ? "flex-1" : "")
+          }
         >
           {isRead ? (
             topbarSlots?.centerContent ?? centerContent ?? (
-              <div className="pointer-events-auto">
+              <div className="pointer-events-auto h-full">
                 {/* 仅在有 sidePage 或是作者时渲染 TabList（否则只有一个 tab 不展示） */}
                 {(hasSidePage || isAuthor) && (
-                  <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)}>
-                    <VibenTabsList variant="pill">
-                      <VibenTabsTrigger value="page" variant="pill">
+                  <VibenTabs value={readActiveTab} onValueChange={(v) => v && handleReadTabChange(v)} className="h-full">
+                    <VibenTabsList variant="underline" className="h-full">
+                      <VibenTabsTrigger value="page" variant="underline">
                         <FileText className="h-4 w-4" />
                         <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.page")}</span>
                       </VibenTabsTrigger>
                       {hasSidePage && (
-                        <VibenTabsTrigger value="side" variant="pill">
+                        <VibenTabsTrigger value="side" variant="underline">
                           <Columns2 className="h-4 w-4" />
                           <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.sidePage")}</span>
                         </VibenTabsTrigger>
                       )}
                       {isAuthor && (
-                        <VibenTabsTrigger value="settings" variant="pill">
+                        <VibenTabsTrigger value="settings" variant="underline">
                           <Settings className="h-4 w-4" />
                           <span className={cn("ml-1.5", isMobile && "hidden")}>{t("community.settings")}</span>
                         </VibenTabsTrigger>
