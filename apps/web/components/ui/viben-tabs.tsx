@@ -60,9 +60,23 @@ const VibenTabsList = React.forwardRef<
 
     measure();
 
-    const observer = new ResizeObserver(measure);
-    observer.observe(listEl);
-    return () => observer.disconnect();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(listEl);
+
+    const mutationObserver = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === "attributes" && m.attributeName === "data-state") {
+          measure();
+          return;
+        }
+      }
+    });
+    mutationObserver.observe(listEl, { attributes: true, subtree: true, attributeFilter: ["data-state"] });
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
   }, [variant]);
 
   return (
@@ -75,7 +89,7 @@ const VibenTabsList = React.forwardRef<
         <span
           aria-hidden="true"
           className={cn(
-            "absolute -bottom-[2px] h-[2px] bg-primary rounded-full",
+            "absolute -bottom-px h-[2px] bg-primary rounded-full",
             mounted && "transition-[left,width] duration-300 ease-out"
           )}
           style={{
@@ -102,7 +116,7 @@ const tabsTriggerVariants = cva(
         default: "viben-trigger-default rounded-md px-3 py-1 text-sm min-h-9",
         pill: "viben-trigger-pill rounded-full px-4 py-1.5 text-sm min-w-[92px]",
         drawer: "viben-trigger-drawer rounded-full px-3 py-1 text-xs min-w-[78px] min-h-[34px]",
-        underline: "viben-trigger-underline font-medium rounded-md px-3 py-2 text-sm hover:bg-surface-secondary",
+        underline: "viben-trigger-underline font-medium rounded-md px-3 py-2 text-sm hover:bg-muted",
       },
     },
     defaultVariants: { variant: "default" },

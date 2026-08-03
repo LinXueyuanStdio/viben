@@ -78,14 +78,13 @@ export function Topbar({
   // 阅读模式：仅通过 URL 判定
   const isRead = isReadPageFromUrl
 
-  // Derive active tab from URL param (read→"page", settings→"settings")
-  const tabParam = searchParams.get("tab")
-  const readActiveTab = React.useMemo(() => {
-    if (tabParam === "settings") return "settings"
-    return "page"
-  }, [tabParam])
+  // 本地 state 优先，UI 立即响应；URL 异步同步
+  const [readActiveTab, setReadActiveTab] = React.useState(() =>
+    searchParams.get("tab") === "settings" ? "settings" : "page"
+  )
 
   const handleReadTabChange = React.useCallback((value: string) => {
+    setReadActiveTab(value)
     trackAnalytics("read_tab_switch", { tab: value })
     trackEngagement("tab_switch", { tab: value, page_id: urlPageId })
     if (value === "settings") {

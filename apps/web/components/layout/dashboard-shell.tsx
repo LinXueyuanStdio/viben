@@ -9,7 +9,7 @@ const AppShellWrapper = dynamic(
     loading: () => (
       <div className="flex h-screen flex-col">
         {/* Topbar skeleton — 匹配移动端响应式布局 */}
-        <header className="h-14 border-b bg-card/50 flex items-center px-3 gap-3 animate-pulse">
+        <header className="h-[var(--nav-h)] border-b bg-card/50 flex items-center px-3 gap-3 animate-pulse">
           {/* 汉堡按钮 */}
           <div className="size-9 rounded-lg bg-muted shrink-0" />
           {/* 搜索框（flex-1 填充） */}

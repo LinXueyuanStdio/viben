@@ -136,9 +136,9 @@ function DrawerHeader({
   const [feedbackOpen, setFeedbackOpen] = React.useState(false)
 
   return (
-    <div className="flex items-center gap-2.5 h-[44px] px-3 border-b border-border overflow-hidden whitespace-nowrap">
-      <VibenTabs value={activeTab} onValueChange={onTabChange} className="flex-1">
-        <VibenTabsList variant="underline">
+    <div className="flex items-center gap-2.5 h-[var(--nav-h)] px-3 border-b border-border/52 whitespace-nowrap">
+      <VibenTabs value={activeTab} onValueChange={onTabChange} className="flex-1 h-full">
+        <VibenTabsList variant="underline" className="h-full">
           {tabs.map((tab) => (
             <VibenTabsTrigger key={tab.value} value={tab.value} variant="underline">
               {tab.label}
@@ -290,7 +290,7 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
   return createPortal(
     <div
       className={cn(
-        "h-full w-full border-l border-border bg-background relative",
+        "h-full w-full border-l border-border/52 bg-background/68 backdrop-blur-[18px] saturate-[1.18] relative",
         "grid grid-rows-[auto_1fr]",
         !open && "hidden"
       )}
