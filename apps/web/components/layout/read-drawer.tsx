@@ -251,9 +251,10 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
             "w-full sm:w-[min(420px,100vw)]",
             "grid grid-rows-[auto_1fr]",
             "bg-background/96 backdrop-blur-[16px]",
-            "border-l border-border shadow-[-18px_0_36px_rgba(8,91,117,0.14)]",
-            "transition-transform duration-[220ms] ease-out",
-            open ? "translate-x-0" : "translate-x-full"
+            "border-l border-border transition-transform duration-[220ms] ease-out",
+            open
+              ? "translate-x-0 shadow-[-18px_0_36px_rgba(8,91,117,0.14)]"
+              : "translate-x-full"
           )}
           style={{ height: "100vh", willChange: "transform" }}
           onClick={(e) => e.stopPropagation()}

@@ -137,12 +137,10 @@ const LazyPageSettingsPanel = dynamic(
   () => import("@/components/pages/page-settings-panel").then((m) => ({ default: m.PageSettingsPanel })),
   {
     loading: () => (
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 rounded bg-muted" />
-          <div className="h-4 w-full rounded bg-muted" />
-          <div className="h-4 w-3/4 rounded bg-muted" />
-        </div>
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 w-48 rounded bg-muted" />
+        <div className="h-4 w-full rounded bg-muted" />
+        <div className="h-4 w-3/4 rounded bg-muted" />
       </div>
     ),
   },
@@ -286,15 +284,13 @@ export function ReadPageClient({
       <div className="flex h-full">
         {/* 参考 index.html .read-shell + .read-viewport + .read-iframe */}
         {activeTab === "settings" && isAuthor ? (
-          <div
-            className="flex-1 min-w-0 overflow-auto"
-            style={{
-              paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))",
-              transition: "padding-top 180ms ease",
-            }}
-          >
-            <div className="max-w-2xl mx-auto px-4 py-8">
-              <LazyPageSettingsPanel
+          <div className="flex-1 min-w-0 min-h-0" style={{ paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))" }}>
+            <div
+              className="overflow-y-auto"
+              style={{ height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))" }}
+            >
+              <div className="max-w-2xl mx-auto px-4 py-8">
+                <LazyPageSettingsPanel
                 userSlug={userSlug}
                 pageId={pageId}
                 pageTitle={pageTitle}
@@ -313,6 +309,7 @@ export function ReadPageClient({
                 pageIsDiscoverable={pageIsDiscoverable}
                 pageDbId={pageDbId}
               />
+            </div>
             </div>
           </div>
         ) : (

@@ -515,7 +515,7 @@ export function PageSettingsPanel({
   // ==========================================================================
 
   return (
-    <div className={cn("grid gap-6", className)}>
+    <div className={cn("grid grid-cols-1 gap-6", className)}>
       {/* Page Info Section */}
       <section className="rounded-lg border border-border bg-card p-4">
         <div className="flex items-start gap-3">
@@ -591,7 +591,7 @@ export function PageSettingsPanel({
               <div className="space-y-3">
                 {/* URL bar */}
                 <div className="flex min-w-0 items-center rounded-md border border-border bg-background">
-                  <div className="shrink-0 border-r border-border px-2 py-2 font-mono text-xs text-muted-foreground">
+                  <div className="hidden sm:block shrink-0 border-r border-border px-2 py-2 font-mono text-xs text-muted-foreground">
                     {VIBEN_WEB_URL}
                   </div>
                   <div className="min-w-0 flex-1 truncate px-2 py-2 font-mono text-xs text-foreground">
