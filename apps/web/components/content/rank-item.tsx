@@ -30,26 +30,49 @@ interface RankItemProps {
   className?: string
 }
 
+/** 排名数字的颜色层级 */
+function rankColor(rank: number): { fill: string; stroke: string } {
+  if (rank === 1) return { fill: "#f59e0b", stroke: "#d97706" }   // 金
+  if (rank === 2) return { fill: "#94a3b8", stroke: "#64748b" }    // 银
+  if (rank === 3) return { fill: "#d97706", stroke: "#b45309" }    // 铜
+  return { fill: "#71717a", stroke: "#52525b" }
+}
+
 export function RankItem({ data, href, className }: RankItemProps) {
-  const { rank, coverUrl, title, description, delta, author, stats, score, scoreLabel } = data
+  const { rank, coverUrl, title, description, delta, author, stats } = data
+  const color = rankColor(rank)
 
   return (
     <Link
       href={href}
       className={cn(
-        "grid gap-2.5 rounded-[12px] border border-border p-[9px]",
-        "hover:border-primary transition-colors duration-150",
+        "grid gap-2.5 rounded-[12px] p-[9px]",
+        "hover:bg-accent/50 transition-colors duration-150",
         className
       )}
-      style={{ gridTemplateColumns: "46px 150px minmax(0, 1fr) auto" }}
+      style={{ gridTemplateColumns: "46px 150px minmax(0, 1fr)" }}
     >
-      {/* Rank Number */}
-      <div className="flex items-center justify-center font-['Lexend'] text-lg font-bold text-primary">
-        {String(rank).padStart(2, "0")}
+      {/* Rank — SVG 艺术字 */}
+      <div className="flex items-center justify-center">
+        <svg viewBox="0 0 32 40" className="h-10 w-8">
+          <text
+            x="16" y="30"
+            textAnchor="middle"
+            fill={color.fill}
+            stroke={color.stroke}
+            strokeWidth="0.6"
+            className="font-['Lexend'] text-[28px] font-extrabold"
+            style={{ paintOrder: "stroke fill" }}
+          >
+            {rank}
+          </text>
+        </svg>
       </div>
 
       {/* Cover */}
-      <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/10" className="rounded-[9px]" />
+      <div className="flex items-center">
+        <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/10" className="rounded-[9px] w-full" />
+      </div>
 
       {/* Body */}
       <div className="grid gap-[7px]">
@@ -64,12 +87,6 @@ export function RankItem({ data, href, className }: RankItemProps) {
           <Stat icon={ThumbsUp} value={stats.likes} format />
           <Stat icon={MessageCircle} value={stats.comments} format />
         </div>
-      </div>
-
-      {/* Score */}
-      <div className="flex flex-col items-end justify-center gap-[5px] min-w-[78px]">
-        <span className="font-['Lexend'] text-xl font-bold text-primary">{score.toLocaleString()}</span>
-        <span className="text-xs text-muted-foreground">{scoreLabel}</span>
       </div>
     </Link>
   )
