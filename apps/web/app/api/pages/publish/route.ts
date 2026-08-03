@@ -343,8 +343,9 @@ export async function POST(request: NextRequest) {
       visibility: normalizedVisibility,
     });
 
-    // 发布/更新页面后主动失效首页缓存
+    // 发布/更新页面后主动失效首页和推荐缓存
     revalidateTag("homepage");
+    revalidateTag("page-recommendations");
 
     return NextResponse.json({
       success: true,

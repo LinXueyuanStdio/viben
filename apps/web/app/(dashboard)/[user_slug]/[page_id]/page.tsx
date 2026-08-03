@@ -1,9 +1,7 @@
 import { after } from "next/server"
 import { Suspense } from "react"
-import { eq, and, ne, desc } from "drizzle-orm"
-import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments } from "@/lib/services/community"
+import { getPublishedPageContext, canReadPage, getCommunitySummary, ensureCommunityEntityForPage, recordPageView, listCommunityComments, getReadPageRecommendations } from "@/lib/services/community"
 import { getSession } from "@/lib/auth/cookies"
-import { db, publishedPages } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
 import { ReadPageClient } from "@/components/pages/read-page-client"
 import { ReadPageShell } from "@/components/pages/read-page-shell"
@@ -340,32 +338,7 @@ async function RecommendationsInjector({
   let recommendationEntries: RecEntry[] = []
 
   try {
-    const relatedRows = await db
-      .select({
-        uid: publishedPages.uid,
-        title: publishedPages.title,
-        description: publishedPages.description,
-        authorDisplayName: publishedPages.authorDisplayName,
-        authorAvatarUrl: publishedPages.authorAvatarUrl,
-        authorSlug: publishedPages.authorSlug,
-        coverUrl: publishedPages.coverUrl,
-        viewCount: publishedPages.viewCount,
-        likeCount: publishedPages.likeCount,
-        commentCount: publishedPages.commentCount,
-      })
-      .from(publishedPages)
-      .where(
-        and(
-          eq(publishedPages.visibility, "public"),
-          eq(publishedPages.moderationStatus, "approved"),
-          ne(publishedPages.id, pageId),
-          categoryId
-            ? eq(publishedPages.categoryId, categoryId)
-            : eq(publishedPages.userId, authorUserId)
-        )
-      )
-      .orderBy(desc(publishedPages.viewCount))
-      .limit(3)
+    const relatedRows = await getReadPageRecommendations(pageId, categoryId, authorUserId)
 
     recommendationEntries = relatedRows.map((r) => ({
       data: {

@@ -2029,6 +2029,43 @@ export const getHomePageData = unstable_cache(
   { revalidate: 300, tags: [HOMEPAGE_CACHE_TAG] },
 );
 
+const PAGE_RECOMMENDATIONS_TAG = "page-recommendations";
+
+export const getReadPageRecommendations = unstable_cache(
+  async (pageId: string, categoryId: string | null, authorUserId: string) => {
+    const rows = await db
+      .select({
+        uid: publishedPages.uid,
+        title: publishedPages.title,
+        description: publishedPages.description,
+        authorDisplayName: publishedPages.authorDisplayName,
+        authorAvatarUrl: publishedPages.authorAvatarUrl,
+        authorSlug: publishedPages.authorSlug,
+        coverUrl: publishedPages.coverUrl,
+        viewCount: publishedPages.viewCount,
+        likeCount: publishedPages.likeCount,
+        commentCount: publishedPages.commentCount,
+      })
+      .from(publishedPages)
+      .where(
+        and(
+          eq(publishedPages.visibility, "public"),
+          eq(publishedPages.moderationStatus, "approved"),
+          ne(publishedPages.id, pageId),
+          categoryId
+            ? eq(publishedPages.categoryId, categoryId)
+            : eq(publishedPages.userId, authorUserId),
+        ),
+      )
+      .orderBy(desc(publishedPages.viewCount))
+      .limit(3);
+
+    return rows;
+  },
+  [PAGE_RECOMMENDATIONS_TAG],
+  { revalidate: 300, tags: [PAGE_RECOMMENDATIONS_TAG] },
+);
+
 export async function listPagesByTag(tag: string, limit: number = 20) {
   const rows = await db
     .select({
