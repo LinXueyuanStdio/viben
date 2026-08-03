@@ -2104,16 +2104,10 @@ export const getHomePageData = unstable_cache(
   { revalidate: false, tags: [HOMEPAGE_CACHE_TAG] },
 );
 
-const LEADERBOARD_TIMES = ["1d", "7d", "30d"] as const;
-
 export const getCachedLeaderboard = unstable_cache(
-  async () => {
-    const rankings = await Promise.all(
-      LEADERBOARD_TIMES.map((tw) =>
-        listRanking({ rankingKey: "published_page", timeWindow: tw, limit: 20 }),
-      ),
-    );
-    return rankings.map((r) => r.items);
+  async (timeWindow: string) => {
+    const result = await listRanking({ rankingKey: "published_page", timeWindow, limit: 20 });
+    return result.items;
   },
   ["leaderboard"],
   { revalidate: false, tags: [HOMEPAGE_CACHE_TAG] },

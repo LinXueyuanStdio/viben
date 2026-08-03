@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getCachedLeaderboard } from "@/lib/services/community";
 
 /**
  * 获取排行榜
- * @summary 获取 1d/7d/30d 排行榜数据
- * @description 返回三个时间窗口的排行数据，使用 unstable_cache 服务端缓存 + staleTimes 前端缓存
- * @response 200:LeaderboardResponse
+ * @summary 按时间窗口获取排行数据
+ * @description 返回指定时间窗口的排行，服务端 unstable_cache 缓存，浏览器端 useQuery staleTime 缓存
+ * @params timeWindow — 默认为 "7d"
  * @tag Rankings
  */
-export async function GET() {
-  const items = await getCachedLeaderboard();
-  return NextResponse.json({
-    tabs: [
-      { key: "1d", label: "最新热度", items: items[0] },
-      { key: "7d", label: "热门页面", items: items[1] },
-      { key: "30d", label: "月度精选", items: items[2] },
-    ],
-  });
+export async function GET(request: NextRequest) {
+  const timeWindow = request.nextUrl.searchParams.get("timeWindow") ?? "7d";
+  const items = await getCachedLeaderboard(timeWindow);
+  return NextResponse.json({ timeWindow, items });
 }
