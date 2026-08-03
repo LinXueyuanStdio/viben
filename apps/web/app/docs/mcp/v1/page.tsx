@@ -101,29 +101,39 @@ function EndpointCopy({ url }: { url: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Parameter List (NOT a table — inline list, alphaXiv style)
+// Parameter Table
 // ═══════════════════════════════════════════════════════════
 interface Param { name: string; type: string; required: string; desc: string; }
 
-function ParamList({ params }: { params: Param[] }) {
+function ParamTable({ params }: { params: Param[] }) {
   return (
     <div>
       <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h4>
-      <div className="space-y-5">
-        {params.map((p) => (
-          <div key={p.name}>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <code className="font-mono text-sm font-semibold text-foreground">{p.name}</code>
-              <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-muted-foreground">{p.type}</code>
-              {p.required === "是" ? (
-                <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">required</span>
-              ) : (
-                <span className="text-xs text-muted-foreground">optional</span>
-              )}
-            </div>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
-          </div>
-        ))}
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              <th className="px-3 py-2 text-left text-xs font-semibold">参数</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold">类型</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold">必填</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            {params.map((p) => (
+              <tr key={p.name} className="border-b border-border last:border-0">
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-medium text-foreground">{p.name}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-muted-foreground">{p.type}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">
+                  {p.required === "是"
+                    ? <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">required</span>
+                    : <span className="text-muted-foreground">optional</span>}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground leading-relaxed">{p.desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -148,7 +158,7 @@ function ToolSection({
       <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
 
       {/* parameters — stacked, not table */}
-      <ParamList params={params} />
+      <ParamTable params={params} />
 
       {/* returns */}
       <div>
@@ -193,21 +203,108 @@ function ToolSection({
 // ═══════════════════════════════════════════════════════════
 // Client Tabs
 // ═══════════════════════════════════════════════════════════
-interface ClientTab { name: string; command?: string; config?: Record<string, unknown>; }
-
-const CLIENT_TABS: ClientTab[] = [
-  { name: "Claude Code", command: `claude mcp add --transport http viben ${MCP_ENDPOINT}` },
-  { name: "Codex", config: { mcpServers: { viben: { type: "streamableHttp", url: MCP_ENDPOINT, headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" } } } } },
-  { name: "Claude Desktop", config: { mcpServers: { viben: { type: "streamableHttp", url: MCP_ENDPOINT, headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" } } } } },
-  { name: "VS Code / Cursor", config: { servers: { viben: { type: "streamableHttp", url: MCP_ENDPOINT, headers: { Authorization: "Bearer bmcp_YOUR_API_KEY" } } } } },
+const CLIENT_TABS = [
+  {
+    name: "Claude Code",
+    content: (
+      <div className="space-y-4 text-sm">
+        <CodeBlock
+          code={`# 使用 API Key 认证（推荐）
+claude mcp add --transport http viben ${MCP_ENDPOINT} --header "Authorization: Bearer <key>"`}
+          lang="bash"
+        />
+      </div>
+    ),
+  },
+  {
+    name: "Codex",
+    content: (
+      <div className="space-y-4 text-sm">
+        <p className="text-muted-foreground leading-relaxed">
+          Codex 目前推荐通过 API Key 认证。
+        </p>
+        <CodeBlock
+          code={`# 使用 API Key 认证
+export VIBEN_API_KEY="<key>"
+codex mcp add viben --url ${MCP_ENDPOINT} --bearer-token-env-var VIBEN_API_KEY`}
+          lang="bash"
+        />
+      </div>
+    ),
+  },
+  {
+    name: "Cursor",
+    content: (
+      <div className="space-y-4 text-sm">
+        <p className="text-muted-foreground leading-relaxed">
+          添加到 <InlineCode>~/.cursor/mcp.json</InlineCode>（或项目中的 <InlineCode>.cursor/mcp.json</InlineCode>）。
+          不传 <code className="font-mono text-xs">headers</code> 则无需认证即可使用公开工具。
+        </p>
+        <CodeBlock
+          code={JSON.stringify({
+            mcpServers: {
+              viben: {
+                url: MCP_ENDPOINT,
+                headers: { Authorization: "Bearer <key>" },
+              },
+            },
+          }, null, 2)}
+          lang="json"
+        />
+      </div>
+    ),
+  },
+  {
+    name: "VS Code",
+    content: (
+      <div className="space-y-4 text-sm">
+        <p className="text-muted-foreground leading-relaxed">
+          添加到 VS Code 的 MCP 配置文件中。
+        </p>
+        <CodeBlock
+          code={JSON.stringify({
+            servers: {
+              viben: {
+                type: "streamableHttp",
+                url: MCP_ENDPOINT,
+                headers: { Authorization: "Bearer <key>" },
+              },
+            },
+          }, null, 2)}
+          lang="json"
+        />
+      </div>
+    ),
+  },
+  {
+    name: "Claude Desktop",
+    content: (
+      <div className="space-y-4 text-sm">
+        <p className="text-muted-foreground leading-relaxed">
+          在 <InlineCode>claude_desktop_config.json</InlineCode> 中添加 streamableHttp 类型的服务器配置。
+        </p>
+        <CodeBlock
+          code={JSON.stringify({
+            mcpServers: {
+              viben: {
+                type: "streamableHttp",
+                url: MCP_ENDPOINT,
+                headers: { Authorization: "Bearer <key>" },
+              },
+            },
+          }, null, 2)}
+          lang="json"
+        />
+      </div>
+    ),
+  },
 ];
 
 function ClientTabs() {
   const [active, setActive] = useState(0);
-  const tab = CLIENT_TABS[active];
   return (
     <div>
-      <div className="flex border-b border-border">
+      <div className="flex gap-1 border-b border-border">
         {CLIENT_TABS.map((t, i) => (
           <button
             key={t.name}
@@ -220,10 +317,7 @@ function ClientTabs() {
           </button>
         ))}
       </div>
-      <div className="pt-4">
-        {tab.command && <CodeBlock code={tab.command} lang="bash" />}
-        {tab.config && <CodeBlock code={JSON.stringify(tab.config, null, 2)} lang="json" />}
-      </div>
+      <div className="pt-4">{CLIENT_TABS[active].content}</div>
     </div>
   );
 }
