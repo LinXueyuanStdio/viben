@@ -48,6 +48,20 @@ export const getHomePageData = unstable_cache(
 // 例：点赞状态、评论列表、阅读历史
 ```
 
+**⚠️ Date 序列化陷阱：** `unstable_cache` 使用 JSON 序列化存储，`Date` 对象会变成 ISO 字符串。消费缓存数据时不能直接调用 `.toISOString()`。
+
+```typescript
+// ❌ 错误：缓存命中时 Date 已是 string，.toISOString() 报错
+datePublished: ctx.page.publishedAt?.toISOString()
+
+// ✅ 正确：兼容 Date 和 string
+function iso(d: Date | string | null | undefined): string | undefined {
+  if (!d) return undefined;
+  return typeof d === "string" ? d : (d as Date).toISOString();
+}
+datePublished: iso(ctx.page.publishedAt)
+```
+
 **缓存刷新方式：**
 - `revalidate: false` → 永久缓存，手动 `revalidateTag()` 刷新
 - `revalidate: 300` → 5 分钟自动过期
