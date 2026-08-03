@@ -57,10 +57,15 @@ export default async function HomePage() {
   let sidebarRankingPages: Array<{ title: string; stats: { views: number } }> = []
 
   try {
-    const [data, authors] = await Promise.all([
+    const [data, allAuthors] = await Promise.all([
       getHomePageData(),
-      getHomeTopAuthors(session?.userId ?? null),
+      getHomeTopAuthors(),
     ])
+
+    // 过滤当前用户，取前 3
+    const authors = allAuthors
+      .filter((u) => u.id !== (session?.userId ?? ""))
+      .slice(0, 3)
 
     const rankingItems = data.rankingItems.filter((item) => item.cover_url != null)
 

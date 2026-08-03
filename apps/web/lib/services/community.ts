@@ -2076,10 +2076,21 @@ export interface HomePageAuthors {
 }
 
 export const getHomeTopAuthors = unstable_cache(
-  async (sessionUserId: string | null): Promise<HomePageAuthors[]> => {
-    return sessionUserId
-      ? db.select().from(users).where(ne(users.id, sessionUserId)).orderBy(desc(users.followersCount)).limit(3)
-      : db.select().from(users).orderBy(desc(users.followersCount)).limit(3);
+  async (): Promise<HomePageAuthors[]> => {
+    // 缓存 4 个，由调用方按需过滤当前用户后取 3 个
+    return db
+      .select({
+        id: users.id,
+        userSlug: users.userSlug,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        bio: users.bio,
+        pageCount: users.pageCount,
+        followersCount: users.followersCount,
+      })
+      .from(users)
+      .orderBy(desc(users.followersCount))
+      .limit(4);
   },
   [HOMEPAGE_AUTHORS_TAG],
   { revalidate: false, tags: [HOMEPAGE_AUTHORS_TAG] },
