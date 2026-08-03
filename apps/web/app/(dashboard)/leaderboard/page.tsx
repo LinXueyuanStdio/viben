@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
       <div className="grid gap-3">
       <SectionHead title="热门页面" />
       <VibenTabs defaultValue={DEFAULT_TAB} onValueChange={setActiveTab}>
-        <VibenTabsList>
+        <VibenTabsList variant="underline" className="gap-5">
           {RANK_TABS.map((tab) => (
             <VibenTabsTrigger key={tab.key} value={tab.key}>{tab.label}</VibenTabsTrigger>
           ))}
