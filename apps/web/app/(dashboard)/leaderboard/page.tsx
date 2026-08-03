@@ -2,26 +2,21 @@ import { RankItem } from "@/components/content/rank-item"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 import { HomeTabBar } from "@/components/layout/home-tab-bar"
-import { listRanking } from "@/lib/services/community"
+import { getCachedLeaderboard } from "@/lib/services/community"
 import { EmptyState } from "@/components/content/i18n-text"
 import type { RankItemData } from "@/components/content/rank-item"
 
 const RANK_TABS = [
-  { key: "最新热度", timeWindow: "1d", label: "最新热度" },
-  { key: "热门页面", timeWindow: "7d", label: "热门页面" },
-  { key: "月度精选", timeWindow: "30d", label: "月度精选" },
+  { key: "最新热度", timeWindow: "1d" as const, label: "最新热度" },
+  { key: "热门页面", timeWindow: "7d" as const, label: "热门页面" },
+  { key: "月度精选", timeWindow: "30d" as const, label: "月度精选" },
 ]
 
 export default async function LeaderboardPage() {
-  // Fetch all 3 rankings in parallel
-  const rankings = await Promise.all(
-    RANK_TABS.map((tab) =>
-      listRanking({ rankingKey: "published_page", timeWindow: tab.timeWindow, limit: 20 })
-    )
-  )
+  const rankings = await getCachedLeaderboard()
 
   const tabData = RANK_TABS.reduce((acc, tab, i) => {
-    const rawItems = rankings[i]?.items ?? []
+    const rawItems = rankings[i] ?? []
     acc[tab.key] = rawItems.map((item) => ({
       card: {
         rank: item.rank,
