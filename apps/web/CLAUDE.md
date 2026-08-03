@@ -10,7 +10,8 @@
 | 用户公开资料 | 服务端 | `unstable_cache` | 不刷新(自然老化) | 永久(手动刷新) |
 | 图片/静态资源 | 浏览器 | `Cache-Control: max-age=31536000, immutable` | 内容不变 | 1年 |
 | 页面路由导航 | 浏览器 | Next.js `staleTimes` | 自动 | 5分钟 |
-| 用户登录状态 | 浏览器 | localStorage + 内存 | 重新登录时 | 30分钟 |
+| 用户登录状态 | 浏览器 | localStorage + 内存 | 每次访问时自动续期 | 3天(活跃用户永不过期) |
+| 用户 Profile 页 | 服务端 | `unstable_cache` | 发布页面/置顶更新时 | 永久(手动刷新) |
 | 动态 Feed/评论 | 无缓存 | 实时查询 | - | - |
 | 用户交互状态 | 服务端 | React `cache()` | 请求级 | 单次请求 |
 
@@ -90,9 +91,12 @@ export async function getCachedPage(userSlug: string, pageId: string) {
 ```
 
 **缓存失效：**
-- `revalidateTag("homepage")` — 手动失效特定缓存
-- 在 `apps/web/app/api/admin/rankings/rebuild/route.ts` 中统一刷新排行榜相关缓存
-- 在 `apps/web/app/api/pages/publish/route.ts` 中刷新页面内容缓存
+- `revalidateTag("homepage")` / `revalidateTag("homepage-authors")` / `revalidateTag("page-recommendations")` — 排行榜刷新
+- `revalidateTag("page-ctx-{userSlug}-{pageId}")` — 页面发布时刷新
+- `revalidateTag("profile-{userSlug}")` — 页面发布或置顶更新时刷新
+- 排行榜缓存统一在 `apps/web/app/api/admin/rankings/rebuild/route.ts` 中刷新
+- 页面缓存统一在 `apps/web/app/api/pages/publish/route.ts` 中刷新
+- 置顶缓存统一在 `apps/web/app/api/profile/pins/route.ts` (PUT) 中刷新
 
 ### 3. 浏览器缓存
 
@@ -117,13 +121,14 @@ staleTimes: {
 },
 ```
 
-**登录状态缓存：** 内存 + localStorage 双重缓存
+**登录状态缓存：** 内存 + localStorage 双重缓存，每次访问自动续期
 
 ```typescript
 // 详见 apps/web/components/layout/app-shell-wrapper.tsx
-const SESSION_CACHE_TTL = 30 * 60 * 1000; // 30 分钟
+const SESSION_CACHE_TTL = 3 * 24 * 60 * 60 * 1000; // 3 天
 // 1. 模块级变量：同 SPA session 内避免重复请求
 // 2. localStorage：跨页面刷新持久化
+// 3. 命中时自动刷新 ts → 活跃用户永不过期，仅 3 天不访问才需重新登录
 ```
 
 ### 4. 不应该缓存的场景
@@ -162,11 +167,35 @@ db.select().from(users)
   │
   ├─ 服务端缓存层 ──────────────────────────────────
   │   └─ unstable_cache (永久/手动刷新)
-  │       ├─ 首页排行榜 → GitHub Action 每小时
+  │       ├─ 首页排行榜   → GitHub Action 每小时
   │       ├─ 首页推荐用户 → GitHub Action 每小时
-  │       ├─ 阅读页推荐 → GitHub Action 每小时
-  │       └─ 阅读页内容 → 发布时刷新
+  │       ├─ 阅读页推荐   → GitHub Action 每小时
+  │       ├─ 阅读页内容   → 发布时刷新 (page-ctx-{slug}-{id})
+  │       └─ 用户 Profile  → 发布/置顶时刷新 (profile-{slug})
   │
   └─ 数据库 ───────────────────────────────────────
       └─ 实时查询（动态 Feed、评论、搜索等）
 ```
+
+### 7. 异步加载 (Suspense)
+
+对于非首屏必需的重量级模块，用 `<Suspense>` 包裹异步组件，避免阻塞页面渲染：
+
+```typescript
+// ✅ Profile 页面的 moments 和 activity 异步加载
+<Suspense fallback={<div className="h-[200px] animate-pulse rounded-xl bg-muted" />}>
+  <ProfileMomentsServerLoader userId={user.id} ... />
+</Suspense>
+
+// 异步组件内部独立查询数据
+async function ProfileMomentsServerLoader({ userId, ... }: Props) {
+  const [moments, cursorRows] = await Promise.all([...]);
+  return <ProfileMomentsInfinite initialMoments={moments} ... />;
+}
+```
+
+**适用场景：**
+- ✅ 动态 Feed（需要额外查询 moment 表 + attachment 表）
+- ✅ 活动热力图（需要查询 view events）
+- ✅ 评论区（用户生成内容，实时性高）
+- ❌ 核心身份信息（需要立即展示的用户名、头像等）
