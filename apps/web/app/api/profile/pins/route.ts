@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { db, profilePins } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
+import { PROFILE_TAG_PREFIX } from '@/lib/services/community';
 
 const saveSchema = z.object({
   pins: z.array(z.object({
@@ -82,6 +84,9 @@ export async function PUT(request: NextRequest) {
         }))
       );
     }
+
+    // 置顶更新后刷新该用户的 profile 缓存
+    revalidateTag(`${PROFILE_TAG_PREFIX}-${session.userSlug}`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

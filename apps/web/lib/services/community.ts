@@ -2101,7 +2101,7 @@ export const getHomeTopAuthors = unstable_cache(
   { revalidate: false, tags: [HOMEPAGE_AUTHORS_TAG] },
 );
 
-const PROFILE_TAG_PREFIX = "profile";
+export const PROFILE_TAG_PREFIX = "profile";
 
 export interface CachedProfileData {
   user: {
