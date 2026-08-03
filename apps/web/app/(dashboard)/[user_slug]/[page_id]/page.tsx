@@ -11,6 +11,8 @@ import type { Metadata } from "next"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import type { Session } from "@/lib/auth/types"
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
 interface PageProps {
   params: Promise<{ user_slug: string; page_id: string }>
   searchParams: Promise<{ tab?: string }>
@@ -34,6 +36,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description: seoDescription,
     keywords: ctx.page.seoKeywords ?? undefined,
+    alternates: {
+      canonical: `${APP_URL}/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}`,
+    },
+    robots: ctx.page.isDiscoverable === false
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
+    other: {
+      "link:alternate": `<${APP_URL}/api/pages/raw/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}>; rel="alternate"; type="text/markdown"`,
+    },
     openGraph: {
       title,
       description: seoDescription,
@@ -46,11 +57,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: seoDescription,
       ...(ogImage ? { images: [ogImage] } : {}),
     },
-  }
-
-  // If discoverability is off, tell robots not to index
-  if (ctx.page.isDiscoverable === false) {
-    metadata.robots = { index: false, follow: false }
   }
 
   return metadata
@@ -109,6 +115,54 @@ export default async function PagePage({ params, searchParams }: PageProps) {
       hasSidePage={!!ctx.page.sidePageUid}
       activeTab={activeTab}
     >
+      {/* JSON-LD structured data for AI agents and search engines */}
+      <script
+        id="viben-json-ld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Article",
+                "@id": `${APP_URL}/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}#article`,
+                headline: ctx.page.title,
+                description: ctx.page.description,
+                ...(ctx.page.coverUrl ? { image: ctx.page.coverUrl } : {}),
+                datePublished: ctx.page.publishedAt?.toISOString(),
+                dateModified: ctx.page.lastPublishedAt?.toISOString(),
+                author: {
+                  "@type": "Person",
+                  name: ctx.page.authorDisplayName ?? ctx.author.displayName,
+                  url: `${APP_URL}/${encodeURIComponent(ctx.author.userSlug)}`,
+                },
+                publisher: {
+                  "@type": "Organization",
+                  name: "Viben",
+                  url: APP_URL,
+                },
+                url: `${APP_URL}/${encodeURIComponent(user_slug)}/${encodeURIComponent(page_id)}`,
+                ...(ctx.page.tags?.length ? { keywords: (ctx.page.tags as string[]).join(", ") } : {}),
+                inLanguage: "zh-CN",
+              },
+              {
+                "@type": "BreadcrumbList",
+                itemListElement: [
+                  { "@type": "ListItem", position: 1, name: "Viben", item: APP_URL },
+                  {
+                    "@type": "ListItem",
+                    position: 2,
+                    name: ctx.page.authorDisplayName ?? ctx.author.displayName,
+                    item: `${APP_URL}/${encodeURIComponent(ctx.author.userSlug)}`,
+                  },
+                  { "@type": "ListItem", position: 3, name: ctx.page.title },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
+
       {/* Page meta for Topbar (read on client by window.__viben_page_meta via ReadPageShell) */}
       <script
         id="viben-page-meta"
