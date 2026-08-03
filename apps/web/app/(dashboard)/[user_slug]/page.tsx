@@ -4,10 +4,12 @@ import { FeedCard } from "@/components/content/feed-card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ActivityHeatmapLoader } from "@/components/profile/activity-heatmap-loader"
 import { SectionHead } from "@/components/content/section-head"
-import { db, publishedPages, users, moments, momentAttachments, collections, communityReactions, communityEntities, communityBookmarks, userFollows, mcpPackages, skillPackages, bookmarks, profilePins } from "@/lib/db"
-import { eq, desc, and, count, inArray, asc } from "drizzle-orm"
+import { db, users, moments, momentAttachments, userFollows, bookmarks, publishedPages, mcpPackages, skillPackages } from "@/lib/db"
+import { count, desc, eq, and, inArray } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
+import { getCachedProfileData } from "@/lib/services/community"
+import type { CachedProfileData } from "@/lib/services/community"
 import { EmptyState, T } from "@/components/content/i18n-text"
 import { FollowButton } from "@/components/content/follow-button"
 import Link from "next/link"
@@ -133,220 +135,87 @@ export default async function UserSlugPage({
   const mcpVisibility = typeof sp.mcp_visibility === "string" ? sp.mcp_visibility : "all"
   const skillVisibility = typeof sp.skill_visibility === "string" ? sp.skill_visibility : "all"
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.userSlug, slug),
-  })
+  // 缓存命中：用户信息 + 公开页面/合集/MCP/Skill/置顶数据
+  const cached = await getCachedProfileData(slug)
+  if (!cached) notFound()
 
-  if (!user) notFound()
-
+  const { user } = cached
   const isOwnProfile = session?.userId === user.id
   const displayName = user.displayName ?? "?"
   const avatarUrl = user.avatarUrl
 
-  // Check if current user is following this profile user
+  // Session 相关数据保持实时查询
   let isFollowing = false
-  if (session && !isOwnProfile) {
-    const followRecord = await db.query.userFollows.findFirst({
-      where: and(
-        eq(userFollows.followerUserId, session.userId),
-        eq(userFollows.followeeUserId, user.id),
-      ),
-    })
-    isFollowing = !!followRecord
-  }
-
-  // Count how many users this profile user is following
-  const followingCountResult = await db
-    .select({ count: count() })
-    .from(userFollows)
-    .where(eq(userFollows.followerUserId, user.id))
-
-  // Build visibility filter arrays for use in .where(and(...)) spread
-  const pagesVisFilter: Parameters<typeof and>[0][] =
-    pagesVisibility === "public"
-      ? [eq(publishedPages.visibility, "public")]
-      : pagesVisibility === "private" && isOwnProfile
-        ? [inArray(publishedPages.visibility, ["private", "unlisted"])]
-        : !isOwnProfile
-          ? [eq(publishedPages.visibility, "public")]
-          : [] // "all" on own profile
-
-  function mcpSkillVisFilter(table: typeof mcpPackages | typeof skillPackages, visFilter: string): Parameters<typeof and>[0][] {
-    if (visFilter === "public") return [eq(table.visibility, "public")]
-    if (visFilter === "private" && isOwnProfile) return [inArray(table.visibility, ["private", "unlisted"])]
-    if (!isOwnProfile) return [eq(table.visibility, "public")]
-    return []
-  }
-
-  // Columns to select from publishedPages in joined queries
-  const pageColumns = {
-    id: publishedPages.id,
-    uid: publishedPages.uid,
-    title: publishedPages.title,
-    description: publishedPages.description,
-    coverUrl: publishedPages.coverUrl,
-    lastPublishedAt: publishedPages.lastPublishedAt,
-    viewCount: publishedPages.viewCount,
-    likeCount: publishedPages.likeCount,
-    commentCount: publishedPages.commentCount,
-    bookmarkCount: publishedPages.bookmarkCount,
-    authorDisplayName: publishedPages.authorDisplayName,
-    authorAvatarUrl: publishedPages.authorAvatarUrl,
-    authorSlug: publishedPages.authorSlug,
-    visibility: publishedPages.visibility,
-  }
+  let followingCount = 0
+  let bookmarkedMcpsRaw: Array<{ entityId: string; createdAt: Date }> = []
+  let bookmarkedSkillsRaw: Array<{ entityId: string; createdAt: Date }> = []
 
   const [
-    authorPages,
+    followResult,
+    followingCountResult,
     authorMoments,
-    pageCountResult,
-    createdCollections,
-    likedPageRows,
-    bookmarkedPageRows,
-    pinnedPageRows,
-    profileReadmePage,
-    authorMcps,
-    authorSkills,
-    mcpCountResult,
-    skillCountResult,
-    bookmarkedMcpsRaw,
-    bookmarkedSkillsRaw,
-    pinnedRows,
+    bookmarkedMcps,
+    bookmarkedSkills,
     initialMomentsCursorRow,
   ] = await Promise.all([
-    db.select(pageColumns).from(publishedPages)
-      .where(and(
-        eq(publishedPages.userId, user.id),
-        ...pagesVisFilter,
-        eq(publishedPages.moderationStatus, "approved")
-      ))
-      .orderBy(desc(publishedPages.lastPublishedAt))
-      .limit(20),
+    session && !isOwnProfile
+      ? db.query.userFollows.findFirst({
+          where: and(
+            eq(userFollows.followerUserId, session.userId),
+            eq(userFollows.followeeUserId, user.id),
+          ),
+        })
+      : Promise.resolve(null),
+    db.select({ count: count() }).from(userFollows)
+      .where(eq(userFollows.followerUserId, user.id)),
     db.select().from(moments)
       .where(and(
         eq(moments.authorUserId, user.id),
         eq(moments.visibility, "public"),
-        eq(moments.isDeleted, false)
+        eq(moments.isDeleted, false),
       ))
       .orderBy(desc(moments.createdAt))
       .limit(10),
-    db.select({ count: count() }).from(publishedPages)
-      .where(and(
-        eq(publishedPages.userId, user.id),
-        ...pagesVisFilter,
-        eq(publishedPages.moderationStatus, "approved")
-      )),
-    db.select().from(collections)
-      .where(eq(collections.ownerId, user.id))
-      .orderBy(desc(collections.updatedAt))
-      .limit(20),
-    db.select(pageColumns)
-      .from(communityReactions)
-      .innerJoin(communityEntities, eq(communityEntities.id, communityReactions.communityEntityId))
-      .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
-      .where(and(
-        eq(communityReactions.userId, user.id),
-        eq(communityReactions.reactionType, "like"),
-        eq(communityEntities.entityType, "published_page"),
-        eq(communityEntities.status, "active"),
-        ...pagesVisFilter,
-        eq(publishedPages.moderationStatus, "approved")
-      ))
-      .orderBy(desc(communityReactions.createdAt))
-      .limit(20),
-    db.select(pageColumns)
-      .from(communityBookmarks)
-      .innerJoin(communityEntities, eq(communityEntities.id, communityBookmarks.communityEntityId))
-      .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
-      .where(and(
-        eq(communityBookmarks.userId, user.id),
-        eq(communityEntities.entityType, "published_page"),
-        eq(communityEntities.status, "active"),
-        ...pagesVisFilter,
-        eq(publishedPages.moderationStatus, "approved")
-      ))
-      .orderBy(desc(communityBookmarks.createdAt))
-      .limit(20),
-    // Pinned pages (up to 6)
-    db.select(pageColumns).from(publishedPages)
-      .where(and(
-        eq(publishedPages.userId, user.id),
-        eq(publishedPages.isPinned, true),
-        ...pagesVisFilter,
-        eq(publishedPages.moderationStatus, "approved")
-      ))
-      .orderBy(desc(publishedPages.pinnedAt))
-      .limit(6),
-    // Profile README: page where uid === userSlug
-    db.select().from(publishedPages)
-      .where(and(
-        eq(publishedPages.userId, user.id),
-        eq(publishedPages.uid, user.userSlug),
-        eq(publishedPages.moderationStatus, "approved")
-      ))
-      .limit(1),
-    // Published MCP packages
-    db.select().from(mcpPackages)
-      .where(and(
-        eq(mcpPackages.authorId, user.id),
-        eq(mcpPackages.isPublished, true),
-        ...mcpSkillVisFilter(mcpPackages, mcpVisibility)
-      ))
-      .orderBy(desc(mcpPackages.createdAt))
-      .limit(20),
-    // Published Skill packages
-    db.select().from(skillPackages)
-      .where(and(
-        eq(skillPackages.authorId, user.id),
-        eq(skillPackages.isPublished, true),
-        ...mcpSkillVisFilter(skillPackages, skillVisibility)
-      ))
-      .orderBy(desc(skillPackages.createdAt))
-      .limit(20),
-    // MCP package count
-    db.select({ count: count() }).from(mcpPackages)
-      .where(and(
-        eq(mcpPackages.authorId, user.id),
-        eq(mcpPackages.isPublished, true),
-        ...mcpSkillVisFilter(mcpPackages, mcpVisibility)
-      )),
-    // Skill package count
-    db.select({ count: count() }).from(skillPackages)
-      .where(and(
-        eq(skillPackages.authorId, user.id),
-        eq(skillPackages.isPublished, true),
-        ...mcpSkillVisFilter(skillPackages, skillVisibility)
-      )),
-    // Bookmarked MCPs (from bookmarks table)
-    db.select().from(bookmarks)
-      .where(and(
-        eq(bookmarks.userId, user.id),
-        eq(bookmarks.entityType, "mcp")
-      ))
-      .orderBy(desc(bookmarks.createdAt))
-      .limit(50),
-    // Bookmarked Skills (from bookmarks table)
-    db.select().from(bookmarks)
-      .where(and(
-        eq(bookmarks.userId, user.id),
-        eq(bookmarks.entityType, "skill")
-      ))
-      .orderBy(desc(bookmarks.createdAt))
-      .limit(50),
-    // Profile pins
-    db.select().from(profilePins)
-      .where(eq(profilePins.userId, user.id))
-      .orderBy(asc(profilePins.position)),
-    // Initial moments cursor (fetch 11 to determine hasMore)
+    db.select({ entityId: bookmarks.entityId, createdAt: bookmarks.createdAt }).from(bookmarks)
+      .where(and(eq(bookmarks.userId, user.id), eq(bookmarks.entityType, "mcp")))
+      .orderBy(desc(bookmarks.createdAt)).limit(50),
+    db.select({ entityId: bookmarks.entityId, createdAt: bookmarks.createdAt }).from(bookmarks)
+      .where(and(eq(bookmarks.userId, user.id), eq(bookmarks.entityType, "skill")))
+      .orderBy(desc(bookmarks.createdAt)).limit(50),
     db.select({ createdAt: moments.createdAt }).from(moments)
       .where(and(
         eq(moments.authorUserId, user.id),
         eq(moments.visibility, "public"),
-        eq(moments.isDeleted, false)
+        eq(moments.isDeleted, false),
       ))
       .orderBy(desc(moments.createdAt))
       .limit(11),
   ])
+
+  isFollowing = !!followResult
+  followingCount = followingCountResult[0]?.count ?? 0
+  bookmarkedMcpsRaw = bookmarkedMcps
+  bookmarkedSkillsRaw = bookmarkedSkills
+
+  // 从缓存解构数据
+  const {
+    authorPages,
+    pageCount: pageCountValue,
+    createdCollections,
+    likedPageRows,
+    bookmarkedPageRows,
+    pinnedPageRows,
+    profileReadmePage: readmePageArr,
+    authorMcps,
+    authorSkills,
+    mcpCount: mcpCountValue,
+    skillCount: skillCountValue,
+    pinnedRows,
+  } = cached
+  const pageCount = pageCountValue
+  const mcpTotal = mcpCountValue
+  const skillTotal = skillCountValue
+  const readmePage = readmePageArr
 
   // Fetch attachments for author moments (for cover images)
   let attachmentsMap = new Map<string, MomentAttachmentData[]>()
@@ -436,7 +305,17 @@ export default async function UserSlugPage({
 
   const pageCards = authorPages.map((p) => mapPageToCard(p, displayName, avatarUrl))
   const pinnedCards = pinnedPageRows.map((p) => mapPageToCard(p, displayName, avatarUrl))
-  const readmePage = profileReadmePage[0]
+
+  // Pinned items 详情查询 (动态数据，不缓存)
+  const pageColumns = {
+    id: publishedPages.id, uid: publishedPages.uid, title: publishedPages.title,
+    description: publishedPages.description, coverUrl: publishedPages.coverUrl,
+    lastPublishedAt: publishedPages.lastPublishedAt, viewCount: publishedPages.viewCount,
+    likeCount: publishedPages.likeCount, commentCount: publishedPages.commentCount,
+    bookmarkCount: publishedPages.bookmarkCount, authorDisplayName: publishedPages.authorDisplayName,
+    authorAvatarUrl: publishedPages.authorAvatarUrl, authorSlug: publishedPages.authorSlug,
+    visibility: publishedPages.visibility,
+  }
 
   // Map pages to ProfileContentItemData for new list components
   function mapPageToContentItem(p: PageRow, fallbackName: string, fallbackAvatar: string | null | undefined): ProfileContentItemData & { pageUid: string } {
@@ -580,9 +459,7 @@ export default async function UserSlugPage({
     itemCount: c.itemCount,
   }))
 
-  const pageTotal = pageCountResult[0]?.count ?? 0
-  const mcpTotal = mcpCountResult[0]?.count ?? 0
-  const skillTotal = skillCountResult[0]?.count ?? 0
+  const pageTotal = pageCount
 
   return (
     <div className="grid gap-4">
@@ -647,7 +524,7 @@ export default async function UserSlugPage({
                 </Link>
                 <span className="text-muted-foreground/30">·</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-base font-bold tabular-nums">{pageCountResult[0]?.count ?? 0}</span>
+                  <span className="text-base font-bold tabular-nums">{pageCount}</span>
                   <span className="text-[13px] text-muted-foreground">页面</span>
                 </div>
               </div>

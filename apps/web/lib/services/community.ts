@@ -1,12 +1,15 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { and, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import {
+  bookmarks,
+  collections,
   communityComments,
   communityEntities,
   communityBookmarks,
   communityReactions,
   db,
+  mcpPackages,
   momentAttachments,
   momentTopicItems,
   momentTopics,
@@ -14,11 +17,13 @@ import {
   notifications,
   pageSubscriptions,
   pageUpdateEvents,
+  profilePins,
   publishedPages,
   rankingItems,
   rankingSnapshots,
   shareEvents,
   shareLinks,
+  skillPackages,
   userBrowseHistory,
   userFollows,
   users,
@@ -2095,6 +2100,266 @@ export const getHomeTopAuthors = unstable_cache(
   [HOMEPAGE_AUTHORS_TAG],
   { revalidate: false, tags: [HOMEPAGE_AUTHORS_TAG] },
 );
+
+const PROFILE_TAG_PREFIX = "profile";
+
+export interface CachedProfileData {
+  user: {
+    id: string;
+    username: string;
+    userSlug: string;
+    displayName: string;
+    bio: string | null;
+    avatarUrl: string | null;
+    websiteUrl: string | null;
+    followersCount: number;
+  };
+  authorPages: Array<{
+    id: string;
+    uid: string;
+    title: string;
+    description: string | null;
+    coverUrl: string | null;
+    lastPublishedAt: Date;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+    bookmarkCount: number;
+    authorDisplayName: string | null;
+    authorAvatarUrl: string | null;
+    authorSlug: string;
+    visibility: string | null;
+  }>;
+  pageCount: number;
+  createdCollections: Array<{
+    id: string;
+    name: string;
+    itemCount: number;
+    updatedAt: Date;
+  }>;
+  likedPageRows: Array<{
+    id: string;
+    uid: string;
+    title: string;
+    description: string | null;
+    coverUrl: string | null;
+    lastPublishedAt: Date;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+    bookmarkCount: number;
+    authorDisplayName: string | null;
+    authorAvatarUrl: string | null;
+    authorSlug: string;
+    visibility: string | null;
+  }>;
+  bookmarkedPageRows: Array<{
+    id: string;
+    uid: string;
+    title: string;
+    description: string | null;
+    coverUrl: string | null;
+    lastPublishedAt: Date;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+    bookmarkCount: number;
+    authorDisplayName: string | null;
+    authorAvatarUrl: string | null;
+    authorSlug: string;
+    visibility: string | null;
+  }>;
+  pinnedPageRows: Array<{
+    id: string;
+    uid: string;
+    title: string;
+    description: string | null;
+    coverUrl: string | null;
+    lastPublishedAt: Date;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+    bookmarkCount: number;
+    authorDisplayName: string | null;
+    authorAvatarUrl: string | null;
+    authorSlug: string;
+    visibility: string | null;
+  }>;
+  profileReadmePage: typeof publishedPages.$inferSelect | null;
+  authorMcps: Array<typeof mcpPackages.$inferSelect>;
+  authorSkills: Array<typeof skillPackages.$inferSelect>;
+  mcpCount: number;
+  skillCount: number;
+  pinnedRows: Array<typeof profilePins.$inferSelect>;
+}
+
+// 需要从 db 导入 mcpPackages, skillPackages, profilePins, collections, bookmarks
+// 这些已在 community.ts 顶部导入？
+
+export async function getCachedProfileData(userSlug: string): Promise<CachedProfileData | null> {
+  const tag = `${PROFILE_TAG_PREFIX}-${userSlug}`;
+
+  return unstable_cache(
+    async (): Promise<CachedProfileData | null> => {
+      const user = await db.query.users.findFirst({
+        where: eq(users.userSlug, userSlug),
+      });
+      if (!user) return null;
+
+      const pageColumns = {
+        id: publishedPages.id,
+        uid: publishedPages.uid,
+        title: publishedPages.title,
+        description: publishedPages.description,
+        coverUrl: publishedPages.coverUrl,
+        lastPublishedAt: publishedPages.lastPublishedAt,
+        viewCount: publishedPages.viewCount,
+        likeCount: publishedPages.likeCount,
+        commentCount: publishedPages.commentCount,
+        bookmarkCount: publishedPages.bookmarkCount,
+        authorDisplayName: publishedPages.authorDisplayName,
+        authorAvatarUrl: publishedPages.authorAvatarUrl,
+        authorSlug: publishedPages.authorSlug,
+        visibility: publishedPages.visibility,
+      };
+
+      const [
+        authorPages,
+        pageCountResult,
+        createdCollections,
+        likedPageRows,
+        bookmarkedPageRows,
+        pinnedPageRows,
+        profileReadmePage,
+        authorMcps,
+        authorSkills,
+        mcpCountResult,
+        skillCountResult,
+        pinnedRows,
+      ] = await Promise.all([
+        db.select(pageColumns).from(publishedPages)
+          .where(and(
+            eq(publishedPages.userId, user.id),
+            eq(publishedPages.visibility, "public"),
+            eq(publishedPages.moderationStatus, "approved"),
+          ))
+          .orderBy(desc(publishedPages.lastPublishedAt))
+          .limit(20),
+        db.select({ count: count() }).from(publishedPages)
+          .where(and(
+            eq(publishedPages.userId, user.id),
+            eq(publishedPages.visibility, "public"),
+            eq(publishedPages.moderationStatus, "approved"),
+          )),
+        db.select().from(collections)
+          .where(eq(collections.ownerId, user.id))
+          .orderBy(desc(collections.updatedAt))
+          .limit(20),
+        db.select(pageColumns)
+          .from(communityReactions)
+          .innerJoin(communityEntities, eq(communityEntities.id, communityReactions.communityEntityId))
+          .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
+          .where(and(
+            eq(communityReactions.userId, user.id),
+            eq(communityReactions.reactionType, "like"),
+            eq(communityEntities.entityType, "published_page"),
+            eq(communityEntities.status, "active"),
+            eq(publishedPages.visibility, "public"),
+            eq(publishedPages.moderationStatus, "approved"),
+          ))
+          .orderBy(desc(communityReactions.createdAt))
+          .limit(20),
+        db.select(pageColumns)
+          .from(communityBookmarks)
+          .innerJoin(communityEntities, eq(communityEntities.id, communityBookmarks.communityEntityId))
+          .innerJoin(publishedPages, eq(publishedPages.id, communityEntities.entityId))
+          .where(and(
+            eq(communityBookmarks.userId, user.id),
+            eq(communityEntities.entityType, "published_page"),
+            eq(communityEntities.status, "active"),
+            eq(publishedPages.visibility, "public"),
+            eq(publishedPages.moderationStatus, "approved"),
+          ))
+          .orderBy(desc(communityBookmarks.createdAt))
+          .limit(20),
+        db.select(pageColumns).from(publishedPages)
+          .where(and(
+            eq(publishedPages.userId, user.id),
+            eq(publishedPages.isPinned, true),
+            eq(publishedPages.visibility, "public"),
+            eq(publishedPages.moderationStatus, "approved"),
+          ))
+          .orderBy(desc(publishedPages.pinnedAt))
+          .limit(6),
+        db.select().from(publishedPages)
+          .where(and(
+            eq(publishedPages.userId, user.id),
+            eq(publishedPages.uid, user.userSlug),
+            eq(publishedPages.moderationStatus, "approved"),
+          ))
+          .limit(1),
+        db.select().from(mcpPackages)
+          .where(and(
+            eq(mcpPackages.authorId, user.id),
+            eq(mcpPackages.isPublished, true),
+            eq(mcpPackages.visibility, "public"),
+          ))
+          .orderBy(desc(mcpPackages.createdAt))
+          .limit(20),
+        db.select().from(skillPackages)
+          .where(and(
+            eq(skillPackages.authorId, user.id),
+            eq(skillPackages.isPublished, true),
+            eq(skillPackages.visibility, "public"),
+          ))
+          .orderBy(desc(skillPackages.createdAt))
+          .limit(20),
+        db.select({ count: count() }).from(mcpPackages)
+          .where(and(
+            eq(mcpPackages.authorId, user.id),
+            eq(mcpPackages.isPublished, true),
+            eq(mcpPackages.visibility, "public"),
+          )),
+        db.select({ count: count() }).from(skillPackages)
+          .where(and(
+            eq(skillPackages.authorId, user.id),
+            eq(skillPackages.isPublished, true),
+            eq(skillPackages.visibility, "public"),
+          )),
+        db.select().from(profilePins)
+          .where(eq(profilePins.userId, user.id))
+          .orderBy(asc(profilePins.position)),
+      ]);
+
+      return {
+        user: {
+          id: user.id,
+          username: user.username,
+          userSlug: user.userSlug,
+          displayName: user.displayName,
+          bio: user.bio,
+          avatarUrl: user.avatarUrl,
+          websiteUrl: user.websiteUrl,
+          followersCount: user.followersCount,
+        },
+        authorPages,
+        pageCount: pageCountResult[0]?.count ?? 0,
+        createdCollections,
+        likedPageRows,
+        bookmarkedPageRows,
+        pinnedPageRows,
+        profileReadmePage: profileReadmePage[0] ?? null,
+        authorMcps,
+        authorSkills,
+        mcpCount: mcpCountResult[0]?.count ?? 0,
+        skillCount: skillCountResult[0]?.count ?? 0,
+        pinnedRows,
+      };
+    },
+    [tag],
+    { revalidate: false, tags: [tag] },
+  )();
+}
 
 const PAGE_RECOMMENDATIONS_TAG = "page-recommendations";
 

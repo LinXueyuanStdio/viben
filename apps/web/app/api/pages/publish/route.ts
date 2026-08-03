@@ -343,8 +343,9 @@ export async function POST(request: NextRequest) {
       visibility: normalizedVisibility,
     });
 
-    // 发布/更新页面后刷新该页面的内容缓存
+    // 发布/更新页面后刷新该页面及作者主页的内容缓存
     revalidateTag(`page-ctx-${session.userSlug}-${uid}`);
+    revalidateTag(`profile-${session.userSlug}`);
 
     return NextResponse.json({
       success: true,
