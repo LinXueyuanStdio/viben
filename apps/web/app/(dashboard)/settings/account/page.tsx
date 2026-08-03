@@ -28,6 +28,8 @@ export default async function SettingsAccountPage() {
         username: user.username,
         email: user.email,
         hasPassword: !!user.passwordHash,
+        createdAt: user.createdAt?.toISOString() ?? null,
+        lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       }}
     />
   )

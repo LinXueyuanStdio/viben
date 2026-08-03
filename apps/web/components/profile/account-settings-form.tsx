@@ -27,6 +27,8 @@ interface AccountSettingsFormProps {
     username: string;
     email: string;
     hasPassword: boolean;
+    createdAt: string | null;
+    lastLoginAt: string | null;
   };
 }
 
@@ -132,6 +134,24 @@ export function AccountSettingsForm({ user }: AccountSettingsFormProps) {
             <Label htmlFor="email">{t('profile.form.email')}</Label>
             <Input id="email" value={user.email} disabled />
             <p className="text-xs text-muted-foreground">{t('profile.form.emailManagedByOAuth')}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">注册时间</Label>
+              <p className="text-sm font-medium">
+                {user.createdAt
+                  ? new Date(user.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : '—'}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">最后登录</Label>
+              <p className="text-sm font-medium">
+                {user.lastLoginAt
+                  ? new Date(user.lastLoginAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : '—'}
+              </p>
+            </div>
           </div>
         </div>
       </section>
