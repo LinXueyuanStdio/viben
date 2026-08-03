@@ -66,7 +66,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
     : []
 
   return (
-    <div className={cn("relative overflow-hidden rounded-[12px]", className)}>
+    <div className={cn("group relative overflow-hidden rounded-[12px]", className)}>
       {/* Cover */}
       <div
         className="relative aspect-[21/9] min-h-[320px] dark:brightness-75 dark:contrast-125 bg-center bg-cover bg-no-repeat"
@@ -96,33 +96,32 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
             <StatsRow stats={statsList} className="text-white [&_svg]:text-white [&_span]:text-white" />
           )}
         </div>
-      </div>
 
-      {/* Progress Track */}
-      <div className="flex gap-1.5 px-4 py-2">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            className="relative h-1 flex-1 rounded-full bg-surface-secondary overflow-hidden"
-            aria-label={t("community.switchToSlide", { n: i + 1 })}
-          >
-            <div
+        {/* Dot Indicators — 底部与 cover 底部对齐 */}
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 pb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              onMouseEnter={() => goTo(i)}
               className={cn(
-                "absolute inset-y-0 left-0 rounded-full transition-[width] duration-300",
-                i === index ? "w-[72%]" : "w-0"
+                "rounded-full transition-all duration-300",
+                i === index
+                  ? "size-2.5 ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+                  : "size-2 bg-white/40 hover:bg-white/60"
               )}
-              style={{ backgroundColor: i === index ? slide.accent : "transparent" }}
+              style={i === index ? { backgroundColor: slide.accent, boxShadow: `0 0 0 3px ${slide.accent}40` } : undefined}
+              aria-label={t("community.switchToSlide", { n: i + 1 })}
             />
-          </button>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Nav Arrows */}
       <IconButton
         label={t("community.previousSlide")}
         size="compact"
-        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0 z-20"
+        className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         onClick={prev}
       >
         <ChevronLeft className="size-5" />
@@ -130,7 +129,7 @@ export function HeroCarousel({ slides, autoPlayInterval = 5200, className }: Her
       <IconButton
         label={t("community.nextSlide")}
         size="compact"
-        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0 z-20"
+        className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white border-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         onClick={next}
       >
         <ChevronRight className="size-5" />
