@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
     const rawLimit = Number(request.nextUrl.searchParams.get("limit"))
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 20) : 5
     const searches = await getRecentSearches(session.userId, limit)
-    return NextResponse.json(searches)
+    return NextResponse.json(searches, {
+      headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
+    })
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json([], { status: 200 }) // 未登录时返回空数组

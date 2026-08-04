@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     const rawLimit = Number(request.nextUrl.searchParams.get("limit"))
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 20) : 8
     const searches = await getHotSearches(limit)
-    return NextResponse.json(searches)
+    return NextResponse.json(searches, {
+      headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+    })
   } catch (error) {
     console.error("[API] Failed to fetch hot searches:", error)
     return NextResponse.json([], { status: 200 }) // 降级返回空数组

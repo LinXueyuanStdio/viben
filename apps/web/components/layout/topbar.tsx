@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
+import { useQuery } from "@tanstack/react-query"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { FileText, Columns2, PanelRight, PanelRightClose, Settings, PanelLeftOpen, PanelLeftClose } from "lucide-react"
 import { toast } from "sonner"
@@ -94,25 +95,24 @@ export function Topbar({
     }
   }, [router, pathname, urlPageId])
 
-  // 客户端按需加载搜索数据（搜索框聚焦时才请求，避免阻塞首屏渲染）
-  const [lazyHotSearches, setLazyHotSearches] = React.useState<Array<{ query: string; count: number }>>([])
-  const [lazyRecentSearches, setLazyRecentSearches] = React.useState<string[]>([])
-  const searchDataLoadedRef = React.useRef(false)
-
-  const loadSearchData = React.useCallback(() => {
-    if (searchDataLoadedRef.current) return
-    searchDataLoadedRef.current = true
-    const abort = new AbortController()
-    Promise.all([
-      fetch("/api/search/hot?limit=8", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => []),
-      session
-        ? fetch("/api/search/recent?limit=5", { signal: abort.signal }).then(r => r.ok ? r.json() : []).catch(() => [])
-        : Promise.resolve([]),
-    ]).then(([hot, recent]) => {
-      setLazyHotSearches(hot)
-      setLazyRecentSearches(recent)
-    }).catch(() => {})
-  }, [session])
+  // 搜索数据：useQuery 前端缓存 + 首次聚焦时按需加载
+  const { data: searchData, refetch: loadSearchData } = useQuery({
+    queryKey: ["search-bar-data", !!session],
+    queryFn: async () => {
+      const [hot, recent] = await Promise.all([
+        fetch("/api/search/hot?limit=8").then(r => r.ok ? r.json() : []).catch(() => []),
+        session
+          ? fetch("/api/search/recent?limit=5").then(r => r.ok ? r.json() : []).catch(() => [])
+          : Promise.resolve([]),
+      ])
+      return { hot: hot as Array<{ query: string; count: number }>, recent: recent as string[] }
+    },
+    enabled: false, // 首次聚焦时才触发请求
+    staleTime: 5 * 60 * 1000, // 5 分钟内复用缓存
+    gcTime: 10 * 60 * 1000, // 10 分钟垃圾回收
+  })
+  const lazyHotSearches = searchData?.hot ?? []
+  const lazyRecentSearches = searchData?.recent ?? []
 
   // 同步 user_slug 到行为追踪
   React.useEffect(() => {
