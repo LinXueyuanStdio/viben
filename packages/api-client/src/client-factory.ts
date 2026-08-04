@@ -52,12 +52,18 @@ export function createClient(options?: Partial<VibenClientConfig>): VibenClient 
  * ```
  */
 export async function createAuthenticatedClient(
-  options?: Partial<Omit<VibenClientConfig, "apiKey">>
+  options?: Partial<VibenClientConfig>
 ): Promise<VibenClient | null> {
-  // Dynamic import — token.ts uses Node.js fs/path/os, which
-  // are unavailable in browser/Tauri webview environments.
-  const { readToken } = await import("./utils/token");
-  const token = await readToken();
+  // Priority: explicit apiKey from options → stored token → null
+  let token: string | null | undefined = options?.apiKey;
+
+  if (!token) {
+    // Dynamic import — token.ts uses Node.js fs/path/os, which
+    // are unavailable in browser/Tauri webview environments.
+    const { readToken } = await import("./utils/token");
+    token = await readToken();
+  }
+
   if (!token) return null;
 
   return new VibenClient({
