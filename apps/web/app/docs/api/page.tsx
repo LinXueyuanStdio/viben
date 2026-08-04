@@ -11,19 +11,21 @@ const SCALAR_CONFIG = {
     { url: 'http://localhost:3000', description: '本地开发' },
   ],
   authentication: {
-    preferredSecurityScheme: 'session',
+    preferredSecurityScheme: 'bearer',
     securitySchemes: {
       session: {
         type: 'apiKey',
+        securityScheme: 'apiKey',
         in: 'cookie',
         name: 'session',
         description: '登录后自动设置的 session cookie',
       },
       bearer: {
         type: 'http',
+        securityScheme: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT / API Key',
-        description: 'API Key（bmcp_ 前缀）或 JWE session token',
+        description: 'JWE session token 或 API Key（bmcp_ 前缀）',
       },
     },
   },

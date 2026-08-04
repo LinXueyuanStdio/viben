@@ -27,11 +27,16 @@
     "../docs/**"
   ],
   "authPresets": {
-    "bearer": {
-      "type": "http",
-      "scheme": "bearer",
-      "bearerFormat": "API Key / JWE Token",
-      "description": "API Key（bmcp_ 前缀）或 JWE session token"
+    "bearer": "BearerAuth"
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key / JWE Token",
+        "description": "API Key（bmcp_ 前缀）或 JWE session token"
+      }
     }
   }
 }
