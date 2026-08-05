@@ -918,7 +918,29 @@
     },
     "subscription": {
       "title": "订阅管理",
-      "comingSoon": "订阅计划和用量配额管理即将上线。"
+      "description": "查看当前订阅计划和用量配额。",
+      "currentPlan": "当前计划",
+      "freeDescription": "适合个人创作者的基础功能，每月 100 万词元额度。",
+      "monthlyUsage": "月度词元用量",
+      "usageHint": "每月 1 日重置。升级到 Pro 可解锁更高配额。",
+      "freePrice": "免费",
+      "proPrice": "即将推出",
+      "comingSoon": "即将上线",
+      "upgradeToPro": "升级到 Pro",
+      "features": {
+        "publicPages": "发布公开页面",
+        "basicThemes": "基础主题",
+        "communityAccess": "社区访问",
+        "aiAssistant": "AI 助手",
+        "githubIntegration": "GitHub 集成",
+        "analytics": "用量统计",
+        "customDomain": "自定义域名",
+        "prioritySupport": "优先支持",
+        "higherLimits": "更高速率限制",
+        "advancedAnalytics": "高级数据分析",
+        "teamCollaboration": "团队协作",
+        "apiAccess": "API 访问"
+      }
     }
   },
   "about": {

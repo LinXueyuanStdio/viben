@@ -919,7 +919,29 @@
     },
     "subscription": {
       "title": "Subscription",
-      "comingSoon": "Subscription plans and usage quota management coming soon."
+      "description": "View your current subscription plan and usage quota.",
+      "currentPlan": "Current Plan",
+      "freeDescription": "Essential features for individual creators with 1M monthly tokens.",
+      "monthlyUsage": "Monthly Token Usage",
+      "usageHint": "Resets on the 1st of each month. Upgrade to Pro for higher limits.",
+      "freePrice": "Free",
+      "proPrice": "Coming Soon",
+      "comingSoon": "Coming Soon",
+      "upgradeToPro": "Upgrade to Pro",
+      "features": {
+        "publicPages": "Public Pages",
+        "basicThemes": "Basic Themes",
+        "communityAccess": "Community Access",
+        "aiAssistant": "AI Assistant",
+        "githubIntegration": "GitHub Integration",
+        "analytics": "Usage Analytics",
+        "customDomain": "Custom Domain",
+        "prioritySupport": "Priority Support",
+        "higherLimits": "Higher Rate Limits",
+        "advancedAnalytics": "Advanced Analytics",
+        "teamCollaboration": "Team Collaboration",
+        "apiAccess": "API Access"
+      }
     }
   },
   "about": {
