@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import {
   DEFAULT_SANDBOX_TYPE,
@@ -42,11 +43,12 @@ function isThemePreference(value: string): value is ThemePreference {
 }
 
 export function SandboxSectionSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-8">
       <div className="space-y-4">
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          General
+          {t("settings.sandbox.general")}
         </h3>
         <div className="grid gap-6 sm:grid-cols-2">
           <Skeleton className="h-16 w-full" />
@@ -62,6 +64,7 @@ export function SandboxSectionSkeleton() {
 export function SandboxSection() {
   const state = usePreferencesSectionState();
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
 
   if (state.loading) {
     return <SandboxSectionSkeleton />;
@@ -93,16 +96,16 @@ export function SandboxSection() {
       {/* ── General: Theme, Sandbox, Diff, Toggles ── */}
       <div className="space-y-4">
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          General
+          {t("settings.sandbox.general")}
         </h3>
         <div className="grid gap-6 sm:grid-cols-2">
           {/* Left column: dropdowns */}
           <div className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="appearance">Theme</Label>
+              <Label htmlFor="appearance">{t("settings.sandbox.theme")}</Label>
               <Select value={theme} onValueChange={handleThemeChange}>
                 <SelectTrigger id="appearance" className="w-full">
-                  <SelectValue placeholder="Select an appearance" />
+                  <SelectValue placeholder={t("settings.sandbox.selectAppearance")} />
                 </SelectTrigger>
                 <SelectContent>
                   {THEME_OPTIONS.map((option) => (
@@ -113,12 +116,12 @@ export function SandboxSection() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Saved in your current browser.
+                {t("settings.sandbox.themeHint")}
               </p>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="sandbox">Default Sandbox</Label>
+              <Label htmlFor="sandbox">{t("settings.sandbox.defaultSandbox")}</Label>
               <Select
                 value={preferences?.defaultSandboxType ?? DEFAULT_SANDBOX_TYPE}
                 onValueChange={(value) =>
@@ -127,7 +130,7 @@ export function SandboxSection() {
                 disabled={isSaving}
               >
                 <SelectTrigger id="sandbox" className="w-full">
-                  <SelectValue placeholder="Select a sandbox type" />
+                  <SelectValue placeholder={t("settings.sandbox.selectSandboxType")} />
                 </SelectTrigger>
                 <SelectContent>
                   {SANDBOX_OPTIONS.map((option) => (
@@ -140,7 +143,7 @@ export function SandboxSection() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="diff-mode">Default Diff Mode</Label>
+              <Label htmlFor="diff-mode">{t("settings.sandbox.defaultDiffMode")}</Label>
               <Select
                 value={preferences?.defaultDiffMode ?? "unified"}
                 onValueChange={(value) =>
@@ -149,7 +152,7 @@ export function SandboxSection() {
                 disabled={isSaving}
               >
                 <SelectTrigger id="diff-mode" className="w-full">
-                  <SelectValue placeholder="Select a diff mode" />
+                  <SelectValue placeholder={t("settings.sandbox.selectDiffMode")} />
                 </SelectTrigger>
                 <SelectContent>
                   {DIFF_MODE_OPTIONS.map((option) => (
@@ -166,9 +169,9 @@ export function SandboxSection() {
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
-                <Label htmlFor="auto-commit-push">Auto commit &amp; push</Label>
+                <Label htmlFor="auto-commit-push">{t("settings.sandbox.autoCommitLabel")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Commit and push when an agent turn finishes.
+                  {t("settings.sandbox.autoCommitHint")}
                 </p>
               </div>
               <Switch
@@ -180,9 +183,9 @@ export function SandboxSection() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
-                <Label htmlFor="auto-create-pr">Auto create PR</Label>
+                <Label htmlFor="auto-create-pr">{t("settings.sandbox.autoCreatePrLabel")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Open a pull request after auto commit.
+                  {t("settings.sandbox.autoCreatePrHint")}
                 </p>
               </div>
               <Switch
@@ -194,9 +197,9 @@ export function SandboxSection() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
-                <Label htmlFor="alerts-enabled">Alerts</Label>
+                <Label htmlFor="alerts-enabled">{t("settings.sandbox.alertsLabel")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Notify when a background agent finishes.
+                  {t("settings.sandbox.alertsHint")}
                 </p>
               </div>
               <Switch
@@ -209,9 +212,9 @@ export function SandboxSection() {
             {(preferences?.alertsEnabled ?? true) && (
               <div className="flex items-center justify-between gap-4 pl-4">
                 <div className="space-y-0.5">
-                  <Label htmlFor="alert-sound-enabled">Alert sound</Label>
+                  <Label htmlFor="alert-sound-enabled">{t("settings.sandbox.alertSoundLabel")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Play a sound with alerts.
+                    {t("settings.sandbox.alertSoundHint")}
                   </p>
                 </div>
                 <Switch
@@ -225,10 +228,10 @@ export function SandboxSection() {
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
                 <Label htmlFor="public-usage-enabled">
-                  Public usage profile
+                  {t("settings.sandbox.publicUsageLabel")}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Publish a shareable wrapped page at <code>/u/username</code>.
+                  {t("settings.sandbox.publicUsageHint")}
                 </p>
               </div>
               <Switch
@@ -241,7 +244,7 @@ export function SandboxSection() {
             {(preferences?.publicUsageEnabled ?? false) &&
               publicProfilePath && (
                 <div className="grid gap-2 pl-4">
-                  <Label htmlFor="public-usage-url">Public profile URL</Label>
+                  <Label htmlFor="public-usage-url">{t("settings.sandbox.publicProfileUrl")}</Label>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       id="public-usage-url"
@@ -255,12 +258,11 @@ export function SandboxSection() {
                       onClick={handleCopyPublicProfileUrl}
                       disabled={isSaving}
                     >
-                      {copiedPublicProfile ? "Copied" : "Copy URL"}
+                      {copiedPublicProfile ? t("common.copied") : t("settings.sandbox.copyUrl")}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Share filtered snapshots with <code>?date=30d</code> or
-                    <code> ?date=2026-01-01..2026-01-31</code>.
+                    {t("settings.sandbox.shareFilteredHint")}
                   </p>
                 </div>
               )}

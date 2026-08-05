@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Plus, Search, Trash2, X } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -89,9 +90,10 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 }
 
 export function ModelPreferencesSectionSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
-      <SectionHeader>Model Preferences</SectionHeader>
+      <SectionHeader>{t("settings.assistant.models.modelPreferences")}</SectionHeader>
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="grid gap-2">
           <Skeleton className="h-4 w-24" />
@@ -436,36 +438,50 @@ export function usePreferencesSectionState() {
   };
 }
 
-export function ModelPreferencesSection() {
-  const state = usePreferencesSectionState();
+export function ModelPreferencesSection({
+  loading,
+  defaultModelOptions,
+  selectedDefaultModelId,
+  selectedSubagentModelId,
+  subagentModelOptions,
+  modelOptions,
+  modelOptionsLoading,
+  enabledModelIds,
+  isSaving,
+  onModelChange,
+  onSubagentModelChange,
+  onAddModel,
+  onRemoveModel,
+  onSetEnabledModels,
+}: {
+  loading: boolean;
+  defaultModelOptions: ReturnType<typeof usePreferencesSectionState>["defaultModelOptions"];
+  selectedDefaultModelId: string;
+  selectedSubagentModelId: string;
+  subagentModelOptions: ReturnType<typeof usePreferencesSectionState>["subagentModelOptions"];
+  modelOptions: ReturnType<typeof usePreferencesSectionState>["modelOptions"];
+  modelOptionsLoading: boolean;
+  enabledModelIds: Set<string>;
+  isSaving: boolean;
+  onModelChange: (modelId: string) => Promise<void>;
+  onSubagentModelChange: (value: string) => Promise<void>;
+  onAddModel: (modelId: string) => Promise<void>;
+  onRemoveModel: (modelId: string) => Promise<void>;
+  onSetEnabledModels: (ids: string[]) => Promise<void>;
+}) {
+  const { t } = useTranslation();
 
-  if (state.loading) {
+  if (loading) {
     return <ModelPreferencesSectionSkeleton />;
   }
 
-  const {
-    defaultModelOptions,
-    selectedDefaultModelId,
-    selectedSubagentModelId,
-    subagentModelOptions,
-    modelOptions,
-    modelOptionsLoading,
-    enabledModelIds,
-    isSaving,
-    handleModelChange,
-    handleSubagentModelChange,
-    handleAddModel,
-    handleRemoveModel,
-    handleSetEnabledModels,
-  } = state;
-
   return (
     <div className="space-y-4">
-      <SectionHeader>Model Preferences</SectionHeader>
+      <SectionHeader>{t("settings.assistant.models.modelPreferences")}</SectionHeader>
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="model">Default Model</Label>
+          <Label htmlFor="model">{t("settings.assistant.models.defaultModel")}</Label>
           <ModelCombobox
             value={selectedDefaultModelId}
             items={defaultModelOptions.map((option) => ({
@@ -474,23 +490,23 @@ export function ModelPreferencesSection() {
               description: option.description,
               isVariant: option.isVariant,
             }))}
-            placeholder="Select a model"
-            searchPlaceholder="Search models..."
-            emptyText={modelOptionsLoading ? "Loading..." : "No models found."}
+            placeholder={t("settings.assistant.models.selectModel")}
+            searchPlaceholder={t("settings.assistant.models.searchModels")}
+            emptyText={modelOptionsLoading ? t("settings.assistant.models.loading") : t("settings.assistant.models.noModelsFound")}
             disabled={isSaving || modelOptionsLoading}
-            onChange={handleModelChange}
+            onChange={onModelChange}
           />
           <p className="text-xs text-muted-foreground">
-            The AI model used for new chats.
+            {t("settings.assistant.models.defaultModelHint")}
           </p>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="subagent-model">Subagent Model</Label>
+          <Label htmlFor="subagent-model">{t("settings.assistant.models.subagentModel")}</Label>
           <ModelCombobox
             value={selectedSubagentModelId}
             items={[
-              { id: "auto", label: "Same as main model" },
+              { id: "auto", label: t("settings.assistant.models.sameAsMainModel") },
               ...subagentModelOptions.map((option) => ({
                 id: option.id,
                 label: option.label,
@@ -498,14 +514,14 @@ export function ModelPreferencesSection() {
                 isVariant: option.isVariant,
               })),
             ]}
-            placeholder="Select a model"
-            searchPlaceholder="Search models..."
-            emptyText={modelOptionsLoading ? "Loading..." : "No models found."}
+            placeholder={t("settings.assistant.models.selectModel")}
+            searchPlaceholder={t("settings.assistant.models.searchModels")}
+            emptyText={modelOptionsLoading ? t("settings.assistant.models.loading") : t("settings.assistant.models.noModelsFound")}
             disabled={isSaving || modelOptionsLoading}
-            onChange={handleSubagentModelChange}
+            onChange={onSubagentModelChange}
           />
           <p className="text-xs text-muted-foreground">
-            For explorer and executor subagents.
+            {t("settings.assistant.models.subagentModelHint")}
           </p>
         </div>
       </div>
@@ -514,9 +530,9 @@ export function ModelPreferencesSection() {
         modelOptions={modelOptions}
         modelOptionsLoading={modelOptionsLoading}
         enabledModelIds={enabledModelIds}
-        onAddModel={handleAddModel}
-        onRemoveModel={handleRemoveModel}
-        onSetEnabledModels={handleSetEnabledModels}
+        onAddModel={onAddModel}
+        onRemoveModel={onRemoveModel}
+        onSetEnabledModels={onSetEnabledModels}
         disabled={isSaving}
       />
     </div>
@@ -540,6 +556,7 @@ function EnabledModelsSection({
   onSetEnabledModels: (ids: string[]) => void;
   disabled: boolean;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -578,7 +595,7 @@ function EnabledModelsSection({
   if (modelOptionsLoading) {
     return (
       <div className="grid gap-2">
-        <Label>Custom Model Set</Label>
+        <Label>{t("settings.assistant.models.customModelSet")}</Label>
         <Skeleton className="h-48 w-full" />
       </div>
     );
@@ -588,7 +605,7 @@ function EnabledModelsSection({
     <div className="grid gap-2">
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <Label>Custom Model Set</Label>
+          <Label>{t("settings.assistant.models.customModelSet")}</Label>
           {enabledCount > 0 && (
             <button
               type="button"
@@ -596,14 +613,14 @@ function EnabledModelsSection({
               onClick={handleDeselectAll}
               className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-40"
             >
-              Clear all
+              {t("settings.assistant.models.clearAll")}
             </button>
           )}
         </div>
         <p className="text-xs text-muted-foreground">
           {enabledCount === 0
-            ? "By default, every available model is shown in the model selector. Add models here to create a shortlist of just the ones you use."
-            : `The model selector will only show ${enabledCount === 1 ? "this model" : `these ${enabledCount} models`}. Remove all to go back to showing every model.`}
+            ? t("settings.assistant.models.emptyHint")
+            : t(enabledCount === 1 ? "settings.assistant.models.hasModelsHint_one" : "settings.assistant.models.hasModelsHint", { count: enabledCount })}
         </p>
       </div>
 
@@ -618,7 +635,7 @@ function EnabledModelsSection({
                   </span>
                   {option.isVariant && (
                     <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                      variant
+                      {t("settings.assistant.models.variant")}
                     </span>
                   )}
                 </div>
@@ -631,7 +648,7 @@ function EnabledModelsSection({
                 disabled={disabled}
                 onClick={() => onRemoveModel(option.id)}
                 className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
-                aria-label={`Remove ${option.label}`}
+                aria-label={t("settings.assistant.models.removeModel", { label: option.label })}
               >
                 <X className="size-3.5" />
               </button>
@@ -651,7 +668,7 @@ function EnabledModelsSection({
               setDropdownOpen(true);
             }}
             onFocus={() => setDropdownOpen(true)}
-            placeholder="Search to add a model..."
+            placeholder={t("settings.assistant.models.searchPlaceholder")}
             disabled={disabled}
             className="pl-9"
           />
@@ -671,8 +688,8 @@ function EnabledModelsSection({
                 {availableOptions.length === 0 ? (
                   <p className="py-4 text-center text-sm text-muted-foreground">
                     {search.trim()
-                      ? "No matching models."
-                      : "All models have been added."}
+                      ? t("settings.assistant.models.noMatchingModels")
+                      : t("settings.assistant.models.allModelsAdded")}
                   </p>
                 ) : (
                   availableOptions.map((option) => (
@@ -690,7 +707,7 @@ function EnabledModelsSection({
                           </span>
                           {option.isVariant && (
                             <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                              variant
+                              {t("settings.assistant.models.variant")}
                             </span>
                           )}
                         </div>

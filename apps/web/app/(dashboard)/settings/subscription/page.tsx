@@ -1,15 +1,14 @@
-import type { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title: "订阅管理",
-};
+import { useTranslation } from "react-i18next";
 
 export default function SubscriptionPage() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">订阅管理</h1>
+      <h1 className="text-2xl font-semibold">{t("settings.subscription.title")}</h1>
       <p className="text-muted-foreground">
-        订阅计划和用量配额管理即将上线。
+        {t("settings.subscription.comingSoon")}
       </p>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { formatTokens } from "@viben/shared";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
@@ -75,9 +76,12 @@ interface CostEstimateSummary {
   totalTokens: number;
 }
 
-function formatDateRangeLabel(range: DateRange | undefined) {
+function formatDateRangeLabel(
+  range: DateRange | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (!range?.from) {
-    return "Token consumption and activity over the past 39 weeks. Click the chart to filter.";
+    return t("settings.usage.defaultActivityLabel");
   }
 
   const fromLabel = range.from.toLocaleDateString("en-US", {
@@ -93,10 +97,10 @@ function formatDateRangeLabel(range: DateRange | undefined) {
   });
 
   if (fromLabel === toLabel) {
-    return `Showing activity for ${fromLabel}. Click another day to extend the range.`;
+    return t("settings.usage.activityForDay", { date: fromLabel });
   }
 
-  return `Showing activity from ${fromLabel} to ${toLabel}.`;
+  return t("settings.usage.activityForRange", { from: fromLabel, to: toLabel });
 }
 
 function sumRows(rows: DailyUsageRow[]) {
@@ -261,24 +265,25 @@ function estimateUsageCost(
 function getCostEstimateDetail(
   costEstimate: CostEstimateSummary | undefined,
   isPricingLoading: boolean,
+  t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
   if (isPricingLoading) {
-    return "Loading model pricing";
+    return t("settings.usage.loadingPricing");
   }
 
   if (!costEstimate) {
-    return "No model usage";
+    return t("settings.usage.noUsageYet");
   }
 
   if (costEstimate.pricedTokens <= 0) {
-    return "No pricing available for used models";
+    return t("settings.usage.noPricing");
   }
 
   if (costEstimate.pricedTokens >= costEstimate.totalTokens) {
-    return "Estimated from models.dev pricing";
+    return t("settings.usage.estimatedFromPricing");
   }
 
-  return `Estimated from ${Math.round((costEstimate.pricedTokens / costEstimate.totalTokens) * 100)}% of tokens with known pricing`;
+  return t("settings.usage.estimatedFromPartial", { percent: Math.round((costEstimate.pricedTokens / costEstimate.totalTokens) * 100) });
 }
 
 function mergeDays(rows: DailyUsageRow[]): MergedDay[] {
@@ -299,12 +304,13 @@ function mergeDays(rows: DailyUsageRow[]): MergedDay[] {
 }
 
 export function UsageSectionSkeleton() {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Usage</CardTitle>
+        <CardTitle>{t("settings.usage.usage")}</CardTitle>
         <CardDescription>
-          Token consumption and activity over the past 39 weeks.
+          {t("settings.usage.defaultActivityLabel")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -354,10 +360,12 @@ function UsagePieChart({
   segments,
   centerLabel,
   emptyLabel,
+  t,
 }: {
   segments: PieSegment[];
   centerLabel: string;
   emptyLabel: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const visibleSegments = segments.filter((segment) => segment.value > 0);
   const total = visibleSegments.reduce(
@@ -461,7 +469,7 @@ function UsagePieChart({
             }}
           >
             <div className="font-medium">{hoveredSegment.label}</div>
-            <div>{formatTokens(hoveredSegment.value)} tokens</div>
+            <div>{formatTokens(hoveredSegment.value)} {t("settings.usage.tokens")}</div>
           </div>
         ) : null}
       </div>
@@ -529,6 +537,7 @@ function StatBlock({
 }
 
 export function UsageSection() {
+  const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const filteredUsagePath = useMemo(() => {
@@ -593,11 +602,11 @@ export function UsageSection() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Usage</CardTitle>
+          <CardTitle>{t("settings.usage.usage")}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Failed to load usage data.
+            {t("settings.usage.failedToLoad")}
           </p>
         </CardContent>
       </Card>
@@ -615,16 +624,16 @@ export function UsageSection() {
       ? formatUsd(costEstimate.amount)
       : "—";
   const costEstimateDetail = hasUsage
-    ? getCostEstimateDetail(costEstimate, isModelsLoading)
-    : "No usage yet";
+    ? getCostEstimateDetail(costEstimate, isModelsLoading, t)
+    : t("settings.usage.noUsageYet");
   const agentSegments: PieSegment[] = [
     {
-      label: "Main agent",
+      label: t("settings.usage.mainAgent"),
       value: mainTokens,
       color: CHART_COLORS[0] ?? "var(--chart-1)",
     },
     {
-      label: "Subagents",
+      label: t("settings.usage.subagents"),
       value: subagentTokens,
       color: CHART_COLORS[1] ?? "var(--chart-2)",
     },
@@ -653,7 +662,7 @@ export function UsageSection() {
 
     if (otherTotal > 0) {
       segments.push({
-        label: "Other",
+        label: t("settings.usage.other"),
         value: otherTotal,
         color: "var(--muted-foreground)",
       });
@@ -668,9 +677,9 @@ export function UsageSection() {
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <CardTitle>Usage</CardTitle>
+              <CardTitle>{t("settings.usage.usage")}</CardTitle>
               <CardDescription>
-                {formatDateRangeLabel(dateRange)}
+                {formatDateRangeLabel(dateRange, t)}
               </CardDescription>
             </div>
             {dateRange?.from ? (
@@ -681,25 +690,25 @@ export function UsageSection() {
                 className="self-start px-0 text-muted-foreground"
                 onClick={() => setDateRange(undefined)}
               >
-                Clear filter
+                {t("settings.usage.clearFilter")}
               </Button>
             ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
-            <StatBlock label="Total tokens" value={formatTokens(totalTokens)} />
+            <StatBlock label={t("settings.usage.totalTokens")} value={formatTokens(totalTokens)} />
             <StatBlock
-              label="Estimated cost"
+              label={t("settings.usage.estimatedCost")}
               value={costEstimateValue}
               detail={costEstimateDetail}
             />
             <StatBlock
-              label="Messages"
+              label={t("settings.usage.messages")}
               value={totals.messageCount.toLocaleString()}
             />
             <StatBlock
-              label="Tool calls"
+              label={t("settings.usage.toolCalls")}
               value={totals.toolCallCount.toLocaleString()}
             />
           </div>
@@ -713,26 +722,28 @@ export function UsageSection() {
           <div className="grid gap-6 lg:grid-cols-2">
             {hasUsage && (
               <div className="space-y-2">
-                <h3 className="text-sm font-medium">Agent split</h3>
+                <h3 className="text-sm font-medium">{t("settings.usage.agentSplit")}</h3>
                 <UsagePieChart
                   segments={agentSegments}
-                  centerLabel="Total tokens"
-                  emptyLabel="No agent usage"
+                  centerLabel={t("settings.usage.totalTokens")}
+                  emptyLabel={t("settings.usage.noAgentUsage")}
+                  t={t}
                 />
               </div>
             )}
 
             {modelUsage.length > 0 ? (
               <div className="space-y-2">
-                <h3 className="text-sm font-medium">Usage by model</h3>
+                <h3 className="text-sm font-medium">{t("settings.usage.topModels")}</h3>
                 <UsagePieChart
                   segments={modelSegments}
-                  centerLabel="Total tokens"
-                  emptyLabel="No model usage"
+                  centerLabel={t("settings.usage.totalTokens")}
+                  emptyLabel={t("settings.usage.noModelUsage")}
+                  t={t}
                 />
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No model data</p>
+              <p className="text-sm text-muted-foreground">{t("settings.usage.noModelData")}</p>
             )}
           </div>
         </CardContent>

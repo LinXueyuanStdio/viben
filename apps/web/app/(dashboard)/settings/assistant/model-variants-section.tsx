@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import {
@@ -75,14 +76,15 @@ function parseProviderOptions(
 }
 
 export function ModelVariantsSectionSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Model Variants
+          {t("settings.assistant.variants.modelVariants")}
         </h3>
         <p className="text-sm text-muted-foreground">
-          Create named presets with provider-specific options for a base model.
+          {t("settings.assistant.variants.modelVariantsDesc")}
         </p>
       </div>
       <div className="space-y-4">
@@ -115,6 +117,7 @@ function VariantFormDialog({
     providerOptionsText: string;
   }) => Promise<true | string>;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [baseModelId, setBaseModelId] = useState("");
   const [providerOptionsText, setProviderOptionsText] = useState("{}");
@@ -141,12 +144,12 @@ function VariantFormDialog({
     event.preventDefault();
 
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t("settings.assistant.variants.nameRequired"));
       return;
     }
 
     if (!baseModelId) {
-      setError("Base model is required");
+      setError(t("settings.assistant.variants.baseModelRequired"));
       return;
     }
 
@@ -172,38 +175,38 @@ function VariantFormDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Variant" : "New Variant"}
+            {isEditing ? t("settings.assistant.variants.editVariant") : t("settings.assistant.variants.newVariant")}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the variant configuration below."
-              : "Configure a base model with custom provider options."}
+              ? t("settings.assistant.variants.editVariantDesc")
+              : t("settings.assistant.variants.newVariantDesc")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-1.5">
             <Label htmlFor="variant-name" className="text-xs font-medium">
-              Name
+              {t("settings.assistant.variants.name")}
             </Label>
             <Input
               id="variant-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Claude Adaptive Thinking"
+              placeholder={t("settings.assistant.variants.namePlaceholder")}
               disabled={isSaving}
             />
           </div>
 
           <div className="grid gap-1.5">
             <Label htmlFor="base-model" className="text-xs font-medium">
-              Base Model
+              {t("settings.assistant.variants.baseModel")}
             </Label>
             <ModelCombobox
               value={baseModelId}
               items={modelItems}
-              placeholder="Select a base model"
-              searchPlaceholder="Search base models..."
-              emptyText="No base models found."
+              placeholder={t("settings.assistant.variants.baseModelPlaceholder")}
+              searchPlaceholder={t("settings.assistant.variants.baseModelSearchPlaceholder")}
+              emptyText={t("settings.assistant.variants.baseModelEmptyText")}
               disabled={isSaving}
               onChange={setBaseModelId}
             />
@@ -211,25 +214,18 @@ function VariantFormDialog({
 
           <div className="grid gap-1.5">
             <Label htmlFor="provider-options" className="text-xs font-medium">
-              Provider Options
+              {t("settings.assistant.variants.providerOptions")}
             </Label>
             <Textarea
               id="provider-options"
               value={providerOptionsText}
               onChange={(event) => setProviderOptionsText(event.target.value)}
               className="min-h-28 resize-y rounded-md border-border bg-muted/30 font-mono text-xs leading-relaxed"
-              placeholder='{"reasoningEffort": "medium"}'
+              placeholder={t("settings.assistant.variants.providerOptionsPlaceholder")}
               disabled={isSaving}
             />
             <p className="text-[11px] text-muted-foreground">
-              JSON object passed to the provider. e.g.{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
-                {"reasoningEffort"}
-              </code>
-              ,{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
-                {"reasoningSummary"}
-              </code>
+              {t("settings.assistant.variants.providerOptionsHint")}
             </p>
             <a
               href="https://ai-sdk.dev/docs/foundations/provider-options"
@@ -237,7 +233,7 @@ function VariantFormDialog({
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >
-              View provider options docs
+              {t("settings.assistant.variants.viewProviderDocs")}
               <ExternalLink className="size-3" />
             </a>
           </div>
@@ -256,14 +252,14 @@ function VariantFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSaving}
             >
-              Cancel
+              {t("settings.assistant.variants.cancel")}
             </Button>
             <Button type="submit" size="sm" disabled={isSaving}>
               {isSaving
-                ? "Saving…"
+                ? t("settings.assistant.variants.saving")
                 : isEditing
-                  ? "Save Changes"
-                  : "Create Variant"}
+                  ? t("settings.assistant.variants.saveChanges")
+                  : t("settings.assistant.variants.createVariant")}
             </Button>
           </DialogFooter>
         </form>
@@ -287,6 +283,7 @@ function VariantCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const optionKeys = Object.keys(variant.providerOptions);
   const hasOptions = optionKeys.length > 0;
 
@@ -314,9 +311,7 @@ function VariantCard({
                 <span className="text-muted-foreground/40">·</span>
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Code2 className="size-3" />
-                  {optionKeys.length === 1
-                    ? "1 option"
-                    : `${optionKeys.length} options`}
+                  {t(optionKeys.length === 1 ? "settings.assistant.variants.optionCount_one" : "settings.assistant.variants.optionCount", { count: optionKeys.length })}
                 </span>
               </>
             )}
@@ -345,7 +340,7 @@ function VariantCard({
               ))}
               {optionKeys.length > 4 && (
                 <span className="inline-flex items-center rounded-sm bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  +{optionKeys.length - 4} more
+                  {t("settings.assistant.variants.moreOptions", { count: optionKeys.length - 4 })}
                 </span>
               )}
             </div>
@@ -355,7 +350,7 @@ function VariantCard({
         {/* Actions */}
         {builtIn ? (
           <span className="shrink-0 rounded-sm bg-muted/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            Built-in
+            {t("settings.assistant.variants.builtIn")}
           </span>
         ) : (
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
@@ -363,7 +358,7 @@ function VariantCard({
               <TooltipTrigger asChild>
                 <Button
                   type="button"
-                  size="icon-sm"
+                  size="icon"
                   variant="ghost"
                   onClick={onEdit}
                   disabled={isSaving}
@@ -372,13 +367,13 @@ function VariantCard({
                   <Pencil className="size-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Edit variant</TooltipContent>
+              <TooltipContent>{t("settings.assistant.variants.editVariantTooltip")}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
-                  size="icon-sm"
+                  size="icon"
                   variant="ghost"
                   onClick={onDelete}
                   disabled={isSaving}
@@ -387,7 +382,7 @@ function VariantCard({
                   <Trash2 className="size-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete variant</TooltipContent>
+              <TooltipContent>{t("settings.assistant.variants.deleteVariantTooltip")}</TooltipContent>
             </Tooltip>
           </div>
         )}
@@ -397,6 +392,7 @@ function VariantCard({
 }
 
 export function ModelVariantsSection() {
+  const { t } = useTranslation();
   const { data: modelsData, isLoading: modelsLoading } = useSWR<ModelsResponse>(
     "/api/models",
     fetcher,
@@ -488,12 +484,12 @@ export function ModelVariantsSection() {
         const message =
           "error" in responseData
             ? responseData.error
-            : "Failed to save model variant";
-        return message ?? "Failed to save model variant";
+            : t("settings.assistant.variants.failedToSave");
+        return message ?? t("settings.assistant.variants.failedToSave");
       }
 
       if (!("modelVariants" in responseData)) {
-        return "Failed to save model variant";
+        return t("settings.assistant.variants.failedToSave");
       }
 
       const nextVariants = responseData.modelVariants;
@@ -501,14 +497,14 @@ export function ModelVariantsSection() {
       return true;
     } catch (submitError) {
       console.error("Failed to save model variant:", submitError);
-      return "Failed to save model variant";
+      return t("settings.assistant.variants.failedToSave");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (variantId: string) => {
-    if (!window.confirm("Delete this model variant?")) {
+    if (!window.confirm(t("settings.assistant.variants.deleteConfirm"))) {
       return;
     }
 
@@ -532,13 +528,13 @@ export function ModelVariantsSection() {
         const message =
           "error" in responseData
             ? responseData.error
-            : "Failed to delete model variant";
-        setError(message ?? "Failed to delete model variant");
+            : t("settings.assistant.variants.failedToDelete");
+        setError(message ?? t("settings.assistant.variants.failedToDelete"));
         return;
       }
 
       if (!("modelVariants" in responseData)) {
-        setError("Failed to delete model variant");
+        setError(t("settings.assistant.variants.failedToDelete"));
         return;
       }
 
@@ -546,7 +542,7 @@ export function ModelVariantsSection() {
       await mutate({ modelVariants: nextVariants }, { revalidate: false });
     } catch (deleteError) {
       console.error("Failed to delete model variant:", deleteError);
-      setError("Failed to delete model variant");
+      setError(t("settings.assistant.variants.failedToDelete"));
     } finally {
       setIsSaving(false);
     }
@@ -562,12 +558,10 @@ export function ModelVariantsSection() {
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
             <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Model Variants
+              {t("settings.assistant.variants.modelVariants")}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Named presets that combine a base model with custom provider
-              options. Variants appear alongside regular models in selectors
-              across the app.
+              {t("settings.assistant.variants.modelVariantsDesc")}
             </p>
           </div>
           <Button
@@ -577,7 +571,7 @@ export function ModelVariantsSection() {
             className="shrink-0"
           >
             <Plus className="size-3.5" />
-            New Variant
+            {t("settings.assistant.variants.newVariant")}
           </Button>
         </div>
         <div>

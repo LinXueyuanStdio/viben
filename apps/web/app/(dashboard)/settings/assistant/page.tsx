@@ -1,24 +1,40 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useTranslation } from "react-i18next";
+import { usePreferencesSectionState } from "./preferences-section";
 import { ModelVariantsSection } from "./model-variants-section";
 import { ModelPreferencesSection } from "./preferences-section";
 import { SkillsSection } from "./skills-section";
 
-export const metadata: Metadata = {
-  title: "助手设置",
-  description: "管理模型和 Skills 设置。",
-};
-
 export default function AssistantSettingsPage() {
+  const { t } = useTranslation();
+  const state = usePreferencesSectionState();
+
   return (
     <div className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">助手设置</h1>
+        <h1 className="text-2xl font-semibold">{t("settings.assistant.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          设置默认模型、创建模型变体和管理全局 Skills。
+          {t("settings.assistant.description")}
         </p>
       </div>
 
-      <ModelPreferencesSection />
+      <ModelPreferencesSection
+        loading={state.loading}
+        defaultModelOptions={state.defaultModelOptions}
+        selectedDefaultModelId={state.selectedDefaultModelId}
+        selectedSubagentModelId={state.selectedSubagentModelId}
+        subagentModelOptions={state.subagentModelOptions}
+        modelOptions={state.modelOptions}
+        modelOptionsLoading={state.modelOptionsLoading}
+        enabledModelIds={state.enabledModelIds}
+        isSaving={state.isSaving}
+        onModelChange={state.handleModelChange}
+        onSubagentModelChange={state.handleSubagentModelChange}
+        onAddModel={state.handleAddModel}
+        onRemoveModel={state.handleRemoveModel}
+        onSetEnabledModels={state.handleSetEnabledModels}
+      />
 
       <div className="border-t border-border/50" />
 
@@ -26,7 +42,18 @@ export default function AssistantSettingsPage() {
 
       <div className="border-t border-border/50" />
 
-      <SkillsSection />
+      <SkillsSection
+        loading={state.loading}
+        preferences={state.preferences}
+        isSaving={state.isSaving}
+        globalSkillSource={state.globalSkillSource}
+        onGlobalSkillSourceChange={state.setGlobalSkillSource}
+        globalSkillName={state.globalSkillName}
+        onGlobalSkillNameChange={state.setGlobalSkillName}
+        globalSkillsError={state.globalSkillsError}
+        onAddGlobalSkillRef={state.handleAddGlobalSkillRef}
+        onRemoveGlobalSkillRef={state.handleRemoveGlobalSkillRef}
+      />
     </div>
   );
 }

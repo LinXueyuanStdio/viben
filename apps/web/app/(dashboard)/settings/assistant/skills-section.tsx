@@ -1,17 +1,20 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePreferencesSectionState } from "./preferences-section";
+import type { GlobalSkillRef } from "@/lib/skills/global-skill-refs";
+import type { UserPreferences } from "@/hooks/assistant/use-user-preferences";
 
 export function SkillsSectionSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Skills
+        {t("settings.assistant.skills.skills")}
       </h3>
       <div className="space-y-3">
         <div className="space-y-1">
@@ -51,37 +54,46 @@ export function SkillsSectionSkeleton() {
   );
 }
 
-export function SkillsSection() {
-  const state = usePreferencesSectionState();
+export function SkillsSection({
+  loading,
+  preferences,
+  isSaving,
+  globalSkillSource,
+  onGlobalSkillSourceChange,
+  globalSkillName,
+  onGlobalSkillNameChange,
+  globalSkillsError,
+  onAddGlobalSkillRef,
+  onRemoveGlobalSkillRef,
+}: {
+  loading: boolean;
+  preferences: UserPreferences | undefined;
+  isSaving: boolean;
+  globalSkillSource: string;
+  onGlobalSkillSourceChange: (value: string) => void;
+  globalSkillName: string;
+  onGlobalSkillNameChange: (value: string) => void;
+  globalSkillsError: string | null;
+  onAddGlobalSkillRef: () => Promise<void>;
+  onRemoveGlobalSkillRef: (index: number) => Promise<void>;
+}) {
+  const { t } = useTranslation();
 
-  if (state.loading) {
+  if (loading) {
     return <SkillsSectionSkeleton />;
   }
-
-  const {
-    preferences,
-    isSaving,
-    globalSkillSource,
-    setGlobalSkillSource,
-    globalSkillName,
-    setGlobalSkillName,
-    globalSkillsError,
-    handleAddGlobalSkillRef,
-    handleRemoveGlobalSkillRef,
-  } = state;
 
   return (
     <div className="space-y-4">
       <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Skills
+        {t("settings.assistant.skills.skills")}
       </h3>
 
       <div className="grid gap-3">
         <div className="space-y-1">
-          <Label>Global Skills</Label>
+          <Label>{t("settings.assistant.skills.globalSkills")}</Label>
           <p className="text-xs text-muted-foreground">
-            Skills from GitHub installed outside the repo for every new
-            session. Repo skills with the same name take precedence.
+            {t("settings.assistant.skills.globalSkillsHint")}
           </p>
         </div>
 
@@ -104,11 +116,11 @@ export function SkillsSection() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon"
                     className="text-muted-foreground hover:text-destructive shrink-0"
-                    onClick={() => handleRemoveGlobalSkillRef(index)}
+                    onClick={() => onRemoveGlobalSkillRef(index)}
                     disabled={isSaving}
-                    aria-label={`Remove ${globalSkillRef.skillName}`}
+                    aria-label={t("settings.assistant.skills.removeSkill", { name: globalSkillRef.skillName })}
                   >
                     <Trash2 />
                   </Button>
@@ -118,7 +130,7 @@ export function SkillsSection() {
           </div>
         ) : (
           <p className="text-xs italic text-muted-foreground">
-            No global skills configured yet.
+            {t("settings.assistant.skills.noGlobalSkills")}
           </p>
         )}
 
@@ -129,13 +141,13 @@ export function SkillsSection() {
                 htmlFor="global-skill-source"
                 className="text-xs font-medium"
               >
-                Repository source
+                {t("settings.assistant.skills.repositorySource")}
               </Label>
               <Input
                 id="global-skill-source"
                 value={globalSkillSource}
-                onChange={(event) => setGlobalSkillSource(event.target.value)}
-                placeholder="vercel/ai"
+                onChange={(event) => onGlobalSkillSourceChange(event.target.value)}
+                placeholder={t("settings.assistant.skills.repositorySourcePlaceholder")}
                 disabled={isSaving}
               />
             </div>
@@ -144,28 +156,27 @@ export function SkillsSection() {
                 htmlFor="global-skill-name"
                 className="text-xs font-medium"
               >
-                Skill name
+                {t("settings.assistant.skills.skillName")}
               </Label>
               <Input
                 id="global-skill-name"
                 value={globalSkillName}
-                onChange={(event) => setGlobalSkillName(event.target.value)}
-                placeholder="ai-sdk"
+                onChange={(event) => onGlobalSkillNameChange(event.target.value)}
+                placeholder={t("settings.assistant.skills.skillNamePlaceholder")}
                 disabled={isSaving}
               />
             </div>
             <Button
               type="button"
-              onClick={handleAddGlobalSkillRef}
+              onClick={onAddGlobalSkillRef}
               disabled={isSaving}
             >
               <Plus />
-              Add
+              {t("settings.assistant.skills.add")}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Enter the GitHub <code>owner/repo</code> source and the skill
-            name, e.g. <code>vercel/ai</code> + <code>ai-sdk</code>.
+            {t("settings.assistant.skills.addHint")}
           </p>
           {globalSkillsError && (
             <p className="text-xs text-destructive">{globalSkillsError}</p>
