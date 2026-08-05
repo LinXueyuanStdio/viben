@@ -1891,3 +1891,307 @@ export const oauthGrantsRelations = relations(oauthGrants, ({ one }) => ({
 export const oauthTokensRelations = relations(oauthTokens, ({ one }) => ({
   user: one(users, { fields: [oauthTokens.userId], references: [users.id] }),
 }));
+
+// ============================================
+// Assistant Tables (from open-agents)
+// ============================================
+
+export const githubInstallations = pgTable(
+  "github_installations",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    installationId: integer("installation_id").notNull(),
+    accountLogin: text("account_login").notNull(),
+    accountType: text("account_type", {
+      enum: ["User", "Organization"],
+    }).notNull(),
+    repositorySelection: text("repository_selection", {
+      enum: ["all", "selected"],
+    }).notNull(),
+    installationUrl: text("installation_url"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("github_installations_user_installation_idx").on(
+      table.userId,
+      table.installationId,
+    ),
+    uniqueIndex("github_installations_user_account_idx").on(
+      table.userId,
+      table.accountLogin,
+    ),
+  ],
+);
+
+export const vercelProjectLinks = pgTable(
+  "vercel_project_links",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    repoOwner: text("repo_owner").notNull(),
+    repoName: text("repo_name").notNull(),
+    projectId: text("project_id").notNull(),
+    projectName: text("project_name").notNull(),
+    teamId: text("team_id"),
+    teamSlug: text("team_slug"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userId, table.repoOwner, table.repoName],
+    }),
+  ],
+);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    status: text("status", {
+      enum: ["running", "completed", "failed", "archived"],
+    })
+      .notNull()
+      .default("running"),
+    repoOwner: text("repo_owner"),
+    repoName: text("repo_name"),
+    branch: text("branch"),
+    cloneUrl: text("clone_url"),
+    vercelProjectId: text("vercel_project_id"),
+    vercelProjectName: text("vercel_project_name"),
+    vercelTeamId: text("vercel_team_id"),
+    vercelTeamSlug: text("vercel_team_slug"),
+    isNewBranch: boolean("is_new_branch").default(false).notNull(),
+    autoCommitPushOverride: boolean("auto_commit_push_override"),
+    autoCreatePrOverride: boolean("auto_create_pr_override"),
+    globalSkillRefs: jsonb("global_skill_refs").notNull().default([]),
+    sandboxState: jsonb("sandbox_state"),
+    lifecycleState: text("lifecycle_state", {
+      enum: [
+        "provisioning",
+        "active",
+        "hibernating",
+        "hibernated",
+        "restoring",
+        "archived",
+        "failed",
+      ],
+    }),
+    lifecycleVersion: integer("lifecycle_version").notNull().default(0),
+    lastActivityAt: timestamp("last_activity_at"),
+    sandboxExpiresAt: timestamp("sandbox_expires_at"),
+    hibernateAfter: timestamp("hibernate_after"),
+    lifecycleRunId: text("lifecycle_run_id"),
+    sandboxProvisioningRunId: text("sandbox_provisioning_run_id"),
+    lifecycleError: text("lifecycle_error"),
+    linesAdded: integer("lines_added").default(0),
+    linesRemoved: integer("lines_removed").default(0),
+    prNumber: integer("pr_number"),
+    prStatus: text("pr_status", {
+      enum: ["open", "merged", "closed"],
+    }),
+    snapshotUrl: text("snapshot_url"),
+    snapshotCreatedAt: timestamp("snapshot_created_at"),
+    snapshotSizeBytes: integer("snapshot_size_bytes"),
+    cachedDiff: jsonb("cached_diff"),
+    cachedDiffUpdatedAt: timestamp("cached_diff_updated_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("sessions_user_id_idx").on(table.userId)],
+);
+
+export const chats = pgTable(
+  "chats",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    modelId: text("model_id").default("anthropic/claude-haiku-4.5"),
+    activeStreamId: text("active_stream_id"),
+    lastAssistantMessageAt: timestamp("last_assistant_message_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("chats_session_id_idx").on(table.sessionId)],
+);
+
+export const shares = pgTable(
+  "shares",
+  {
+    id: text("id").primaryKey(),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("shares_chat_id_idx").on(table.chatId)],
+);
+
+export const chatMessages = pgTable("chat_messages", {
+  id: text("id").primaryKey(),
+  chatId: text("chat_id")
+    .notNull()
+    .references(() => chats.id, { onDelete: "cascade" }),
+  role: text("role", {
+    enum: ["user", "assistant"],
+  }).notNull(),
+  parts: jsonb("parts").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const chatReads = pgTable(
+  "chat_reads",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.chatId] }),
+    index("chat_reads_chat_id_idx").on(table.chatId),
+  ],
+);
+
+export const workflowRuns = pgTable(
+  "workflow_runs",
+  {
+    id: text("id").primaryKey(),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    modelId: text("model_id"),
+    status: text("status", {
+      enum: ["completed", "aborted", "failed"],
+    }).notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    finishedAt: timestamp("finished_at").notNull(),
+    totalDurationMs: integer("total_duration_ms").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("workflow_runs_chat_id_idx").on(table.chatId),
+    index("workflow_runs_session_id_idx").on(table.sessionId),
+    index("workflow_runs_user_id_idx").on(table.userId),
+  ],
+);
+
+export const workflowRunSteps = pgTable(
+  "workflow_run_steps",
+  {
+    id: text("id").primaryKey(),
+    workflowRunId: text("workflow_run_id")
+      .notNull()
+      .references(() => workflowRuns.id, { onDelete: "cascade" }),
+    stepNumber: integer("step_number").notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    finishedAt: timestamp("finished_at").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    finishReason: text("finish_reason"),
+    rawFinishReason: text("raw_finish_reason"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("workflow_run_steps_run_id_idx").on(table.workflowRunId),
+    uniqueIndex("workflow_run_steps_run_step_idx").on(
+      table.workflowRunId,
+      table.stepNumber,
+    ),
+  ],
+);
+
+export const userPreferences = pgTable("user_preferences", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  defaultModelId: text("default_model_id").default(
+    "anthropic/claude-haiku-4.5",
+  ),
+  defaultSubagentModelId: text("default_subagent_model_id"),
+  defaultSandboxType: text("default_sandbox_type", {
+    enum: ["vercel"],
+  }).default("vercel"),
+  defaultDiffMode: text("default_diff_mode", {
+    enum: ["unified", "split"],
+  }).default("unified"),
+  autoCommitPush: boolean("auto_commit_push").notNull().default(false),
+  autoCreatePr: boolean("auto_create_pr").notNull().default(false),
+  alertsEnabled: boolean("alerts_enabled").notNull().default(true),
+  alertSoundEnabled: boolean("alert_sound_enabled").notNull().default(true),
+  publicUsageEnabled: boolean("public_usage_enabled").notNull().default(false),
+  globalSkillRefs: jsonb("global_skill_refs").notNull().default([]),
+  modelVariants: jsonb("model_variants").notNull().default([]),
+  enabledModelIds: jsonb("enabled_model_ids").notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const usageEvents = pgTable("usage_events", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  source: text("source", { enum: ["web"] })
+    .notNull()
+    .default("web"),
+  agentType: text("agent_type", { enum: ["main", "subagent"] })
+    .notNull()
+    .default("main"),
+  provider: text("provider"),
+  modelId: text("model_id"),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  toolCallCount: integer("tool_call_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Type exports for assistant tables
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+export type VercelProjectLink = typeof vercelProjectLinks.$inferSelect;
+export type NewVercelProjectLink = typeof vercelProjectLinks.$inferInsert;
+export type Chat = typeof chats.$inferSelect;
+export type NewChat = typeof chats.$inferInsert;
+export type Share = typeof shares.$inferSelect;
+export type NewShare = typeof shares.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type ChatRead = typeof chatReads.$inferSelect;
+export type NewChatRead = typeof chatReads.$inferInsert;
+export type WorkflowRun = typeof workflowRuns.$inferSelect;
+export type NewWorkflowRun = typeof workflowRuns.$inferInsert;
+export type WorkflowRunStep = typeof workflowRunSteps.$inferSelect;
+export type NewWorkflowRunStep = typeof workflowRunSteps.$inferInsert;
+export type GitHubInstallation = typeof githubInstallations.$inferSelect;
+export type NewGitHubInstallation = typeof githubInstallations.$inferInsert;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type NewUserPreferences = typeof userPreferences.$inferInsert;
+export type UsageEvent = typeof usageEvents.$inferSelect;
+export type NewUsageEvent = typeof usageEvents.$inferInsert;
