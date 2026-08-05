@@ -111,7 +111,8 @@
     "adminAnalytics": "Data",
     "adminSystem": "System",
     "sandbox": "Sandbox",
-    "usage": "Usage"
+    "usage": "Usage",
+    "subscription": "Subscription"
   },
   "adminNav": {
     "dashboard": "Dashboard",
