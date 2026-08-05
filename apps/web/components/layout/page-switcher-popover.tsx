@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Search, ChevronDown, Check, FileText } from "lucide-react"
+import { Search, ChevronsUpDown, Check, FileText } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
@@ -17,13 +17,16 @@ interface PageItem {
 interface PageSwitcherPopoverProps {
   userSlug: string
   currentPageId: string
+  groupHovered?: boolean
 }
 
 export function PageSwitcherPopover({
   userSlug,
   currentPageId,
+  groupHovered = false,
 }: PageSwitcherPopoverProps) {
   const [open, setOpen] = useState(false)
+  const [selfHovered, setSelfHovered] = useState(false)
   const [pages, setPages] = useState<PageItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -84,10 +87,19 @@ export function PageSwitcherPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center justify-center w-6 h-8 rounded-r-lg transition-colors hover:bg-accent hover:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0"
+          className={cn(
+            "inline-flex items-center justify-center w-6 h-8 rounded-r-lg transition-colors",
+            // 仅 sibling hover（鼠标在 page slug 上）→ 淡色
+            groupHovered && !selfHovered && "bg-surface-secondary text-foreground",
+            // 自己 hover → 深色
+            selfHovered && "bg-accent text-accent-foreground",
+            "[&_svg]:pointer-events-none [&_svg]:shrink-0"
+          )}
+          onMouseEnter={() => setSelfHovered(true)}
+          onMouseLeave={() => setSelfHovered(false)}
           aria-label="切换页面"
         >
-          <ChevronDown className="h-4 w-4" />
+          <ChevronsUpDown className="h-3.5 w-3.5" />
         </button>
       </PopoverTrigger>
 

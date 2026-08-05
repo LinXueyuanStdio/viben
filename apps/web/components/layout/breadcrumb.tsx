@@ -130,6 +130,7 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
   const siblings = getSiblingRoutes(parentPath, customSiblings)
   const hasDropdown = siblings.length > 1
   const [open, setOpen] = React.useState(false)
+  const [groupHovered, setGroupHovered] = React.useState(false)
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Hover 触发：立即打开，120ms 延迟关闭（参考桌面版 breadcrumb-dropdown.tsx）
@@ -165,7 +166,8 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
         "h-8 max-w-[220px] gap-1.5 rounded-lg px-2 font-extrabold",
         variant === "read" && "max-w-[170px]",
         isLast && variant === "read" && "max-w-[210px]",
-        pageSwitcher && isLast && "rounded-r-none pr-1.5 max-w-[170px]"
+        pageSwitcher && isLast && "rounded-r-none pr-1.5 max-w-[170px]",
+        pageSwitcher && isLast && groupHovered && "bg-accent text-accent-foreground"
       )}
       asChild={hasDropdown ? false : isLast && !pageSwitcher ? false : true}
     >
@@ -179,14 +181,19 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
     </Button>
   )
 
-  // 页面切换下拉：popover 挂在按钮外部
+  // 页面切换下拉：popover 挂在按钮外部，hover 状态联动
   if (pageSwitcher && isLast) {
     return (
-      <span className="inline-flex items-center">
+      <span
+        className="inline-flex items-center"
+        onMouseEnter={() => setGroupHovered(true)}
+        onMouseLeave={() => setGroupHovered(false)}
+      >
         {segment}
         <PageSwitcherPopover
           userSlug={pageSwitcher.userSlug}
           currentPageId={pageSwitcher.currentPageId}
+          groupHovered={groupHovered}
         />
       </span>
     )
