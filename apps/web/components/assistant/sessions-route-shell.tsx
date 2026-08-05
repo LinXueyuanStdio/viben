@@ -3,7 +3,6 @@
 import { useParams, useRouter } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import {
-  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -13,12 +12,7 @@ import {
 } from "react";
 import { InboxSidebar } from "@/components/assistant/inbox-sidebar";
 import { NewSessionDialog } from "@/components/assistant/new-session-dialog";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { useBackgroundChatNotifications } from "@/hooks/assistant/use-background-chat-notifications";
 import { useSessions, type SessionWithUnread } from "@/hooks/assistant/use-sessions";
 import { useUserPreferences } from "@/hooks/assistant/use-user-preferences";
@@ -35,18 +29,6 @@ type SessionsRouteShellProps = {
   };
   lastRepo: { owner: string; repo: string } | null;
 };
-
-const RouteContentShell = memo(function RouteContentShell({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return (
-    <SidebarInset className="flex min-w-0 flex-1 flex-col overflow-hidden">
-      {children}
-    </SidebarInset>
-  );
-});
 
 export function SessionsRouteShell({
   children,
@@ -81,10 +63,10 @@ export function SessionsRouteShell({
 
   const getSessionHref = useCallback((targetSession: SessionWithUnread) => {
     if (targetSession.latestChatId) {
-      return `/sessions/${targetSession.id}/chats/${targetSession.latestChatId}`;
+      return `/assistant/${targetSession.id}/${targetSession.latestChatId}`;
     }
 
-    return `/sessions/${targetSession.id}`;
+    return `/assistant/${targetSession.id}`;
   }, []);
 
   const { preferences } = useUserPreferences();
@@ -160,7 +142,7 @@ export function SessionsRouteShell({
       if (targetSessionId === routeSessionId) {
         setOptimisticActiveSessionId(null);
         startNavigationTransition(() => {
-          router.push("/sessions", { scroll: false });
+          router.push("/assistant", { scroll: false });
         });
       }
     },
@@ -190,7 +172,7 @@ export function SessionsRouteShell({
           autoCommitPush: preferences?.autoCommitPush ?? false,
           autoCreatePr: preferences?.autoCreatePr ?? false,
         });
-        router.push(`/sessions/${created.id}/chats/${chat.id}`, {
+        router.push(`/assistant/${created.id}/${chat.id}`, {
           scroll: false,
         });
       } catch (error) {
@@ -213,7 +195,7 @@ export function SessionsRouteShell({
           autoCommitPush: preferences?.autoCommitPush ?? false,
           autoCreatePr: preferences?.autoCreatePr ?? false,
         });
-        router.push(`/sessions/${created.id}/chats/${chat.id}`, {
+        router.push(`/assistant/${created.id}/${chat.id}`, {
           scroll: false,
         });
       } catch (error) {
@@ -250,34 +232,34 @@ export function SessionsRouteShell({
   return (
     <SessionsShellProvider value={shellContextValue}>
       <SidebarProvider
-        className="h-dvh overflow-hidden"
+        className="h-full overflow-hidden"
         style={
           {
-            "--sidebar-width": "20rem",
+            "--sidebar-width": "18rem",
           } as CSSProperties
         }
       >
-        <Sidebar collapsible="offcanvas" className="border-r border-border">
-          <SidebarContent className="bg-muted/20">
-            <InboxSidebar
-              sessions={sessions}
-              archivedCount={archivedCount}
-              sessionsLoading={sessionsLoading}
-              activeSessionId={activeSessionId}
-              pendingSessionId={pendingSessionId}
-              onSessionClick={handleSessionClick}
-              onSessionPrefetch={handleSessionPrefetch}
-              onRenameSession={handleRenameSession}
-              onArchiveSession={handleArchiveSession}
-              onUnarchiveSession={handleUnarchiveSession}
-              onOpenNewSession={openNewSessionDialog}
-              onCreateSessionForRepo={handleCreateSessionForRepo}
-              onCreateSessionFromBranch={handleCreateSessionFromBranch}
-              initialUser={currentUser}
-            />
-          </SidebarContent>
-        </Sidebar>
-        <RouteContentShell>{children}</RouteContentShell>
+        <aside className="w-[var(--sidebar-width)] shrink-0 border-r border-border overflow-y-auto bg-muted/20">
+          <InboxSidebar
+            sessions={sessions}
+            archivedCount={archivedCount}
+            sessionsLoading={sessionsLoading}
+            activeSessionId={activeSessionId}
+            pendingSessionId={pendingSessionId}
+            onSessionClick={handleSessionClick}
+            onSessionPrefetch={handleSessionPrefetch}
+            onRenameSession={handleRenameSession}
+            onArchiveSession={handleArchiveSession}
+            onUnarchiveSession={handleUnarchiveSession}
+            onOpenNewSession={openNewSessionDialog}
+            onCreateSessionForRepo={handleCreateSessionForRepo}
+            onCreateSessionFromBranch={handleCreateSessionFromBranch}
+            initialUser={currentUser}
+          />
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {children}
+        </div>
       </SidebarProvider>
 
       <NewSessionDialog

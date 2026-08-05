@@ -43,6 +43,7 @@ function Body({
   children,
   desktopSidebarVisible,
   isRead,
+  isFullWidth,
   isMobile,
   session,
   adminStats,
@@ -53,6 +54,7 @@ function Body({
   children: React.ReactNode
   desktopSidebarVisible: boolean
   isRead: boolean
+  isFullWidth: boolean
   isMobile: boolean
   session: Session | null
   adminStats?: { pendingPackagesCount: number }
@@ -87,13 +89,13 @@ function Body({
           "transition-[margin] duration-[220ms] ease-out",
           desktopSidebarVisible && "ml-[var(--sidebar-w)]",
           isRead && !isMobile && drawerOpen && "mr-[var(--drawer-w,420px)]",
-          isRead ? "overflow-hidden" : "overflow-y-auto"
+          isFullWidth ? "overflow-hidden" : "overflow-y-auto"
         )}
       >
         <div
           className={cn(
-            isRead
-              ? "p-0 max-w-none"
+            isFullWidth
+              ? "p-0 max-w-none h-full"
               : "w-[min(1280px,100%)] mx-auto px-4 py-4"
           )}
         >
@@ -118,6 +120,8 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname()
   const { isPage: isRead } = isPublishedPageRoute(pathname)
+  const isAssistant = pathname.startsWith("/assistant")
+  const isFullWidth = isRead || isAssistant
 
   // ---- isMobile ----
   const [isMobile, setIsMobile] = React.useState(() => {
@@ -190,6 +194,7 @@ export function AppShell({
             sidebarCollapsed={sidebarCollapsed}
             desktopSidebarVisible={desktopSidebarVisible}
             isRead={isRead}
+            isFullWidth={isFullWidth}
             isMobile={isMobile}
             session={session}
             adminStats={adminStats}

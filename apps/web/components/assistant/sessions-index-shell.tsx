@@ -10,38 +10,30 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useSessionsShell } from "./sessions-shell-context";
 
 export function SessionsIndexShell() {
   const { openNewSessionDialog } = useSessionsShell();
 
   return (
-    <>
-      <header className="border-b border-border px-3 py-2 lg:px-4 lg:py-3">
-        <div className="flex min-h-8 items-center gap-2">
-          <SidebarTrigger className="shrink-0" />
-        </div>
-      </header>
-      <div className="flex flex-1 flex-col items-center justify-center">
+    <div className="flex flex-1 flex-col items-center justify-center p-4">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <MessageSquare />
             </EmptyMedia>
-            <EmptyTitle>Select a Session</EmptyTitle>
+            <EmptyTitle>选择会话</EmptyTitle>
             <EmptyDescription>
-              Choose a session from the sidebar to continue, or start a new one.
+              从左侧选择一个会话继续，或者创建一个新的。
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button onClick={openNewSessionDialog}>
               <Plus className="h-4 w-4" />
-              New Session
+              新建会话
             </Button>
           </EmptyContent>
         </Empty>
       </div>
-    </>
   );
 }
