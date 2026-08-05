@@ -92,6 +92,28 @@ export const apiKeys = pgTable(
   ]
 );
 
+export const teamMembers = pgTable(
+  'team_members',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: text('role', {
+      enum: ['owner', 'member'],
+    }).default('member').notNull(),
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('team_members_team_user_idx').on(table.teamId, table.userId),
+    index('team_members_team_id_idx').on(table.teamId),
+    index('team_members_user_id_idx').on(table.userId),
+  ]
+);
+
 export const oauthConnections = pgTable(
   'oauth_connections',
   {
@@ -601,6 +623,17 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   user: one(users, {
     fields: [apiKeys.userId],
+    references: [users.id],
+  }),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(users, {
+    fields: [teamMembers.teamId],
+    references: [users.id],
+  }),
+  user: one(users, {
+    fields: [teamMembers.userId],
     references: [users.id],
   }),
 }));
