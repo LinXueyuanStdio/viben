@@ -5,7 +5,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { cn } from "@/lib/utils/index"
 import { cva, type VariantProps } from "class-variance-authority"
 
-const { useRef, useState, useEffect, useLayoutEffect, useImperativeHandle } = React
+const { useRef, useState, useLayoutEffect, useImperativeHandle, useCallback } = React
 
 // ===== VibenTabsList =====
 
@@ -31,53 +31,61 @@ const VibenTabsList = React.forwardRef<
 >(({ className, variant, children, ...props }, ref) => {
   const innerRef = useRef<HTMLDivElement>(null);
   const prevStyleRef = useRef<{ left: number; width: number } | null>(null);
+  const rafRef = useRef<number>(0);
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
   const [mounted, setMounted] = useState(false);
 
   useImperativeHandle(ref, () => innerRef.current as HTMLDivElement);
 
-  // 使用 useEffect（异步）避免与 ResizeObserver 回调中的 setState 冲突导致死循环
-  useEffect(() => {
+  const measure = useCallback(() => {
+    const listEl = innerRef.current;
+    if (!listEl) return;
+    const active = listEl.querySelector<HTMLElement>('[data-state="active"]');
+    if (!active) return;
+    const EXTRA = 8; // gap-2=8px 时相邻下划线首尾相连
+    const left = active.offsetLeft - EXTRA / 2;
+    const width = active.offsetWidth + EXTRA;
+
+    const prev = prevStyleRef.current;
+    if (prev && prev.left === left && prev.width === width) return;
+    prevStyleRef.current = { left, width };
+
+    setIndicatorStyle({ left, width });
+    setMounted((m) => m || true);
+  }, []);
+
+  // useLayoutEffect：在浏览器绘制前同步测量，避免 indicator 从 (0,0) 跳到正确位置的闪烁
+  useLayoutEffect(() => {
     if (variant !== "underline" || !innerRef.current) return;
 
     const listEl = innerRef.current;
-
-    const measure = () => {
-      const active = listEl.querySelector<HTMLElement>('[data-state="active"]');
-      if (!active) return;
-      const EXTRA = 8; // gap-2=8px 时相邻下划线首尾相连
-      const left = active.offsetLeft - EXTRA / 2;
-      const width = active.offsetWidth + EXTRA;
-
-      // 值没变就不更新 state，防止死循环
-      const prev = prevStyleRef.current;
-      if (prev && prev.left === left && prev.width === width) return;
-      prevStyleRef.current = { left, width };
-
-      setIndicatorStyle({ left, width });
-      setMounted((m) => m || true);
-    };
-
     measure();
 
-    const resizeObserver = new ResizeObserver(measure);
+    // ResizeObserver：debounce 到下一帧，避免连续 resize 事件触发多次强制重排
+    const resizeObserver = new ResizeObserver(() => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        measure();
+      });
+    });
     resizeObserver.observe(listEl);
 
-    const mutationObserver = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type === "attributes" && m.attributeName === "data-state") {
-          measure();
-          return;
-        }
-      }
-    });
-    mutationObserver.observe(listEl, { attributes: true, subtree: true, attributeFilter: ["data-state"] });
+    // MutationObserver：仅观察 triggers 自身的 data-state 变化（不用 subtree:true 扫描整棵子树）
+    const triggers = listEl.querySelectorAll<HTMLElement>('[data-state]');
+    const mutationObserver = new MutationObserver(() => measure());
+    const observerConfig: MutationObserverInit = { attributes: true, attributeFilter: ["data-state"] };
+    triggers.forEach((t) => mutationObserver.observe(t, observerConfig));
 
     return () => {
       resizeObserver.disconnect();
       mutationObserver.disconnect();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
     };
-  }, [variant]);
+  }, [variant, measure]);
 
   return (
     <TabsPrimitive.List
