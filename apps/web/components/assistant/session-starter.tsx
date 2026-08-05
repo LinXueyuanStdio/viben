@@ -41,7 +41,7 @@ interface SessionStarterProps {
     vercelProject?: VercelProjectSelection | null;
   }) => void;
   isLoading?: boolean;
-  lastRepo: { owner: string; repo: string } | null;
+  lastRepo?: { owner: string; repo: string } | null;
 }
 
 export function SessionStarter({

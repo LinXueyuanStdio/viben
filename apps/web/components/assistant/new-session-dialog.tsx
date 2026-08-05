@@ -28,7 +28,7 @@ type CreateSessionInput = {
 interface NewSessionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lastRepo: { owner: string; repo: string } | null;
+  lastRepo?: { owner: string; repo: string } | null;
   createSession: (input: CreateSessionInput) => Promise<{
     session: { id: string };
     chat: { id: string };

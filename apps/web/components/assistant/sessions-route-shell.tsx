@@ -27,7 +27,7 @@ type SessionsRouteShellProps = {
     sessions: SessionWithUnread[];
     archivedCount: number;
   };
-  lastRepo: { owner: string; repo: string } | null;
+  lastRepo?: { owner: string; repo: string } | null;
 };
 
 export function SessionsRouteShell({
