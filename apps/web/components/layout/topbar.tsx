@@ -2,10 +2,8 @@
 
 import * as React from "react"
 import { useTranslation } from "react-i18next"
-import { useQuery } from "@tanstack/react-query"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { FileText, Columns2, PanelRight, PanelRightClose, Settings, PanelLeftOpen, PanelLeftClose } from "lucide-react"
-import { toast } from "sonner"
 import { cn } from "@/lib/utils/index"
 import { trackAnalytics } from "@/lib/analytics/track"
 import { trackEngagement } from "@/lib/analytics/behavior"
@@ -16,7 +14,8 @@ import { useDrawer } from "./drawer-context"
 import { useAppShell } from "./app-shell"
 import { useTopbarSlots } from "./topbar-slots"
 import { BreadcrumbNav } from "./breadcrumb"
-import { GlobalSearch } from "./global-search"
+import { HomeTabBar } from "./home-tab-bar"
+import { SearchTrigger } from "./search-trigger"
 import { NotificationPopover } from "./notification-popover"
 import { MomentPopover } from "./moment-popover"
 import { HistoryPopover } from "./history-popover"
@@ -95,24 +94,14 @@ export function Topbar({
     }
   }, [router, pathname, urlPageId])
 
-  // 搜索数据：useQuery 前端缓存 + 首次聚焦时按需加载
-  const { data: searchData, refetch: loadSearchData } = useQuery({
-    queryKey: ["search-bar-data", !!session],
-    queryFn: async () => {
-      const [hot, recent] = await Promise.all([
-        fetch("/api/search/hot?limit=8").then(r => r.ok ? r.json() : []).catch(() => []),
-        session
-          ? fetch("/api/search/recent?limit=5").then(r => r.ok ? r.json() : []).catch(() => [])
-          : Promise.resolve([]),
-      ])
-      return { hot: hot as Array<{ query: string; count: number }>, recent: recent as string[] }
-    },
-    enabled: false, // 首次聚焦时才触发请求
-    staleTime: 5 * 60 * 1000, // 5 分钟内复用缓存
-    gcTime: 10 * 60 * 1000, // 10 分钟垃圾回收
-  })
-  const lazyHotSearches = searchData?.hot ?? []
-  const lazyRecentSearches = searchData?.recent ?? []
+  // 判断是否为首页导航页面（需要显示 HomeTabBar）
+  const isDashboardNav = React.useMemo(() => {
+    if (pathname === "/") return true
+    if (pathname.startsWith("/moment")) return true
+    if (pathname.startsWith("/leaderboard")) return true
+    if (pathname.startsWith("/category")) return true
+    return false
+  }, [pathname])
 
   // 同步 user_slug 到行为追踪
   React.useEffect(() => {
@@ -216,7 +205,11 @@ export function Topbar({
           className={
             isRead
               ? "absolute left-1/2 -translate-x-1/2 inset-y-0 z-2 pointer-events-none w-max grid place-items-center"
-              : cn("flex items-center justify-center min-w-0", isMobile ? "flex-1" : "")
+              : cn(
+                  "flex items-center justify-center min-w-0",
+                  isMobile && isDashboardNav ? "flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden" : "",
+                  isMobile && !isDashboardNav ? "flex-1" : ""
+                )
           }
         >
           {isRead ? (
@@ -247,13 +240,9 @@ export function Topbar({
                 )}
               </div>
             )
-          ) : (
-            <GlobalSearch
-              recentSearches={lazyRecentSearches}
-              hotSearches={lazyHotSearches}
-              onFocus={loadSearchData}
-            />
-          )}
+          ) : isDashboardNav ? (
+            <HomeTabBar iconOnly={isMobile} />
+          ) : null}
         </div>
 
         {/* ===== Right ===== */}
@@ -271,8 +260,9 @@ export function Topbar({
                   {drawerOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
                 </button>
               ) : (
-                // 桌面端阅读模式 — 创建/动态/通知/历史/头像 + 展开侧栏
+                // 桌面端阅读模式 — 搜索/创建/动态/通知/历史/头像 + 展开侧栏
                 <>
+                  <SearchTrigger />
                   {session ? (
                     <>
                       <CreateDropdown />
@@ -295,8 +285,9 @@ export function Topbar({
               )
             )
           ) : isMobile ? (
-            // 移动端非阅读模式 — 仅显示用户菜单（整合了创建/通知/动态/历史）
+            // 移动端非阅读模式 — 搜索 + 用户菜单（整合了创建/通知/动态/历史）
             <>
+              <SearchTrigger />
               {session ? (
                 <UserMenu session={session} isMobile isRead={isRead} />
               ) : (
@@ -304,8 +295,9 @@ export function Topbar({
               )}
             </>
           ) : (
-            // 桌面端非阅读模式 — 保持不变
+            // 桌面端非阅读模式 — 搜索/创建/通知/动态/历史/头像
             <>
+              <SearchTrigger />
               {session ? (
                 <>
                   <CreateDropdown />

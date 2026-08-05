@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { VibenTabs, VibenTabsList, VibenTabsTrigger } from '@/components/ui/viben-tabs';
+import { cn } from '@/lib/utils/index';
 import { Home, MessageSquare, TrendingUp, Grid3X3, ShoppingBag, ExternalLink } from 'lucide-react';
 
 const HOME_TABS = [
@@ -21,7 +22,13 @@ function resolveActiveTab(pathname: string): string {
   return 'home';
 }
 
-export function HomeTabBar() {
+interface HomeTabBarProps {
+  /** 移动端是否仅显示图标（隐藏文字标签） */
+  iconOnly?: boolean
+  className?: string
+}
+
+export function HomeTabBar({ iconOnly = false, className }: HomeTabBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = resolveActiveTab(pathname);
@@ -37,16 +44,16 @@ export function HomeTabBar() {
   };
 
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange}>
-      <TabsList>
+    <VibenTabs value={activeTab} onValueChange={handleTabChange} className={cn("h-full", className)}>
+      <VibenTabsList variant="underline" className="h-full gap-1">
         {HOME_TABS.map((tab) => (
-          <TabsTrigger key={tab.key} value={tab.key}>
-            <tab.icon className="mr-1.5 h-4 w-4" />
-            {tab.label}
-            {'external' in tab && tab.external && <ExternalLink className="ml-1 h-3 w-3 opacity-50" />}
-          </TabsTrigger>
+          <VibenTabsTrigger key={tab.key} value={tab.key} variant="underline">
+            <tab.icon className="h-4 w-4" />
+            {!iconOnly && <span className="ml-1.5">{tab.label}</span>}
+            {'external' in tab && tab.external && !iconOnly && <ExternalLink className="ml-1 h-3 w-3 opacity-50" />}
+          </VibenTabsTrigger>
         ))}
-      </TabsList>
-    </Tabs>
+      </VibenTabsList>
+    </VibenTabs>
   );
 }
