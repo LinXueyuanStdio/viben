@@ -2,8 +2,16 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Viben Web API",
-    "description": "面向 C 端创作者的 Viben 平台公开 API",
-    "version": "1.0.0"
+    "description": "面向 C 端创作者的 Viben 平台公开 API。支持页面发布、合集管理、社区互动、订阅通知等功能。",
+    "version": "0.1.0",
+    "contact": {
+      "name": "LinXueyuanStdio",
+      "url": "https://github.com/LinXueyuanStdio"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
   },
   "servers": [
     { "url": "https://viben-web.vercel.app", "description": "生产环境" },
@@ -15,6 +23,7 @@
   "outputFile": "openapi.json",
   "docsUrl": "/docs/api/v1",
   "ui": "scalar",
+  "excludeSchemas": ["Admin*"],
   "ignoreRoutes": [
     "/mcp/**",
     "/skill/**",
