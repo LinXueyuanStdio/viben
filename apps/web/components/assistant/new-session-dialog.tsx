@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SandboxType } from "@/components/assistant/sandbox-selector-compact";
 import { SessionStarter } from "@/components/assistant/session-starter";
 import type { VercelProjectSelection } from "@/lib/vercel/types";
@@ -41,6 +42,7 @@ export function NewSessionDialog({
   lastRepo,
   createSession,
 }: NewSessionDialogProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
 
@@ -49,7 +51,7 @@ export function NewSessionDialog({
     try {
       const { session: createdSession, chat } = await createSession(input);
       onOpenChange(false);
-      router.push(`/sessions/${createdSession.id}/chats/${chat.id}`);
+      router.push(`/assistant/${createdSession.id}/${chat.id}`);
     } catch (error) {
       console.error("Failed to create session:", error);
     } finally {
@@ -59,11 +61,11 @@ export function NewSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-none gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:hidden">
+      <DialogContent className="max-w-xl gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:hidden">
         <DialogHeader className="sr-only">
-          <DialogTitle>New Session</DialogTitle>
+          <DialogTitle>{t("assistant.newSession")}</DialogTitle>
           <DialogDescription>
-            Choose a repository or start an empty session.
+            {t("assistant.newSessionDescription")}
           </DialogDescription>
         </DialogHeader>
         <div className="min-w-0 rounded-2xl sm:rounded-[28px] border border-border/60 bg-card shadow-[0_10px_30px_rgba(0,0,0,0.08)]">

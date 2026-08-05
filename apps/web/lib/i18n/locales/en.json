@@ -2093,6 +2093,10 @@
     "thisWeek": "This Week",
     "fromLastWeek": "{{change}}% from last week"
   },
+  "assistant": {
+    "newSession": "New Session",
+    "newSessionDescription": "Choose a repository or start an empty session."
+  },
   "homepage": {
     "nav": {
       "mcpMarket": "MCP Market",

@@ -2117,6 +2117,10 @@
     "thisWeek": "本周",
     "fromLastWeek": "较上周 {{change}}%"
   },
+  "assistant": {
+    "newSession": "新建会话",
+    "newSessionDescription": "选择一个仓库或创建空白会话。"
+  },
   "homepage": {
     "nav": {
       "mcpMarket": "MCP 市场",

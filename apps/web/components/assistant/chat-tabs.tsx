@@ -98,7 +98,7 @@ export function ChatTabs({ activeChatId }: ChatTabsProps) {
         return;
       }
 
-      const href = `/sessions/${sessionId}/chats/${chatId}`;
+      const href = `/assistant/${sessionId}/${chatId}`;
       if (prefetchedChatHrefsRef.current.has(href)) {
         return;
       }
