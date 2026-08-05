@@ -114,6 +114,32 @@ export const teamMembers = pgTable(
   ]
 );
 
+export const projects = pgTable(
+  'projects',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    projectSlug: text('project_slug').notNull(),
+    description: text('description'),
+    defaultPageId: text('default_page_id'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex('projects_team_slug_idx').on(table.teamId, table.projectSlug),
+    index('projects_team_id_idx').on(table.teamId),
+  ]
+);
+
 export const oauthConnections = pgTable(
   'oauth_connections',
   {
@@ -638,6 +664,18 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
   }),
 }));
 
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  team: one(users, {
+    fields: [projects.teamId],
+    references: [users.id],
+  }),
+  creator: one(users, {
+    fields: [projects.createdBy],
+    references: [users.id],
+  }),
+  pages: many(projectPages),
+}));
+
 export const oauthConnectionsRelations = relations(oauthConnections, ({ one }) => ({
   user: one(users, {
     fields: [oauthConnections.userId],
@@ -805,6 +843,42 @@ export const publishedPages = pgTable(
 export const publishedPagesRelations = relations(publishedPages, ({ one }) => ({
   user: one(users, {
     fields: [publishedPages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const projectPages = pgTable(
+  'project_pages',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    pageId: text('page_id')
+      .notNull()
+      .references(() => publishedPages.id),
+    addedBy: text('added_by')
+      .notNull()
+      .references(() => users.id),
+    addedAt: timestamp('added_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('project_pages_unique_idx').on(table.projectId, table.pageId),
+    index('project_pages_project_id_idx').on(table.projectId),
+  ]
+);
+
+export const projectPagesRelations = relations(projectPages, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectPages.projectId],
+    references: [projects.id],
+  }),
+  page: one(publishedPages, {
+    fields: [projectPages.pageId],
+    references: [publishedPages.id],
+  }),
+  addedByUser: one(users, {
+    fields: [projectPages.addedBy],
     references: [users.id],
   }),
 }));
