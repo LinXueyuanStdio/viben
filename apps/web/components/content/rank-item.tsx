@@ -79,7 +79,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
       </div>
 
       {/* Body */}
-      <div className="grid gap-[7px]">
+      <div className="grid content-start gap-[7px]">
         <div className="flex items-center gap-[7px]">
           <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
         </div>
