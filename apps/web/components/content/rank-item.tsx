@@ -78,14 +78,15 @@ export function RankItem({ data, href, className }: RankItemProps) {
         <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/10" className="rounded-[9px] w-full" />
       </div>
 
-      {/* Body — 标题/描述/作者顶部对齐，统计行底部对齐 */}
+      {/* Body — 标题/描述顶部，作者+统计贴底 */}
       <div className="flex flex-col gap-[7px]">
         <div className="flex items-center gap-[7px]">
           <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
         </div>
         <p className="text-[13px] text-muted-foreground truncate hidden sm:block">{description}</p>
-        <MetaRow author={author} />
-        <div className="flex items-center gap-2 mt-auto">
+        <div className="mt-auto grid gap-0.5">
+          <MetaRow author={author} />
+          <div className="flex items-center gap-2">
           <Stat icon={Eye} value={stats.views} format />
           <Stat icon={ThumbsUp} value={stats.likes} format />
           <Stat icon={MessageCircle} value={stats.comments} format className="hidden sm:inline-flex" />
@@ -109,6 +110,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{delta}</span>
             )}
           </span>
+          </div>
         </div>
       </div>
     </Link>
