@@ -22,7 +22,7 @@ import { useAppShell } from "./app-shell"
  * - 显示 Search 图标 + "/" 键盘提示
  * - 点击或按 "/" 打开搜索弹窗
  */
-export function SearchTrigger() {
+export const SearchTrigger = React.memo(function SearchTrigger() {
   const { t } = useTranslation()
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
@@ -198,4 +198,4 @@ export function SearchTrigger() {
       </Dialog>
     </>
   )
-}
+});

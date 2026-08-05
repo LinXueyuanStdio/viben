@@ -28,7 +28,7 @@ interface HomeTabBarProps {
   className?: string
 }
 
-export function HomeTabBar({ iconOnly = false, className }: HomeTabBarProps) {
+export const HomeTabBar = React.memo(function HomeTabBar({ iconOnly = false, className }: HomeTabBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = resolveActiveTab(pathname);
@@ -56,4 +56,4 @@ export function HomeTabBar({ iconOnly = false, className }: HomeTabBarProps) {
       </VibenTabsList>
     </VibenTabs>
   );
-}
+});
