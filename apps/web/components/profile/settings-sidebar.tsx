@@ -3,13 +3,16 @@
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { UserRound, Shield, Key } from 'lucide-react'
+import { UserRound, Shield, Key, Sparkles, BarChart3, Box } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/settings', match: (p: string) => p === '/settings' || p === '/settings/profile', label: 'profile.settings.nav.profile', icon: UserRound },
   { href: '/settings/account', match: (p: string) => p.startsWith('/settings/account'), label: 'profile.settings.nav.account', icon: Shield },
   { href: '/settings/api_keys', match: (p: string) => p.startsWith('/settings/api_keys'), label: 'profile.settings.nav.apiKeys', icon: Key },
+  { href: '/settings/assistant', match: (p: string) => p.startsWith('/settings/assistant'), label: 'nav.assistant', icon: Sparkles },
+  { href: '/settings/sandbox', match: (p: string) => p.startsWith('/settings/sandbox'), label: 'nav.sandbox', icon: Box },
+  { href: '/settings/usage', match: (p: string) => p.startsWith('/settings/usage'), label: 'nav.usage', icon: BarChart3 },
 ]
 
 export function SettingsSidebar() {
