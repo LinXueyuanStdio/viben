@@ -206,7 +206,7 @@ export function Topbar({
             isRead
               ? "absolute left-1/2 -translate-x-1/2 inset-y-0 z-2 pointer-events-none w-max grid place-items-center"
               : cn(
-                  "flex items-center justify-center min-w-0",
+                  "flex items-center justify-center min-w-0 self-stretch",
                   isMobile && isDashboardNav ? "flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden" : "",
                   isMobile && !isDashboardNav ? "flex-1" : ""
                 )

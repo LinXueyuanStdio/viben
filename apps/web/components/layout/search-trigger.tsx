@@ -8,7 +8,9 @@ import { Search, X, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import {
   Dialog,
-  DialogContent,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -96,94 +98,103 @@ export function SearchTrigger() {
         <Search className="size-[18px]" />
       </button>
 
-      {/* 搜索弹窗 */}
+      {/* 搜索弹窗 — 自定义 overlay 无模糊，更大尺寸 */}
       <Dialog open={open} onOpenChange={handleOpen}>
-        <DialogContent className="sm:max-w-[480px] p-0 gap-0 top-[15%]">
-          <DialogTitle className="sr-only">{t("community.searchPlaceholder")}</DialogTitle>
-          <div className="flex flex-col">
-            {/* 搜索输入框 — pr-12 为 DialogContent 默认关闭按钮留空间 */}
-            <div className="flex items-center gap-2 h-12 pl-4 pr-12 border-b border-border">
-              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t("community.searchPlaceholder")}
-                className="flex-1 min-w-0 border-0 outline-none bg-transparent text-foreground text-[15px] placeholder:text-muted-foreground"
-              />
-              {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  className="text-muted-foreground hover:text-foreground shrink-0"
-                  aria-label={t("community.clearSearch")}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-              {/* "/" 键盘提示 */}
-              <kbd className="hidden sm:inline-flex items-center justify-center h-5 min-w-[20px] rounded border border-border bg-surface-secondary px-1 text-[10px] font-medium text-muted-foreground">
-                /
-              </kbd>
-            </div>
+        <DialogPortal>
+          {/* 自定义 overlay：背景暗化但不模糊 */}
+          <DialogOverlay className="bg-background/80" />
+          <div className="fixed left-[50%] top-[15%] z-50 w-full max-w-[560px] translate-x-[-50%] border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg">
+            <DialogTitle className="sr-only">{t("community.searchPlaceholder")}</DialogTitle>
+            <div className="flex flex-col">
+              {/* 搜索输入框 */}
+              <div className="flex items-center gap-2 h-12 pl-4 pr-12 border-b border-border">
+                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t("community.searchPlaceholder")}
+                  className="flex-1 min-w-0 border-0 outline-none bg-transparent text-foreground text-[15px] placeholder:text-muted-foreground"
+                />
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    aria-label={t("community.clearSearch")}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                {/* "/" 键盘提示 */}
+                <kbd className="hidden sm:inline-flex items-center justify-center h-5 min-w-[20px] rounded border border-border bg-surface-secondary px-1 text-[10px] font-medium text-muted-foreground">
+                  /
+                </kbd>
+              </div>
 
-            {/* 搜索建议 */}
-            <div className="p-3">
-              {/* 最近搜索 */}
-              {recentSearches.length > 0 && (
-                <div className="grid gap-2 mb-3">
-                  <span className="text-xs font-black text-muted-foreground">{t("community.recentSearches")}</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recentSearches.map((item) => (
-                      <span
-                        key={item}
-                        onClick={() => handleSearch(item)}
-                        className="inline-flex items-center min-h-[28px] rounded-full bg-surface-secondary px-2.5 text-xs font-extrabold cursor-pointer hover:bg-surface"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 热门搜索 */}
-              {hotSearches.length > 0 && (
-                <div className="grid gap-1">
-                  <span className="text-xs font-black text-muted-foreground">{t("community.hotSearches")}</span>
-                  <ScrollArea className="max-h-[240px]">
-                    <div className="grid gap-0.5">
-                      {hotSearches.map((item, idx) => (
-                        <button
-                          key={item.query}
-                          onClick={() => handleSearch(item.query)}
-                          className="grid grid-cols-[22px_1fr_auto] items-center gap-2 min-h-[34px] rounded-lg px-2 text-left text-[13px] font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+              {/* 搜索建议 */}
+              <div className="p-4">
+                {/* 最近搜索 */}
+                {recentSearches.length > 0 && (
+                  <div className="grid gap-2 mb-4">
+                    <span className="text-xs font-black text-muted-foreground">{t("community.recentSearches")}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recentSearches.map((item) => (
+                        <span
+                          key={item}
+                          onClick={() => handleSearch(item)}
+                          className="inline-flex items-center min-h-[28px] rounded-full bg-surface-secondary px-2.5 text-xs font-extrabold cursor-pointer hover:bg-surface"
                         >
-                          <span className={cn("text-center", idx < 3 && "text-primary")}>
-                            {idx + 1}
-                          </span>
-                          <span className="truncate">{item.query}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {item.count.toLocaleString()} {t("community.searchCount")}
-                            {idx === 0 && <TrendingUp className="inline h-3 w-3 ml-1 text-primary" />}
-                          </span>
-                        </button>
+                          {item}
+                        </span>
                       ))}
                     </div>
-                  </ScrollArea>
-                </div>
-              )}
+                  </div>
+                )}
 
-              {/* 无数据 */}
-              {recentSearches.length === 0 && hotSearches.length === 0 && (
-                <div className="flex items-center justify-center min-h-[60px] text-sm font-extrabold text-muted-foreground">
-                  {t("community.noSearchSuggestions")}
-                </div>
-              )}
+                {/* 热门搜索 */}
+                {hotSearches.length > 0 && (
+                  <div className="grid gap-1">
+                    <span className="text-xs font-black text-muted-foreground">{t("community.hotSearches")}</span>
+                    <ScrollArea className="max-h-[280px]">
+                      <div className="grid gap-0.5">
+                        {hotSearches.map((item, idx) => (
+                          <button
+                            key={item.query}
+                            onClick={() => handleSearch(item.query)}
+                            className="grid grid-cols-[22px_1fr_auto] items-center gap-2 min-h-[36px] rounded-lg px-2 text-left text-[13px] font-extrabold text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
+                          >
+                            <span className={cn("text-center", idx < 3 && "text-primary")}>
+                              {idx + 1}
+                            </span>
+                            <span className="truncate">{item.query}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {item.count.toLocaleString()} {t("community.searchCount")}
+                              {idx === 0 && <TrendingUp className="inline h-3 w-3 ml-1 text-primary" />}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {/* 无数据 */}
+                {recentSearches.length === 0 && hotSearches.length === 0 && (
+                  <div className="flex items-center justify-center min-h-[60px] text-sm font-extrabold text-muted-foreground">
+                    {t("community.noSearchSuggestions")}
+                  </div>
+                )}
+              </div>
             </div>
+            {/* 关闭按钮 */}
+            <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
           </div>
-        </DialogContent>
+        </DialogPortal>
       </Dialog>
     </>
   )
