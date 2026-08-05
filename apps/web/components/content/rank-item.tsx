@@ -47,14 +47,14 @@ export function RankItem({ data, href, className }: RankItemProps) {
       href={href}
       className={cn(
         "grid gap-2.5 rounded-[12px] p-[9px]",
-        // 响应式封面宽度：移动端 100px，平板 130px，桌面 180px
-        "grid-cols-[46px_100px_minmax(0,1fr)] sm:grid-cols-[46px_130px_minmax(0,1fr)] lg:grid-cols-[46px_180px_minmax(0,1fr)]",
+        // 桌面端三列（序号 / 封面 / 内容），移动端两列（封面+序号 / 内容）
+        "grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[46px_180px_minmax(0,1fr)]",
         "hover:bg-accent/50 transition-colors duration-150",
         className
       )}
     >
-      {/* Rank — SVG 艺术字 + 排名变化 */}
-      <div className="flex flex-col items-center justify-center gap-0.5">
+      {/* 桌面端：独立序号列 */}
+      <div className="hidden lg:flex flex-col items-center justify-center gap-0.5">
         <svg viewBox="0 0 32 40" className="h-10 w-8">
           <text
             x="16" y="30"
@@ -73,7 +73,7 @@ export function RankItem({ data, href, className }: RankItemProps) {
         )}
       </div>
 
-      {/* Cover */}
+      {/* 封面 */}
       <div className="flex items-center">
         <Cover coverUrl={coverUrl} fallbackTitle={title} aspectRatio="16/10" className="rounded-[9px] w-full" />
       </div>
@@ -89,6 +89,25 @@ export function RankItem({ data, href, className }: RankItemProps) {
           <Stat icon={Eye} value={stats.views} format />
           <Stat icon={ThumbsUp} value={stats.likes} format />
           <Stat icon={MessageCircle} value={stats.comments} format className="hidden sm:inline-flex" />
+          {/* 移动端序号：统计行末尾小标签 */}
+          <span className="flex lg:hidden items-center gap-0.5 ml-auto">
+            <svg viewBox="0 0 18 22" className="h-4 w-3.5 shrink-0">
+              <text
+                x="9" y="17"
+                textAnchor="middle"
+                fill={color.fill}
+                stroke={color.stroke}
+                strokeWidth="0.5"
+                className="font-['Lexend'] text-[14px] font-extrabold"
+                style={{ paintOrder: "stroke fill" }}
+              >
+                {rank}
+              </text>
+            </svg>
+            {delta !== "—" && (
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{delta}</span>
+            )}
+          </span>
         </div>
       </div>
     </Link>
