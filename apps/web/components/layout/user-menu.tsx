@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { FileText, ThumbsUp, Monitor, Sun, Moon, Key, Bell, Clock, MessageSquareText, FilePlus2 } from "lucide-react"
+import { FileText, ThumbsUp, Monitor, Sun, Moon, Key, Bell, Clock, MessageSquareText, FilePlus2, Users } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -203,6 +203,12 @@ export function UserMenu({ session, isMobile = false, isRead = false }: UserMenu
           <Link href={`/${session.userSlug}?tab=skills`}>
             <Spacer />
             {t("nav.skills", "技能")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/teams">
+            <Users className="mr-2 h-4 w-4 shrink-0" />
+            {t("nav.teams", "团队")}
           </Link>
         </DropdownMenuItem>
 
