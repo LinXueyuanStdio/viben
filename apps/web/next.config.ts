@@ -13,13 +13,20 @@ const nextConfig: NextConfig = {
     static: 300,
   },
   experimental: {
-    optimizePackageImports: ["lucide-react"],
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "clsx",
+      "class-variance-authority",
+    ],
   },
   turbopack: {
     root: path.resolve(__dirname, '../..'),
   },
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60,
     remotePatterns: [
       {
         protocol: 'https',
@@ -32,6 +39,14 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'huggingface.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vercel.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vercel.com',
       },
     ],
   },
