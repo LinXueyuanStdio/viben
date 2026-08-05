@@ -8,6 +8,11 @@ export const PagesParams = z.object({
   id: z.string().describe('页面 ID'),
 });
 
+export const PagesRawParams = z.object({
+  user_slug: z.string().describe('用户 slug'),
+  page_id: z.string().describe('页面 ID'),
+});
+
 // ============================================
 // 请求体 schemas
 // ============================================

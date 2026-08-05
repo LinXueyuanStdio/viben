@@ -15,6 +15,9 @@ async function main() {
   const raw = await readFile(SPEC_PATH, 'utf-8');
   const spec = JSON.parse(raw) as Record<string, unknown>;
 
+  // 清除模板配置 key，不应出现在最终 OpenAPI spec 中
+  delete spec.exclude;
+
   const components = (spec.components ??= {}) as Record<string, unknown>;
   (components.securitySchemes ??= {}) as Record<string, unknown>;
 

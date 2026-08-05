@@ -4,6 +4,12 @@ import { getPublishedPageContext } from "@/lib/services/community";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * 获取公开页面的原始 HTML 内容
+ * @summary 获取页面原始内容
+ * @description 根据 user_slug 和 page_id 获取已发布公开页面的 HTML 内容。通过 Accept 头可指定返回格式（text/markdown 返回 Markdown，默认返回 HTML）。仅返回 visibility 为 public 的页面。
+ * @pathParams PagesRawParams
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ user_slug: string; page_id: string }> },

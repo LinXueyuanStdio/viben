@@ -15,17 +15,6 @@
       "description": "本地开发"
     }
   ],
-  "exclude": [
-    "mcp/**",
-    "skill/**",
-    "packages/**",
-    "drafts/**",
-    "releases/**",
-    "clawhub-registry/**",
-    "official-registry/**",
-    "admin/**",
-    "../docs/**"
-  ],
   "components": {
     "securitySchemes": {
       "BearerAuth": {
@@ -2670,6 +2659,23 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "PagesRawParams": {
+        "type": "object",
+        "properties": {
+          "user_slug": {
+            "type": "string",
+            "description": "用户 slug"
+          },
+          "page_id": {
+            "type": "string",
+            "description": "页面 ID"
+          }
+        },
+        "required": [
+          "user_slug",
+          "page_id"
         ]
       },
       "PagesSettingsBody": {
@@ -7660,88 +7666,6 @@
         }
       }
     },
-    "/oauth/authorize": {
-      "get": {
-        "operationId": "get-oauth-authorize",
-        "summary": "",
-        "description": "",
-        "tags": [
-          "Oauth"
-        ],
-        "parameters": [],
-        "responses": {}
-      },
-      "post": {
-        "operationId": "post-oauth-authorize",
-        "summary": "",
-        "description": "",
-        "tags": [
-          "Oauth"
-        ],
-        "parameters": [],
-        "responses": {
-          "307": {
-            "description": "Redirect response",
-            "headers": {
-              "Location": {
-                "description": "Redirect target URL",
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/oauth/revoke": {
-      "post": {
-        "operationId": "post-oauth-revoke",
-        "summary": "",
-        "description": "",
-        "tags": [
-          "Oauth"
-        ],
-        "parameters": [],
-        "responses": {}
-      }
-    },
-    "/oauth/token": {
-      "post": {
-        "operationId": "post-oauth-token",
-        "summary": "",
-        "description": "",
-        "tags": [
-          "Oauth"
-        ],
-        "parameters": [],
-        "responses": {}
-      }
-    },
-    "/oauth/.well-known/oauth-authorization-server": {
-      "get": {
-        "operationId": "get-oauth-.well-known-oauth-authorization-server",
-        "summary": "",
-        "description": "",
-        "tags": [
-          "Oauth"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/pages/{id}": {
       "delete": {
         "operationId": "delete-pages-{id}",
@@ -8309,31 +8233,33 @@
     "/pages/raw/{user_slug}/{page_id}": {
       "get": {
         "operationId": "get-pages-raw-{user_slug}-{page_id}",
-        "summary": "",
-        "description": "",
+        "summary": "获取页面原始内容",
+        "description": "根据 user_slug 和 page_id 获取已发布公开页面的 HTML 内容。通过 Accept 头可指定返回格式（text/markdown 返回 Markdown，默认返回 HTML）。仅返回 visibility 为 public 的页面。",
         "tags": [
           "Pages"
         ],
         "parameters": [
           {
-            "name": "user_slug",
             "in": "path",
+            "name": "user_slug",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "用户 slug"
             },
-            "example": "example",
-            "description": "Path parameter: user_slug"
+            "description": "用户 slug",
+            "example": "example"
           },
           {
-            "name": "page_id",
             "in": "path",
+            "name": "page_id",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "页面 ID"
             },
-            "example": "123",
-            "description": "Path parameter: page_id"
+            "description": "页面 ID",
+            "example": "123"
           }
         ],
         "responses": {}
@@ -9756,9 +9682,6 @@
     },
     {
       "name": "Notifications"
-    },
-    {
-      "name": "Oauth"
     },
     {
       "name": "Pages"

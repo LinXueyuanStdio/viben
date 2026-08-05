@@ -15,16 +15,19 @@
   "outputFile": "openapi.json",
   "docsUrl": "/docs/api/v1",
   "ui": "scalar",
-  "exclude": [
-    "mcp/**",
-    "skill/**",
-    "packages/**",
-    "drafts/**",
-    "releases/**",
-    "clawhub-registry/**",
-    "official-registry/**",
-    "admin/**",
-    "../docs/**"
+  "ignoreRoutes": [
+    "/mcp/**",
+    "/skill/**",
+    "/packages/**",
+    "/drafts/**",
+    "/releases/**",
+    "/clawhub-registry/**",
+    "/official-registry/**",
+    "/admin/**",
+    "/auth/github/**",
+    "/auth/google/**",
+    "/auth/callback/**",
+    "/oauth/**"
   ],
   "authPresets": {
     "bearer": "BearerAuth"
