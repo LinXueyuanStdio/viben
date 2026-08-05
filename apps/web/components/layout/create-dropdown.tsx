@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CREATE_MENU_ITEMS } from "@/lib/navigation/create-menu-items"
+import { CREATE_MENU_ITEMS, CREATE_TEAM_ITEM } from "@/lib/navigation/create-menu-items"
 
 export function CreateDropdown() {
   const { t } = useTranslation()
@@ -36,6 +36,11 @@ export function CreateDropdown() {
             </DropdownMenuItem>
           </React.Fragment>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push(CREATE_TEAM_ITEM.href)}>
+          <CREATE_TEAM_ITEM.icon className="mr-2 h-4 w-4 shrink-0" />
+          {t(CREATE_TEAM_ITEM.labelKey)}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
