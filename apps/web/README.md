@@ -276,6 +276,45 @@ apps/web/
 └── package.json
 ```
 
+## Assistant（助手）模块
+
+AI 编码助手，从 [open-agents](https://github.com/vercel-labs/open-agents) 移植。
+
+### 页面
+
+| 页面 | 路径 | 说明 |
+|------|------|------|
+| 会话列表 | `/assistant` | 查看和管理编码会话 |
+| 对话页 | `/assistant/[sessionId]/[chatId]` | 核心 AI 对话界面 |
+| CodeSpace | `/assistant/[sessionId]/codespace` | 代码空间 |
+| 助手设置 | `/settings/assistant` | 模型、偏好、连接配置 |
+| 用量统计 | `/settings/usage` | Token 消耗和费用估算 |
+| 订阅管理 | `/settings/subscription` | 订阅计划管理 |
+
+### Assistant 环境变量
+
+```env
+# GitHub App（代码仓库操作）
+GITHUB_APP_ID=
+GITHUB_APP_PRIVATE_KEY=
+NEXT_PUBLIC_GITHUB_APP_SLUG=
+GITHUB_WEBHOOK_SECRET=
+
+# Vercel Sandbox（可选）
+VERCEL_SANDBOX_BASE_SNAPSHOT_ID=
+
+# Redis（Skills 缓存，可选）
+REDIS_URL=
+
+# ElevenLabs（语音转录，可选）
+ELEVENLABS_API_KEY=
+
+# 资源模式（hobby = Hobby 兼容）
+OPEN_AGENTS_RESOURCE_PROFILE=hobby
+```
+
+详细文档：[docs/assistant/](./docs/assistant/README.md)
+
 ## 相关文档
 
 - [Next.js 文档](https://nextjs.org/docs)
