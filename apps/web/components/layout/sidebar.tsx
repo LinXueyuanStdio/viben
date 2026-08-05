@@ -45,7 +45,6 @@ import { SidebarViewStack } from './sidebar-view-stack';
 // Navigation items
 const browseNavigation = [
   { nameKey: 'nav.home', href: '/', icon: Home },
-  { nameKey: 'nav.analytics', href: '/analytics', icon: BarChart3 },
   { nameKey: 'nav.assistant', href: '/assistant', icon: Sparkles },
 ];
 

@@ -70,7 +70,6 @@ export const routeRegistry: Record<string, RouteConfig> = {
 
   // 创作者
   "/publish": { label: "发布", icon: Upload, parent: "/", dropdownCategory: "创作" },
-  "/analytics": { label: "创作平台", icon: BarChart3, parent: "/", dropdownCategory: "创作" },
   "/assistant": { label: "助手", icon: Sparkles, parent: "/", dropdownCategory: "创作" },
 
   // 市场详情（动态段父路由已注册，此处注册静态子页面）

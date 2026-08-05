@@ -31,7 +31,7 @@ export function Footer() {
             </h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/home" className="transition hover:text-foreground">{t("nav.home")}</Link></li>
-              <li><Link href="/analytics" className="transition hover:text-foreground">{t("nav.analytics")}</Link></li>
+              <li><Link href="/settings/usage" className="transition hover:text-foreground">{t("nav.usage")}</Link></li>
               <li><Link href="/mcp-market" className="transition hover:text-foreground">{t("nav.mcpMarketplace")}</Link></li>
               <li><Link href="/skill-market" className="transition hover:text-foreground">{t("nav.skillsMarket")}</Link></li>
               <li><Link href="/leaderboard" className="transition hover:text-foreground">{t("nav.leaderboard")}</Link></li>
