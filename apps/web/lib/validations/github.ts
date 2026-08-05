@@ -60,7 +60,7 @@ export const GithubDesktopCallbackResponse = z.object({
     avatarUrl: z.string().nullable().describe('头像地址'),
   }).describe('用户信息'),
   accessToken: z.string().describe('JWE 加密的 session token'),
-  refreshToken: z.null().describe('刷新令牌（暂未实现）'),
+  refreshToken: z.string().nullable().describe('刷新令牌（暂未实现）'),
   expiresAt: z.number().describe('token 过期时间戳（毫秒）'),
 });
 

@@ -1369,7 +1369,8 @@
             "description": "加密的 session token"
           },
           "refreshToken": {
-            "type": "null",
+            "type": "string",
+            "nullable": true,
             "description": "刷新 token（暂未实现）"
           },
           "expiresAt": {
@@ -6913,7 +6914,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/404"
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "500": {
             "description": "获取资源失败",
@@ -8262,7 +8270,38 @@
             "example": "123"
           }
         ],
-        "responses": {}
+        "responses": {
+          "200": {
+            "description": "返回页面 HTML 内容",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "页面不可访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "页面不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/profile/pinnable-items": {

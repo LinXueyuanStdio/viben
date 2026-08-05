@@ -8,7 +8,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * @params MediaAssetQuery — pathname 查询参数指定 Blob 存储路径
  * @response 200
  * @response 400:ErrorResponse:缺少 pathname 参数
- * @response 404
+ * @response 404:ErrorResponse:资源不存在
  * @response 500:ErrorResponse:获取资源失败
  * @tag Media
  */

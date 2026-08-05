@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
  * @summary 获取页面原始内容
  * @description 根据 user_slug 和 page_id 获取已发布公开页面的 HTML 内容。通过 Accept 头可指定返回格式（text/markdown 返回 Markdown，默认返回 HTML）。仅返回 visibility 为 public 的页面。
  * @pathParams PagesRawParams
+ * @openapi-override {"responses":{"200":{"description":"返回页面 HTML 内容","content":{"text/html":{"schema":{"type":"string"}}}}}}
+ * @response 403:ErrorResponse:页面不可访问
+ * @response 404:ErrorResponse:页面不存在
  */
 export async function GET(
   request: NextRequest,
