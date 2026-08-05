@@ -1,4 +1,4 @@
-import type { SandboxInfo } from "./session-chat-context";
+import type { SandboxInfo } from "@/components/assistant/session-chat-context";
 
 type CreateSandboxResponse = SandboxInfo & {
   type: string;

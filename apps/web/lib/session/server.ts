@@ -1,37 +1,25 @@
 import type { NextRequest } from "next/server";
 import type { Session } from "./types";
-import { auth } from "@/lib/session/get-server-session";
-
-function extractUsername(user: {
-  name?: string | null;
-  [key: string]: unknown;
-}): string {
-  if (typeof user.username === "string" && user.username) {
-    return user.username;
-  }
-  return user.name ?? "";
-}
+import { getSession } from "@/lib/auth/cookies";
 
 export async function getSessionFromReq(
-  req: NextRequest,
+  _req: NextRequest,
 ): Promise<Session | undefined> {
-  const baSession = await auth.api.getSession({
-    headers: req.headers,
-  });
+  const vibenSession = await getSession();
 
-  if (!baSession?.user) {
+  if (!vibenSession) {
     return undefined;
   }
 
   return {
-    created: baSession.session.createdAt.getTime(),
+    created: Date.now(),
     authProvider: "vercel",
     user: {
-      id: baSession.user.id,
-      username: extractUsername(baSession.user),
-      email: baSession.user.email ?? undefined,
-      avatar: baSession.user.image ?? "",
-      name: baSession.user.name ?? undefined,
+      id: vibenSession.userId,
+      username: vibenSession.username,
+      email: vibenSession.email ?? undefined,
+      avatar: vibenSession.avatarUrl ?? "",
+      name: vibenSession.displayName,
     },
   };
 }
