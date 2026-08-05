@@ -27,6 +27,8 @@ import {
   FileEdit,
   ShoppingBag,
   BookOpen,
+  Box,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react"
 
@@ -90,6 +92,10 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/settings/profile": { label: "用户资料", titleKey: "profile.settings.nav.profile", icon: User, parent: "/settings" },
   "/settings/account": { label: "账户", titleKey: "profile.settings.nav.account", icon: Shield, parent: "/settings" },
   "/settings/api_keys": { label: "API 密钥", titleKey: "nav.apiKeys", icon: Key, parent: "/settings" },
+  "/settings/assistant": { label: "助手", titleKey: "nav.assistant", icon: Sparkles, parent: "/settings" },
+  "/settings/sandbox": { label: "沙盒", titleKey: "nav.sandbox", icon: Box, parent: "/settings" },
+  "/settings/usage": { label: "用量统计", titleKey: "nav.usage", icon: BarChart3, parent: "/settings" },
+  "/settings/subscription": { label: "订阅管理", titleKey: "nav.subscription", icon: CreditCard, parent: "/settings" },
 
   // 其他
   "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },

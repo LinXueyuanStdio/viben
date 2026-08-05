@@ -1,5 +1,5 @@
 import { checkBotProtection } from "@/lib/botid";
-import { gateway } from "@/lib/ai-gateway";
+import { gateway } from "@viben/agent";
 import { generateText } from "ai";
 import { z } from "zod";
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit";

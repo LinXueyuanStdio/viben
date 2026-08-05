@@ -1,6 +1,6 @@
 import "server-only";
 
-import { gateway } from "@/lib/ai-gateway";
+import { gatewayInstance as gateway } from "@viben/agent";
 import { z } from "zod";
 import { filterDisabledModels } from "./model-availability";
 import type {
