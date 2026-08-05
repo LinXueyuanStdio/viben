@@ -34,7 +34,7 @@ export interface UsageRepositoryInsight {
 export interface UsageDomainLeaderboardRow {
   userId: string;
   username: string;
-  name: string | null;
+  displayName: string | null;
   avatarUrl: string | null;
   totalTokens: number;
   mostUsedModelId: string | null;

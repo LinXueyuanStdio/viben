@@ -137,7 +137,7 @@ export function normalizeStreamdownHighlightResult(
   const tokens: HighlightResult["tokens"] = result.tokens.map(
     (line: HighlightLine) => line.map(normalizeHighlightToken),
   );
-  const rootStyle = mergeRootStyle(result.rootStyle, rootDeclarations);
+  const rootStyle = mergeRootStyle(result.rootStyle || undefined, rootDeclarations);
 
   return {
     ...result,

@@ -12,6 +12,7 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import type { SandboxState } from "@viben/sandbox";
 
 // ============================================
 // User System Tables
@@ -1974,7 +1975,7 @@ export const sessions = pgTable(
     autoCommitPushOverride: boolean("auto_commit_push_override"),
     autoCreatePrOverride: boolean("auto_create_pr_override"),
     globalSkillRefs: jsonb("global_skill_refs").notNull().default([]),
-    sandboxState: jsonb("sandbox_state"),
+    sandboxState: jsonb("sandbox_state").$type<SandboxState>(),
     lifecycleState: text("lifecycle_state", {
       enum: [
         "provisioning",

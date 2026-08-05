@@ -82,7 +82,7 @@ async function installSessionGlobalSkills(params: {
   sessionRecord: SessionRecord;
   sandbox: Awaited<ReturnType<typeof connectSandbox>>;
 }): Promise<void> {
-  const globalSkillRefs = params.sessionRecord.globalSkillRefs ?? [];
+  const globalSkillRefs = (params.sessionRecord.globalSkillRefs ?? []) as { source: string; skillName: string }[];
   if (globalSkillRefs.length === 0) {
     return;
   }

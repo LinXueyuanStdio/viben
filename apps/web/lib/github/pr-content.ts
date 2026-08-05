@@ -95,7 +95,7 @@ export async function resolvePullRequestContextSection(params: {
       db.query.users.findFirst({
         where: eq(users.id, sessionRecord.userId),
         columns: {
-          name: true,
+          displayName: true,
           username: true,
         },
       }),
@@ -103,7 +103,7 @@ export async function resolvePullRequestContextSection(params: {
     ]);
     const githubUsername = ghProfile?.username?.trim() || null;
     const displayName =
-      userRecord?.name?.trim() ||
+      userRecord?.displayName?.trim() ||
       githubUsername ||
       userRecord?.username?.trim() ||
       null;

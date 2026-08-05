@@ -1,7 +1,7 @@
 "use client";
 
 import type { UseChatHelpers } from "@ai-sdk/react";
-import type { SandboxState } from "@open-agents/sandbox";
+import type { SandboxState } from "@viben/sandbox";
 import {
   createContext,
   type ReactNode,
@@ -23,15 +23,15 @@ import type {
   WebAgentWorkspaceStatusData,
 } from "@/app/types";
 import { checkPullRequest } from "@/lib/github/queries/pr";
-import { useModelOptions } from "@/hooks/use-model-options";
-import { useUserPreferences } from "@/hooks/use-user-preferences";
-import { useSessionDiff } from "@/hooks/use-session-diff";
-import { useSessionFiles } from "@/hooks/use-session-files";
+import { useModelOptions } from "@/hooks/assistant/use-model-options";
+import { useUserPreferences } from "@/hooks/assistant/use-user-preferences";
+import { useSessionDiff } from "@/hooks/assistant/use-session-diff";
+import { useSessionFiles } from "@/hooks/assistant/use-session-files";
 import {
   type SessionGitStatus,
   useSessionGitStatus,
-} from "@/hooks/use-session-git-status";
-import { useSessionSkills } from "@/hooks/use-session-skills";
+} from "@/hooks/assistant/use-session-git-status";
+import { useSessionSkills } from "@/hooks/assistant/use-session-skills";
 import type { Chat, Session } from "@/lib/db/schema";
 import { type ModelOption, withMissingModelOption } from "@/lib/model-options";
 import {
@@ -43,7 +43,7 @@ import {
 import {
   type RetryChatStreamOptions,
   useSessionChatRuntime,
-} from "./hooks/use-session-chat-runtime";
+} from "@/hooks/assistant/chat/use-session-chat-runtime";
 
 const KNOWN_SANDBOX_TYPES = ["vercel"] as const;
 type KnownSandboxType = (typeof KNOWN_SANDBOX_TYPES)[number];

@@ -78,7 +78,7 @@ async function getUserById(userId: string): Promise<UserRecord | null> {
     .select({
       id: users.id,
       username: users.username,
-      name: users.name,
+      name: users.displayName,
       email: users.email,
     })
     .from(users)
@@ -170,7 +170,7 @@ async function installSessionGlobalSkills(params: {
     return;
   }
 
-  const globalSkillRefs = params.session.globalSkillRefs ?? [];
+  const globalSkillRefs = (params.session.globalSkillRefs ?? []) as { source: string; skillName: string }[];
   if (globalSkillRefs.length === 0) {
     return;
   }

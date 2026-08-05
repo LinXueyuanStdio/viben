@@ -9,7 +9,7 @@ export async function getUserById(id: string) {
       id: users.id,
       username: users.username,
       email: users.email,
-      name: users.displayName,
+      displayName: users.displayName,
       avatarUrl: users.avatarUrl,
       role: users.role,
     })
@@ -25,7 +25,7 @@ export async function getUserByUsername(username: string) {
       id: users.id,
       username: users.username,
       email: users.email,
-      name: users.displayName,
+      displayName: users.displayName,
       avatarUrl: users.avatarUrl,
       role: users.role,
     })

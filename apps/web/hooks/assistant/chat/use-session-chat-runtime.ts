@@ -143,7 +143,7 @@ export function useSessionChatRuntime({
         messages: initialMessages,
         onData: (dataPart) => {
           if (dataPart.type === "data-workspace-status") {
-            setChatWorkspaceStatus(chatId, dataPart.data);
+            setChatWorkspaceStatus(chatId, dataPart.data as WebAgentWorkspaceStatusData);
           }
         },
         sendAutomaticallyWhen: shouldAutoSubmit,

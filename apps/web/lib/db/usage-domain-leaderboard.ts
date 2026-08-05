@@ -14,7 +14,7 @@ interface UsageDomainLeaderboardQueryRow {
   userId: string;
   email: string | null;
   username: string;
-  name: string | null;
+  displayName: string | null;
   avatarUrl: string | null;
   modelId: string | null;
   totalInputTokens: number;
@@ -105,7 +105,7 @@ export function buildUsageDomainLeaderboardRows(
     leaderboard.set(row.userId, {
       userId: row.userId,
       username: row.username,
-      name: row.name,
+      displayName: row.displayName,
       avatarUrl: row.avatarUrl,
       totalTokens: modelTokens,
       mostUsedModelId: row.modelId,
@@ -143,7 +143,7 @@ export async function getUsageDomainLeaderboard(
       userId: users.id,
       email: users.email,
       username: users.username,
-      name: users.name,
+      displayName: users.displayName,
       avatarUrl: users.avatarUrl,
       modelId: usageEvents.modelId,
       totalInputTokens: sql<number>`coalesce(sum(${usageEvents.inputTokens}), 0)::double precision`,
@@ -156,7 +156,7 @@ export async function getUsageDomainLeaderboard(
       users.id,
       users.email,
       users.username,
-      users.name,
+      users.displayName,
       users.avatarUrl,
       usageEvents.modelId,
     );

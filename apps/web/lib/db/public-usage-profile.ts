@@ -43,7 +43,7 @@ export interface PublicUsageProfile {
   user: {
     id: string;
     username: string;
-    name: string | null;
+    displayName: string | null;
     avatarUrl: string | null;
   };
   dateSelection: PublicUsageDateSelection;
@@ -193,7 +193,7 @@ const ALL_TIME_DATE_SELECTION: PublicUsageDateSelection = {
 interface PublicUsageUserCandidate {
   id: string;
   username: string;
-  name: string | null;
+  displayName: string | null;
   avatarUrl: string | null;
   lastLoginAt: Date | null;
   publicUsageEnabled: boolean | null;
@@ -232,7 +232,7 @@ function pickPublicUsageUserCandidate(
     ? {
         id: selectedCandidate.id,
         username: selectedCandidate.username,
-        name: selectedCandidate.name,
+        displayName: selectedCandidate.displayName,
         avatarUrl: selectedCandidate.avatarUrl,
       }
     : null;
@@ -248,7 +248,7 @@ export const getPublicUsageProfile = cache(
       .select({
         id: users.id,
         username: users.username,
-        name: users.name,
+        displayName: users.displayName,
         avatarUrl: users.avatarUrl,
         lastLoginAt: users.lastLoginAt,
         publicUsageEnabled: userPreferences.publicUsageEnabled,
