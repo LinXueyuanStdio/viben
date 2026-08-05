@@ -13,6 +13,7 @@ import fastifySwagger from "@fastify/swagger";
 import fastifyWebsocket from "@fastify/websocket";
 import { AppState, createAppState } from "./state";
 import { registerRoutes } from "./routes";
+import { createOperationIdGenerator } from "./openapi/operation-id";
 import { VERSION, setGatewayStartupConfig } from "./routes/health";
 import {
   initTelemetry,
@@ -42,6 +43,9 @@ const log = globalLogger.child({ module: "gateway" });
 const EXCLUDED_OPENAPI_ROUTE_PREFIXES = ["/api/mcp-server", "/api/python-mcp"];
 
 function shouldExcludeFromOpenApi(url: string): boolean {
+  // Only include /api/* routes in the OpenAPI spec
+  if (!url.startsWith("/api/")) return true;
+  // Exclude bundled MCP server routes
   return EXCLUDED_OPENAPI_ROUTE_PREFIXES.some((prefix) => url === prefix || url.startsWith(`${prefix}/`));
 }
 
@@ -122,6 +126,12 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Register Swagger for OpenAPI spec generation (no UI)
   try {
+    // Create a generator for globally unique operationIds.
+    // Per-tag method name dedup is handled in the transform below
+    // so it uses the final (post-merge) tags, not URL-derived ones.
+    const makeOperationId = createOperationIdGenerator();
+    const seenPerTag = new Map<string, Set<string>>();
+
     await app.register(fastifySwagger, {
       openapi: {
         info: {
@@ -149,10 +159,43 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
           { name: "executors", description: "Executor configuration" },
         ],
       },
-      transform: ({ schema, url }) => ({
-        schema: shouldExcludeFromOpenApi(url) ? { ...schema, hide: true } : schema,
-        url,
-      }),
+      transform: ({ schema, url, route }) => {
+        if (shouldExcludeFromOpenApi(url)) {
+          return { schema: { ...schema, hide: true }, url };
+        }
+        // Auto-generate operationId and tags for every route
+        const method = (route as any).method ?? "GET";
+        const { operationId, methodName, tags: autoTags } = makeOperationId(method, url);
+        const existingSchema = schema || {};
+
+        // Use the final tag (explicit takes precedence) for per-tag method dedup
+        const finalTag = (existingSchema.tags && existingSchema.tags.length > 0)
+          ? existingSchema.tags[0]
+          : autoTags[0];
+
+        // Per-tag dedup: ensure unique methodName within each tag namespace
+        let finalMethodName = existingSchema["x-speakeasy-name-override"] ?? methodName;
+        const tagMethods = seenPerTag.get(finalTag) ?? new Set();
+        if (tagMethods.has(finalMethodName)) {
+          let n = 2;
+          while (tagMethods.has(`${methodName}${n}`)) n++;
+          finalMethodName = `${methodName}${n}`;
+        }
+        tagMethods.add(finalMethodName);
+        seenPerTag.set(finalTag, tagMethods);
+
+        return {
+          schema: {
+            ...existingSchema,
+            operationId: existingSchema.operationId ?? operationId,
+            "x-speakeasy-name-override": finalMethodName,
+            tags: existingSchema.tags && existingSchema.tags.length > 0
+              ? existingSchema.tags
+              : autoTags,
+          },
+          url,
+        };
+      },
     });
 
     // Register OpenAPI spec endpoints

@@ -1,17 +1,15 @@
 # Type
 
-Page type (required)
-
 ## Example Usage
 
 ```typescript
 import { Type } from "@viben/client-sdk/sdk/models/operations";
 
-let value: Type = "static";
+let value: Type = "lucide";
 ```
 
 ## Values
 
 ```typescript
-"static" | "markdown" | "server" | "proxy"
+"lucide" | "emoji" | "image"
 ```

@@ -4,93 +4,29 @@
 
 ### Available Operations
 
-* [getApiPreviewList](#getapipreviewlist) - List all active preview servers
-* [getApiPreviewNodeAvailable](#getapipreviewnodeavailable) - Check if Node.js is available for Live Preview
-* [getApiPreviewStartSse](#getapipreviewstartsse) - Start a Vite preview server with SSE streaming for real-time feedback
-* [getApiPreviewStatusTaskId](#getapipreviewstatustaskid) - Get status of a preview server
-* [postApiPreviewKillPort](#postapipreviewkillport) - Kill the process occupying a specific port
-* [postApiPreviewStart](#postapipreviewstart) - Start a Vite preview server for a task
-* [postApiPreviewStop](#postapipreviewstop) - Stop a Vite preview server
-* [postApiPreviewStopAll](#postapipreviewstopall) - Stop all running preview servers
+* [listNodeAvailable](#listnodeavailable) - Check if Node.js is available for Live Preview
+* [listStartSse](#liststartsse) - Start a Vite preview server with SSE streaming for real-time feedback
+* [start](#start) - Start a Vite preview server for a task
+* [stop](#stop) - Stop a Vite preview server
+* [getStatu](#getstatu) - Get status of a preview server
+* [createStopAll](#createstopall) - Stop all running preview servers
+* [list](#list) - List all active preview servers
+* [createKillPort](#createkillport) - Kill the process occupying a specific port
 
-## getApiPreviewList
-
-List all active preview servers
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/preview/list" method="get" path="/api/preview/list" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.preview.getApiPreviewList();
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewGetApiPreviewList } from "@viben/client-sdk/funcs/previewGetApiPreviewList.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await previewGetApiPreviewList(sdk);
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("previewGetApiPreviewList failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.GetApiPreviewListResponseBody](../../sdk/models/operations/getapipreviewlistresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiPreviewNodeAvailable
+## listNodeAvailable
 
 Check if Node.js is available for Live Preview
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/preview/node-available" method="get" path="/api/preview/node-available" -->
+<!-- UsageSnippet language="typescript" operationID="preview_listNodeAvailable" method="get" path="/api/preview/node-available" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.preview.getApiPreviewNodeAvailable();
+  const result = await vibenClient.preview.listNodeAvailable();
 
   console.log(result);
 }
@@ -103,20 +39,20 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewGetApiPreviewNodeAvailable } from "@viben/client-sdk/funcs/previewGetApiPreviewNodeAvailable.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewListNodeAvailable } from "@viben/client-sdk/funcs/previewListNodeAvailable.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await previewGetApiPreviewNodeAvailable(sdk);
+  const res = await previewListNodeAvailable(vibenClient);
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("previewGetApiPreviewNodeAvailable failed:", res.error);
+    console.log("previewListNodeAvailable failed:", res.error);
   }
 }
 
@@ -133,7 +69,7 @@ run();
 
 ### Response
 
-**Promise\<[operations.GetApiPreviewNodeAvailableResponseBody](../../sdk/models/operations/getapipreviewnodeavailableresponsebody.md)\>**
+**Promise\<[operations.PreviewListNodeAvailableResponseBody](../../sdk/models/operations/previewlistnodeavailableresponsebody.md)\>**
 
 ### Errors
 
@@ -141,20 +77,20 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiPreviewStartSse
+## listStartSse
 
 Start a Vite preview server with SSE streaming for real-time feedback
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/preview/start-sse" method="get" path="/api/preview/start-sse" -->
+<!-- UsageSnippet language="typescript" operationID="preview_listStartSse" method="get" path="/api/preview/start-sse" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  await sdk.preview.getApiPreviewStartSse({
+  await vibenClient.preview.listStartSse({
     taskId: "<id>",
     workDir: "<value>",
   });
@@ -170,15 +106,15 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewGetApiPreviewStartSse } from "@viben/client-sdk/funcs/previewGetApiPreviewStartSse.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewListStartSse } from "@viben/client-sdk/funcs/previewListStartSse.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await previewGetApiPreviewStartSse(sdk, {
+  const res = await previewListStartSse(vibenClient, {
     taskId: "<id>",
     workDir: "<value>",
   });
@@ -186,7 +122,7 @@ async function run() {
     const { value: result } = res;
     
   } else {
-    console.log("previewGetApiPreviewStartSse failed:", res.error);
+    console.log("previewListStartSse failed:", res.error);
   }
 }
 
@@ -197,7 +133,7 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiPreviewStartSseRequest](../../sdk/models/operations/getapipreviewstartsserequest.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.PreviewListStartSseRequest](../../sdk/models/operations/previewliststartsserequest.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
@@ -212,158 +148,20 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiPreviewStatusTaskId
-
-Get status of a preview server
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/preview/status/{task_id}" method="get" path="/api/preview/status/{task_id}" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.preview.getApiPreviewStatusTaskId({
-    taskId: "<id>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewGetApiPreviewStatusTaskId } from "@viben/client-sdk/funcs/previewGetApiPreviewStatusTaskId.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await previewGetApiPreviewStatusTaskId(sdk, {
-    taskId: "<id>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("previewGetApiPreviewStatusTaskId failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiPreviewStatusTaskIdRequest](../../sdk/models/operations/getapipreviewstatustaskidrequest.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.GetApiPreviewStatusTaskIdResponse](../../sdk/models/operations/getapipreviewstatustaskidresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiPreviewKillPort
-
-Kill the process occupying a specific port
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/preview/kill-port" method="post" path="/api/preview/kill-port" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.preview.postApiPreviewKillPort({
-    port: 4446.85,
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewPostApiPreviewKillPort } from "@viben/client-sdk/funcs/previewPostApiPreviewKillPort.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await previewPostApiPreviewKillPort(sdk, {
-    port: 4446.85,
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("previewPostApiPreviewKillPort failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiPreviewKillPortRequestBody](../../sdk/models/operations/postapipreviewkillportrequestbody.md)                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiPreviewKillPortResponseBody](../../sdk/models/operations/postapipreviewkillportresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiPreviewStart
+## start
 
 Start a Vite preview server for a task
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="post_/api/preview/start" method="post" path="/api/preview/start" -->
+<!-- UsageSnippet language="typescript" operationID="preview_start" method="post" path="/api/preview/start" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.preview.postApiPreviewStart({
+  const result = await vibenClient.preview.start({
     taskId: "<id>",
     workDir: "<value>",
   });
@@ -379,15 +177,15 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewPostApiPreviewStart } from "@viben/client-sdk/funcs/previewPostApiPreviewStart.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewStart } from "@viben/client-sdk/funcs/previewStart.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await previewPostApiPreviewStart(sdk, {
+  const res = await previewStart(vibenClient, {
     taskId: "<id>",
     workDir: "<value>",
   });
@@ -395,7 +193,7 @@ async function run() {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("previewPostApiPreviewStart failed:", res.error);
+    console.log("previewStart failed:", res.error);
   }
 }
 
@@ -406,14 +204,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiPreviewStartRequestBody](../../sdk/models/operations/postapipreviewstartrequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.PreviewStartRequestBody](../../sdk/models/operations/previewstartrequestbody.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.PostApiPreviewStartResponse](../../sdk/models/operations/postapipreviewstartresponse.md)\>**
+**Promise\<[operations.PreviewStartResponse](../../sdk/models/operations/previewstartresponse.md)\>**
 
 ### Errors
 
@@ -421,20 +219,20 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## postApiPreviewStop
+## stop
 
 Stop a Vite preview server
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="post_/api/preview/stop" method="post" path="/api/preview/stop" -->
+<!-- UsageSnippet language="typescript" operationID="preview_stop" method="post" path="/api/preview/stop" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.preview.postApiPreviewStop({
+  const result = await vibenClient.preview.stop({
     taskId: "<id>",
   });
 
@@ -449,22 +247,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewPostApiPreviewStop } from "@viben/client-sdk/funcs/previewPostApiPreviewStop.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewStop } from "@viben/client-sdk/funcs/previewStop.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await previewPostApiPreviewStop(sdk, {
+  const res = await previewStop(vibenClient, {
     taskId: "<id>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("previewPostApiPreviewStop failed:", res.error);
+    console.log("previewStop failed:", res.error);
   }
 }
 
@@ -475,14 +273,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiPreviewStopRequestBody](../../sdk/models/operations/postapipreviewstoprequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.PreviewStopRequestBody](../../sdk/models/operations/previewstoprequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.PostApiPreviewStopResponse](../../sdk/models/operations/postapipreviewstopresponse.md)\>**
+**Promise\<[operations.PreviewStopResponse](../../sdk/models/operations/previewstopresponse.md)\>**
 
 ### Errors
 
@@ -490,20 +288,22 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## postApiPreviewStopAll
+## getStatu
 
-Stop all running preview servers
+Get status of a preview server
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="post_/api/preview/stop-all" method="post" path="/api/preview/stop-all" -->
+<!-- UsageSnippet language="typescript" operationID="preview_getStatu" method="get" path="/api/preview/status/{task_id}" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.preview.postApiPreviewStopAll();
+  const result = await vibenClient.preview.getStatu({
+    taskId: "<id>",
+  });
 
   console.log(result);
 }
@@ -516,20 +316,87 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { previewPostApiPreviewStopAll } from "@viben/client-sdk/funcs/previewPostApiPreviewStopAll.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewGetStatu } from "@viben/client-sdk/funcs/previewGetStatu.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await previewPostApiPreviewStopAll(sdk);
+  const res = await previewGetStatu(vibenClient, {
+    taskId: "<id>",
+  });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("previewPostApiPreviewStopAll failed:", res.error);
+    console.log("previewGetStatu failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.PreviewGetStatuRequest](../../sdk/models/operations/previewgetstaturequest.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.PreviewGetStatuResponse](../../sdk/models/operations/previewgetstaturesponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createStopAll
+
+Stop all running preview servers
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="preview_createStopAll" method="post" path="/api/preview/stop-all" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.preview.createStopAll();
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewCreateStopAll } from "@viben/client-sdk/funcs/previewCreateStopAll.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await previewCreateStopAll(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("previewCreateStopAll failed:", res.error);
   }
 }
 
@@ -546,7 +413,140 @@ run();
 
 ### Response
 
-**Promise\<[operations.PostApiPreviewStopAllResponse](../../sdk/models/operations/postapipreviewstopallresponse.md)\>**
+**Promise\<[operations.PreviewCreateStopAllResponse](../../sdk/models/operations/previewcreatestopallresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## list
+
+List all active preview servers
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="preview_list" method="get" path="/api/preview/list" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.preview.list();
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewList } from "@viben/client-sdk/funcs/previewList.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await previewList(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("previewList failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.PreviewListResponseBody](../../sdk/models/operations/previewlistresponsebody.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createKillPort
+
+Kill the process occupying a specific port
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="preview_createKillPort" method="post" path="/api/preview/kill-port" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.preview.createKillPort({
+    port: 4458.19,
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { previewCreateKillPort } from "@viben/client-sdk/funcs/previewCreateKillPort.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await previewCreateKillPort(vibenClient, {
+    port: 4458.19,
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("previewCreateKillPort failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.PreviewCreateKillPortRequestBody](../../sdk/models/operations/previewcreatekillportrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.PreviewCreateKillPortResponseBody](../../sdk/models/operations/previewcreatekillportresponsebody.md)\>**
 
 ### Errors
 

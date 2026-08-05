@@ -12,6 +12,6 @@ let value: Actor = {};
 
 | Field              | Type               | Required           | Description        |
 | ------------------ | ------------------ | ------------------ | ------------------ |
-| `avatar`           | *string*           | :heavy_minus_sign: | N/A                |
 | `id`               | *string*           | :heavy_minus_sign: | N/A                |
 | `name`             | *string*           | :heavy_minus_sign: | N/A                |
+| `avatar`           | *string*           | :heavy_minus_sign: | N/A                |

@@ -149,7 +149,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   }>("/api/agent", {
     schema: {
       description: "List all agents",
-      tags: ["agents"],
+      tags: ["agent"],
       querystring: {
         type: "object",
         properties: {

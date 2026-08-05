@@ -12,6 +12,6 @@ let value: Summary = {};
 
 | Field              | Type               | Required           | Description        |
 | ------------------ | ------------------ | ------------------ | ------------------ |
-| `failed`           | *number*           | :heavy_minus_sign: | N/A                |
-| `succeeded`        | *number*           | :heavy_minus_sign: | N/A                |
 | `total`            | *number*           | :heavy_minus_sign: | N/A                |
+| `succeeded`        | *number*           | :heavy_minus_sign: | N/A                |
+| `failed`           | *number*           | :heavy_minus_sign: | N/A                |

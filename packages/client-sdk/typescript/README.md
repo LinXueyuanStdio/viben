@@ -85,14 +85,14 @@ For supported JavaScript runtimes, please consult [RUNTIMES.md](RUNTIMES.md).
 ### Example
 
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  await sdk.deleteApiAccountsId({
-    id: "<id>",
-  });
+  const result = await vibenClient.agent.list();
+
+  console.log(result);
 }
 
 run();
@@ -106,597 +106,711 @@ run();
 <details open>
 <summary>Available methods</summary>
 
-### [SDK](docs/sdks/sdk/README.md)
+### [Accounts](docs/sdks/accounts/README.md)
 
-* [deleteApiAccountsId](docs/sdks/sdk/README.md#deleteapiaccountsid)
-* [deleteApiAgentId](docs/sdks/sdk/README.md#deleteapiagentid)
-* [deleteApiAgentIdSessionsSessionId](docs/sdks/sdk/README.md#deleteapiagentidsessionssessionid)
-* [deleteApiApiLogsRunId](docs/sdks/sdk/README.md#deleteapiapilogsrunid)
-* [deleteApiBrowsePluginsPluginId](docs/sdks/sdk/README.md#deleteapibrowsepluginspluginid)
-* [deleteApiCache](docs/sdks/sdk/README.md#deleteapicache)
-* [deleteApiChannelsId](docs/sdks/sdk/README.md#deleteapichannelsid)
-* [deleteApiCronId](docs/sdks/sdk/README.md#deleteapicronid)
-* [deleteApiCronIdLogs](docs/sdks/sdk/README.md#deleteapicronidlogs)
-* [deleteApiDevicesId](docs/sdks/sdk/README.md#deleteapidevicesid)
-* [deleteApiFiles](docs/sdks/sdk/README.md#deleteapifiles)
-* [deleteApiGithubAuth](docs/sdks/sdk/README.md#deleteapigithubauth)
-* [deleteApiGithubAutofixTasksTaskId](docs/sdks/sdk/README.md#deleteapigithubautofixtaskstaskid)
-* [deleteApiGithubAutofixWorktrees](docs/sdks/sdk/README.md#deleteapigithubautofixworktrees)
-* [deleteApiGithubReposConnect](docs/sdks/sdk/README.md#deleteapigithubreposconnect)
-* [deleteApiGroupChatsId](docs/sdks/sdk/README.md#deleteapigroupchatsid)
-* [deleteApiGroupChatsIdFilesFilename](docs/sdks/sdk/README.md#deleteapigroupchatsidfilesfilename)
-* [deleteApiGroupChatsIdMembersMemberId](docs/sdks/sdk/README.md#deleteapigroupchatsidmembersmemberid)
-* [deleteApiGroupChatsIdPicturesFilename](docs/sdks/sdk/README.md#deleteapigroupchatsidpicturesfilename)
-* [deleteApiGroupChatsIdSessionsSessionId](docs/sdks/sdk/README.md#deleteapigroupchatsidsessionssessionid)
-* [deleteApiHistory](docs/sdks/sdk/README.md#deleteapihistory)
-* [deleteApiHistoryId](docs/sdks/sdk/README.md#deleteapihistoryid)
-* [deleteApiKanbanTasksTaskIdCommentsCommentId](docs/sdks/sdk/README.md#deleteapikanbantaskstaskidcommentscommentid)
-* [deleteApiKanbanTasksTaskIdData](docs/sdks/sdk/README.md#deleteapikanbantaskstaskiddata)
-* [deleteApiLogs](docs/sdks/sdk/README.md#deleteapilogs)
-* [deleteApiLogsSessionSessionId](docs/sdks/sdk/README.md#deleteapilogssessionsessionid)
-* [deleteApiMarketplaceCache](docs/sdks/sdk/README.md#deleteapimarketplacecache)
-* [deleteApiMcpServerBrowse](docs/sdks/sdk/README.md#deleteapimcpserverbrowse)
-* [deleteApiMcpServerGuiAction](docs/sdks/sdk/README.md#deleteapimcpserverguiaction)
-* [deleteApiMcpAgentsAgentIdServersName](docs/sdks/sdk/README.md#deleteapimcpagentsagentidserversname)
-* [deleteApiMcpInspectorMcp](docs/sdks/sdk/README.md#deleteapimcpinspectormcp)
-* [deleteApiMcpInspectorSessionsSessionId](docs/sdks/sdk/README.md#deleteapimcpinspectorsessionssessionid)
-* [deleteApiMcpTauriMcp](docs/sdks/sdk/README.md#deleteapimcptaurimcp)
-* [deleteApiModelsAliasesAlias](docs/sdks/sdk/README.md#deleteapimodelsaliasesalias)
-* [deleteApiModelsFallbacks](docs/sdks/sdk/README.md#deleteapimodelsfallbacks)
-* [deleteApiModelsFallbacksModel](docs/sdks/sdk/README.md#deleteapimodelsfallbacksmodel)
-* [deleteApiModelsId](docs/sdks/sdk/README.md#deleteapimodelsid)
-* [deleteApiModelsIdConfig](docs/sdks/sdk/README.md#deleteapimodelsidconfig)
-* [deleteApiOfficialRegistryCache](docs/sdks/sdk/README.md#deleteapiofficialregistrycache)
-* [deleteApiOfficialRegistryServersNameCache](docs/sdks/sdk/README.md#deleteapiofficialregistryserversnamecache)
-* [deleteApiProvidersId](docs/sdks/sdk/README.md#deleteapiprovidersid)
-* [deleteApiQueueTasksId](docs/sdks/sdk/README.md#deleteapiqueuetasksid)
-* [deleteApiServiceKeysKeyId](docs/sdks/sdk/README.md#deleteapiservicekeyskeyid)
-* [deleteApiSessionsId](docs/sdks/sdk/README.md#deleteapisessionsid)
-* [deleteApiTasksId](docs/sdks/sdk/README.md#deleteapitasksid)
-* [deleteApiTelemetryClean](docs/sdks/sdk/README.md#deleteapitelemetryclean)
-* [deleteApiWorkspacesId](docs/sdks/sdk/README.md#deleteapiworkspacesid)
-* [getApiAccounts](docs/sdks/sdk/README.md#getapiaccounts)
-* [getApiAccountsId](docs/sdks/sdk/README.md#getapiaccountsid)
-* [getApiAgentDefault](docs/sdks/sdk/README.md#getapiagentdefault)
-* [getApiAgentPlanPlanId](docs/sdks/sdk/README.md#getapiagentplanplanid)
-* [getApiAgentSessionSessionId](docs/sdks/sdk/README.md#getapiagentsessionsessionid)
-* [getApiAgentTasksSubscribe](docs/sdks/sdk/README.md#getapiagenttaskssubscribe)
-* [getApiAgentTemplates](docs/sdks/sdk/README.md#getapiagenttemplates)
-* [getApiAgentTemplatesId](docs/sdks/sdk/README.md#getapiagenttemplatesid)
-* [getApiAgentAgentIdSessionsSessionIdTasks](docs/sdks/sdk/README.md#getapiagentagentidsessionssessionidtasks)
-* [getApiAgentAgentIdSessionsSessionIdTasksTaskIdMessages](docs/sdks/sdk/README.md#getapiagentagentidsessionssessionidtaskstaskidmessages)
-* [getApiAgentAgentIdTasks](docs/sdks/sdk/README.md#getapiagentagentidtasks)
-* [getApiAgentId](docs/sdks/sdk/README.md#getapiagentid)
-* [getApiAgentIdAvailability](docs/sdks/sdk/README.md#getapiagentidavailability)
-* [getApiAgentIdSessions](docs/sdks/sdk/README.md#getapiagentidsessions)
-* [getApiAgentIdSessionsSessionId](docs/sdks/sdk/README.md#getapiagentidsessionssessionid)
-* [getApiAgentIdSessionsSessionIdMessages](docs/sdks/sdk/README.md#getapiagentidsessionssessionidmessages)
-* [getApiAgentIdSessionsSessionIdUiMessages](docs/sdks/sdk/README.md#getapiagentidsessionssessioniduimessages)
-* [getApiApiLogsDir](docs/sdks/sdk/README.md#getapiapilogsdir)
-* [getApiApiLogsSessions](docs/sdks/sdk/README.md#getapiapilogssessions)
-* [getApiApiLogsRunId](docs/sdks/sdk/README.md#getapiapilogsrunid)
-* [getApiApiLogsRunIdSummary](docs/sdks/sdk/README.md#getapiapilogsrunidsummary)
-* [getApiBrowsePluginsInstalled](docs/sdks/sdk/README.md#getapibrowsepluginsinstalled)
-* [getApiBrowsePluginsRegistry](docs/sdks/sdk/README.md#getapibrowsepluginsregistry)
-* [getApiBrowsePluginsPluginId](docs/sdks/sdk/README.md#getapibrowsepluginspluginid)
-* [getApiCacheInfo](docs/sdks/sdk/README.md#getapicacheinfo)
-* [getApiCacheOffline](docs/sdks/sdk/README.md#getapicacheoffline)
-* [getApiCacheSettings](docs/sdks/sdk/README.md#getapicachesettings)
-* [getApiCacheShouldRefresh](docs/sdks/sdk/README.md#getapicacheshouldrefresh)
-* [getApiChatList](docs/sdks/sdk/README.md#getapichatlist)
-* [getApiCliToolsConfig](docs/sdks/sdk/README.md#getapiclitoolsconfig)
-* [getApiCliToolsDetect](docs/sdks/sdk/README.md#getapiclitoolsdetect)
-* [getApiCommandQueueConfig](docs/sdks/sdk/README.md#getapicommandqueueconfig)
-* [getApiCommandQueueItems](docs/sdks/sdk/README.md#getapicommandqueueitems)
-* [getApiCommandQueueItemsId](docs/sdks/sdk/README.md#getapicommandqueueitemsid)
-* [getApiCommandQueueItemsIdLogs](docs/sdks/sdk/README.md#getapicommandqueueitemsidlogs)
-* [getApiCommandQueueStatus](docs/sdks/sdk/README.md#getapicommandqueuestatus)
-* [getApiCommandsSkills](docs/sdks/sdk/README.md#getapicommandsskills)
-* [getApiCommandsWorkspace](docs/sdks/sdk/README.md#getapicommandsworkspace)
-* [getApiCronIdLogs](docs/sdks/sdk/README.md#getapicronidlogs)
-* [getApiDevices](docs/sdks/sdk/README.md#getapidevices)
-* [getApiDevicesQr](docs/sdks/sdk/README.md#getapidevicesqr)
-* [getApiDevicesId](docs/sdks/sdk/README.md#getapidevicesid)
-* [getApiEvents](docs/sdks/sdk/README.md#getapievents)
-* [getApiExchanges](docs/sdks/sdk/README.md#getapiexchanges)
-* [getApiExecutorsTypeCommands](docs/sdks/sdk/README.md#getapiexecutorstypecommands)
-* [getApiExecutorsTypeCommandsCommandId](docs/sdks/sdk/README.md#getapiexecutorstypecommandscommandid)
-* [getApiExecutorsTypeDiscoverSessions](docs/sdks/sdk/README.md#getapiexecutorstypediscoversessions)
-* [getApiExecutorsTypeMcpServers](docs/sdks/sdk/README.md#getapiexecutorstypemcpservers)
-* [getApiExecutorsTypePrompts](docs/sdks/sdk/README.md#getapiexecutorstypeprompts)
-* [getApiExecutorsTypePromptsPromptId](docs/sdks/sdk/README.md#getapiexecutorstypepromptspromptid)
-* [getApiExecutorsTypeSessionsSessionIdMessages](docs/sdks/sdk/README.md#getapiexecutorstypesessionssessionidmessages)
-* [getApiExecutorsTypeSkills](docs/sdks/sdk/README.md#getapiexecutorstypeskills)
-* [getApiExecutorsTypeSubagents](docs/sdks/sdk/README.md#getapiexecutorstypesubagents)
-* [getApiExecutorsTypeSubagentsConfigId](docs/sdks/sdk/README.md#getapiexecutorstypesubagentsconfigid)
-* [getApiFilesConfigDir](docs/sdks/sdk/README.md#getapifilesconfigdir)
-* [getApiFilesContent](docs/sdks/sdk/README.md#getapifilescontent)
-* [getApiFilesDirectory](docs/sdks/sdk/README.md#getapifilesdirectory)
-* [getApiFilesGitDiff](docs/sdks/sdk/README.md#getapifilesgitdiff)
-* [getApiFilesGitStatus](docs/sdks/sdk/README.md#getapifilesgitstatus)
-* [getApiFilesList](docs/sdks/sdk/README.md#getapifileslist)
-* [getApiFilesMcpServers](docs/sdks/sdk/README.md#getapifilesmcpservers)
-* [getApiGithubAuthStatus](docs/sdks/sdk/README.md#getapigithubauthstatus)
-* [getApiGithubAutofixConfig](docs/sdks/sdk/README.md#getapigithubautofixconfig)
-* [getApiGithubAutofixTasks](docs/sdks/sdk/README.md#getapigithubautofixtasks)
-* [getApiGithubAutofixTasksTaskId](docs/sdks/sdk/README.md#getapigithubautofixtaskstaskid)
-* [getApiGithubAutofixWorktrees](docs/sdks/sdk/README.md#getapigithubautofixworktrees)
-* [getApiGithubIssues](docs/sdks/sdk/README.md#getapigithubissues)
-* [getApiGithubIssuesNumber](docs/sdks/sdk/README.md#getapigithubissuesnumber)
-* [getApiGithubIssuesNumberComments](docs/sdks/sdk/README.md#getapigithubissuesnumbercomments)
-* [getApiGithubPrs](docs/sdks/sdk/README.md#getapigithubprs)
-* [getApiGithubPrsNumber](docs/sdks/sdk/README.md#getapigithubprsnumber)
-* [getApiGithubReleases](docs/sdks/sdk/README.md#getapigithubreleases)
-* [getApiGithubReleasesLatest](docs/sdks/sdk/README.md#getapigithubreleaseslatest)
-* [getApiGithubRepos](docs/sdks/sdk/README.md#getapigithubrepos)
-* [getApiGithubReposConnected](docs/sdks/sdk/README.md#getapigithubreposconnected)
-* [getApiGithubReposDetect](docs/sdks/sdk/README.md#getapigithubreposdetect)
-* [getApiGroupChats](docs/sdks/sdk/README.md#getapigroupchats)
-* [getApiGroupChatsId](docs/sdks/sdk/README.md#getapigroupchatsid)
-* [getApiGroupChatsIdFiles](docs/sdks/sdk/README.md#getapigroupchatsidfiles)
-* [getApiGroupChatsIdFilesFilename](docs/sdks/sdk/README.md#getapigroupchatsidfilesfilename)
-* [getApiGroupChatsIdMembers](docs/sdks/sdk/README.md#getapigroupchatsidmembers)
-* [getApiGroupChatsIdPictures](docs/sdks/sdk/README.md#getapigroupchatsidpictures)
-* [getApiGroupChatsIdPicturesFilename](docs/sdks/sdk/README.md#getapigroupchatsidpicturesfilename)
-* [getApiGroupChatsIdSessions](docs/sdks/sdk/README.md#getapigroupchatsidsessions)
-* [getApiGroupChatsIdSessionsSessionId](docs/sdks/sdk/README.md#getapigroupchatsidsessionssessionid)
-* [getApiGroupChatsIdSessionsSessionIdAgents](docs/sdks/sdk/README.md#getapigroupchatsidsessionssessionidagents)
-* [getApiGroupChatsIdSessionsSessionIdMessages](docs/sdks/sdk/README.md#getapigroupchatsidsessionssessionidmessages)
-* [getApiHistory](docs/sdks/sdk/README.md#getapihistory)
-* [getApiHistoryId](docs/sdks/sdk/README.md#getapihistoryid)
-* [getApiLogsDir](docs/sdks/sdk/README.md#getapilogsdir)
-* [getApiLogsSessionSessionId](docs/sdks/sdk/README.md#getapilogssessionsessionid)
-* [getApiLogsSessions](docs/sdks/sdk/README.md#getapilogssessions)
-* [getApiMarketplaceCategories](docs/sdks/sdk/README.md#getapimarketplacecategories)
-* [getApiMarketplaceCategoriesCategoryIdPlugins](docs/sdks/sdk/README.md#getapimarketplacecategoriescategoryidplugins)
-* [getApiMarketplaceIndex](docs/sdks/sdk/README.md#getapimarketplaceindex)
-* [getApiMarketplacePlugins](docs/sdks/sdk/README.md#getapimarketplaceplugins)
-* [getApiMarketplacePluginsPluginId](docs/sdks/sdk/README.md#getapimarketplacepluginspluginid)
-* [getApiMarketplaceSearch](docs/sdks/sdk/README.md#getapimarketplacesearch)
-* [getApiMarketplaceSources](docs/sdks/sdk/README.md#getapimarketplacesources)
-* [getApiMcpServerBrowse](docs/sdks/sdk/README.md#getapimcpserverbrowse)
-* [getApiMcpServerGuiAction](docs/sdks/sdk/README.md#getapimcpserverguiaction)
-* [getApiMcpAgentsAgentIdServers](docs/sdks/sdk/README.md#getapimcpagentsagentidservers)
-* [getApiMcpAgentsAgentIdServersName](docs/sdks/sdk/README.md#getapimcpagentsagentidserversname)
-* [getApiMcpBrowseStatus](docs/sdks/sdk/README.md#getapimcpbrowsestatus)
-* [getApiMcpInspectorConfig](docs/sdks/sdk/README.md#getapimcpinspectorconfig)
-* [getApiMcpInspectorHealth](docs/sdks/sdk/README.md#getapimcpinspectorhealth)
-* [getApiMcpInspectorMcp](docs/sdks/sdk/README.md#getapimcpinspectormcp)
-* [getApiMcpInspectorSessions](docs/sdks/sdk/README.md#getapimcpinspectorsessions)
-* [getApiMcpInspectorSse](docs/sdks/sdk/README.md#getapimcpinspectorsse)
-* [getApiMcpInspectorStdio](docs/sdks/sdk/README.md#getapimcpinspectorstdio)
-* [getApiMcpInspectorToken](docs/sdks/sdk/README.md#getapimcpinspectortoken)
-* [getApiMcpProxyStatus](docs/sdks/sdk/README.md#getapimcpproxystatus)
-* [getApiMcpTauriMcp](docs/sdks/sdk/README.md#getapimcptaurimcp)
-* [getApiMcpTauriSse](docs/sdks/sdk/README.md#getapimcptaurisse)
-* [getApiMeshPeers](docs/sdks/sdk/README.md#getapimeshpeers)
-* [getApiModelsAliases](docs/sdks/sdk/README.md#getapimodelsaliases)
-* [getApiModelsDefault](docs/sdks/sdk/README.md#getapimodelsdefault)
-* [getApiModelsFallbacks](docs/sdks/sdk/README.md#getapimodelsfallbacks)
-* [getApiModelsIdConfig](docs/sdks/sdk/README.md#getapimodelsidconfig)
-* [getApiOfficialRegistryServers](docs/sdks/sdk/README.md#getapiofficialregistryservers)
-* [getApiOfficialRegistryServersName](docs/sdks/sdk/README.md#getapiofficialregistryserversname)
-* [getApiOfficialRegistryServersNameVersions](docs/sdks/sdk/README.md#getapiofficialregistryserversnameversions)
-* [getApiPackagesInstalled](docs/sdks/sdk/README.md#getapipackagesinstalled)
-* [getApiPackagesMcp](docs/sdks/sdk/README.md#getapipackagesmcp)
-* [getApiPackagesSkills](docs/sdks/sdk/README.md#getapipackagesskills)
-* [getApiPatches](docs/sdks/sdk/README.md#getapipatches)
-* [getApiPetAssetIdFilename](docs/sdks/sdk/README.md#getapipetassetidfilename)
-* [getApiPetCommunity](docs/sdks/sdk/README.md#getapipetcommunity)
-* [getApiPetConfig](docs/sdks/sdk/README.md#getapipetconfig)
-* [getApiPetExportId](docs/sdks/sdk/README.md#getapipetexportid)
-* [getApiPetList](docs/sdks/sdk/README.md#getapipetlist)
-* [getApiPetPreviewId](docs/sdks/sdk/README.md#getapipetpreviewid)
-* [getApiPetSearch](docs/sdks/sdk/README.md#getapipetsearch)
-* [getApiPetShowId](docs/sdks/sdk/README.md#getapipetshowid)
-* [getApiPetSourcesList](docs/sdks/sdk/README.md#getapipetsourceslist)
-* [getApiPreferences](docs/sdks/sdk/README.md#getapipreferences)
-* [getApiPreferencesDeveloper](docs/sdks/sdk/README.md#getapipreferencesdeveloper)
-* [getApiPreferencesDeveloperIde](docs/sdks/sdk/README.md#getapipreferencesdeveloperide)
-* [getApiPreferencesDeveloperTerminal](docs/sdks/sdk/README.md#getapipreferencesdeveloperterminal)
-* [getApiPreferencesNotifications](docs/sdks/sdk/README.md#getapipreferencesnotifications)
-* [getApiProvidersApiKeys](docs/sdks/sdk/README.md#getapiprovidersapikeys)
-* [getApiProvidersApiKeysAll](docs/sdks/sdk/README.md#getapiprovidersapikeysall)
-* [getApiProvidersDefault](docs/sdks/sdk/README.md#getapiprovidersdefault)
-* [getApiProvidersIdDiscoverModels](docs/sdks/sdk/README.md#getapiprovidersiddiscovermodels)
-* [getApiProvidersIdModels](docs/sdks/sdk/README.md#getapiprovidersidmodels)
-* [getApiPythonDetect](docs/sdks/sdk/README.md#getapipythondetect)
-* [getApiQueueConfig](docs/sdks/sdk/README.md#getapiqueueconfig)
-* [getApiQueueStatus](docs/sdks/sdk/README.md#getapiqueuestatus)
-* [getApiQueueTasks](docs/sdks/sdk/README.md#getapiqueuetasks)
-* [getApiQueueTasksId](docs/sdks/sdk/README.md#getapiqueuetasksid)
-* [getApiQueueTasksIdRunning](docs/sdks/sdk/README.md#getapiqueuetasksidrunning)
-* [getApiQueueTasksIdStream](docs/sdks/sdk/README.md#getapiqueuetasksidstream)
-* [getApiSandboxAvailable](docs/sdks/sdk/README.md#getapisandboxavailable)
-* [getApiServiceKeys](docs/sdks/sdk/README.md#getapiservicekeys)
-* [getApiServiceKeysKeyId](docs/sdks/sdk/README.md#getapiservicekeyskeyid)
-* [getApiSessionsIdMessages](docs/sdks/sdk/README.md#getapisessionsidmessages)
-* [getApiSessionsIdUiMessages](docs/sdks/sdk/README.md#getapisessionsiduimessages)
-* [getApiSourcesInstalled](docs/sdks/sdk/README.md#getapisourcesinstalled)
-* [getApiSourcesProviderProvider](docs/sdks/sdk/README.md#getapisourcesproviderprovider)
-* [getApiSystemInfo](docs/sdks/sdk/README.md#getapisysteminfo)
-* [getApiSystemPublicIp](docs/sdks/sdk/README.md#getapisystempublicip)
-* [getApiTasksEventsStream](docs/sdks/sdk/README.md#getapitaskseventsstream)
-* [getApiTasksTaskIdSessions](docs/sdks/sdk/README.md#getapitaskstaskidsessions)
-* [getApiTasksTaskIdEvents](docs/sdks/sdk/README.md#getapitaskstaskidevents)
-* [getApiTasksTaskIdEventsStream](docs/sdks/sdk/README.md#getapitaskstaskideventsstream)
-* [getApiTasksTaskIdState](docs/sdks/sdk/README.md#getapitaskstaskidstate)
-* [getApiTelemetryDates](docs/sdks/sdk/README.md#getapitelemetrydates)
-* [getApiTelemetryStats](docs/sdks/sdk/README.md#getapitelemetrystats)
-* [getApiTelemetryTraceId](docs/sdks/sdk/README.md#getapitelemetrytraceid)
-* [getApiTelemetryTraceIdSpans](docs/sdks/sdk/README.md#getapitelemetrytraceidspans)
-* [getApiTelemetryTraces](docs/sdks/sdk/README.md#getapitelemetrytraces)
-* [getApiTunnelStatus](docs/sdks/sdk/README.md#getapitunnelstatus)
-* [getApiUsageApiKeyKeyId](docs/sdks/sdk/README.md#getapiusageapikeykeyid)
-* [getApiUsageServerServerId](docs/sdks/sdk/README.md#getapiusageserverserverid)
-* [getApiUsageSourceSourceId](docs/sdks/sdk/README.md#getapiusagesourcesourceid)
-* [getApiUsageStats](docs/sdks/sdk/README.md#getapiusagestats)
-* [getOpenapiJson](docs/sdks/sdk/README.md#getopenapijson)
-* [getOpenapiYaml](docs/sdks/sdk/README.md#getopenapiyaml)
-* [patchApiAgentId](docs/sdks/sdk/README.md#patchapiagentid)
-* [patchApiChannelsId](docs/sdks/sdk/README.md#patchapichannelsid)
-* [patchApiCliToolsConfig](docs/sdks/sdk/README.md#patchapiclitoolsconfig)
-* [patchApiCronId](docs/sdks/sdk/README.md#patchapicronid)
-* [patchApiGroupChatsId](docs/sdks/sdk/README.md#patchapigroupchatsid)
-* [patchApiGroupChatsIdSessionsSessionId](docs/sdks/sdk/README.md#patchapigroupchatsidsessionssessionid)
-* [patchApiKanbanTasksTaskIdCommentsCommentId](docs/sdks/sdk/README.md#patchapikanbantaskstaskidcommentscommentid)
-* [patchApiMcpAgentsAgentIdServersName](docs/sdks/sdk/README.md#patchapimcpagentsagentidserversname)
-* [patchApiModelsId](docs/sdks/sdk/README.md#patchapimodelsid)
-* [patchApiPreferencesDeveloper](docs/sdks/sdk/README.md#patchapipreferencesdeveloper)
-* [patchApiPreferencesNotifications](docs/sdks/sdk/README.md#patchapipreferencesnotifications)
-* [patchApiProvidersId](docs/sdks/sdk/README.md#patchapiprovidersid)
-* [patchApiServiceKeysKeyId](docs/sdks/sdk/README.md#patchapiservicekeyskeyid)
-* [patchApiSessionsId](docs/sdks/sdk/README.md#patchapisessionsid)
-* [patchApiTasksId](docs/sdks/sdk/README.md#patchapitasksid)
-* [postApiAccounts](docs/sdks/sdk/README.md#postapiaccounts)
-* [postApiAccountsIdTest](docs/sdks/sdk/README.md#postapiaccountsidtest)
-* [postApiAgent](docs/sdks/sdk/README.md#postapiagent)
-* [postApiAgentAnswerQuestionId](docs/sdks/sdk/README.md#postapiagentanswerquestionid)
-* [postApiAgentApprovePlanId](docs/sdks/sdk/README.md#postapiagentapproveplanid)
-* [postApiAgentRejectPlanId](docs/sdks/sdk/README.md#postapiagentrejectplanid)
-* [postApiAgentRun](docs/sdks/sdk/README.md#postapiagentrun)
-* [postApiAgentSessionSessionIdSteer](docs/sdks/sdk/README.md#postapiagentsessionsessionidsteer)
-* [postApiAgentStopSessionId](docs/sdks/sdk/README.md#postapiagentstopsessionid)
-* [postApiAgentTasksTaskIdStop](docs/sdks/sdk/README.md#postapiagenttaskstaskidstop)
-* [postApiAgentTemplates](docs/sdks/sdk/README.md#postapiagenttemplates)
-* [postApiAgentTemplatesIdInstantiate](docs/sdks/sdk/README.md#postapiagenttemplatesidinstantiate)
-* [postApiAgentIdPromote](docs/sdks/sdk/README.md#postapiagentidpromote)
-* [postApiAgentIdSessions](docs/sdks/sdk/README.md#postapiagentidsessions)
-* [postApiAgentIdSessionsSessionIdMessages](docs/sdks/sdk/README.md#postapiagentidsessionssessionidmessages)
-* [postApiApiLogsOpen](docs/sdks/sdk/README.md#postapiapilogsopen)
-* [postApiBrowsePluginsInstall](docs/sdks/sdk/README.md#postapibrowsepluginsinstall)
-* [postApiCacheRefresh](docs/sdks/sdk/README.md#postapicacherefresh)
-* [postApiChannels](docs/sdks/sdk/README.md#postapichannels)
-* [postApiChannelsSend](docs/sdks/sdk/README.md#postapichannelssend)
-* [postApiChannelsSendTest](docs/sdks/sdk/README.md#postapichannelssendtest)
-* [postApiChannelsTest](docs/sdks/sdk/README.md#postapichannelstest)
-* [postApiChannelsWebhook](docs/sdks/sdk/README.md#postapichannelswebhook)
-* [postApiChannelsIdDefault](docs/sdks/sdk/README.md#postapichannelsiddefault)
-* [postApiChannelsIdWebhook](docs/sdks/sdk/README.md#postapichannelsidwebhook)
-* [postApiCliToolsCheck](docs/sdks/sdk/README.md#postapiclitoolscheck)
-* [postApiCliToolsConfig](docs/sdks/sdk/README.md#postapiclitoolsconfig)
-* [postApiClientToolsComplete](docs/sdks/sdk/README.md#postapiclienttoolscomplete)
-* [postApiClientToolsRequest](docs/sdks/sdk/README.md#postapiclienttoolsrequest)
-* [postApiCommandQueueClean](docs/sdks/sdk/README.md#postapicommandqueueclean)
-* [postApiCommandQueueEnqueue](docs/sdks/sdk/README.md#postapicommandqueueenqueue)
-* [postApiCommandQueueItemsIdCancel](docs/sdks/sdk/README.md#postapicommandqueueitemsidcancel)
-* [postApiCommandQueueItemsIdRetry](docs/sdks/sdk/README.md#postapicommandqueueitemsidretry)
-* [postApiCron](docs/sdks/sdk/README.md#postapicron)
-* [postApiCronIdDisable](docs/sdks/sdk/README.md#postapicroniddisable)
-* [postApiCronIdEnable](docs/sdks/sdk/README.md#postapicronidenable)
-* [postApiCronIdRun](docs/sdks/sdk/README.md#postapicronidrun)
-* [postApiDevicesMessage](docs/sdks/sdk/README.md#postapidevicesmessage)
-* [postApiFiles](docs/sdks/sdk/README.md#postapifiles)
-* [postApiFilesCopy](docs/sdks/sdk/README.md#postapifilescopy)
-* [postApiFilesDirectory](docs/sdks/sdk/README.md#postapifilesdirectory)
-* [postApiFilesMove](docs/sdks/sdk/README.md#postapifilesmove)
-* [postApiFilesOpen](docs/sdks/sdk/README.md#postapifilesopen)
-* [postApiFilesOpenFolder](docs/sdks/sdk/README.md#postapifilesopenfolder)
-* [postApiFilesReveal](docs/sdks/sdk/README.md#postapifilesreveal)
-* [postApiGithubAuthGhCli](docs/sdks/sdk/README.md#postapigithubauthghcli)
-* [postApiGithubAuthPat](docs/sdks/sdk/README.md#postapigithubauthpat)
-* [postApiGithubAutofixTasks](docs/sdks/sdk/README.md#postapigithubautofixtasks)
-* [postApiGithubAutofixTasksTaskIdApprove](docs/sdks/sdk/README.md#postapigithubautofixtaskstaskidapprove)
-* [postApiGithubAutofixTasksTaskIdCancel](docs/sdks/sdk/README.md#postapigithubautofixtaskstaskidcancel)
-* [postApiGithubIssuesCluster](docs/sdks/sdk/README.md#postapigithubissuescluster)
-* [postApiGithubIssuesImport](docs/sdks/sdk/README.md#postapigithubissuesimport)
-* [postApiGithubIssuesTriage](docs/sdks/sdk/README.md#postapigithubissuestriage)
-* [postApiGithubIssuesNumberAnalyze](docs/sdks/sdk/README.md#postapigithubissuesnumberanalyze)
-* [postApiGithubIssuesNumberInvestigate](docs/sdks/sdk/README.md#postapigithubissuesnumberinvestigate)
-* [postApiGithubPrs](docs/sdks/sdk/README.md#postapigithubprs)
-* [postApiGithubReleases](docs/sdks/sdk/README.md#postapigithubreleases)
-* [postApiGithubReleasesGenerateNotes](docs/sdks/sdk/README.md#postapigithubreleasesgeneratenotes)
-* [postApiGithubReposConnect](docs/sdks/sdk/README.md#postapigithubreposconnect)
-* [postApiGroupChats](docs/sdks/sdk/README.md#postapigroupchats)
-* [postApiGroupChatsIdFiles](docs/sdks/sdk/README.md#postapigroupchatsidfiles)
-* [postApiGroupChatsIdMembers](docs/sdks/sdk/README.md#postapigroupchatsidmembers)
-* [postApiGroupChatsIdPictures](docs/sdks/sdk/README.md#postapigroupchatsidpictures)
-* [postApiGroupChatsIdSessions](docs/sdks/sdk/README.md#postapigroupchatsidsessions)
-* [postApiGroupChatsIdSessionsSessionIdMessages](docs/sdks/sdk/README.md#postapigroupchatsidsessionssessionidmessages)
-* [postApiHistory](docs/sdks/sdk/README.md#postapihistory)
-* [postApiKanbanTasksTaskIdActivities](docs/sdks/sdk/README.md#postapikanbantaskstaskidactivities)
-* [postApiKanbanTasksTaskIdComments](docs/sdks/sdk/README.md#postapikanbantaskstaskidcomments)
-* [postApiKanbanTasksTaskIdCommentsCommentIdReactions](docs/sdks/sdk/README.md#postapikanbantaskstaskidcommentscommentidreactions)
-* [postApiLogsAdd](docs/sdks/sdk/README.md#postapilogsadd)
-* [postApiLogsCleanup](docs/sdks/sdk/README.md#postapilogscleanup)
-* [postApiLogsInit](docs/sdks/sdk/README.md#postapilogsinit)
-* [postApiLogsSessionSessionIdExport](docs/sdks/sdk/README.md#postapilogssessionsessionidexport)
-* [postApiMcpServerBrowse](docs/sdks/sdk/README.md#postapimcpserverbrowse)
-* [postApiMcpServerGuiAction](docs/sdks/sdk/README.md#postapimcpserverguiaction)
-* [postApiMcpAgentsAgentIdServers](docs/sdks/sdk/README.md#postapimcpagentsagentidservers)
-* [postApiMcpAgentsAgentIdServersNameDisable](docs/sdks/sdk/README.md#postapimcpagentsagentidserversnamedisable)
-* [postApiMcpAgentsAgentIdServersNameEnable](docs/sdks/sdk/README.md#postapimcpagentsagentidserversnameenable)
-* [postApiMcpBrowseStart](docs/sdks/sdk/README.md#postapimcpbrowsestart)
-* [postApiMcpBrowseStop](docs/sdks/sdk/README.md#postapimcpbrowsestop)
-* [postApiMcpBrowseTest](docs/sdks/sdk/README.md#postapimcpbrowsetest)
-* [postApiMcpInspectorMcp](docs/sdks/sdk/README.md#postapimcpinspectormcp)
-* [postApiMcpInspectorMessage](docs/sdks/sdk/README.md#postapimcpinspectormessage)
-* [postApiMcpInspectorSse](docs/sdks/sdk/README.md#postapimcpinspectorsse)
-* [postApiMcpPortStatus](docs/sdks/sdk/README.md#postapimcpportstatus)
-* [postApiMcpProcessAlive](docs/sdks/sdk/README.md#postapimcpprocessalive)
-* [postApiMcpProcessKill](docs/sdks/sdk/README.md#postapimcpprocesskill)
-* [postApiMcpProxyCheckInstalled](docs/sdks/sdk/README.md#postapimcpproxycheckinstalled)
-* [postApiMcpProxyInstall](docs/sdks/sdk/README.md#postapimcpproxyinstall)
-* [postApiMcpProxyKillPortProcess](docs/sdks/sdk/README.md#postapimcpproxykillportprocess)
-* [postApiMcpProxyPortProcess](docs/sdks/sdk/README.md#postapimcpproxyportprocess)
-* [postApiMcpProxyStart](docs/sdks/sdk/README.md#postapimcpproxystart)
-* [postApiMcpProxyStop](docs/sdks/sdk/README.md#postapimcpproxystop)
-* [postApiMcpServerCheckPort](docs/sdks/sdk/README.md#postapimcpservercheckport)
-* [postApiMcpTauriMcp](docs/sdks/sdk/README.md#postapimcptaurimcp)
-* [postApiMcpTauriMessage](docs/sdks/sdk/README.md#postapimcptaurimessage)
-* [postApiMcpTauriSse](docs/sdks/sdk/README.md#postapimcptaurisse)
-* [postApiMeshConnect](docs/sdks/sdk/README.md#postapimeshconnect)
-* [postApiModels](docs/sdks/sdk/README.md#postapimodels)
-* [postApiModelsAliases](docs/sdks/sdk/README.md#postapimodelsaliases)
-* [postApiModelsFallbacks](docs/sdks/sdk/README.md#postapimodelsfallbacks)
-* [postApiModelsReload](docs/sdks/sdk/README.md#postapimodelsreload)
-* [postApiModelsIdDisable](docs/sdks/sdk/README.md#postapimodelsiddisable)
-* [postApiModelsIdEnable](docs/sdks/sdk/README.md#postapimodelsidenable)
-* [postApiPackagesUpdate](docs/sdks/sdk/README.md#postapipackagesupdate)
-* [postApiPageAssetUpload](docs/sdks/sdk/README.md#postapipageassetupload)
-* [postApiPetImport](docs/sdks/sdk/README.md#postapipetimport)
-* [postApiPetInstall](docs/sdks/sdk/README.md#postapipetinstall)
-* [postApiPetRemoveId](docs/sdks/sdk/README.md#postapipetremoveid)
-* [postApiPetSetId](docs/sdks/sdk/README.md#postapipetsetid)
-* [postApiPetSourcesAdd](docs/sdks/sdk/README.md#postapipetsourcesadd)
-* [postApiPetSourcesRemoveName](docs/sdks/sdk/README.md#postapipetsourcesremovename)
-* [postApiProviders](docs/sdks/sdk/README.md#postapiproviders)
-* [postApiProvidersReload](docs/sdks/sdk/README.md#postapiprovidersreload)
-* [postApiProvidersValidateKey](docs/sdks/sdk/README.md#postapiprovidersvalidatekey)
-* [postApiProvidersIdDisable](docs/sdks/sdk/README.md#postapiprovidersiddisable)
-* [postApiProvidersIdEnable](docs/sdks/sdk/README.md#postapiprovidersidenable)
-* [postApiProvidersIdTest](docs/sdks/sdk/README.md#postapiprovidersidtest)
-* [postApiProvidersProviderIdModelsModelIdDisable](docs/sdks/sdk/README.md#postapiprovidersprovideridmodelsmodeliddisable)
-* [postApiProvidersProviderIdModelsModelIdEnable](docs/sdks/sdk/README.md#postapiprovidersprovideridmodelsmodelidenable)
-* [postApiPythonCheck](docs/sdks/sdk/README.md#postapipythoncheck)
-* [postApiPythonPackageCheck](docs/sdks/sdk/README.md#postapipythonpackagecheck)
-* [postApiPythonPackageInstallCommand](docs/sdks/sdk/README.md#postapipythonpackageinstallcommand)
-* [postApiQueueClearHistory](docs/sdks/sdk/README.md#postapiqueueclearhistory)
-* [postApiQueueEnqueue](docs/sdks/sdk/README.md#postapiqueueenqueue)
-* [postApiQueueEnqueueBatch](docs/sdks/sdk/README.md#postapiqueueenqueuebatch)
-* [postApiQueueTasksIdRetry](docs/sdks/sdk/README.md#postapiqueuetasksidretry)
-* [postApiSandboxExec](docs/sdks/sdk/README.md#postapisandboxexec)
-* [postApiSandboxRunFile](docs/sdks/sdk/README.md#postapisandboxrunfile)
-* [postApiSandboxStop](docs/sdks/sdk/README.md#postapisandboxstop)
-* [postApiServiceKeys](docs/sdks/sdk/README.md#postapiservicekeys)
-* [postApiServiceKeysValidate](docs/sdks/sdk/README.md#postapiservicekeysvalidate)
-* [postApiServiceKeysKeyIdUsage](docs/sdks/sdk/README.md#postapiservicekeyskeyidusage)
-* [postApiSessions](docs/sdks/sdk/README.md#postapisessions)
-* [postApiSourcesProviderInstall](docs/sdks/sdk/README.md#postapisourcesproviderinstall)
-* [postApiTasks](docs/sdks/sdk/README.md#postapitasks)
-* [postApiTasksTaskIdEvents](docs/sdks/sdk/README.md#postapitaskstaskidevents)
-* [postApiTasksTaskIdEventsValidate](docs/sdks/sdk/README.md#postapitaskstaskideventsvalidate)
-* [postApiTunnelRestart](docs/sdks/sdk/README.md#postapitunnelrestart)
-* [postApiTunnelStart](docs/sdks/sdk/README.md#postapitunnelstart)
-* [postApiTunnelStop](docs/sdks/sdk/README.md#postapitunnelstop)
-* [postApiUsageInit](docs/sdks/sdk/README.md#postapiusageinit)
-* [postApiUsageRecord](docs/sdks/sdk/README.md#postapiusagerecord)
-* [postApiWorkspacesCreate](docs/sdks/sdk/README.md#postapiworkspacescreate)
-* [putApiAccountsId](docs/sdks/sdk/README.md#putapiaccountsid)
-* [putApiAgentDefault](docs/sdks/sdk/README.md#putapiagentdefault)
-* [putApiCacheSettings](docs/sdks/sdk/README.md#putapicachesettings)
-* [putApiCommandQueueConfig](docs/sdks/sdk/README.md#putapicommandqueueconfig)
-* [putApiFilesContent](docs/sdks/sdk/README.md#putapifilescontent)
-* [putApiFilesMcpServers](docs/sdks/sdk/README.md#putapifilesmcpservers)
-* [putApiFilesRename](docs/sdks/sdk/README.md#putapifilesrename)
-* [putApiGithubAutofixConfig](docs/sdks/sdk/README.md#putapigithubautofixconfig)
-* [putApiModelsDefault](docs/sdks/sdk/README.md#putapimodelsdefault)
-* [putApiModelsFallbacks](docs/sdks/sdk/README.md#putapimodelsfallbacks)
-* [putApiModelsIdConfig](docs/sdks/sdk/README.md#putapimodelsidconfig)
-* [putApiPetConfig](docs/sdks/sdk/README.md#putapipetconfig)
-* [putApiPreferences](docs/sdks/sdk/README.md#putapipreferences)
-* [putApiPreferencesDeveloperIde](docs/sdks/sdk/README.md#putapipreferencesdeveloperide)
-* [putApiPreferencesDeveloperTerminal](docs/sdks/sdk/README.md#putapipreferencesdeveloperterminal)
-* [putApiProvidersDefault](docs/sdks/sdk/README.md#putapiprovidersdefault)
-* [putApiQueueConfig](docs/sdks/sdk/README.md#putapiqueueconfig)
-* [putApiTasksId](docs/sdks/sdk/README.md#putapitasksid)
+* [list](docs/sdks/accounts/README.md#list)
+* [create](docs/sdks/accounts/README.md#create)
+* [get](docs/sdks/accounts/README.md#get)
+* [update](docs/sdks/accounts/README.md#update)
+* [delete](docs/sdks/accounts/README.md#delete)
+* [test](docs/sdks/accounts/README.md#test)
 
-### [Agents](docs/sdks/agents/README.md)
+### [Agent](docs/sdks/agent/README.md)
 
-* [getApiAgent](docs/sdks/agents/README.md#getapiagent) - List all agents
+* [list](docs/sdks/agent/README.md#list) - List all agents
+* [create](docs/sdks/agent/README.md#create)
+* [getDefault](docs/sdks/agent/README.md#getdefault)
+* [updateDefault](docs/sdks/agent/README.md#updatedefault)
+* [listTemplates](docs/sdks/agent/README.md#listtemplates)
+* [createTemplate](docs/sdks/agent/README.md#createtemplate)
+* [getTemplate](docs/sdks/agent/README.md#gettemplate)
+* [instantiateTemplate](docs/sdks/agent/README.md#instantiatetemplate)
+* [promote](docs/sdks/agent/README.md#promote)
+* [getSessions](docs/sdks/agent/README.md#getsessions)
+* [createSession](docs/sdks/agent/README.md#createsession)
+* [getSession](docs/sdks/agent/README.md#getsession)
+* [deleteSession](docs/sdks/agent/README.md#deletesession)
+* [getSessionMessages](docs/sdks/agent/README.md#getsessionmessages)
+* [createSessionMessage](docs/sdks/agent/README.md#createsessionmessage)
+* [getSessionUiMessages](docs/sdks/agent/README.md#getsessionuimessages)
+* [getAvailability](docs/sdks/agent/README.md#getavailability)
+* [get](docs/sdks/agent/README.md#get)
+* [delete](docs/sdks/agent/README.md#delete)
+* [update](docs/sdks/agent/README.md#update)
+* [getTasks](docs/sdks/agent/README.md#gettasks)
+* [getSessionTasks](docs/sdks/agent/README.md#getsessiontasks)
+* [getSessionTaskMessages](docs/sdks/agent/README.md#getsessiontaskmessages)
+* [run](docs/sdks/agent/README.md#run)
+* [stop](docs/sdks/agent/README.md#stop)
+* [approve](docs/sdks/agent/README.md#approve)
+* [reject](docs/sdks/agent/README.md#reject)
+* [createAnswer](docs/sdks/agent/README.md#createanswer)
+* [subscribeTask](docs/sdks/agent/README.md#subscribetask)
+* [stopTask](docs/sdks/agent/README.md#stoptask)
+* [getSession2](docs/sdks/agent/README.md#getsession2)
+* [createSessionSteer](docs/sdks/agent/README.md#createsessionsteer)
+* [getPlan](docs/sdks/agent/README.md#getplan)
+
+### [ApiLogs](docs/sdks/apilogs/README.md)
+
+* [getDir](docs/sdks/apilogs/README.md#getdir)
+* [listSessions](docs/sdks/apilogs/README.md#listsessions)
+* [get](docs/sdks/apilogs/README.md#get)
+* [delete](docs/sdks/apilogs/README.md#delete)
+* [getSummary](docs/sdks/apilogs/README.md#getsummary)
+* [open](docs/sdks/apilogs/README.md#open)
+
+### [Auth](docs/sdks/auth/README.md)
+
+* [createLogin](docs/sdks/auth/README.md#createlogin)
+* [createRegister](docs/sdks/auth/README.md#createregister)
+* [get](docs/sdks/auth/README.md#get)
+* [createCallback](docs/sdks/auth/README.md#createcallback)
+* [refresh](docs/sdks/auth/README.md#refresh)
+* [validate](docs/sdks/auth/README.md#validate)
+* [createLogout](docs/sdks/auth/README.md#createlogout)
+
+### [BrowsePlugins](docs/sdks/browseplugins/README.md)
+
+* [listRegistry](docs/sdks/browseplugins/README.md#listregistry)
+* [listInstalled](docs/sdks/browseplugins/README.md#listinstalled)
+* [get](docs/sdks/browseplugins/README.md#get)
+* [delete](docs/sdks/browseplugins/README.md#delete)
+* [install](docs/sdks/browseplugins/README.md#install)
+
+### [Cache](docs/sdks/cache/README.md)
+
+* [listOffline](docs/sdks/cache/README.md#listoffline)
+* [getInfo](docs/sdks/cache/README.md#getinfo)
+* [getSettings](docs/sdks/cache/README.md#getsettings)
+* [updateSetting](docs/sdks/cache/README.md#updatesetting)
+* [refresh](docs/sdks/cache/README.md#refresh)
+* [delete](docs/sdks/cache/README.md#delete)
+* [listShouldRefresh](docs/sdks/cache/README.md#listshouldrefresh)
 
 ### [Channels](docs/sdks/channels/README.md)
 
-* [getApiChannels](docs/sdks/channels/README.md#getapichannels) - List all notification channels
-* [getApiChannelsId](docs/sdks/channels/README.md#getapichannelsid) - Get a specific channel by ID
+* [list](docs/sdks/channels/README.md#list) - List all notification channels
+* [create](docs/sdks/channels/README.md#create)
+* [get](docs/sdks/channels/README.md#get) - Get a specific channel by ID
+* [delete](docs/sdks/channels/README.md#delete)
+* [update](docs/sdks/channels/README.md#update)
+* [createDefault](docs/sdks/channels/README.md#createdefault)
+* [send](docs/sdks/channels/README.md#send)
+* [test](docs/sdks/channels/README.md#test)
+* [createSendTest](docs/sdks/channels/README.md#createsendtest)
+* [createWebhook](docs/sdks/channels/README.md#createwebhook)
+* [createWebhook2](docs/sdks/channels/README.md#createwebhook2)
+
+### [ChatList](docs/sdks/chatlist/README.md)
+
+* [list](docs/sdks/chatlist/README.md#list)
+
+### [ClientTools](docs/sdks/clienttools/README.md)
+
+* [createComplete](docs/sdks/clienttools/README.md#createcomplete)
+* [createRequest](docs/sdks/clienttools/README.md#createrequest)
+
+### [CliTools](docs/sdks/clitools/README.md)
+
+* [detect](docs/sdks/clitools/README.md#detect)
+* [check](docs/sdks/clitools/README.md#check)
+* [getConfig](docs/sdks/clitools/README.md#getconfig)
+* [createConfig](docs/sdks/clitools/README.md#createconfig)
+* [updateConfig](docs/sdks/clitools/README.md#updateconfig)
+
+### [Collections](docs/sdks/collections/README.md)
+
+* [list](docs/sdks/collections/README.md#list)
+* [create](docs/sdks/collections/README.md#create)
+* [get](docs/sdks/collections/README.md#get)
+* [delete](docs/sdks/collections/README.md#delete)
+* [update](docs/sdks/collections/README.md#update)
+* [createItem](docs/sdks/collections/README.md#createitem)
+* [deleteItem](docs/sdks/collections/README.md#deleteitem)
+* [createFork](docs/sdks/collections/README.md#createfork)
+* [createFavorite](docs/sdks/collections/README.md#createfavorite)
+* [getComments](docs/sdks/collections/README.md#getcomments)
+* [createComment](docs/sdks/collections/README.md#createcomment)
+
+### [CommandQueue](docs/sdks/commandqueue/README.md)
+
+* [enqueue](docs/sdks/commandqueue/README.md#enqueue)
+* [getStatus](docs/sdks/commandqueue/README.md#getstatus)
+* [listItems](docs/sdks/commandqueue/README.md#listitems)
+* [getItem](docs/sdks/commandqueue/README.md#getitem)
+* [cancelItem](docs/sdks/commandqueue/README.md#cancelitem)
+* [retryItem](docs/sdks/commandqueue/README.md#retryitem)
+* [getItemLogs](docs/sdks/commandqueue/README.md#getitemlogs)
+* [getConfig](docs/sdks/commandqueue/README.md#getconfig)
+* [updateConfig](docs/sdks/commandqueue/README.md#updateconfig)
+* [clean](docs/sdks/commandqueue/README.md#clean)
+
+### [Commands](docs/sdks/commands/README.md)
+
+* [listWorkspace](docs/sdks/commands/README.md#listworkspace)
+* [listSkills](docs/sdks/commands/README.md#listskills)
 
 ### [Cron](docs/sdks/cron/README.md)
 
-* [getApiCron](docs/sdks/cron/README.md#getapicron) - List all cron jobs
-* [getApiCronId](docs/sdks/cron/README.md#getapicronid) - Get a specific cron job by ID
+* [list](docs/sdks/cron/README.md#list) - List all cron jobs
+* [create](docs/sdks/cron/README.md#create)
+* [get](docs/sdks/cron/README.md#get) - Get a specific cron job by ID
+* [delete](docs/sdks/cron/README.md#delete)
+* [update](docs/sdks/cron/README.md#update)
+* [enable](docs/sdks/cron/README.md#enable)
+* [disable](docs/sdks/cron/README.md#disable)
+* [run](docs/sdks/cron/README.md#run)
+* [getLogs](docs/sdks/cron/README.md#getlogs)
+* [deleteLogs](docs/sdks/cron/README.md#deletelogs)
+
+### [Devices](docs/sdks/devices/README.md)
+
+* [getQr](docs/sdks/devices/README.md#getqr)
+* [list](docs/sdks/devices/README.md#list)
+* [get](docs/sdks/devices/README.md#get)
+* [delete](docs/sdks/devices/README.md#delete)
+* [createMessage](docs/sdks/devices/README.md#createmessage)
+
+### [Events](docs/sdks/events/README.md)
+
+* [list](docs/sdks/events/README.md#list)
+
+### [Exchanges](docs/sdks/exchanges/README.md)
+
+* [list](docs/sdks/exchanges/README.md#list)
 
 ### [Executors](docs/sdks/executors/README.md)
 
-* [getApiExecutors](docs/sdks/executors/README.md#getapiexecutors) - List available executors
-* [getApiExecutorsOpenclawRuntimeConfig](docs/sdks/executors/README.md#getapiexecutorsopenclawruntimeconfig) - Get the effective OpenClaw gateway config from the server side
-* [postApiExecutorsOpenclawTestConnection](docs/sdks/executors/README.md#postapiexecutorsopenclawtestconnection) - Test connection to an OpenClaw gateway with device auth handshake
+* [list](docs/sdks/executors/README.md#list) - List available executors
+* [getDiscoverSessions](docs/sdks/executors/README.md#getdiscoversessions)
+* [getSessionMessages](docs/sdks/executors/README.md#getsessionmessages)
+* [getMcpServers](docs/sdks/executors/README.md#getmcpservers)
+* [getSkills](docs/sdks/executors/README.md#getskills)
+* [getSubagents](docs/sdks/executors/README.md#getsubagents)
+* [getSubagent](docs/sdks/executors/README.md#getsubagent)
+* [getCommands](docs/sdks/executors/README.md#getcommands)
+* [getCommand](docs/sdks/executors/README.md#getcommand)
+* [getPrompts](docs/sdks/executors/README.md#getprompts)
+* [getPrompt](docs/sdks/executors/README.md#getprompt)
+* [createOpenclawTestConnection](docs/sdks/executors/README.md#createopenclawtestconnection) - Test connection to an OpenClaw gateway with device auth handshake
+* [listOpenclawRuntimeConfig](docs/sdks/executors/README.md#listopenclawruntimeconfig) - Get the effective OpenClaw gateway config from the server side
 
-### [Health](docs/sdks/health/README.md)
+### [Files](docs/sdks/files/README.md)
 
-* [getHealth](docs/sdks/health/README.md#gethealth) - Health check endpoint
+* [list](docs/sdks/files/README.md#list)
+* [listContent](docs/sdks/files/README.md#listcontent)
+* [updateContent](docs/sdks/files/README.md#updatecontent)
+* [create](docs/sdks/files/README.md#create)
+* [delete](docs/sdks/files/README.md#delete)
+* [listDirectory](docs/sdks/files/README.md#listdirectory)
+* [createDirectory](docs/sdks/files/README.md#createdirectory)
+* [rename](docs/sdks/files/README.md#rename)
+* [copy](docs/sdks/files/README.md#copy)
+* [move](docs/sdks/files/README.md#move)
+* [open](docs/sdks/files/README.md#open)
+* [reveal](docs/sdks/files/README.md#reveal)
+* [createOpenFolder](docs/sdks/files/README.md#createopenfolder)
+* [listConfigDir](docs/sdks/files/README.md#listconfigdir)
+* [getGitStatus](docs/sdks/files/README.md#getgitstatus)
+* [listGitDiff](docs/sdks/files/README.md#listgitdiff)
+
+### [Github](docs/sdks/github/README.md)
+
+* [getAuthStatus](docs/sdks/github/README.md#getauthstatus)
+* [createAuthGhCli](docs/sdks/github/README.md#createauthghcli)
+* [createAuthPat](docs/sdks/github/README.md#createauthpat)
+* [deleteAuth](docs/sdks/github/README.md#deleteauth)
+* [listRepos](docs/sdks/github/README.md#listrepos)
+* [detectRepo](docs/sdks/github/README.md#detectrepo)
+* [listReposConnected](docs/sdks/github/README.md#listreposconnected)
+* [connectRepo](docs/sdks/github/README.md#connectrepo)
+* [connectRepo2](docs/sdks/github/README.md#connectrepo2)
+* [listIssues](docs/sdks/github/README.md#listissues)
+* [getIssue](docs/sdks/github/README.md#getissue)
+* [getIssueComments](docs/sdks/github/README.md#getissuecomments)
+* [investigateIssue](docs/sdks/github/README.md#investigateissue)
+* [importIssue](docs/sdks/github/README.md#importissue)
+* [listPrs](docs/sdks/github/README.md#listprs)
+* [createPr](docs/sdks/github/README.md#createpr)
+* [getPr](docs/sdks/github/README.md#getpr)
+* [listReleases](docs/sdks/github/README.md#listreleases)
+* [createRelease](docs/sdks/github/README.md#createrelease)
+* [getReleaseLatest](docs/sdks/github/README.md#getreleaselatest)
+* [createReleaseGenerateNote](docs/sdks/github/README.md#createreleasegeneratenote)
+* [getAutofixConfig](docs/sdks/github/README.md#getautofixconfig)
+* [updateAutofixConfig](docs/sdks/github/README.md#updateautofixconfig)
+* [listAutofixTasks](docs/sdks/github/README.md#listautofixtasks)
+* [createAutofixTask](docs/sdks/github/README.md#createautofixtask)
+* [getAutofixTask](docs/sdks/github/README.md#getautofixtask)
+* [deleteAutofixTask](docs/sdks/github/README.md#deleteautofixtask)
+* [cancelAutofixTask](docs/sdks/github/README.md#cancelautofixtask)
+* [approveAutofixTask](docs/sdks/github/README.md#approveautofixtask)
+* [analyzeIssue](docs/sdks/github/README.md#analyzeissue)
+* [triageIssue](docs/sdks/github/README.md#triageissue)
+* [clusterIssue](docs/sdks/github/README.md#clusterissue)
+* [listAutofixWorktrees](docs/sdks/github/README.md#listautofixworktrees)
+* [deleteAutofixWorktrees](docs/sdks/github/README.md#deleteautofixworktrees)
+
+### [GroupChats](docs/sdks/groupchats/README.md)
+
+* [list](docs/sdks/groupchats/README.md#list)
+* [create](docs/sdks/groupchats/README.md#create)
+* [get](docs/sdks/groupchats/README.md#get)
+* [delete](docs/sdks/groupchats/README.md#delete)
+* [update](docs/sdks/groupchats/README.md#update)
+* [getMembers](docs/sdks/groupchats/README.md#getmembers)
+* [createMember](docs/sdks/groupchats/README.md#createmember)
+* [deleteMember](docs/sdks/groupchats/README.md#deletemember)
+* [getSessions](docs/sdks/groupchats/README.md#getsessions)
+* [createSession](docs/sdks/groupchats/README.md#createsession)
+* [getSession](docs/sdks/groupchats/README.md#getsession)
+* [deleteSession](docs/sdks/groupchats/README.md#deletesession)
+* [updateSession](docs/sdks/groupchats/README.md#updatesession)
+* [getSessionAgents](docs/sdks/groupchats/README.md#getsessionagents)
+* [getFiles](docs/sdks/groupchats/README.md#getfiles)
+* [createFile](docs/sdks/groupchats/README.md#createfile)
+* [getFile](docs/sdks/groupchats/README.md#getfile)
+* [deleteFile](docs/sdks/groupchats/README.md#deletefile)
+* [getPictures](docs/sdks/groupchats/README.md#getpictures)
+* [createPicture](docs/sdks/groupchats/README.md#createpicture)
+* [getPicture](docs/sdks/groupchats/README.md#getpicture)
+* [deletePicture](docs/sdks/groupchats/README.md#deletepicture)
+* [getSessionMessages](docs/sdks/groupchats/README.md#getsessionmessages)
+* [createSessionMessage](docs/sdks/groupchats/README.md#createsessionmessage)
+
+### [History](docs/sdks/history/README.md)
+
+* [list](docs/sdks/history/README.md#list)
+* [create](docs/sdks/history/README.md#create)
+* [delete2](docs/sdks/history/README.md#delete2)
+* [get](docs/sdks/history/README.md#get)
+* [delete](docs/sdks/history/README.md#delete)
 
 ### [Ideas](docs/sdks/ideas/README.md)
 
-* [deleteApiIdeaTypesName](docs/sdks/ideas/README.md#deleteapiideatypesname) - Delete a custom idea type
-* [deleteApiIdeas](docs/sdks/ideas/README.md#deleteapiideas) - Remove ideas by type or all ideas
-* [deleteApiIdeasId](docs/sdks/ideas/README.md#deleteapiideasid) - Remove a single idea by ID
-* [getApiIdeaTypes](docs/sdks/ideas/README.md#getapiideatypes) - List available idea types (builtin + custom)
-* [getApiIdeas](docs/sdks/ideas/README.md#getapiideas) - List all ideas for a workspace with optional filtering
-* [getApiIdeasId](docs/sdks/ideas/README.md#getapiideasid) - Get a specific idea by ID
-* [postApiIdeaTypes](docs/sdks/ideas/README.md#postapiideatypes) - Create a new custom idea type
-* [postApiIdeasGenerate](docs/sdks/ideas/README.md#postapiideasgenerate) - Generate ideas by analyzing the codebase using AI
-* [postApiIdeasIdDismiss](docs/sdks/ideas/README.md#postapiideasiddismiss) - Dismiss an idea (mark as not worth pursuing)
-* [postApiIdeasIdPromote](docs/sdks/ideas/README.md#postapiideasidpromote) - Promote an idea to a task
-* [putApiIdeaTypesName](docs/sdks/ideas/README.md#putapiideatypesname) - Update an existing idea type
+* [list](docs/sdks/ideas/README.md#list) - List all ideas for a workspace with optional filtering
+* [delete2](docs/sdks/ideas/README.md#delete2) - Remove ideas by type or all ideas
+* [get](docs/sdks/ideas/README.md#get) - Get a specific idea by ID
+* [delete](docs/sdks/ideas/README.md#delete) - Remove a single idea by ID
+* [generate](docs/sdks/ideas/README.md#generate) - Generate ideas by analyzing the codebase using AI
+* [promote](docs/sdks/ideas/README.md#promote) - Promote an idea to a task
+* [createDismiss](docs/sdks/ideas/README.md#createdismiss) - Dismiss an idea (mark as not worth pursuing)
+* [list2](docs/sdks/ideas/README.md#list2) - List available idea types (builtin + custom)
+* [create](docs/sdks/ideas/README.md#create) - Create a new custom idea type
+* [update](docs/sdks/ideas/README.md#update) - Update an existing idea type
+* [delete3](docs/sdks/ideas/README.md#delete3) - Delete a custom idea type
+
+### [InputHistory](docs/sdks/inputhistory/README.md)
+
+* [list](docs/sdks/inputhistory/README.md#list)
 
 ### [Kanban](docs/sdks/kanban/README.md)
 
-* [getApiKanbanTasksTaskIdActivities](docs/sdks/kanban/README.md#getapikanbantaskstaskidactivities) - Get all activities for a task
-* [getApiKanbanTasksTaskIdComments](docs/sdks/kanban/README.md#getapikanbantaskstaskidcomments) - Get all comments for a task
+* [getTaskComments](docs/sdks/kanban/README.md#gettaskcomments) - Get all comments for a task
+* [createTaskComment](docs/sdks/kanban/README.md#createtaskcomment)
+* [deleteTaskComment](docs/sdks/kanban/README.md#deletetaskcomment)
+* [updateTaskComment](docs/sdks/kanban/README.md#updatetaskcomment)
+* [createTaskCommentReaction](docs/sdks/kanban/README.md#createtaskcommentreaction)
+* [getTaskActivities](docs/sdks/kanban/README.md#gettaskactivities) - Get all activities for a task
+* [createTaskActivity](docs/sdks/kanban/README.md#createtaskactivity)
+* [deleteTaskData](docs/sdks/kanban/README.md#deletetaskdata)
+
+### [Logs](docs/sdks/logs/README.md)
+
+* [init](docs/sdks/logs/README.md#init)
+* [getDir](docs/sdks/logs/README.md#getdir)
+* [listSessions](docs/sdks/logs/README.md#listsessions)
+* [getSession](docs/sdks/logs/README.md#getsession)
+* [deleteSession](docs/sdks/logs/README.md#deletesession)
+* [add](docs/sdks/logs/README.md#add)
+* [delete](docs/sdks/logs/README.md#delete)
+* [cleanup](docs/sdks/logs/README.md#cleanup)
+* [exportSession](docs/sdks/logs/README.md#exportsession)
+
+### [Marketplace](docs/sdks/marketplace/README.md)
+
+* [listIndex](docs/sdks/marketplace/README.md#listindex)
+* [listSources](docs/sdks/marketplace/README.md#listsources)
+* [listPlugins](docs/sdks/marketplace/README.md#listplugins)
+* [listCategories](docs/sdks/marketplace/README.md#listcategories)
+* [getPlugin](docs/sdks/marketplace/README.md#getplugin)
+* [deleteCache](docs/sdks/marketplace/README.md#deletecache)
+* [search](docs/sdks/marketplace/README.md#search)
+* [getCategoryPlugins](docs/sdks/marketplace/README.md#getcategoryplugins)
 
 ### [Mcp](docs/sdks/mcp/README.md)
 
-* [getApiMcpInfoIdOrSlug](docs/sdks/mcp/README.md#getapimcpinfoidorslug) - Get MCP package details from marketplace
-* [getApiMcpInstalled](docs/sdks/mcp/README.md#getapimcpinstalled) - List globally installed MCP servers
-* [getApiMcpList](docs/sdks/mcp/README.md#getapimcplist) - List installed MCP packages
-* [getApiMcpSearch](docs/sdks/mcp/README.md#getapimcpsearch) - Search MCP packages in marketplace
-* [getApiMcpShowName](docs/sdks/mcp/README.md#getapimcpshowname) - Get MCP package details
-* [getApiMcpTauriStatus](docs/sdks/mcp/README.md#getapimcptauristatus) - Check tauri-plugin-mcp connection status
-* [postApiMcpDownload](docs/sdks/mcp/README.md#postapimcpdownload) - Download MCP package to a directory
-* [postApiMcpInstall](docs/sdks/mcp/README.md#postapimcpinstall) - Install an MCP package (supports name, name@version, gh:user/repo, ./path)
-* [postApiMcpUninstall](docs/sdks/mcp/README.md#postapimcpuninstall) - Uninstall an MCP package
+* [list](docs/sdks/mcp/README.md#list) - List installed MCP packages
+* [show](docs/sdks/mcp/README.md#show) - Get MCP package details
+* [install](docs/sdks/mcp/README.md#install) - Install an MCP package (supports name, name@version, gh:user/repo, ./path)
+* [uninstall](docs/sdks/mcp/README.md#uninstall) - Uninstall an MCP package
+* [search](docs/sdks/mcp/README.md#search) - Search MCP packages in marketplace
+* [getInfo](docs/sdks/mcp/README.md#getinfo) - Get MCP package details from marketplace
+* [download](docs/sdks/mcp/README.md#download) - Download MCP package to a directory
+* [listInstalled](docs/sdks/mcp/README.md#listinstalled) - List globally installed MCP servers
+* [getAgentServers](docs/sdks/mcp/README.md#getagentservers)
+* [createAgentServer](docs/sdks/mcp/README.md#createagentserver)
+* [getAgentServer](docs/sdks/mcp/README.md#getagentserver)
+* [deleteAgentServer](docs/sdks/mcp/README.md#deleteagentserver)
+* [updateAgentServer](docs/sdks/mcp/README.md#updateagentserver)
+* [enableAgentServer](docs/sdks/mcp/README.md#enableagentserver)
+* [disableAgentServer](docs/sdks/mcp/README.md#disableagentserver)
+* [createPortStatu](docs/sdks/mcp/README.md#createportstatu)
+* [killProcess](docs/sdks/mcp/README.md#killprocess)
+* [createProcessAlive](docs/sdks/mcp/README.md#createprocessalive)
+* [getInspectorHealth](docs/sdks/mcp/README.md#getinspectorhealth)
+* [getInspectorConfig](docs/sdks/mcp/README.md#getinspectorconfig)
+* [getInspectorToken](docs/sdks/mcp/README.md#getinspectortoken)
+* [listInspectorSessions](docs/sdks/mcp/README.md#listinspectorsessions)
+* [deleteInspectorSession](docs/sdks/mcp/README.md#deleteinspectorsession)
+* [listInspectorMcp](docs/sdks/mcp/README.md#listinspectormcp)
+* [createInspectorMcp](docs/sdks/mcp/README.md#createinspectormcp)
+* [deleteInspectorMcp](docs/sdks/mcp/README.md#deleteinspectormcp)
+* [listInspectorStdio](docs/sdks/mcp/README.md#listinspectorstdio)
+* [listInspectorSse](docs/sdks/mcp/README.md#listinspectorsse)
+* [createInspectorSse](docs/sdks/mcp/README.md#createinspectorsse)
+* [createInspectorMessage](docs/sdks/mcp/README.md#createinspectormessage)
+
+### [McpMarket](docs/sdks/mcpmarket/README.md)
+
+* [list](docs/sdks/mcpmarket/README.md#list)
+* [search](docs/sdks/mcpmarket/README.md#search)
+* [listCategories](docs/sdks/mcpmarket/README.md#listcategories)
+* [get](docs/sdks/mcpmarket/README.md#get)
+* [download](docs/sdks/mcpmarket/README.md#download)
+* [createFavorite](docs/sdks/mcpmarket/README.md#createfavorite)
+* [getComments](docs/sdks/mcpmarket/README.md#getcomments)
+* [createComment](docs/sdks/mcpmarket/README.md#createcomment)
+* [createRating](docs/sdks/mcpmarket/README.md#createrating)
+
+### [Mesh](docs/sdks/mesh/README.md)
+
+* [listPeers](docs/sdks/mesh/README.md#listpeers)
+* [connect](docs/sdks/mesh/README.md#connect)
 
 ### [Models](docs/sdks/models/README.md)
 
-* [getApiModels](docs/sdks/models/README.md#getapimodels) - List all models
-* [getApiModelsId](docs/sdks/models/README.md#getapimodelsid) - Get a specific model by ID
+* [getDefault](docs/sdks/models/README.md#getdefault)
+* [updateDefault](docs/sdks/models/README.md#updatedefault)
+* [listAliases](docs/sdks/models/README.md#listaliases)
+* [createAlias](docs/sdks/models/README.md#createalias)
+* [deleteAlias](docs/sdks/models/README.md#deletealias)
+* [reload](docs/sdks/models/README.md#reload)
+* [list](docs/sdks/models/README.md#list) - List all models
+* [create](docs/sdks/models/README.md#create)
+* [get](docs/sdks/models/README.md#get) - Get a specific model by ID
+* [delete](docs/sdks/models/README.md#delete)
+* [update](docs/sdks/models/README.md#update)
+* [enable](docs/sdks/models/README.md#enable)
+* [disable](docs/sdks/models/README.md#disable)
+* [getConfig](docs/sdks/models/README.md#getconfig)
+* [updateConfig](docs/sdks/models/README.md#updateconfig)
+* [deleteConfig](docs/sdks/models/README.md#deleteconfig)
+
+### [OfficialRegistry](docs/sdks/officialregistry/README.md)
+
+* [listServers](docs/sdks/officialregistry/README.md#listservers)
+* [getServer](docs/sdks/officialregistry/README.md#getserver)
+* [getServerVersions](docs/sdks/officialregistry/README.md#getserverversions)
+* [deleteCache](docs/sdks/officialregistry/README.md#deletecache)
+* [deleteServerCache](docs/sdks/officialregistry/README.md#deleteservercache)
+
+### [Packages](docs/sdks/packages/README.md)
+
+* [listInstalled](docs/sdks/packages/README.md#listinstalled)
+* [createUpdate](docs/sdks/packages/README.md#createupdate)
+* [listMcp](docs/sdks/packages/README.md#listmcp)
+* [listSkills](docs/sdks/packages/README.md#listskills)
 
 ### [Page](docs/sdks/page/README.md)
 
-* [getApiPageSDKV1VibenPageSDKJs](docs/sdks/page/README.md#getapipagesdkv1vibenpagesdkjs) - Serve viben-page-sdk.js
-* [getApiPageSDKV1VibenPageTokensCss](docs/sdks/page/README.md#getapipagesdkv1vibenpagetokenscss) - Serve viben-page-tokens.css
-* [getApiPageServe](docs/sdks/page/README.md#getapipageserve) - Serve page content
-* [postApiPageCreate](docs/sdks/page/README.md#postapipagecreate) - Create a new page
-* [postApiPageDelete](docs/sdks/page/README.md#postapipagedelete) - Delete a page
-* [postApiPageDuplicate](docs/sdks/page/README.md#postapipageduplicate) - Duplicate a page (copy all files with a new uid)
-* [postApiPageList](docs/sdks/page/README.md#postapipagelist) - List pages in workspace
-* [postApiPageReorder](docs/sdks/page/README.md#postapipagereorder) - Reorder pages within a parent level
-* [postApiPageServe](docs/sdks/page/README.md#postapipageserve) - Serve page content
-* [postApiPageTemplates](docs/sdks/page/README.md#postapipagetemplates) - List available page templates
-* [postApiPageUpdateConfig](docs/sdks/page/README.md#postapipageupdateconfig) - Update page config (name, description, icon, cover, page_width, show_toc)
-* [postApiPageUpdateContent](docs/sdks/page/README.md#postapipageupdatecontent) - Update page markdown content (preserves YAML frontmatter)
-* [postApiPageView](docs/sdks/page/README.md#postapipageview) - Get page by uid
+* [createPublish](docs/sdks/page/README.md#createpublish)
+* [createPublishStatu](docs/sdks/page/README.md#createpublishstatu)
+* [createPublishHistory](docs/sdks/page/README.md#createpublishhistory)
+* [createPublishVersion](docs/sdks/page/README.md#createpublishversion)
+* [createPublishRollback](docs/sdks/page/README.md#createpublishrollback)
+* [list](docs/sdks/page/README.md#list) - List pages in workspace
+* [view](docs/sdks/page/README.md#view) - Get page by uid
+* [createCreate](docs/sdks/page/README.md#createcreate) - Create a new page
+* [createApplyTemplate](docs/sdks/page/README.md#createapplytemplate) - Apply a page template to an empty markdown page
+* [createDelete](docs/sdks/page/README.md#createdelete) - Delete a page
+* [createUpdateContent](docs/sdks/page/README.md#createupdatecontent) - Update page markdown content (preserves YAML frontmatter)
+* [serve2](docs/sdks/page/README.md#serve2) - Serve page content
+* [serve](docs/sdks/page/README.md#serve) - Serve page content
+* [createUpdateConfig](docs/sdks/page/README.md#createupdateconfig) - Update page config (name, description, icon, cover, page_width, show_toc)
+* [reorder](docs/sdks/page/README.md#reorder) - Reorder pages within a parent level
+* [duplicate](docs/sdks/page/README.md#duplicate) - Duplicate a page (copy all files with a new uid)
+* [createTemplate](docs/sdks/page/README.md#createtemplate) - List available page templates
+* [uploadAsset](docs/sdks/page/README.md#uploadasset)
+* [getSDKV1VibenPageSDK](docs/sdks/page/README.md#getsdkv1vibenpagesdk) - Serve viben-page-sdk.js
+* [getSDKV1VibenPageTokens](docs/sdks/page/README.md#getsdkv1vibenpagetokens) - Serve viben-page-tokens.css
+
+### [Patches](docs/sdks/patches/README.md)
+
+* [list](docs/sdks/patches/README.md#list)
+
+### [Pet](docs/sdks/pet/README.md)
+
+* [list](docs/sdks/pet/README.md#list)
+* [show](docs/sdks/pet/README.md#show)
+* [set](docs/sdks/pet/README.md#set)
+* [remove](docs/sdks/pet/README.md#remove)
+* [getCommunity](docs/sdks/pet/README.md#getcommunity)
+* [search](docs/sdks/pet/README.md#search)
+* [getPreview](docs/sdks/pet/README.md#getpreview)
+* [install](docs/sdks/pet/README.md#install)
+* [getConfig](docs/sdks/pet/README.md#getconfig)
+* [updateConfig](docs/sdks/pet/README.md#updateconfig)
+* [listSources](docs/sdks/pet/README.md#listsources)
+* [addSource](docs/sdks/pet/README.md#addsource)
+* [removeSource](docs/sdks/pet/README.md#removesource)
+* [import](docs/sdks/pet/README.md#import)
+* [export](docs/sdks/pet/README.md#export)
+* [getAsset](docs/sdks/pet/README.md#getasset)
+
+### [Preferences](docs/sdks/preferences/README.md)
+
+* [list](docs/sdks/preferences/README.md#list)
+* [update](docs/sdks/preferences/README.md#update)
+* [listDeveloper](docs/sdks/preferences/README.md#listdeveloper)
+* [updateDeveloper](docs/sdks/preferences/README.md#updatedeveloper)
+* [listDeveloperIde](docs/sdks/preferences/README.md#listdeveloperide)
+* [updateDeveloperIde](docs/sdks/preferences/README.md#updatedeveloperide)
+* [listDeveloperTerminal](docs/sdks/preferences/README.md#listdeveloperterminal)
+* [updateDeveloperTerminal](docs/sdks/preferences/README.md#updatedeveloperterminal)
+* [listNotifications](docs/sdks/preferences/README.md#listnotifications)
+* [updateNotification](docs/sdks/preferences/README.md#updatenotification)
 
 ### [Preview](docs/sdks/preview/README.md)
 
-* [getApiPreviewList](docs/sdks/preview/README.md#getapipreviewlist) - List all active preview servers
-* [getApiPreviewNodeAvailable](docs/sdks/preview/README.md#getapipreviewnodeavailable) - Check if Node.js is available for Live Preview
-* [getApiPreviewStartSse](docs/sdks/preview/README.md#getapipreviewstartsse) - Start a Vite preview server with SSE streaming for real-time feedback
-* [getApiPreviewStatusTaskId](docs/sdks/preview/README.md#getapipreviewstatustaskid) - Get status of a preview server
-* [postApiPreviewKillPort](docs/sdks/preview/README.md#postapipreviewkillport) - Kill the process occupying a specific port
-* [postApiPreviewStart](docs/sdks/preview/README.md#postapipreviewstart) - Start a Vite preview server for a task
-* [postApiPreviewStop](docs/sdks/preview/README.md#postapipreviewstop) - Stop a Vite preview server
-* [postApiPreviewStopAll](docs/sdks/preview/README.md#postapipreviewstopall) - Stop all running preview servers
+* [listNodeAvailable](docs/sdks/preview/README.md#listnodeavailable) - Check if Node.js is available for Live Preview
+* [listStartSse](docs/sdks/preview/README.md#liststartsse) - Start a Vite preview server with SSE streaming for real-time feedback
+* [start](docs/sdks/preview/README.md#start) - Start a Vite preview server for a task
+* [stop](docs/sdks/preview/README.md#stop) - Stop a Vite preview server
+* [getStatu](docs/sdks/preview/README.md#getstatu) - Get status of a preview server
+* [createStopAll](docs/sdks/preview/README.md#createstopall) - Stop all running preview servers
+* [list](docs/sdks/preview/README.md#list) - List all active preview servers
+* [createKillPort](docs/sdks/preview/README.md#createkillport) - Kill the process occupying a specific port
 
 ### [Providers](docs/sdks/providers/README.md)
 
-* [getApiProviders](docs/sdks/providers/README.md#getapiproviders) - List all providers
-* [getApiProvidersId](docs/sdks/providers/README.md#getapiprovidersid) - Get a specific provider by ID
+* [getDefault](docs/sdks/providers/README.md#getdefault)
+* [updateDefault](docs/sdks/providers/README.md#updatedefault)
+* [reload](docs/sdks/providers/README.md#reload)
+* [list](docs/sdks/providers/README.md#list) - List all providers
+* [create](docs/sdks/providers/README.md#create)
+* [get](docs/sdks/providers/README.md#get) - Get a specific provider by ID
+* [delete](docs/sdks/providers/README.md#delete)
+* [update](docs/sdks/providers/README.md#update)
+* [enable](docs/sdks/providers/README.md#enable)
+* [disable](docs/sdks/providers/README.md#disable)
+* [test](docs/sdks/providers/README.md#test)
+* [getDiscoverModels](docs/sdks/providers/README.md#getdiscovermodels)
+* [getModels](docs/sdks/providers/README.md#getmodels)
+* [enableModel](docs/sdks/providers/README.md#enablemodel)
+* [disableModel](docs/sdks/providers/README.md#disablemodel)
+* [listApiKeys](docs/sdks/providers/README.md#listapikeys)
+* [createValidateKey](docs/sdks/providers/README.md#createvalidatekey)
+* [listApiKeysAll](docs/sdks/providers/README.md#listapikeysall)
+
+### [Python](docs/sdks/python/README.md)
+
+* [detect](docs/sdks/python/README.md#detect)
+* [check](docs/sdks/python/README.md#check)
+* [checkPackage](docs/sdks/python/README.md#checkpackage)
+* [createPackageInstallCommand](docs/sdks/python/README.md#createpackageinstallcommand)
+
+### [Queue](docs/sdks/queue/README.md)
+
+* [enqueue](docs/sdks/queue/README.md#enqueue)
+* [getStatus](docs/sdks/queue/README.md#getstatus)
+* [listTasks](docs/sdks/queue/README.md#listtasks)
+* [getTaskRunning](docs/sdks/queue/README.md#gettaskrunning)
+* [getTask](docs/sdks/queue/README.md#gettask)
+* [deleteTask](docs/sdks/queue/README.md#deletetask)
+* [getTaskStream](docs/sdks/queue/README.md#gettaskstream)
+* [retryTask](docs/sdks/queue/README.md#retrytask)
+* [getConfig](docs/sdks/queue/README.md#getconfig)
+* [updateConfig](docs/sdks/queue/README.md#updateconfig)
+* [createEnqueueBatch](docs/sdks/queue/README.md#createenqueuebatch)
+* [createClearHistory](docs/sdks/queue/README.md#createclearhistory)
 
 ### [Reward](docs/sdks/reward/README.md)
 
-* [deleteApiRewardTypesName](docs/sdks/reward/README.md#deleteapirewardtypesname) - Delete a custom reward type
-* [getApiRewardTypes](docs/sdks/reward/README.md#getapirewardtypes) - List available reward types (builtin + custom)
-* [getApiRewardTypesName](docs/sdks/reward/README.md#getapirewardtypesname) - Get a specific reward type by name
-* [postApiRewardCompute](docs/sdks/reward/README.md#postapirewardcompute) - Compute reward for a task by spawning the reward agent
-* [postApiRewardSelect](docs/sdks/reward/README.md#postapirewardselect) - Select best task using PPO metrics
-* [postApiRewardTypes](docs/sdks/reward/README.md#postapirewardtypes) - Create a new custom reward type
-* [putApiRewardTypesName](docs/sdks/reward/README.md#putapirewardtypesname) - Update a custom reward type
+* [listTypes](docs/sdks/reward/README.md#listtypes) - List available reward types (builtin + custom)
+* [createType](docs/sdks/reward/README.md#createtype) - Create a new custom reward type
+* [getType](docs/sdks/reward/README.md#gettype) - Get a specific reward type by name
+* [updateType](docs/sdks/reward/README.md#updatetype) - Update a custom reward type
+* [deleteType](docs/sdks/reward/README.md#deletetype) - Delete a custom reward type
+* [compute](docs/sdks/reward/README.md#compute) - Compute reward for a task by spawning the reward agent
+* [select](docs/sdks/reward/README.md#select) - Select best task using PPO metrics
+
+### [Sandbox](docs/sdks/sandbox/README.md)
+
+* [getAvailable](docs/sdks/sandbox/README.md#getavailable)
+* [createExec](docs/sdks/sandbox/README.md#createexec)
+* [createRunFile](docs/sdks/sandbox/README.md#createrunfile)
+* [stop](docs/sdks/sandbox/README.md#stop)
+
+### [ServiceKeys](docs/sdks/servicekeys/README.md)
+
+* [list](docs/sdks/servicekeys/README.md#list)
+* [create](docs/sdks/servicekeys/README.md#create)
+* [get](docs/sdks/servicekeys/README.md#get)
+* [delete](docs/sdks/servicekeys/README.md#delete)
+* [update](docs/sdks/servicekeys/README.md#update)
+* [validate](docs/sdks/servicekeys/README.md#validate)
+* [createUsage](docs/sdks/servicekeys/README.md#createusage)
 
 ### [Sessions](docs/sdks/sessions/README.md)
 
-* [getApiSessions](docs/sdks/sessions/README.md#getapisessions) - List all sessions
-* [getApiSessionsId](docs/sdks/sessions/README.md#getapisessionsid) - Get a specific session by ID
+* [list](docs/sdks/sessions/README.md#list) - List all sessions
+* [create](docs/sdks/sessions/README.md#create)
+* [get](docs/sdks/sessions/README.md#get) - Get a specific session by ID
+* [delete](docs/sdks/sessions/README.md#delete)
+* [update](docs/sdks/sessions/README.md#update)
+* [getMessages](docs/sdks/sessions/README.md#getmessages)
+* [getUiMessages](docs/sdks/sessions/README.md#getuimessages)
 
 ### [Skill](docs/sdks/skill/README.md)
 
-* [getApiSkillAvailable](docs/sdks/skill/README.md#getapiskillavailable) - List available skills from marketplace
-* [getApiSkillEnabled](docs/sdks/skill/README.md#getapiskillenabled) - Get enabled skills for an agent
-* [getApiSkillInfoIdOrSlug](docs/sdks/skill/README.md#getapiskillinfoidorslug) - Get skill package details from marketplace
-* [getApiSkillList](docs/sdks/skill/README.md#getapiskilllist) - List installed skills
-* [getApiSkillSearch](docs/sdks/skill/README.md#getapiskillsearch) - Search skill packages in marketplace
-* [getApiSkillViewName](docs/sdks/skill/README.md#getapiskillviewname) - Get skill by name
-* [postApiSkillDisable](docs/sdks/skill/README.md#postapiskilldisable) - Disable a skill for an agent
-* [postApiSkillDownload](docs/sdks/skill/README.md#postapiskilldownload) - Download skill package to a directory
-* [postApiSkillEnable](docs/sdks/skill/README.md#postapiskillenable) - Enable a skill for an agent
-* [postApiSkillInstall](docs/sdks/skill/README.md#postapiskillinstall) - Install a skill
-* [postApiSkillUninstall](docs/sdks/skill/README.md#postapiskilluninstall) - Uninstall a skill
+* [list](docs/sdks/skill/README.md#list) - List installed skills
+* [getAvailable](docs/sdks/skill/README.md#getavailable) - List available skills from marketplace
+* [listEnabled](docs/sdks/skill/README.md#listenabled) - Get enabled skills for an agent
+* [view](docs/sdks/skill/README.md#view) - Get skill by name
+* [install](docs/sdks/skill/README.md#install) - Install a skill
+* [uninstall](docs/sdks/skill/README.md#uninstall) - Uninstall a skill
+* [enable](docs/sdks/skill/README.md#enable) - Enable a skill for an agent
+* [disable](docs/sdks/skill/README.md#disable) - Disable a skill for an agent
+* [search](docs/sdks/skill/README.md#search) - Search skill packages in marketplace
+* [getInfo](docs/sdks/skill/README.md#getinfo) - Get skill package details from marketplace
+* [listClawhubPackages](docs/sdks/skill/README.md#listclawhubpackages) - List ClaWHub skill packages
+* [searchClawhub](docs/sdks/skill/README.md#searchclawhub) - Search ClaWHub skill packages
+* [download](docs/sdks/skill/README.md#download) - Download skill package to a directory
+* [createFavorite](docs/sdks/skill/README.md#createfavorite) - Toggle favorite for a marketplace skill
+
+### [SkillMarket](docs/sdks/skillmarket/README.md)
+
+* [list](docs/sdks/skillmarket/README.md#list)
+* [search](docs/sdks/skillmarket/README.md#search)
+* [listCategories](docs/sdks/skillmarket/README.md#listcategories)
+* [get](docs/sdks/skillmarket/README.md#get)
+* [download](docs/sdks/skillmarket/README.md#download)
+* [createFavorite](docs/sdks/skillmarket/README.md#createfavorite)
+* [getComments](docs/sdks/skillmarket/README.md#getcomments)
+* [createComment](docs/sdks/skillmarket/README.md#createcomment)
+* [createRating](docs/sdks/skillmarket/README.md#createrating)
+
+### [System](docs/sdks/system/README.md)
+
+* [getInfo](docs/sdks/system/README.md#getinfo)
+* [listPublicIp](docs/sdks/system/README.md#listpublicip)
 
 ### [Tasks](docs/sdks/tasks/README.md)
 
-* [getApiTaskEventsStream](docs/sdks/tasks/README.md#getapitaskeventsstream) - SSE stream for task events
-* [getApiTaskExecutionStream](docs/sdks/tasks/README.md#getapitaskexecutionstream) - SSE stream for task execution progress
-* [getApiTaskListArchive](docs/sdks/tasks/README.md#getapitasklistarchive) - List archived tasks
-* [getApiTasks](docs/sdks/tasks/README.md#getapitasks) - List all tasks for a workspace (workspace_path required)
-* [getApiTasksId](docs/sdks/tasks/README.md#getapitasksid) - Get a specific task by ID
-* [getApiTasksIdRunning](docs/sdks/tasks/README.md#getapitasksidrunning) - Check if a task's execution process is currently running
-* [getApiTasksIdSpecs](docs/sdks/tasks/README.md#getapitasksidspecs) - Get task specs data (PRD, subtasks, logs, files)
-* [postApiTaskAddContext](docs/sdks/tasks/README.md#postapitaskaddcontext) - Add context files to a task
-* [postApiTaskAddSession](docs/sdks/tasks/README.md#postapitaskaddsession) - Add a new session to journal file and update index.md
-* [postApiTaskApprove](docs/sdks/tasks/README.md#postapitaskapprove) - Approve a task in review: review -> completed
-* [postApiTaskArchive](docs/sdks/tasks/README.md#postapitaskarchive) - Archive a completed task: completed -> archived
-* [postApiTaskBatchEnqueue](docs/sdks/tasks/README.md#postapitaskbatchenqueue) - Batch enqueue multiple tasks for execution
-* [postApiTaskCancel](docs/sdks/tasks/README.md#postapitaskcancel) - Cancel a task: * -> cancelled (terminal state)
-* [postApiTaskCheckPhase](docs/sdks/tasks/README.md#postapitaskcheckphase) - Run check phase for a task (spawns check agent)
-* [postApiTaskCleanup](docs/sdks/tasks/README.md#postapitaskcleanup) - Cleanup worktrees and related resources
-* [postApiTaskClearHistory](docs/sdks/tasks/README.md#postapitaskclearhistory) - Clear completed and failed tasks from queue history
-* [postApiTaskContext](docs/sdks/tasks/README.md#postapitaskcontext) - Get session context for AI agents
-* [postApiTaskCreate](docs/sdks/tasks/README.md#postapitaskcreate) - Create a new task
-* [postApiTaskCreatePr](docs/sdks/tasks/README.md#postapitaskcreatepr) - Create PR from task
-* [postApiTaskCreateWorktree](docs/sdks/tasks/README.md#postapitaskcreateworktree) - Create isolated git worktree for a task
-* [postApiTaskDelete](docs/sdks/tasks/README.md#postapitaskdelete) - Delete a task
-* [postApiTaskDequeue](docs/sdks/tasks/README.md#postapitaskdequeue) - Remove task from queue back to backlog
-* [postApiTaskEnqueue](docs/sdks/tasks/README.md#postapitaskenqueue) - Move task from backlog to queue for execution
-* [postApiTaskEvents](docs/sdks/tasks/README.md#postapitaskevents) - Get event history for a task
-* [postApiTaskExecute](docs/sdks/tasks/README.md#postapitaskexecute) - Trigger task execution via queue system
-* [postApiTaskFinish](docs/sdks/tasks/README.md#postapitaskfinish) - Finish a task: clear current task marker
-* [postApiTaskImplementPhase](docs/sdks/tasks/README.md#postapitaskimplementphase) - Run implement phase for a task (spawns implement agent)
-* [postApiTaskInitContext](docs/sdks/tasks/README.md#postapitaskinitcontext) - Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
-* [postApiTaskList](docs/sdks/tasks/README.md#postapitasklist) - List tasks
-* [postApiTaskListContext](docs/sdks/tasks/README.md#postapitasklistcontext) - List all context entries for a task
-* [postApiTaskPause](docs/sdks/tasks/README.md#postapitaskpause) - Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
-* [postApiTaskPlan](docs/sdks/tasks/README.md#postapitaskplan) - Start Plan Agent to plan a task
-* [postApiTaskPlanPhase](docs/sdks/tasks/README.md#postapitaskplanphase) - Run plan phase for a task (spawns plan agent)
-* [postApiTaskQueueConfig](docs/sdks/tasks/README.md#postapitaskqueueconfig) - Get or update queue configuration
-* [postApiTaskQueueStatus](docs/sdks/tasks/README.md#postapitaskqueuestatus) - Get queue status
-* [postApiTaskReject](docs/sdks/tasks/README.md#postapitaskreject) - Reject a task in review: review -> backlog
-* [postApiTaskRemoveContext](docs/sdks/tasks/README.md#postapitaskremovecontext) - Remove context files from a task
-* [postApiTaskResume](docs/sdks/tasks/README.md#postapitaskresume) - Resume a paused task: paused -> queue/in_progress
-* [postApiTaskRetry](docs/sdks/tasks/README.md#postapitaskretry) - Retry a failed task: failed -> queue
-* [postApiTaskReview](docs/sdks/tasks/README.md#postapitaskreview) - View task details for review
-* [postApiTaskRunning](docs/sdks/tasks/README.md#postapitaskrunning) - Check if task execution is running
-* [postApiTaskSetAgent](docs/sdks/tasks/README.md#postapitasksetagent) - Set associated agent configuration for a task
-* [postApiTaskSetBase](docs/sdks/tasks/README.md#postapitasksetbase) - Set PR target branch for a task
-* [postApiTaskSetBranch](docs/sdks/tasks/README.md#postapitasksetbranch) - Set Git branch for a task
-* [postApiTaskSpecs](docs/sdks/tasks/README.md#postapitaskspecs) - Get task specs (PRD, subtasks, logs)
-* [postApiTaskStart](docs/sdks/tasks/README.md#postapitaskstart) - Start a task: set as current task, queue -> in_progress, optionally trigger execution
-* [postApiTaskStatus](docs/sdks/tasks/README.md#postapitaskstatus) - Get task status summary or details
-* [postApiTaskStop](docs/sdks/tasks/README.md#postapitaskstop) - Stop task execution
-* [postApiTaskUpdate](docs/sdks/tasks/README.md#postapitaskupdate) - Update task fields (not status - use lifecycle endpoints for status changes)
-* [postApiTaskValidateCheckPhasePassed](docs/sdks/tasks/README.md#postapitaskvalidatecheckphasepassed) - Validate check phase passed (runs verify commands or checks completion markers)
-* [postApiTaskValidateContext](docs/sdks/tasks/README.md#postapitaskvalidatecontext) - Validate that all context file references exist
-* [postApiTaskView](docs/sdks/tasks/README.md#postapitaskview) - View task details
-* [postApiTaskWorkPhase](docs/sdks/tasks/README.md#postapitaskworkphase) - Run work phase for a task (spawns work agent)
-* [postApiTasksBatchEvents](docs/sdks/tasks/README.md#postapitasksbatchevents) - Apply an event to multiple tasks (batch operation)
+* [list](docs/sdks/tasks/README.md#list) - List all tasks for a workspace (workspace_path required)
+* [create](docs/sdks/tasks/README.md#create)
+* [get](docs/sdks/tasks/README.md#get) - Get a specific task by ID
+* [update2](docs/sdks/tasks/README.md#update2)
+* [delete](docs/sdks/tasks/README.md#delete)
+* [update](docs/sdks/tasks/README.md#update)
+* [getSpecs](docs/sdks/tasks/README.md#getspecs) - Get task specs data (PRD, subtasks, logs, files)
+* [createBatchEvent](docs/sdks/tasks/README.md#createbatchevent) - Apply an event to multiple tasks (batch operation)
+* [getRunning](docs/sdks/tasks/README.md#getrunning) - Check if a task's execution process is currently running
+* [createSetBranch](docs/sdks/tasks/README.md#createsetbranch) - Set Git branch for a task
+* [createSetBase](docs/sdks/tasks/README.md#createsetbase) - Set PR target branch for a task
+* [createSetAgent](docs/sdks/tasks/README.md#createsetagent) - Set associated agent configuration for a task
+* [createInitContext](docs/sdks/tasks/README.md#createinitcontext) - Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
+* [createAddContext](docs/sdks/tasks/README.md#createaddcontext) - Add context files to a task
+* [createRemoveContext](docs/sdks/tasks/README.md#createremovecontext) - Remove context files from a task
+* [createListContext](docs/sdks/tasks/README.md#createlistcontext) - List all context entries for a task
+* [createValidateContext](docs/sdks/tasks/README.md#createvalidatecontext) - Validate that all context file references exist
+* [execute](docs/sdks/tasks/README.md#execute) - Trigger task execution via queue system
+* [stop](docs/sdks/tasks/README.md#stop) - Stop task execution
+* [createRunning](docs/sdks/tasks/README.md#createrunning) - Check if task execution is running
+* [createQueueStatu](docs/sdks/tasks/README.md#createqueuestatu) - Get queue status
+* [createQueueConfig](docs/sdks/tasks/README.md#createqueueconfig) - Get or update queue configuration
+* [createBatchEnqueue](docs/sdks/tasks/README.md#createbatchenqueue) - Batch enqueue multiple tasks for execution
+* [createClearHistory](docs/sdks/tasks/README.md#createclearhistory) - Clear completed and failed tasks from queue history
+* [createEvent](docs/sdks/tasks/README.md#createevent) - Get event history for a task
+* [createSpec](docs/sdks/tasks/README.md#createspec) - Get task specs (PRD, subtasks, logs)
+* [listEventsStream](docs/sdks/tasks/README.md#listeventsstream) - SSE stream for task events
+* [listExecutionStream](docs/sdks/tasks/README.md#listexecutionstream) - SSE stream for task execution progress
+* [start](docs/sdks/tasks/README.md#start) - Start a task: set as current task, queue -> in_progress, optionally trigger execution
+* [createFinish](docs/sdks/tasks/README.md#createfinish) - Finish a task: clear current task marker
+* [pause](docs/sdks/tasks/README.md#pause) - Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
+* [resume](docs/sdks/tasks/README.md#resume) - Resume a paused task: paused -> queue/in_progress
+* [approve](docs/sdks/tasks/README.md#approve) - Approve a task in review: review -> completed
+* [reject](docs/sdks/tasks/README.md#reject) - Reject a task in review: review -> backlog
+* [retry](docs/sdks/tasks/README.md#retry) - Retry a failed task: failed -> queue
+* [cancel](docs/sdks/tasks/README.md#cancel) - Cancel a task: * -> cancelled (terminal state)
+* [enqueue](docs/sdks/tasks/README.md#enqueue) - Move task from backlog to queue for execution
+* [dequeue](docs/sdks/tasks/README.md#dequeue) - Remove task from queue back to backlog
+* [archive](docs/sdks/tasks/README.md#archive) - Archive a completed task: completed -> archived
+* [listListArchive](docs/sdks/tasks/README.md#listlistarchive) - List archived tasks
+* [createReview](docs/sdks/tasks/README.md#createreview) - View task details for review
+* [createContext](docs/sdks/tasks/README.md#createcontext) - Get session context for AI agents
+* [createStatu](docs/sdks/tasks/README.md#createstatu) - Get task status summary or details
+* [createCreatePr](docs/sdks/tasks/README.md#createcreatepr) - Create PR from task
+* [createAddSession](docs/sdks/tasks/README.md#createaddsession) - Add a new session to journal file and update index.md
+* [createPlan](docs/sdks/tasks/README.md#createplan) - Start Plan Agent to plan a task
+* [createPlanPhase](docs/sdks/tasks/README.md#createplanphase) - Run plan phase for a task (spawns plan agent)
+* [createImplementPhase](docs/sdks/tasks/README.md#createimplementphase) - Run implement phase for a task (spawns implement agent)
+* [createCheckPhase](docs/sdks/tasks/README.md#createcheckphase) - Run check phase for a task (spawns check agent)
+* [createWorkPhase](docs/sdks/tasks/README.md#createworkphase) - Run work phase for a task (spawns work agent)
+* [view](docs/sdks/tasks/README.md#view) - View task details
+* [createDelete](docs/sdks/tasks/README.md#createdelete) - Delete a task
+* [list2](docs/sdks/tasks/README.md#list2) - List tasks
+* [createCreate](docs/sdks/tasks/README.md#createcreate) - Create a new task
+* [createUpdate](docs/sdks/tasks/README.md#createupdate) - Update task fields (not status - use lifecycle endpoints for status changes)
+* [createCreateWorktree](docs/sdks/tasks/README.md#createcreateworktree) - Create isolated git worktree for a task
+* [createValidateCheckPhasePassed](docs/sdks/tasks/README.md#createvalidatecheckphasepassed) - Validate check phase passed (runs verify commands or checks completion markers)
+* [cleanup](docs/sdks/tasks/README.md#cleanup) - Cleanup worktrees and related resources
+* [getSessions](docs/sdks/tasks/README.md#getsessions)
+* [listEventsStream2](docs/sdks/tasks/README.md#listeventsstream2)
+* [getEvents](docs/sdks/tasks/README.md#getevents)
+* [createEvent2](docs/sdks/tasks/README.md#createevent2)
+* [getEventStream](docs/sdks/tasks/README.md#geteventstream)
+* [getState](docs/sdks/tasks/README.md#getstate)
+* [validateEvent](docs/sdks/tasks/README.md#validateevent)
 
-### [Tauri](docs/sdks/tauri/README.md)
+### [Telemetry](docs/sdks/telemetry/README.md)
 
-* [getApiMcpTauriStatus](docs/sdks/tauri/README.md#getapimcptauristatus) - Check tauri-plugin-mcp connection status
+* [listDates](docs/sdks/telemetry/README.md#listdates)
+* [listTraces](docs/sdks/telemetry/README.md#listtraces)
+* [getTrace](docs/sdks/telemetry/README.md#gettrace)
+* [getTraceSpans](docs/sdks/telemetry/README.md#gettracespans)
+* [clean](docs/sdks/telemetry/README.md#clean)
+* [listStats](docs/sdks/telemetry/README.md#liststats)
+
+### [Tunnel](docs/sdks/tunnel/README.md)
+
+* [getStatus](docs/sdks/tunnel/README.md#getstatus)
+* [start](docs/sdks/tunnel/README.md#start)
+* [stop](docs/sdks/tunnel/README.md#stop)
+* [restart](docs/sdks/tunnel/README.md#restart)
+
+### [User](docs/sdks/user/README.md)
+
+* [listMe](docs/sdks/user/README.md#listme)
+* [updateMe](docs/sdks/user/README.md#updateme)
+* [listMeFavorites](docs/sdks/user/README.md#listmefavorites)
+* [listMeApiKeys](docs/sdks/user/README.md#listmeapikeys)
+* [createMeApiKey](docs/sdks/user/README.md#createmeapikey)
+* [deleteMeApiKey](docs/sdks/user/README.md#deletemeapikey)
+* [get](docs/sdks/user/README.md#get)
+
+### [Voice](docs/sdks/voice/README.md)
+
+* [createToken](docs/sdks/voice/README.md#createtoken)
 
 ### [Workspaces](docs/sdks/workspaces/README.md)
 
-* [getApiWorkspaces](docs/sdks/workspaces/README.md#getapiworkspaces) - List all workspaces including the global workspace
-* [getApiWorkspacesDetect](docs/sdks/workspaces/README.md#getapiworkspacesdetect) - Detect folder status (.git and .viben directories)
+* [list](docs/sdks/workspaces/README.md#list) - List all workspaces including the global workspace
+* [detect](docs/sdks/workspaces/README.md#detect) - Detect folder status (.git and .viben directories)
+* [createCreate](docs/sdks/workspaces/README.md#createcreate)
+* [delete](docs/sdks/workspaces/README.md#delete)
 
 </details>
 <!-- End Available Resources and Operations [operations] -->
@@ -716,541 +830,550 @@ To read more about standalone functions, check [FUNCTIONS.md](./FUNCTIONS.md).
 
 <summary>Available standalone functions</summary>
 
-- [`agentsGetApiAgent`](docs/sdks/agents/README.md#getapiagent) - List all agents
-- [`channelsGetApiChannels`](docs/sdks/channels/README.md#getapichannels) - List all notification channels
-- [`channelsGetApiChannelsId`](docs/sdks/channels/README.md#getapichannelsid) - Get a specific channel by ID
-- [`cronGetApiCron`](docs/sdks/cron/README.md#getapicron) - List all cron jobs
-- [`cronGetApiCronId`](docs/sdks/cron/README.md#getapicronid) - Get a specific cron job by ID
-- [`deleteApiAccountsId`](docs/sdks/sdk/README.md#deleteapiaccountsid)
-- [`deleteApiAgentId`](docs/sdks/sdk/README.md#deleteapiagentid)
-- [`deleteApiAgentIdSessionsSessionId`](docs/sdks/sdk/README.md#deleteapiagentidsessionssessionid)
-- [`deleteApiApiLogsRunId`](docs/sdks/sdk/README.md#deleteapiapilogsrunid)
-- [`deleteApiBrowsePluginsPluginId`](docs/sdks/sdk/README.md#deleteapibrowsepluginspluginid)
-- [`deleteApiCache`](docs/sdks/sdk/README.md#deleteapicache)
-- [`deleteApiChannelsId`](docs/sdks/sdk/README.md#deleteapichannelsid)
-- [`deleteApiCronId`](docs/sdks/sdk/README.md#deleteapicronid)
-- [`deleteApiCronIdLogs`](docs/sdks/sdk/README.md#deleteapicronidlogs)
-- [`deleteApiDevicesId`](docs/sdks/sdk/README.md#deleteapidevicesid)
-- [`deleteApiFiles`](docs/sdks/sdk/README.md#deleteapifiles)
-- [`deleteApiGithubAuth`](docs/sdks/sdk/README.md#deleteapigithubauth)
-- [`deleteApiGithubAutofixTasksTaskId`](docs/sdks/sdk/README.md#deleteapigithubautofixtaskstaskid)
-- [`deleteApiGithubAutofixWorktrees`](docs/sdks/sdk/README.md#deleteapigithubautofixworktrees)
-- [`deleteApiGithubReposConnect`](docs/sdks/sdk/README.md#deleteapigithubreposconnect)
-- [`deleteApiGroupChatsId`](docs/sdks/sdk/README.md#deleteapigroupchatsid)
-- [`deleteApiGroupChatsIdFilesFilename`](docs/sdks/sdk/README.md#deleteapigroupchatsidfilesfilename)
-- [`deleteApiGroupChatsIdMembersMemberId`](docs/sdks/sdk/README.md#deleteapigroupchatsidmembersmemberid)
-- [`deleteApiGroupChatsIdPicturesFilename`](docs/sdks/sdk/README.md#deleteapigroupchatsidpicturesfilename)
-- [`deleteApiGroupChatsIdSessionsSessionId`](docs/sdks/sdk/README.md#deleteapigroupchatsidsessionssessionid)
-- [`deleteApiHistory`](docs/sdks/sdk/README.md#deleteapihistory)
-- [`deleteApiHistoryId`](docs/sdks/sdk/README.md#deleteapihistoryid)
-- [`deleteApiKanbanTasksTaskIdCommentsCommentId`](docs/sdks/sdk/README.md#deleteapikanbantaskstaskidcommentscommentid)
-- [`deleteApiKanbanTasksTaskIdData`](docs/sdks/sdk/README.md#deleteapikanbantaskstaskiddata)
-- [`deleteApiLogs`](docs/sdks/sdk/README.md#deleteapilogs)
-- [`deleteApiLogsSessionSessionId`](docs/sdks/sdk/README.md#deleteapilogssessionsessionid)
-- [`deleteApiMarketplaceCache`](docs/sdks/sdk/README.md#deleteapimarketplacecache)
-- [`deleteApiMcpAgentsAgentIdServersName`](docs/sdks/sdk/README.md#deleteapimcpagentsagentidserversname)
-- [`deleteApiMcpInspectorMcp`](docs/sdks/sdk/README.md#deleteapimcpinspectormcp)
-- [`deleteApiMcpInspectorSessionsSessionId`](docs/sdks/sdk/README.md#deleteapimcpinspectorsessionssessionid)
-- [`deleteApiMcpServerBrowse`](docs/sdks/sdk/README.md#deleteapimcpserverbrowse)
-- [`deleteApiMcpServerGuiAction`](docs/sdks/sdk/README.md#deleteapimcpserverguiaction)
-- [`deleteApiMcpTauriMcp`](docs/sdks/sdk/README.md#deleteapimcptaurimcp)
-- [`deleteApiModelsAliasesAlias`](docs/sdks/sdk/README.md#deleteapimodelsaliasesalias)
-- [`deleteApiModelsFallbacks`](docs/sdks/sdk/README.md#deleteapimodelsfallbacks)
-- [`deleteApiModelsFallbacksModel`](docs/sdks/sdk/README.md#deleteapimodelsfallbacksmodel)
-- [`deleteApiModelsId`](docs/sdks/sdk/README.md#deleteapimodelsid)
-- [`deleteApiModelsIdConfig`](docs/sdks/sdk/README.md#deleteapimodelsidconfig)
-- [`deleteApiOfficialRegistryCache`](docs/sdks/sdk/README.md#deleteapiofficialregistrycache)
-- [`deleteApiOfficialRegistryServersNameCache`](docs/sdks/sdk/README.md#deleteapiofficialregistryserversnamecache)
-- [`deleteApiProvidersId`](docs/sdks/sdk/README.md#deleteapiprovidersid)
-- [`deleteApiQueueTasksId`](docs/sdks/sdk/README.md#deleteapiqueuetasksid)
-- [`deleteApiServiceKeysKeyId`](docs/sdks/sdk/README.md#deleteapiservicekeyskeyid)
-- [`deleteApiSessionsId`](docs/sdks/sdk/README.md#deleteapisessionsid)
-- [`deleteApiTasksId`](docs/sdks/sdk/README.md#deleteapitasksid)
-- [`deleteApiTelemetryClean`](docs/sdks/sdk/README.md#deleteapitelemetryclean)
-- [`deleteApiWorkspacesId`](docs/sdks/sdk/README.md#deleteapiworkspacesid)
-- [`executorsGetApiExecutors`](docs/sdks/executors/README.md#getapiexecutors) - List available executors
-- [`executorsGetApiExecutorsOpenclawRuntimeConfig`](docs/sdks/executors/README.md#getapiexecutorsopenclawruntimeconfig) - Get the effective OpenClaw gateway config from the server side
-- [`executorsPostApiExecutorsOpenclawTestConnection`](docs/sdks/executors/README.md#postapiexecutorsopenclawtestconnection) - Test connection to an OpenClaw gateway with device auth handshake
-- [`getApiAccounts`](docs/sdks/sdk/README.md#getapiaccounts)
-- [`getApiAccountsId`](docs/sdks/sdk/README.md#getapiaccountsid)
-- [`getApiAgentAgentIdSessionsSessionIdTasks`](docs/sdks/sdk/README.md#getapiagentagentidsessionssessionidtasks)
-- [`getApiAgentAgentIdSessionsSessionIdTasksTaskIdMessages`](docs/sdks/sdk/README.md#getapiagentagentidsessionssessionidtaskstaskidmessages)
-- [`getApiAgentAgentIdTasks`](docs/sdks/sdk/README.md#getapiagentagentidtasks)
-- [`getApiAgentDefault`](docs/sdks/sdk/README.md#getapiagentdefault)
-- [`getApiAgentId`](docs/sdks/sdk/README.md#getapiagentid)
-- [`getApiAgentIdAvailability`](docs/sdks/sdk/README.md#getapiagentidavailability)
-- [`getApiAgentIdSessions`](docs/sdks/sdk/README.md#getapiagentidsessions)
-- [`getApiAgentIdSessionsSessionId`](docs/sdks/sdk/README.md#getapiagentidsessionssessionid)
-- [`getApiAgentIdSessionsSessionIdMessages`](docs/sdks/sdk/README.md#getapiagentidsessionssessionidmessages)
-- [`getApiAgentIdSessionsSessionIdUiMessages`](docs/sdks/sdk/README.md#getapiagentidsessionssessioniduimessages)
-- [`getApiAgentPlanPlanId`](docs/sdks/sdk/README.md#getapiagentplanplanid)
-- [`getApiAgentSessionSessionId`](docs/sdks/sdk/README.md#getapiagentsessionsessionid)
-- [`getApiAgentTasksSubscribe`](docs/sdks/sdk/README.md#getapiagenttaskssubscribe)
-- [`getApiAgentTemplates`](docs/sdks/sdk/README.md#getapiagenttemplates)
-- [`getApiAgentTemplatesId`](docs/sdks/sdk/README.md#getapiagenttemplatesid)
-- [`getApiApiLogsDir`](docs/sdks/sdk/README.md#getapiapilogsdir)
-- [`getApiApiLogsRunId`](docs/sdks/sdk/README.md#getapiapilogsrunid)
-- [`getApiApiLogsRunIdSummary`](docs/sdks/sdk/README.md#getapiapilogsrunidsummary)
-- [`getApiApiLogsSessions`](docs/sdks/sdk/README.md#getapiapilogssessions)
-- [`getApiBrowsePluginsInstalled`](docs/sdks/sdk/README.md#getapibrowsepluginsinstalled)
-- [`getApiBrowsePluginsPluginId`](docs/sdks/sdk/README.md#getapibrowsepluginspluginid)
-- [`getApiBrowsePluginsRegistry`](docs/sdks/sdk/README.md#getapibrowsepluginsregistry)
-- [`getApiCacheInfo`](docs/sdks/sdk/README.md#getapicacheinfo)
-- [`getApiCacheOffline`](docs/sdks/sdk/README.md#getapicacheoffline)
-- [`getApiCacheSettings`](docs/sdks/sdk/README.md#getapicachesettings)
-- [`getApiCacheShouldRefresh`](docs/sdks/sdk/README.md#getapicacheshouldrefresh)
-- [`getApiChatList`](docs/sdks/sdk/README.md#getapichatlist)
-- [`getApiCliToolsConfig`](docs/sdks/sdk/README.md#getapiclitoolsconfig)
-- [`getApiCliToolsDetect`](docs/sdks/sdk/README.md#getapiclitoolsdetect)
-- [`getApiCommandQueueConfig`](docs/sdks/sdk/README.md#getapicommandqueueconfig)
-- [`getApiCommandQueueItems`](docs/sdks/sdk/README.md#getapicommandqueueitems)
-- [`getApiCommandQueueItemsId`](docs/sdks/sdk/README.md#getapicommandqueueitemsid)
-- [`getApiCommandQueueItemsIdLogs`](docs/sdks/sdk/README.md#getapicommandqueueitemsidlogs)
-- [`getApiCommandQueueStatus`](docs/sdks/sdk/README.md#getapicommandqueuestatus)
-- [`getApiCommandsSkills`](docs/sdks/sdk/README.md#getapicommandsskills)
-- [`getApiCommandsWorkspace`](docs/sdks/sdk/README.md#getapicommandsworkspace)
-- [`getApiCronIdLogs`](docs/sdks/sdk/README.md#getapicronidlogs)
-- [`getApiDevices`](docs/sdks/sdk/README.md#getapidevices)
-- [`getApiDevicesId`](docs/sdks/sdk/README.md#getapidevicesid)
-- [`getApiDevicesQr`](docs/sdks/sdk/README.md#getapidevicesqr)
-- [`getApiEvents`](docs/sdks/sdk/README.md#getapievents)
-- [`getApiExchanges`](docs/sdks/sdk/README.md#getapiexchanges)
-- [`getApiExecutorsTypeCommands`](docs/sdks/sdk/README.md#getapiexecutorstypecommands)
-- [`getApiExecutorsTypeCommandsCommandId`](docs/sdks/sdk/README.md#getapiexecutorstypecommandscommandid)
-- [`getApiExecutorsTypeDiscoverSessions`](docs/sdks/sdk/README.md#getapiexecutorstypediscoversessions)
-- [`getApiExecutorsTypeMcpServers`](docs/sdks/sdk/README.md#getapiexecutorstypemcpservers)
-- [`getApiExecutorsTypePrompts`](docs/sdks/sdk/README.md#getapiexecutorstypeprompts)
-- [`getApiExecutorsTypePromptsPromptId`](docs/sdks/sdk/README.md#getapiexecutorstypepromptspromptid)
-- [`getApiExecutorsTypeSessionsSessionIdMessages`](docs/sdks/sdk/README.md#getapiexecutorstypesessionssessionidmessages)
-- [`getApiExecutorsTypeSkills`](docs/sdks/sdk/README.md#getapiexecutorstypeskills)
-- [`getApiExecutorsTypeSubagents`](docs/sdks/sdk/README.md#getapiexecutorstypesubagents)
-- [`getApiExecutorsTypeSubagentsConfigId`](docs/sdks/sdk/README.md#getapiexecutorstypesubagentsconfigid)
-- [`getApiFilesConfigDir`](docs/sdks/sdk/README.md#getapifilesconfigdir)
-- [`getApiFilesContent`](docs/sdks/sdk/README.md#getapifilescontent)
-- [`getApiFilesDirectory`](docs/sdks/sdk/README.md#getapifilesdirectory)
-- [`getApiFilesGitDiff`](docs/sdks/sdk/README.md#getapifilesgitdiff)
-- [`getApiFilesGitStatus`](docs/sdks/sdk/README.md#getapifilesgitstatus)
-- [`getApiFilesList`](docs/sdks/sdk/README.md#getapifileslist)
-- [`getApiFilesMcpServers`](docs/sdks/sdk/README.md#getapifilesmcpservers)
-- [`getApiGithubAuthStatus`](docs/sdks/sdk/README.md#getapigithubauthstatus)
-- [`getApiGithubAutofixConfig`](docs/sdks/sdk/README.md#getapigithubautofixconfig)
-- [`getApiGithubAutofixTasks`](docs/sdks/sdk/README.md#getapigithubautofixtasks)
-- [`getApiGithubAutofixTasksTaskId`](docs/sdks/sdk/README.md#getapigithubautofixtaskstaskid)
-- [`getApiGithubAutofixWorktrees`](docs/sdks/sdk/README.md#getapigithubautofixworktrees)
-- [`getApiGithubIssues`](docs/sdks/sdk/README.md#getapigithubissues)
-- [`getApiGithubIssuesNumber`](docs/sdks/sdk/README.md#getapigithubissuesnumber)
-- [`getApiGithubIssuesNumberComments`](docs/sdks/sdk/README.md#getapigithubissuesnumbercomments)
-- [`getApiGithubPrs`](docs/sdks/sdk/README.md#getapigithubprs)
-- [`getApiGithubPrsNumber`](docs/sdks/sdk/README.md#getapigithubprsnumber)
-- [`getApiGithubReleases`](docs/sdks/sdk/README.md#getapigithubreleases)
-- [`getApiGithubReleasesLatest`](docs/sdks/sdk/README.md#getapigithubreleaseslatest)
-- [`getApiGithubRepos`](docs/sdks/sdk/README.md#getapigithubrepos)
-- [`getApiGithubReposConnected`](docs/sdks/sdk/README.md#getapigithubreposconnected)
-- [`getApiGithubReposDetect`](docs/sdks/sdk/README.md#getapigithubreposdetect)
-- [`getApiGroupChats`](docs/sdks/sdk/README.md#getapigroupchats)
-- [`getApiGroupChatsId`](docs/sdks/sdk/README.md#getapigroupchatsid)
-- [`getApiGroupChatsIdFiles`](docs/sdks/sdk/README.md#getapigroupchatsidfiles)
-- [`getApiGroupChatsIdFilesFilename`](docs/sdks/sdk/README.md#getapigroupchatsidfilesfilename)
-- [`getApiGroupChatsIdMembers`](docs/sdks/sdk/README.md#getapigroupchatsidmembers)
-- [`getApiGroupChatsIdPictures`](docs/sdks/sdk/README.md#getapigroupchatsidpictures)
-- [`getApiGroupChatsIdPicturesFilename`](docs/sdks/sdk/README.md#getapigroupchatsidpicturesfilename)
-- [`getApiGroupChatsIdSessions`](docs/sdks/sdk/README.md#getapigroupchatsidsessions)
-- [`getApiGroupChatsIdSessionsSessionId`](docs/sdks/sdk/README.md#getapigroupchatsidsessionssessionid)
-- [`getApiGroupChatsIdSessionsSessionIdAgents`](docs/sdks/sdk/README.md#getapigroupchatsidsessionssessionidagents)
-- [`getApiGroupChatsIdSessionsSessionIdMessages`](docs/sdks/sdk/README.md#getapigroupchatsidsessionssessionidmessages)
-- [`getApiHistory`](docs/sdks/sdk/README.md#getapihistory)
-- [`getApiHistoryId`](docs/sdks/sdk/README.md#getapihistoryid)
-- [`getApiLogsDir`](docs/sdks/sdk/README.md#getapilogsdir)
-- [`getApiLogsSessions`](docs/sdks/sdk/README.md#getapilogssessions)
-- [`getApiLogsSessionSessionId`](docs/sdks/sdk/README.md#getapilogssessionsessionid)
-- [`getApiMarketplaceCategories`](docs/sdks/sdk/README.md#getapimarketplacecategories)
-- [`getApiMarketplaceCategoriesCategoryIdPlugins`](docs/sdks/sdk/README.md#getapimarketplacecategoriescategoryidplugins)
-- [`getApiMarketplaceIndex`](docs/sdks/sdk/README.md#getapimarketplaceindex)
-- [`getApiMarketplacePlugins`](docs/sdks/sdk/README.md#getapimarketplaceplugins)
-- [`getApiMarketplacePluginsPluginId`](docs/sdks/sdk/README.md#getapimarketplacepluginspluginid)
-- [`getApiMarketplaceSearch`](docs/sdks/sdk/README.md#getapimarketplacesearch)
-- [`getApiMarketplaceSources`](docs/sdks/sdk/README.md#getapimarketplacesources)
-- [`getApiMcpAgentsAgentIdServers`](docs/sdks/sdk/README.md#getapimcpagentsagentidservers)
-- [`getApiMcpAgentsAgentIdServersName`](docs/sdks/sdk/README.md#getapimcpagentsagentidserversname)
-- [`getApiMcpBrowseStatus`](docs/sdks/sdk/README.md#getapimcpbrowsestatus)
-- [`getApiMcpInspectorConfig`](docs/sdks/sdk/README.md#getapimcpinspectorconfig)
-- [`getApiMcpInspectorHealth`](docs/sdks/sdk/README.md#getapimcpinspectorhealth)
-- [`getApiMcpInspectorMcp`](docs/sdks/sdk/README.md#getapimcpinspectormcp)
-- [`getApiMcpInspectorSessions`](docs/sdks/sdk/README.md#getapimcpinspectorsessions)
-- [`getApiMcpInspectorSse`](docs/sdks/sdk/README.md#getapimcpinspectorsse)
-- [`getApiMcpInspectorStdio`](docs/sdks/sdk/README.md#getapimcpinspectorstdio)
-- [`getApiMcpInspectorToken`](docs/sdks/sdk/README.md#getapimcpinspectortoken)
-- [`getApiMcpProxyStatus`](docs/sdks/sdk/README.md#getapimcpproxystatus)
-- [`getApiMcpServerBrowse`](docs/sdks/sdk/README.md#getapimcpserverbrowse)
-- [`getApiMcpServerGuiAction`](docs/sdks/sdk/README.md#getapimcpserverguiaction)
-- [`getApiMcpTauriMcp`](docs/sdks/sdk/README.md#getapimcptaurimcp)
-- [`getApiMcpTauriSse`](docs/sdks/sdk/README.md#getapimcptaurisse)
-- [`getApiMeshPeers`](docs/sdks/sdk/README.md#getapimeshpeers)
-- [`getApiModelsAliases`](docs/sdks/sdk/README.md#getapimodelsaliases)
-- [`getApiModelsDefault`](docs/sdks/sdk/README.md#getapimodelsdefault)
-- [`getApiModelsFallbacks`](docs/sdks/sdk/README.md#getapimodelsfallbacks)
-- [`getApiModelsIdConfig`](docs/sdks/sdk/README.md#getapimodelsidconfig)
-- [`getApiOfficialRegistryServers`](docs/sdks/sdk/README.md#getapiofficialregistryservers)
-- [`getApiOfficialRegistryServersName`](docs/sdks/sdk/README.md#getapiofficialregistryserversname)
-- [`getApiOfficialRegistryServersNameVersions`](docs/sdks/sdk/README.md#getapiofficialregistryserversnameversions)
-- [`getApiPackagesInstalled`](docs/sdks/sdk/README.md#getapipackagesinstalled)
-- [`getApiPackagesMcp`](docs/sdks/sdk/README.md#getapipackagesmcp)
-- [`getApiPackagesSkills`](docs/sdks/sdk/README.md#getapipackagesskills)
-- [`getApiPatches`](docs/sdks/sdk/README.md#getapipatches)
-- [`getApiPetAssetIdFilename`](docs/sdks/sdk/README.md#getapipetassetidfilename)
-- [`getApiPetCommunity`](docs/sdks/sdk/README.md#getapipetcommunity)
-- [`getApiPetConfig`](docs/sdks/sdk/README.md#getapipetconfig)
-- [`getApiPetExportId`](docs/sdks/sdk/README.md#getapipetexportid)
-- [`getApiPetList`](docs/sdks/sdk/README.md#getapipetlist)
-- [`getApiPetPreviewId`](docs/sdks/sdk/README.md#getapipetpreviewid)
-- [`getApiPetSearch`](docs/sdks/sdk/README.md#getapipetsearch)
-- [`getApiPetShowId`](docs/sdks/sdk/README.md#getapipetshowid)
-- [`getApiPetSourcesList`](docs/sdks/sdk/README.md#getapipetsourceslist)
-- [`getApiPreferences`](docs/sdks/sdk/README.md#getapipreferences)
-- [`getApiPreferencesDeveloper`](docs/sdks/sdk/README.md#getapipreferencesdeveloper)
-- [`getApiPreferencesDeveloperIde`](docs/sdks/sdk/README.md#getapipreferencesdeveloperide)
-- [`getApiPreferencesDeveloperTerminal`](docs/sdks/sdk/README.md#getapipreferencesdeveloperterminal)
-- [`getApiPreferencesNotifications`](docs/sdks/sdk/README.md#getapipreferencesnotifications)
-- [`getApiProvidersApiKeys`](docs/sdks/sdk/README.md#getapiprovidersapikeys)
-- [`getApiProvidersApiKeysAll`](docs/sdks/sdk/README.md#getapiprovidersapikeysall)
-- [`getApiProvidersDefault`](docs/sdks/sdk/README.md#getapiprovidersdefault)
-- [`getApiProvidersIdDiscoverModels`](docs/sdks/sdk/README.md#getapiprovidersiddiscovermodels)
-- [`getApiProvidersIdModels`](docs/sdks/sdk/README.md#getapiprovidersidmodels)
-- [`getApiPythonDetect`](docs/sdks/sdk/README.md#getapipythondetect)
-- [`getApiQueueConfig`](docs/sdks/sdk/README.md#getapiqueueconfig)
-- [`getApiQueueStatus`](docs/sdks/sdk/README.md#getapiqueuestatus)
-- [`getApiQueueTasks`](docs/sdks/sdk/README.md#getapiqueuetasks)
-- [`getApiQueueTasksId`](docs/sdks/sdk/README.md#getapiqueuetasksid)
-- [`getApiQueueTasksIdRunning`](docs/sdks/sdk/README.md#getapiqueuetasksidrunning)
-- [`getApiQueueTasksIdStream`](docs/sdks/sdk/README.md#getapiqueuetasksidstream)
-- [`getApiSandboxAvailable`](docs/sdks/sdk/README.md#getapisandboxavailable)
-- [`getApiServiceKeys`](docs/sdks/sdk/README.md#getapiservicekeys)
-- [`getApiServiceKeysKeyId`](docs/sdks/sdk/README.md#getapiservicekeyskeyid)
-- [`getApiSessionsIdMessages`](docs/sdks/sdk/README.md#getapisessionsidmessages)
-- [`getApiSessionsIdUiMessages`](docs/sdks/sdk/README.md#getapisessionsiduimessages)
-- [`getApiSourcesInstalled`](docs/sdks/sdk/README.md#getapisourcesinstalled)
-- [`getApiSourcesProviderProvider`](docs/sdks/sdk/README.md#getapisourcesproviderprovider)
-- [`getApiSystemInfo`](docs/sdks/sdk/README.md#getapisysteminfo)
-- [`getApiSystemPublicIp`](docs/sdks/sdk/README.md#getapisystempublicip)
-- [`getApiTasksEventsStream`](docs/sdks/sdk/README.md#getapitaskseventsstream)
-- [`getApiTasksTaskIdEvents`](docs/sdks/sdk/README.md#getapitaskstaskidevents)
-- [`getApiTasksTaskIdEventsStream`](docs/sdks/sdk/README.md#getapitaskstaskideventsstream)
-- [`getApiTasksTaskIdSessions`](docs/sdks/sdk/README.md#getapitaskstaskidsessions)
-- [`getApiTasksTaskIdState`](docs/sdks/sdk/README.md#getapitaskstaskidstate)
-- [`getApiTelemetryDates`](docs/sdks/sdk/README.md#getapitelemetrydates)
-- [`getApiTelemetryStats`](docs/sdks/sdk/README.md#getapitelemetrystats)
-- [`getApiTelemetryTraceId`](docs/sdks/sdk/README.md#getapitelemetrytraceid)
-- [`getApiTelemetryTraceIdSpans`](docs/sdks/sdk/README.md#getapitelemetrytraceidspans)
-- [`getApiTelemetryTraces`](docs/sdks/sdk/README.md#getapitelemetrytraces)
-- [`getApiTunnelStatus`](docs/sdks/sdk/README.md#getapitunnelstatus)
-- [`getApiUsageApiKeyKeyId`](docs/sdks/sdk/README.md#getapiusageapikeykeyid)
-- [`getApiUsageServerServerId`](docs/sdks/sdk/README.md#getapiusageserverserverid)
-- [`getApiUsageSourceSourceId`](docs/sdks/sdk/README.md#getapiusagesourcesourceid)
-- [`getApiUsageStats`](docs/sdks/sdk/README.md#getapiusagestats)
-- [`getOpenapiJson`](docs/sdks/sdk/README.md#getopenapijson)
-- [`getOpenapiYaml`](docs/sdks/sdk/README.md#getopenapiyaml)
-- [`healthGetHealth`](docs/sdks/health/README.md#gethealth) - Health check endpoint
-- [`ideasDeleteApiIdeas`](docs/sdks/ideas/README.md#deleteapiideas) - Remove ideas by type or all ideas
-- [`ideasDeleteApiIdeasId`](docs/sdks/ideas/README.md#deleteapiideasid) - Remove a single idea by ID
-- [`ideasDeleteApiIdeaTypesName`](docs/sdks/ideas/README.md#deleteapiideatypesname) - Delete a custom idea type
-- [`ideasGetApiIdeas`](docs/sdks/ideas/README.md#getapiideas) - List all ideas for a workspace with optional filtering
-- [`ideasGetApiIdeasId`](docs/sdks/ideas/README.md#getapiideasid) - Get a specific idea by ID
-- [`ideasGetApiIdeaTypes`](docs/sdks/ideas/README.md#getapiideatypes) - List available idea types (builtin + custom)
-- [`ideasPostApiIdeasGenerate`](docs/sdks/ideas/README.md#postapiideasgenerate) - Generate ideas by analyzing the codebase using AI
-- [`ideasPostApiIdeasIdDismiss`](docs/sdks/ideas/README.md#postapiideasiddismiss) - Dismiss an idea (mark as not worth pursuing)
-- [`ideasPostApiIdeasIdPromote`](docs/sdks/ideas/README.md#postapiideasidpromote) - Promote an idea to a task
-- [`ideasPostApiIdeaTypes`](docs/sdks/ideas/README.md#postapiideatypes) - Create a new custom idea type
-- [`ideasPutApiIdeaTypesName`](docs/sdks/ideas/README.md#putapiideatypesname) - Update an existing idea type
-- [`kanbanGetApiKanbanTasksTaskIdActivities`](docs/sdks/kanban/README.md#getapikanbantaskstaskidactivities) - Get all activities for a task
-- [`kanbanGetApiKanbanTasksTaskIdComments`](docs/sdks/kanban/README.md#getapikanbantaskstaskidcomments) - Get all comments for a task
-- [`mcpGetApiMcpInfoIdOrSlug`](docs/sdks/mcp/README.md#getapimcpinfoidorslug) - Get MCP package details from marketplace
-- [`mcpGetApiMcpInstalled`](docs/sdks/mcp/README.md#getapimcpinstalled) - List globally installed MCP servers
-- [`mcpGetApiMcpList`](docs/sdks/mcp/README.md#getapimcplist) - List installed MCP packages
-- [`mcpGetApiMcpSearch`](docs/sdks/mcp/README.md#getapimcpsearch) - Search MCP packages in marketplace
-- [`mcpGetApiMcpShowName`](docs/sdks/mcp/README.md#getapimcpshowname) - Get MCP package details
-- [`mcpGetApiMcpTauriStatus`](docs/sdks/mcp/README.md#getapimcptauristatus) - Check tauri-plugin-mcp connection status
-- [`mcpGetApiMcpTauriStatus`](docs/sdks/tauri/README.md#getapimcptauristatus) - Check tauri-plugin-mcp connection status
-- [`mcpPostApiMcpDownload`](docs/sdks/mcp/README.md#postapimcpdownload) - Download MCP package to a directory
-- [`mcpPostApiMcpInstall`](docs/sdks/mcp/README.md#postapimcpinstall) - Install an MCP package (supports name, name@version, gh:user/repo, ./path)
-- [`mcpPostApiMcpUninstall`](docs/sdks/mcp/README.md#postapimcpuninstall) - Uninstall an MCP package
-- [`modelsGetApiModels`](docs/sdks/models/README.md#getapimodels) - List all models
-- [`modelsGetApiModelsId`](docs/sdks/models/README.md#getapimodelsid) - Get a specific model by ID
-- [`pageGetApiPageSDKV1VibenPageSDKJs`](docs/sdks/page/README.md#getapipagesdkv1vibenpagesdkjs) - Serve viben-page-sdk.js
-- [`pageGetApiPageSDKV1VibenPageTokensCss`](docs/sdks/page/README.md#getapipagesdkv1vibenpagetokenscss) - Serve viben-page-tokens.css
-- [`pageGetApiPageServe`](docs/sdks/page/README.md#getapipageserve) - Serve page content
-- [`pagePostApiPageCreate`](docs/sdks/page/README.md#postapipagecreate) - Create a new page
-- [`pagePostApiPageDelete`](docs/sdks/page/README.md#postapipagedelete) - Delete a page
-- [`pagePostApiPageDuplicate`](docs/sdks/page/README.md#postapipageduplicate) - Duplicate a page (copy all files with a new uid)
-- [`pagePostApiPageList`](docs/sdks/page/README.md#postapipagelist) - List pages in workspace
-- [`pagePostApiPageReorder`](docs/sdks/page/README.md#postapipagereorder) - Reorder pages within a parent level
-- [`pagePostApiPageServe`](docs/sdks/page/README.md#postapipageserve) - Serve page content
-- [`pagePostApiPageTemplates`](docs/sdks/page/README.md#postapipagetemplates) - List available page templates
-- [`pagePostApiPageUpdateConfig`](docs/sdks/page/README.md#postapipageupdateconfig) - Update page config (name, description, icon, cover, page_width, show_toc)
-- [`pagePostApiPageUpdateContent`](docs/sdks/page/README.md#postapipageupdatecontent) - Update page markdown content (preserves YAML frontmatter)
-- [`pagePostApiPageView`](docs/sdks/page/README.md#postapipageview) - Get page by uid
-- [`patchApiAgentId`](docs/sdks/sdk/README.md#patchapiagentid)
-- [`patchApiChannelsId`](docs/sdks/sdk/README.md#patchapichannelsid)
-- [`patchApiCliToolsConfig`](docs/sdks/sdk/README.md#patchapiclitoolsconfig)
-- [`patchApiCronId`](docs/sdks/sdk/README.md#patchapicronid)
-- [`patchApiGroupChatsId`](docs/sdks/sdk/README.md#patchapigroupchatsid)
-- [`patchApiGroupChatsIdSessionsSessionId`](docs/sdks/sdk/README.md#patchapigroupchatsidsessionssessionid)
-- [`patchApiKanbanTasksTaskIdCommentsCommentId`](docs/sdks/sdk/README.md#patchapikanbantaskstaskidcommentscommentid)
-- [`patchApiMcpAgentsAgentIdServersName`](docs/sdks/sdk/README.md#patchapimcpagentsagentidserversname)
-- [`patchApiModelsId`](docs/sdks/sdk/README.md#patchapimodelsid)
-- [`patchApiPreferencesDeveloper`](docs/sdks/sdk/README.md#patchapipreferencesdeveloper)
-- [`patchApiPreferencesNotifications`](docs/sdks/sdk/README.md#patchapipreferencesnotifications)
-- [`patchApiProvidersId`](docs/sdks/sdk/README.md#patchapiprovidersid)
-- [`patchApiServiceKeysKeyId`](docs/sdks/sdk/README.md#patchapiservicekeyskeyid)
-- [`patchApiSessionsId`](docs/sdks/sdk/README.md#patchapisessionsid)
-- [`patchApiTasksId`](docs/sdks/sdk/README.md#patchapitasksid)
-- [`postApiAccounts`](docs/sdks/sdk/README.md#postapiaccounts)
-- [`postApiAccountsIdTest`](docs/sdks/sdk/README.md#postapiaccountsidtest)
-- [`postApiAgent`](docs/sdks/sdk/README.md#postapiagent)
-- [`postApiAgentAnswerQuestionId`](docs/sdks/sdk/README.md#postapiagentanswerquestionid)
-- [`postApiAgentApprovePlanId`](docs/sdks/sdk/README.md#postapiagentapproveplanid)
-- [`postApiAgentIdPromote`](docs/sdks/sdk/README.md#postapiagentidpromote)
-- [`postApiAgentIdSessions`](docs/sdks/sdk/README.md#postapiagentidsessions)
-- [`postApiAgentIdSessionsSessionIdMessages`](docs/sdks/sdk/README.md#postapiagentidsessionssessionidmessages)
-- [`postApiAgentRejectPlanId`](docs/sdks/sdk/README.md#postapiagentrejectplanid)
-- [`postApiAgentRun`](docs/sdks/sdk/README.md#postapiagentrun)
-- [`postApiAgentSessionSessionIdSteer`](docs/sdks/sdk/README.md#postapiagentsessionsessionidsteer)
-- [`postApiAgentStopSessionId`](docs/sdks/sdk/README.md#postapiagentstopsessionid)
-- [`postApiAgentTasksTaskIdStop`](docs/sdks/sdk/README.md#postapiagenttaskstaskidstop)
-- [`postApiAgentTemplates`](docs/sdks/sdk/README.md#postapiagenttemplates)
-- [`postApiAgentTemplatesIdInstantiate`](docs/sdks/sdk/README.md#postapiagenttemplatesidinstantiate)
-- [`postApiApiLogsOpen`](docs/sdks/sdk/README.md#postapiapilogsopen)
-- [`postApiBrowsePluginsInstall`](docs/sdks/sdk/README.md#postapibrowsepluginsinstall)
-- [`postApiCacheRefresh`](docs/sdks/sdk/README.md#postapicacherefresh)
-- [`postApiChannels`](docs/sdks/sdk/README.md#postapichannels)
-- [`postApiChannelsIdDefault`](docs/sdks/sdk/README.md#postapichannelsiddefault)
-- [`postApiChannelsIdWebhook`](docs/sdks/sdk/README.md#postapichannelsidwebhook)
-- [`postApiChannelsSend`](docs/sdks/sdk/README.md#postapichannelssend)
-- [`postApiChannelsSendTest`](docs/sdks/sdk/README.md#postapichannelssendtest)
-- [`postApiChannelsTest`](docs/sdks/sdk/README.md#postapichannelstest)
-- [`postApiChannelsWebhook`](docs/sdks/sdk/README.md#postapichannelswebhook)
-- [`postApiClientToolsComplete`](docs/sdks/sdk/README.md#postapiclienttoolscomplete)
-- [`postApiClientToolsRequest`](docs/sdks/sdk/README.md#postapiclienttoolsrequest)
-- [`postApiCliToolsCheck`](docs/sdks/sdk/README.md#postapiclitoolscheck)
-- [`postApiCliToolsConfig`](docs/sdks/sdk/README.md#postapiclitoolsconfig)
-- [`postApiCommandQueueClean`](docs/sdks/sdk/README.md#postapicommandqueueclean)
-- [`postApiCommandQueueEnqueue`](docs/sdks/sdk/README.md#postapicommandqueueenqueue)
-- [`postApiCommandQueueItemsIdCancel`](docs/sdks/sdk/README.md#postapicommandqueueitemsidcancel)
-- [`postApiCommandQueueItemsIdRetry`](docs/sdks/sdk/README.md#postapicommandqueueitemsidretry)
-- [`postApiCron`](docs/sdks/sdk/README.md#postapicron)
-- [`postApiCronIdDisable`](docs/sdks/sdk/README.md#postapicroniddisable)
-- [`postApiCronIdEnable`](docs/sdks/sdk/README.md#postapicronidenable)
-- [`postApiCronIdRun`](docs/sdks/sdk/README.md#postapicronidrun)
-- [`postApiDevicesMessage`](docs/sdks/sdk/README.md#postapidevicesmessage)
-- [`postApiFiles`](docs/sdks/sdk/README.md#postapifiles)
-- [`postApiFilesCopy`](docs/sdks/sdk/README.md#postapifilescopy)
-- [`postApiFilesDirectory`](docs/sdks/sdk/README.md#postapifilesdirectory)
-- [`postApiFilesMove`](docs/sdks/sdk/README.md#postapifilesmove)
-- [`postApiFilesOpen`](docs/sdks/sdk/README.md#postapifilesopen)
-- [`postApiFilesOpenFolder`](docs/sdks/sdk/README.md#postapifilesopenfolder)
-- [`postApiFilesReveal`](docs/sdks/sdk/README.md#postapifilesreveal)
-- [`postApiGithubAuthGhCli`](docs/sdks/sdk/README.md#postapigithubauthghcli)
-- [`postApiGithubAuthPat`](docs/sdks/sdk/README.md#postapigithubauthpat)
-- [`postApiGithubAutofixTasks`](docs/sdks/sdk/README.md#postapigithubautofixtasks)
-- [`postApiGithubAutofixTasksTaskIdApprove`](docs/sdks/sdk/README.md#postapigithubautofixtaskstaskidapprove)
-- [`postApiGithubAutofixTasksTaskIdCancel`](docs/sdks/sdk/README.md#postapigithubautofixtaskstaskidcancel)
-- [`postApiGithubIssuesCluster`](docs/sdks/sdk/README.md#postapigithubissuescluster)
-- [`postApiGithubIssuesImport`](docs/sdks/sdk/README.md#postapigithubissuesimport)
-- [`postApiGithubIssuesNumberAnalyze`](docs/sdks/sdk/README.md#postapigithubissuesnumberanalyze)
-- [`postApiGithubIssuesNumberInvestigate`](docs/sdks/sdk/README.md#postapigithubissuesnumberinvestigate)
-- [`postApiGithubIssuesTriage`](docs/sdks/sdk/README.md#postapigithubissuestriage)
-- [`postApiGithubPrs`](docs/sdks/sdk/README.md#postapigithubprs)
-- [`postApiGithubReleases`](docs/sdks/sdk/README.md#postapigithubreleases)
-- [`postApiGithubReleasesGenerateNotes`](docs/sdks/sdk/README.md#postapigithubreleasesgeneratenotes)
-- [`postApiGithubReposConnect`](docs/sdks/sdk/README.md#postapigithubreposconnect)
-- [`postApiGroupChats`](docs/sdks/sdk/README.md#postapigroupchats)
-- [`postApiGroupChatsIdFiles`](docs/sdks/sdk/README.md#postapigroupchatsidfiles)
-- [`postApiGroupChatsIdMembers`](docs/sdks/sdk/README.md#postapigroupchatsidmembers)
-- [`postApiGroupChatsIdPictures`](docs/sdks/sdk/README.md#postapigroupchatsidpictures)
-- [`postApiGroupChatsIdSessions`](docs/sdks/sdk/README.md#postapigroupchatsidsessions)
-- [`postApiGroupChatsIdSessionsSessionIdMessages`](docs/sdks/sdk/README.md#postapigroupchatsidsessionssessionidmessages)
-- [`postApiHistory`](docs/sdks/sdk/README.md#postapihistory)
-- [`postApiKanbanTasksTaskIdActivities`](docs/sdks/sdk/README.md#postapikanbantaskstaskidactivities)
-- [`postApiKanbanTasksTaskIdComments`](docs/sdks/sdk/README.md#postapikanbantaskstaskidcomments)
-- [`postApiKanbanTasksTaskIdCommentsCommentIdReactions`](docs/sdks/sdk/README.md#postapikanbantaskstaskidcommentscommentidreactions)
-- [`postApiLogsAdd`](docs/sdks/sdk/README.md#postapilogsadd)
-- [`postApiLogsCleanup`](docs/sdks/sdk/README.md#postapilogscleanup)
-- [`postApiLogsInit`](docs/sdks/sdk/README.md#postapilogsinit)
-- [`postApiLogsSessionSessionIdExport`](docs/sdks/sdk/README.md#postapilogssessionsessionidexport)
-- [`postApiMcpAgentsAgentIdServers`](docs/sdks/sdk/README.md#postapimcpagentsagentidservers)
-- [`postApiMcpAgentsAgentIdServersNameDisable`](docs/sdks/sdk/README.md#postapimcpagentsagentidserversnamedisable)
-- [`postApiMcpAgentsAgentIdServersNameEnable`](docs/sdks/sdk/README.md#postapimcpagentsagentidserversnameenable)
-- [`postApiMcpBrowseStart`](docs/sdks/sdk/README.md#postapimcpbrowsestart)
-- [`postApiMcpBrowseStop`](docs/sdks/sdk/README.md#postapimcpbrowsestop)
-- [`postApiMcpBrowseTest`](docs/sdks/sdk/README.md#postapimcpbrowsetest)
-- [`postApiMcpInspectorMcp`](docs/sdks/sdk/README.md#postapimcpinspectormcp)
-- [`postApiMcpInspectorMessage`](docs/sdks/sdk/README.md#postapimcpinspectormessage)
-- [`postApiMcpInspectorSse`](docs/sdks/sdk/README.md#postapimcpinspectorsse)
-- [`postApiMcpPortStatus`](docs/sdks/sdk/README.md#postapimcpportstatus)
-- [`postApiMcpProcessAlive`](docs/sdks/sdk/README.md#postapimcpprocessalive)
-- [`postApiMcpProcessKill`](docs/sdks/sdk/README.md#postapimcpprocesskill)
-- [`postApiMcpProxyCheckInstalled`](docs/sdks/sdk/README.md#postapimcpproxycheckinstalled)
-- [`postApiMcpProxyInstall`](docs/sdks/sdk/README.md#postapimcpproxyinstall)
-- [`postApiMcpProxyKillPortProcess`](docs/sdks/sdk/README.md#postapimcpproxykillportprocess)
-- [`postApiMcpProxyPortProcess`](docs/sdks/sdk/README.md#postapimcpproxyportprocess)
-- [`postApiMcpProxyStart`](docs/sdks/sdk/README.md#postapimcpproxystart)
-- [`postApiMcpProxyStop`](docs/sdks/sdk/README.md#postapimcpproxystop)
-- [`postApiMcpServerBrowse`](docs/sdks/sdk/README.md#postapimcpserverbrowse)
-- [`postApiMcpServerCheckPort`](docs/sdks/sdk/README.md#postapimcpservercheckport)
-- [`postApiMcpServerGuiAction`](docs/sdks/sdk/README.md#postapimcpserverguiaction)
-- [`postApiMcpTauriMcp`](docs/sdks/sdk/README.md#postapimcptaurimcp)
-- [`postApiMcpTauriMessage`](docs/sdks/sdk/README.md#postapimcptaurimessage)
-- [`postApiMcpTauriSse`](docs/sdks/sdk/README.md#postapimcptaurisse)
-- [`postApiMeshConnect`](docs/sdks/sdk/README.md#postapimeshconnect)
-- [`postApiModels`](docs/sdks/sdk/README.md#postapimodels)
-- [`postApiModelsAliases`](docs/sdks/sdk/README.md#postapimodelsaliases)
-- [`postApiModelsFallbacks`](docs/sdks/sdk/README.md#postapimodelsfallbacks)
-- [`postApiModelsIdDisable`](docs/sdks/sdk/README.md#postapimodelsiddisable)
-- [`postApiModelsIdEnable`](docs/sdks/sdk/README.md#postapimodelsidenable)
-- [`postApiModelsReload`](docs/sdks/sdk/README.md#postapimodelsreload)
-- [`postApiPackagesUpdate`](docs/sdks/sdk/README.md#postapipackagesupdate)
-- [`postApiPageAssetUpload`](docs/sdks/sdk/README.md#postapipageassetupload)
-- [`postApiPetImport`](docs/sdks/sdk/README.md#postapipetimport)
-- [`postApiPetInstall`](docs/sdks/sdk/README.md#postapipetinstall)
-- [`postApiPetRemoveId`](docs/sdks/sdk/README.md#postapipetremoveid)
-- [`postApiPetSetId`](docs/sdks/sdk/README.md#postapipetsetid)
-- [`postApiPetSourcesAdd`](docs/sdks/sdk/README.md#postapipetsourcesadd)
-- [`postApiPetSourcesRemoveName`](docs/sdks/sdk/README.md#postapipetsourcesremovename)
-- [`postApiProviders`](docs/sdks/sdk/README.md#postapiproviders)
-- [`postApiProvidersIdDisable`](docs/sdks/sdk/README.md#postapiprovidersiddisable)
-- [`postApiProvidersIdEnable`](docs/sdks/sdk/README.md#postapiprovidersidenable)
-- [`postApiProvidersIdTest`](docs/sdks/sdk/README.md#postapiprovidersidtest)
-- [`postApiProvidersProviderIdModelsModelIdDisable`](docs/sdks/sdk/README.md#postapiprovidersprovideridmodelsmodeliddisable)
-- [`postApiProvidersProviderIdModelsModelIdEnable`](docs/sdks/sdk/README.md#postapiprovidersprovideridmodelsmodelidenable)
-- [`postApiProvidersReload`](docs/sdks/sdk/README.md#postapiprovidersreload)
-- [`postApiProvidersValidateKey`](docs/sdks/sdk/README.md#postapiprovidersvalidatekey)
-- [`postApiPythonCheck`](docs/sdks/sdk/README.md#postapipythoncheck)
-- [`postApiPythonPackageCheck`](docs/sdks/sdk/README.md#postapipythonpackagecheck)
-- [`postApiPythonPackageInstallCommand`](docs/sdks/sdk/README.md#postapipythonpackageinstallcommand)
-- [`postApiQueueClearHistory`](docs/sdks/sdk/README.md#postapiqueueclearhistory)
-- [`postApiQueueEnqueue`](docs/sdks/sdk/README.md#postapiqueueenqueue)
-- [`postApiQueueEnqueueBatch`](docs/sdks/sdk/README.md#postapiqueueenqueuebatch)
-- [`postApiQueueTasksIdRetry`](docs/sdks/sdk/README.md#postapiqueuetasksidretry)
-- [`postApiSandboxExec`](docs/sdks/sdk/README.md#postapisandboxexec)
-- [`postApiSandboxRunFile`](docs/sdks/sdk/README.md#postapisandboxrunfile)
-- [`postApiSandboxStop`](docs/sdks/sdk/README.md#postapisandboxstop)
-- [`postApiServiceKeys`](docs/sdks/sdk/README.md#postapiservicekeys)
-- [`postApiServiceKeysKeyIdUsage`](docs/sdks/sdk/README.md#postapiservicekeyskeyidusage)
-- [`postApiServiceKeysValidate`](docs/sdks/sdk/README.md#postapiservicekeysvalidate)
-- [`postApiSessions`](docs/sdks/sdk/README.md#postapisessions)
-- [`postApiSourcesProviderInstall`](docs/sdks/sdk/README.md#postapisourcesproviderinstall)
-- [`postApiTasks`](docs/sdks/sdk/README.md#postapitasks)
-- [`postApiTasksTaskIdEvents`](docs/sdks/sdk/README.md#postapitaskstaskidevents)
-- [`postApiTasksTaskIdEventsValidate`](docs/sdks/sdk/README.md#postapitaskstaskideventsvalidate)
-- [`postApiTunnelRestart`](docs/sdks/sdk/README.md#postapitunnelrestart)
-- [`postApiTunnelStart`](docs/sdks/sdk/README.md#postapitunnelstart)
-- [`postApiTunnelStop`](docs/sdks/sdk/README.md#postapitunnelstop)
-- [`postApiUsageInit`](docs/sdks/sdk/README.md#postapiusageinit)
-- [`postApiUsageRecord`](docs/sdks/sdk/README.md#postapiusagerecord)
-- [`postApiWorkspacesCreate`](docs/sdks/sdk/README.md#postapiworkspacescreate)
-- [`previewGetApiPreviewList`](docs/sdks/preview/README.md#getapipreviewlist) - List all active preview servers
-- [`previewGetApiPreviewNodeAvailable`](docs/sdks/preview/README.md#getapipreviewnodeavailable) - Check if Node.js is available for Live Preview
-- [`previewGetApiPreviewStartSse`](docs/sdks/preview/README.md#getapipreviewstartsse) - Start a Vite preview server with SSE streaming for real-time feedback
-- [`previewGetApiPreviewStatusTaskId`](docs/sdks/preview/README.md#getapipreviewstatustaskid) - Get status of a preview server
-- [`previewPostApiPreviewKillPort`](docs/sdks/preview/README.md#postapipreviewkillport) - Kill the process occupying a specific port
-- [`previewPostApiPreviewStart`](docs/sdks/preview/README.md#postapipreviewstart) - Start a Vite preview server for a task
-- [`previewPostApiPreviewStop`](docs/sdks/preview/README.md#postapipreviewstop) - Stop a Vite preview server
-- [`previewPostApiPreviewStopAll`](docs/sdks/preview/README.md#postapipreviewstopall) - Stop all running preview servers
-- [`providersGetApiProviders`](docs/sdks/providers/README.md#getapiproviders) - List all providers
-- [`providersGetApiProvidersId`](docs/sdks/providers/README.md#getapiprovidersid) - Get a specific provider by ID
-- [`putApiAccountsId`](docs/sdks/sdk/README.md#putapiaccountsid)
-- [`putApiAgentDefault`](docs/sdks/sdk/README.md#putapiagentdefault)
-- [`putApiCacheSettings`](docs/sdks/sdk/README.md#putapicachesettings)
-- [`putApiCommandQueueConfig`](docs/sdks/sdk/README.md#putapicommandqueueconfig)
-- [`putApiFilesContent`](docs/sdks/sdk/README.md#putapifilescontent)
-- [`putApiFilesMcpServers`](docs/sdks/sdk/README.md#putapifilesmcpservers)
-- [`putApiFilesRename`](docs/sdks/sdk/README.md#putapifilesrename)
-- [`putApiGithubAutofixConfig`](docs/sdks/sdk/README.md#putapigithubautofixconfig)
-- [`putApiModelsDefault`](docs/sdks/sdk/README.md#putapimodelsdefault)
-- [`putApiModelsFallbacks`](docs/sdks/sdk/README.md#putapimodelsfallbacks)
-- [`putApiModelsIdConfig`](docs/sdks/sdk/README.md#putapimodelsidconfig)
-- [`putApiPetConfig`](docs/sdks/sdk/README.md#putapipetconfig)
-- [`putApiPreferences`](docs/sdks/sdk/README.md#putapipreferences)
-- [`putApiPreferencesDeveloperIde`](docs/sdks/sdk/README.md#putapipreferencesdeveloperide)
-- [`putApiPreferencesDeveloperTerminal`](docs/sdks/sdk/README.md#putapipreferencesdeveloperterminal)
-- [`putApiProvidersDefault`](docs/sdks/sdk/README.md#putapiprovidersdefault)
-- [`putApiQueueConfig`](docs/sdks/sdk/README.md#putapiqueueconfig)
-- [`putApiTasksId`](docs/sdks/sdk/README.md#putapitasksid)
-- [`rewardDeleteApiRewardTypesName`](docs/sdks/reward/README.md#deleteapirewardtypesname) - Delete a custom reward type
-- [`rewardGetApiRewardTypes`](docs/sdks/reward/README.md#getapirewardtypes) - List available reward types (builtin + custom)
-- [`rewardGetApiRewardTypesName`](docs/sdks/reward/README.md#getapirewardtypesname) - Get a specific reward type by name
-- [`rewardPostApiRewardCompute`](docs/sdks/reward/README.md#postapirewardcompute) - Compute reward for a task by spawning the reward agent
-- [`rewardPostApiRewardSelect`](docs/sdks/reward/README.md#postapirewardselect) - Select best task using PPO metrics
-- [`rewardPostApiRewardTypes`](docs/sdks/reward/README.md#postapirewardtypes) - Create a new custom reward type
-- [`rewardPutApiRewardTypesName`](docs/sdks/reward/README.md#putapirewardtypesname) - Update a custom reward type
-- [`sessionsGetApiSessions`](docs/sdks/sessions/README.md#getapisessions) - List all sessions
-- [`sessionsGetApiSessionsId`](docs/sdks/sessions/README.md#getapisessionsid) - Get a specific session by ID
-- [`skillGetApiSkillAvailable`](docs/sdks/skill/README.md#getapiskillavailable) - List available skills from marketplace
-- [`skillGetApiSkillEnabled`](docs/sdks/skill/README.md#getapiskillenabled) - Get enabled skills for an agent
-- [`skillGetApiSkillInfoIdOrSlug`](docs/sdks/skill/README.md#getapiskillinfoidorslug) - Get skill package details from marketplace
-- [`skillGetApiSkillList`](docs/sdks/skill/README.md#getapiskilllist) - List installed skills
-- [`skillGetApiSkillSearch`](docs/sdks/skill/README.md#getapiskillsearch) - Search skill packages in marketplace
-- [`skillGetApiSkillViewName`](docs/sdks/skill/README.md#getapiskillviewname) - Get skill by name
-- [`skillPostApiSkillDisable`](docs/sdks/skill/README.md#postapiskilldisable) - Disable a skill for an agent
-- [`skillPostApiSkillDownload`](docs/sdks/skill/README.md#postapiskilldownload) - Download skill package to a directory
-- [`skillPostApiSkillEnable`](docs/sdks/skill/README.md#postapiskillenable) - Enable a skill for an agent
-- [`skillPostApiSkillInstall`](docs/sdks/skill/README.md#postapiskillinstall) - Install a skill
-- [`skillPostApiSkillUninstall`](docs/sdks/skill/README.md#postapiskilluninstall) - Uninstall a skill
-- [`tasksGetApiTaskEventsStream`](docs/sdks/tasks/README.md#getapitaskeventsstream) - SSE stream for task events
-- [`tasksGetApiTaskExecutionStream`](docs/sdks/tasks/README.md#getapitaskexecutionstream) - SSE stream for task execution progress
-- [`tasksGetApiTaskListArchive`](docs/sdks/tasks/README.md#getapitasklistarchive) - List archived tasks
-- [`tasksGetApiTasks`](docs/sdks/tasks/README.md#getapitasks) - List all tasks for a workspace (workspace_path required)
-- [`tasksGetApiTasksId`](docs/sdks/tasks/README.md#getapitasksid) - Get a specific task by ID
-- [`tasksGetApiTasksIdRunning`](docs/sdks/tasks/README.md#getapitasksidrunning) - Check if a task's execution process is currently running
-- [`tasksGetApiTasksIdSpecs`](docs/sdks/tasks/README.md#getapitasksidspecs) - Get task specs data (PRD, subtasks, logs, files)
-- [`tasksPostApiTaskAddContext`](docs/sdks/tasks/README.md#postapitaskaddcontext) - Add context files to a task
-- [`tasksPostApiTaskAddSession`](docs/sdks/tasks/README.md#postapitaskaddsession) - Add a new session to journal file and update index.md
-- [`tasksPostApiTaskApprove`](docs/sdks/tasks/README.md#postapitaskapprove) - Approve a task in review: review -> completed
-- [`tasksPostApiTaskArchive`](docs/sdks/tasks/README.md#postapitaskarchive) - Archive a completed task: completed -> archived
-- [`tasksPostApiTaskBatchEnqueue`](docs/sdks/tasks/README.md#postapitaskbatchenqueue) - Batch enqueue multiple tasks for execution
-- [`tasksPostApiTaskCancel`](docs/sdks/tasks/README.md#postapitaskcancel) - Cancel a task: * -> cancelled (terminal state)
-- [`tasksPostApiTaskCheckPhase`](docs/sdks/tasks/README.md#postapitaskcheckphase) - Run check phase for a task (spawns check agent)
-- [`tasksPostApiTaskCleanup`](docs/sdks/tasks/README.md#postapitaskcleanup) - Cleanup worktrees and related resources
-- [`tasksPostApiTaskClearHistory`](docs/sdks/tasks/README.md#postapitaskclearhistory) - Clear completed and failed tasks from queue history
-- [`tasksPostApiTaskContext`](docs/sdks/tasks/README.md#postapitaskcontext) - Get session context for AI agents
-- [`tasksPostApiTaskCreate`](docs/sdks/tasks/README.md#postapitaskcreate) - Create a new task
-- [`tasksPostApiTaskCreatePr`](docs/sdks/tasks/README.md#postapitaskcreatepr) - Create PR from task
-- [`tasksPostApiTaskCreateWorktree`](docs/sdks/tasks/README.md#postapitaskcreateworktree) - Create isolated git worktree for a task
-- [`tasksPostApiTaskDelete`](docs/sdks/tasks/README.md#postapitaskdelete) - Delete a task
-- [`tasksPostApiTaskDequeue`](docs/sdks/tasks/README.md#postapitaskdequeue) - Remove task from queue back to backlog
-- [`tasksPostApiTaskEnqueue`](docs/sdks/tasks/README.md#postapitaskenqueue) - Move task from backlog to queue for execution
-- [`tasksPostApiTaskEvents`](docs/sdks/tasks/README.md#postapitaskevents) - Get event history for a task
-- [`tasksPostApiTaskExecute`](docs/sdks/tasks/README.md#postapitaskexecute) - Trigger task execution via queue system
-- [`tasksPostApiTaskFinish`](docs/sdks/tasks/README.md#postapitaskfinish) - Finish a task: clear current task marker
-- [`tasksPostApiTaskImplementPhase`](docs/sdks/tasks/README.md#postapitaskimplementphase) - Run implement phase for a task (spawns implement agent)
-- [`tasksPostApiTaskInitContext`](docs/sdks/tasks/README.md#postapitaskinitcontext) - Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
-- [`tasksPostApiTaskList`](docs/sdks/tasks/README.md#postapitasklist) - List tasks
-- [`tasksPostApiTaskListContext`](docs/sdks/tasks/README.md#postapitasklistcontext) - List all context entries for a task
-- [`tasksPostApiTaskPause`](docs/sdks/tasks/README.md#postapitaskpause) - Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
-- [`tasksPostApiTaskPlan`](docs/sdks/tasks/README.md#postapitaskplan) - Start Plan Agent to plan a task
-- [`tasksPostApiTaskPlanPhase`](docs/sdks/tasks/README.md#postapitaskplanphase) - Run plan phase for a task (spawns plan agent)
-- [`tasksPostApiTaskQueueConfig`](docs/sdks/tasks/README.md#postapitaskqueueconfig) - Get or update queue configuration
-- [`tasksPostApiTaskQueueStatus`](docs/sdks/tasks/README.md#postapitaskqueuestatus) - Get queue status
-- [`tasksPostApiTaskReject`](docs/sdks/tasks/README.md#postapitaskreject) - Reject a task in review: review -> backlog
-- [`tasksPostApiTaskRemoveContext`](docs/sdks/tasks/README.md#postapitaskremovecontext) - Remove context files from a task
-- [`tasksPostApiTaskResume`](docs/sdks/tasks/README.md#postapitaskresume) - Resume a paused task: paused -> queue/in_progress
-- [`tasksPostApiTaskRetry`](docs/sdks/tasks/README.md#postapitaskretry) - Retry a failed task: failed -> queue
-- [`tasksPostApiTaskReview`](docs/sdks/tasks/README.md#postapitaskreview) - View task details for review
-- [`tasksPostApiTaskRunning`](docs/sdks/tasks/README.md#postapitaskrunning) - Check if task execution is running
-- [`tasksPostApiTasksBatchEvents`](docs/sdks/tasks/README.md#postapitasksbatchevents) - Apply an event to multiple tasks (batch operation)
-- [`tasksPostApiTaskSetAgent`](docs/sdks/tasks/README.md#postapitasksetagent) - Set associated agent configuration for a task
-- [`tasksPostApiTaskSetBase`](docs/sdks/tasks/README.md#postapitasksetbase) - Set PR target branch for a task
-- [`tasksPostApiTaskSetBranch`](docs/sdks/tasks/README.md#postapitasksetbranch) - Set Git branch for a task
-- [`tasksPostApiTaskSpecs`](docs/sdks/tasks/README.md#postapitaskspecs) - Get task specs (PRD, subtasks, logs)
-- [`tasksPostApiTaskStart`](docs/sdks/tasks/README.md#postapitaskstart) - Start a task: set as current task, queue -> in_progress, optionally trigger execution
-- [`tasksPostApiTaskStatus`](docs/sdks/tasks/README.md#postapitaskstatus) - Get task status summary or details
-- [`tasksPostApiTaskStop`](docs/sdks/tasks/README.md#postapitaskstop) - Stop task execution
-- [`tasksPostApiTaskUpdate`](docs/sdks/tasks/README.md#postapitaskupdate) - Update task fields (not status - use lifecycle endpoints for status changes)
-- [`tasksPostApiTaskValidateCheckPhasePassed`](docs/sdks/tasks/README.md#postapitaskvalidatecheckphasepassed) - Validate check phase passed (runs verify commands or checks completion markers)
-- [`tasksPostApiTaskValidateContext`](docs/sdks/tasks/README.md#postapitaskvalidatecontext) - Validate that all context file references exist
-- [`tasksPostApiTaskView`](docs/sdks/tasks/README.md#postapitaskview) - View task details
-- [`tasksPostApiTaskWorkPhase`](docs/sdks/tasks/README.md#postapitaskworkphase) - Run work phase for a task (spawns work agent)
-- [`workspacesGetApiWorkspaces`](docs/sdks/workspaces/README.md#getapiworkspaces) - List all workspaces including the global workspace
-- [`workspacesGetApiWorkspacesDetect`](docs/sdks/workspaces/README.md#getapiworkspacesdetect) - Detect folder status (.git and .viben directories)
+- [`accountsCreate`](docs/sdks/accounts/README.md#create)
+- [`accountsDelete`](docs/sdks/accounts/README.md#delete)
+- [`accountsGet`](docs/sdks/accounts/README.md#get)
+- [`accountsList`](docs/sdks/accounts/README.md#list)
+- [`accountsTest`](docs/sdks/accounts/README.md#test)
+- [`accountsUpdate`](docs/sdks/accounts/README.md#update)
+- [`agentApprove`](docs/sdks/agent/README.md#approve)
+- [`agentCreate`](docs/sdks/agent/README.md#create)
+- [`agentCreateAnswer`](docs/sdks/agent/README.md#createanswer)
+- [`agentCreateSession`](docs/sdks/agent/README.md#createsession)
+- [`agentCreateSessionMessage`](docs/sdks/agent/README.md#createsessionmessage)
+- [`agentCreateSessionSteer`](docs/sdks/agent/README.md#createsessionsteer)
+- [`agentCreateTemplate`](docs/sdks/agent/README.md#createtemplate)
+- [`agentDelete`](docs/sdks/agent/README.md#delete)
+- [`agentDeleteSession`](docs/sdks/agent/README.md#deletesession)
+- [`agentGet`](docs/sdks/agent/README.md#get)
+- [`agentGetAvailability`](docs/sdks/agent/README.md#getavailability)
+- [`agentGetDefault`](docs/sdks/agent/README.md#getdefault)
+- [`agentGetPlan`](docs/sdks/agent/README.md#getplan)
+- [`agentGetSession`](docs/sdks/agent/README.md#getsession)
+- [`agentGetSession2`](docs/sdks/agent/README.md#getsession2)
+- [`agentGetSessionMessages`](docs/sdks/agent/README.md#getsessionmessages)
+- [`agentGetSessions`](docs/sdks/agent/README.md#getsessions)
+- [`agentGetSessionTaskMessages`](docs/sdks/agent/README.md#getsessiontaskmessages)
+- [`agentGetSessionTasks`](docs/sdks/agent/README.md#getsessiontasks)
+- [`agentGetSessionUiMessages`](docs/sdks/agent/README.md#getsessionuimessages)
+- [`agentGetTasks`](docs/sdks/agent/README.md#gettasks)
+- [`agentGetTemplate`](docs/sdks/agent/README.md#gettemplate)
+- [`agentInstantiateTemplate`](docs/sdks/agent/README.md#instantiatetemplate)
+- [`agentList`](docs/sdks/agent/README.md#list) - List all agents
+- [`agentListTemplates`](docs/sdks/agent/README.md#listtemplates)
+- [`agentPromote`](docs/sdks/agent/README.md#promote)
+- [`agentReject`](docs/sdks/agent/README.md#reject)
+- [`agentRun`](docs/sdks/agent/README.md#run)
+- [`agentStop`](docs/sdks/agent/README.md#stop)
+- [`agentStopTask`](docs/sdks/agent/README.md#stoptask)
+- [`agentSubscribeTask`](docs/sdks/agent/README.md#subscribetask)
+- [`agentUpdate`](docs/sdks/agent/README.md#update)
+- [`agentUpdateDefault`](docs/sdks/agent/README.md#updatedefault)
+- [`apiLogsDelete`](docs/sdks/apilogs/README.md#delete)
+- [`apiLogsGet`](docs/sdks/apilogs/README.md#get)
+- [`apiLogsGetDir`](docs/sdks/apilogs/README.md#getdir)
+- [`apiLogsGetSummary`](docs/sdks/apilogs/README.md#getsummary)
+- [`apiLogsListSessions`](docs/sdks/apilogs/README.md#listsessions)
+- [`apiLogsOpen`](docs/sdks/apilogs/README.md#open)
+- [`authCreateCallback`](docs/sdks/auth/README.md#createcallback)
+- [`authCreateLogin`](docs/sdks/auth/README.md#createlogin)
+- [`authCreateLogout`](docs/sdks/auth/README.md#createlogout)
+- [`authCreateRegister`](docs/sdks/auth/README.md#createregister)
+- [`authGet`](docs/sdks/auth/README.md#get)
+- [`authRefresh`](docs/sdks/auth/README.md#refresh)
+- [`authValidate`](docs/sdks/auth/README.md#validate)
+- [`browsePluginsDelete`](docs/sdks/browseplugins/README.md#delete)
+- [`browsePluginsGet`](docs/sdks/browseplugins/README.md#get)
+- [`browsePluginsInstall`](docs/sdks/browseplugins/README.md#install)
+- [`browsePluginsListInstalled`](docs/sdks/browseplugins/README.md#listinstalled)
+- [`browsePluginsListRegistry`](docs/sdks/browseplugins/README.md#listregistry)
+- [`cacheDelete`](docs/sdks/cache/README.md#delete)
+- [`cacheGetInfo`](docs/sdks/cache/README.md#getinfo)
+- [`cacheGetSettings`](docs/sdks/cache/README.md#getsettings)
+- [`cacheListOffline`](docs/sdks/cache/README.md#listoffline)
+- [`cacheListShouldRefresh`](docs/sdks/cache/README.md#listshouldrefresh)
+- [`cacheRefresh`](docs/sdks/cache/README.md#refresh)
+- [`cacheUpdateSetting`](docs/sdks/cache/README.md#updatesetting)
+- [`channelsCreate`](docs/sdks/channels/README.md#create)
+- [`channelsCreateDefault`](docs/sdks/channels/README.md#createdefault)
+- [`channelsCreateSendTest`](docs/sdks/channels/README.md#createsendtest)
+- [`channelsCreateWebhook`](docs/sdks/channels/README.md#createwebhook)
+- [`channelsCreateWebhook2`](docs/sdks/channels/README.md#createwebhook2)
+- [`channelsDelete`](docs/sdks/channels/README.md#delete)
+- [`channelsGet`](docs/sdks/channels/README.md#get) - Get a specific channel by ID
+- [`channelsList`](docs/sdks/channels/README.md#list) - List all notification channels
+- [`channelsSend`](docs/sdks/channels/README.md#send)
+- [`channelsTest`](docs/sdks/channels/README.md#test)
+- [`channelsUpdate`](docs/sdks/channels/README.md#update)
+- [`chatListList`](docs/sdks/chatlist/README.md#list)
+- [`clientToolsCreateComplete`](docs/sdks/clienttools/README.md#createcomplete)
+- [`clientToolsCreateRequest`](docs/sdks/clienttools/README.md#createrequest)
+- [`cliToolsCheck`](docs/sdks/clitools/README.md#check)
+- [`cliToolsCreateConfig`](docs/sdks/clitools/README.md#createconfig)
+- [`cliToolsDetect`](docs/sdks/clitools/README.md#detect)
+- [`cliToolsGetConfig`](docs/sdks/clitools/README.md#getconfig)
+- [`cliToolsUpdateConfig`](docs/sdks/clitools/README.md#updateconfig)
+- [`collectionsCreate`](docs/sdks/collections/README.md#create)
+- [`collectionsCreateComment`](docs/sdks/collections/README.md#createcomment)
+- [`collectionsCreateFavorite`](docs/sdks/collections/README.md#createfavorite)
+- [`collectionsCreateFork`](docs/sdks/collections/README.md#createfork)
+- [`collectionsCreateItem`](docs/sdks/collections/README.md#createitem)
+- [`collectionsDelete`](docs/sdks/collections/README.md#delete)
+- [`collectionsDeleteItem`](docs/sdks/collections/README.md#deleteitem)
+- [`collectionsGet`](docs/sdks/collections/README.md#get)
+- [`collectionsGetComments`](docs/sdks/collections/README.md#getcomments)
+- [`collectionsList`](docs/sdks/collections/README.md#list)
+- [`collectionsUpdate`](docs/sdks/collections/README.md#update)
+- [`commandQueueCancelItem`](docs/sdks/commandqueue/README.md#cancelitem)
+- [`commandQueueClean`](docs/sdks/commandqueue/README.md#clean)
+- [`commandQueueEnqueue`](docs/sdks/commandqueue/README.md#enqueue)
+- [`commandQueueGetConfig`](docs/sdks/commandqueue/README.md#getconfig)
+- [`commandQueueGetItem`](docs/sdks/commandqueue/README.md#getitem)
+- [`commandQueueGetItemLogs`](docs/sdks/commandqueue/README.md#getitemlogs)
+- [`commandQueueGetStatus`](docs/sdks/commandqueue/README.md#getstatus)
+- [`commandQueueListItems`](docs/sdks/commandqueue/README.md#listitems)
+- [`commandQueueRetryItem`](docs/sdks/commandqueue/README.md#retryitem)
+- [`commandQueueUpdateConfig`](docs/sdks/commandqueue/README.md#updateconfig)
+- [`commandsListSkills`](docs/sdks/commands/README.md#listskills)
+- [`commandsListWorkspace`](docs/sdks/commands/README.md#listworkspace)
+- [`cronCreate`](docs/sdks/cron/README.md#create)
+- [`cronDelete`](docs/sdks/cron/README.md#delete)
+- [`cronDeleteLogs`](docs/sdks/cron/README.md#deletelogs)
+- [`cronDisable`](docs/sdks/cron/README.md#disable)
+- [`cronEnable`](docs/sdks/cron/README.md#enable)
+- [`cronGet`](docs/sdks/cron/README.md#get) - Get a specific cron job by ID
+- [`cronGetLogs`](docs/sdks/cron/README.md#getlogs)
+- [`cronList`](docs/sdks/cron/README.md#list) - List all cron jobs
+- [`cronRun`](docs/sdks/cron/README.md#run)
+- [`cronUpdate`](docs/sdks/cron/README.md#update)
+- [`devicesCreateMessage`](docs/sdks/devices/README.md#createmessage)
+- [`devicesDelete`](docs/sdks/devices/README.md#delete)
+- [`devicesGet`](docs/sdks/devices/README.md#get)
+- [`devicesGetQr`](docs/sdks/devices/README.md#getqr)
+- [`devicesList`](docs/sdks/devices/README.md#list)
+- [`eventsList`](docs/sdks/events/README.md#list)
+- [`exchangesList`](docs/sdks/exchanges/README.md#list)
+- [`executorsCreateOpenclawTestConnection`](docs/sdks/executors/README.md#createopenclawtestconnection) - Test connection to an OpenClaw gateway with device auth handshake
+- [`executorsGetCommand`](docs/sdks/executors/README.md#getcommand)
+- [`executorsGetCommands`](docs/sdks/executors/README.md#getcommands)
+- [`executorsGetDiscoverSessions`](docs/sdks/executors/README.md#getdiscoversessions)
+- [`executorsGetMcpServers`](docs/sdks/executors/README.md#getmcpservers)
+- [`executorsGetPrompt`](docs/sdks/executors/README.md#getprompt)
+- [`executorsGetPrompts`](docs/sdks/executors/README.md#getprompts)
+- [`executorsGetSessionMessages`](docs/sdks/executors/README.md#getsessionmessages)
+- [`executorsGetSkills`](docs/sdks/executors/README.md#getskills)
+- [`executorsGetSubagent`](docs/sdks/executors/README.md#getsubagent)
+- [`executorsGetSubagents`](docs/sdks/executors/README.md#getsubagents)
+- [`executorsList`](docs/sdks/executors/README.md#list) - List available executors
+- [`executorsListOpenclawRuntimeConfig`](docs/sdks/executors/README.md#listopenclawruntimeconfig) - Get the effective OpenClaw gateway config from the server side
+- [`filesCopy`](docs/sdks/files/README.md#copy)
+- [`filesCreate`](docs/sdks/files/README.md#create)
+- [`filesCreateDirectory`](docs/sdks/files/README.md#createdirectory)
+- [`filesCreateOpenFolder`](docs/sdks/files/README.md#createopenfolder)
+- [`filesDelete`](docs/sdks/files/README.md#delete)
+- [`filesGetGitStatus`](docs/sdks/files/README.md#getgitstatus)
+- [`filesList`](docs/sdks/files/README.md#list)
+- [`filesListConfigDir`](docs/sdks/files/README.md#listconfigdir)
+- [`filesListContent`](docs/sdks/files/README.md#listcontent)
+- [`filesListDirectory`](docs/sdks/files/README.md#listdirectory)
+- [`filesListGitDiff`](docs/sdks/files/README.md#listgitdiff)
+- [`filesMove`](docs/sdks/files/README.md#move)
+- [`filesOpen`](docs/sdks/files/README.md#open)
+- [`filesRename`](docs/sdks/files/README.md#rename)
+- [`filesReveal`](docs/sdks/files/README.md#reveal)
+- [`filesUpdateContent`](docs/sdks/files/README.md#updatecontent)
+- [`githubAnalyzeIssue`](docs/sdks/github/README.md#analyzeissue)
+- [`githubApproveAutofixTask`](docs/sdks/github/README.md#approveautofixtask)
+- [`githubCancelAutofixTask`](docs/sdks/github/README.md#cancelautofixtask)
+- [`githubClusterIssue`](docs/sdks/github/README.md#clusterissue)
+- [`githubConnectRepo`](docs/sdks/github/README.md#connectrepo)
+- [`githubConnectRepo2`](docs/sdks/github/README.md#connectrepo2)
+- [`githubCreateAuthGhCli`](docs/sdks/github/README.md#createauthghcli)
+- [`githubCreateAuthPat`](docs/sdks/github/README.md#createauthpat)
+- [`githubCreateAutofixTask`](docs/sdks/github/README.md#createautofixtask)
+- [`githubCreatePr`](docs/sdks/github/README.md#createpr)
+- [`githubCreateRelease`](docs/sdks/github/README.md#createrelease)
+- [`githubCreateReleaseGenerateNote`](docs/sdks/github/README.md#createreleasegeneratenote)
+- [`githubDeleteAuth`](docs/sdks/github/README.md#deleteauth)
+- [`githubDeleteAutofixTask`](docs/sdks/github/README.md#deleteautofixtask)
+- [`githubDeleteAutofixWorktrees`](docs/sdks/github/README.md#deleteautofixworktrees)
+- [`githubDetectRepo`](docs/sdks/github/README.md#detectrepo)
+- [`githubGetAuthStatus`](docs/sdks/github/README.md#getauthstatus)
+- [`githubGetAutofixConfig`](docs/sdks/github/README.md#getautofixconfig)
+- [`githubGetAutofixTask`](docs/sdks/github/README.md#getautofixtask)
+- [`githubGetIssue`](docs/sdks/github/README.md#getissue)
+- [`githubGetIssueComments`](docs/sdks/github/README.md#getissuecomments)
+- [`githubGetPr`](docs/sdks/github/README.md#getpr)
+- [`githubGetReleaseLatest`](docs/sdks/github/README.md#getreleaselatest)
+- [`githubImportIssue`](docs/sdks/github/README.md#importissue)
+- [`githubInvestigateIssue`](docs/sdks/github/README.md#investigateissue)
+- [`githubListAutofixTasks`](docs/sdks/github/README.md#listautofixtasks)
+- [`githubListAutofixWorktrees`](docs/sdks/github/README.md#listautofixworktrees)
+- [`githubListIssues`](docs/sdks/github/README.md#listissues)
+- [`githubListPrs`](docs/sdks/github/README.md#listprs)
+- [`githubListReleases`](docs/sdks/github/README.md#listreleases)
+- [`githubListRepos`](docs/sdks/github/README.md#listrepos)
+- [`githubListReposConnected`](docs/sdks/github/README.md#listreposconnected)
+- [`githubTriageIssue`](docs/sdks/github/README.md#triageissue)
+- [`githubUpdateAutofixConfig`](docs/sdks/github/README.md#updateautofixconfig)
+- [`groupChatsCreate`](docs/sdks/groupchats/README.md#create)
+- [`groupChatsCreateFile`](docs/sdks/groupchats/README.md#createfile)
+- [`groupChatsCreateMember`](docs/sdks/groupchats/README.md#createmember)
+- [`groupChatsCreatePicture`](docs/sdks/groupchats/README.md#createpicture)
+- [`groupChatsCreateSession`](docs/sdks/groupchats/README.md#createsession)
+- [`groupChatsCreateSessionMessage`](docs/sdks/groupchats/README.md#createsessionmessage)
+- [`groupChatsDelete`](docs/sdks/groupchats/README.md#delete)
+- [`groupChatsDeleteFile`](docs/sdks/groupchats/README.md#deletefile)
+- [`groupChatsDeleteMember`](docs/sdks/groupchats/README.md#deletemember)
+- [`groupChatsDeletePicture`](docs/sdks/groupchats/README.md#deletepicture)
+- [`groupChatsDeleteSession`](docs/sdks/groupchats/README.md#deletesession)
+- [`groupChatsGet`](docs/sdks/groupchats/README.md#get)
+- [`groupChatsGetFile`](docs/sdks/groupchats/README.md#getfile)
+- [`groupChatsGetFiles`](docs/sdks/groupchats/README.md#getfiles)
+- [`groupChatsGetMembers`](docs/sdks/groupchats/README.md#getmembers)
+- [`groupChatsGetPicture`](docs/sdks/groupchats/README.md#getpicture)
+- [`groupChatsGetPictures`](docs/sdks/groupchats/README.md#getpictures)
+- [`groupChatsGetSession`](docs/sdks/groupchats/README.md#getsession)
+- [`groupChatsGetSessionAgents`](docs/sdks/groupchats/README.md#getsessionagents)
+- [`groupChatsGetSessionMessages`](docs/sdks/groupchats/README.md#getsessionmessages)
+- [`groupChatsGetSessions`](docs/sdks/groupchats/README.md#getsessions)
+- [`groupChatsList`](docs/sdks/groupchats/README.md#list)
+- [`groupChatsUpdate`](docs/sdks/groupchats/README.md#update)
+- [`groupChatsUpdateSession`](docs/sdks/groupchats/README.md#updatesession)
+- [`historyCreate`](docs/sdks/history/README.md#create)
+- [`historyDelete`](docs/sdks/history/README.md#delete)
+- [`historyDelete2`](docs/sdks/history/README.md#delete2)
+- [`historyGet`](docs/sdks/history/README.md#get)
+- [`historyList`](docs/sdks/history/README.md#list)
+- [`ideasCreate`](docs/sdks/ideas/README.md#create) - Create a new custom idea type
+- [`ideasCreateDismiss`](docs/sdks/ideas/README.md#createdismiss) - Dismiss an idea (mark as not worth pursuing)
+- [`ideasDelete`](docs/sdks/ideas/README.md#delete) - Remove a single idea by ID
+- [`ideasDelete2`](docs/sdks/ideas/README.md#delete2) - Remove ideas by type or all ideas
+- [`ideasDelete3`](docs/sdks/ideas/README.md#delete3) - Delete a custom idea type
+- [`ideasGenerate`](docs/sdks/ideas/README.md#generate) - Generate ideas by analyzing the codebase using AI
+- [`ideasGet`](docs/sdks/ideas/README.md#get) - Get a specific idea by ID
+- [`ideasList`](docs/sdks/ideas/README.md#list) - List all ideas for a workspace with optional filtering
+- [`ideasList2`](docs/sdks/ideas/README.md#list2) - List available idea types (builtin + custom)
+- [`ideasPromote`](docs/sdks/ideas/README.md#promote) - Promote an idea to a task
+- [`ideasUpdate`](docs/sdks/ideas/README.md#update) - Update an existing idea type
+- [`inputHistoryList`](docs/sdks/inputhistory/README.md#list)
+- [`kanbanCreateTaskActivity`](docs/sdks/kanban/README.md#createtaskactivity)
+- [`kanbanCreateTaskComment`](docs/sdks/kanban/README.md#createtaskcomment)
+- [`kanbanCreateTaskCommentReaction`](docs/sdks/kanban/README.md#createtaskcommentreaction)
+- [`kanbanDeleteTaskComment`](docs/sdks/kanban/README.md#deletetaskcomment)
+- [`kanbanDeleteTaskData`](docs/sdks/kanban/README.md#deletetaskdata)
+- [`kanbanGetTaskActivities`](docs/sdks/kanban/README.md#gettaskactivities) - Get all activities for a task
+- [`kanbanGetTaskComments`](docs/sdks/kanban/README.md#gettaskcomments) - Get all comments for a task
+- [`kanbanUpdateTaskComment`](docs/sdks/kanban/README.md#updatetaskcomment)
+- [`logsAdd`](docs/sdks/logs/README.md#add)
+- [`logsCleanup`](docs/sdks/logs/README.md#cleanup)
+- [`logsDelete`](docs/sdks/logs/README.md#delete)
+- [`logsDeleteSession`](docs/sdks/logs/README.md#deletesession)
+- [`logsExportSession`](docs/sdks/logs/README.md#exportsession)
+- [`logsGetDir`](docs/sdks/logs/README.md#getdir)
+- [`logsGetSession`](docs/sdks/logs/README.md#getsession)
+- [`logsInit`](docs/sdks/logs/README.md#init)
+- [`logsListSessions`](docs/sdks/logs/README.md#listsessions)
+- [`marketplaceDeleteCache`](docs/sdks/marketplace/README.md#deletecache)
+- [`marketplaceGetCategoryPlugins`](docs/sdks/marketplace/README.md#getcategoryplugins)
+- [`marketplaceGetPlugin`](docs/sdks/marketplace/README.md#getplugin)
+- [`marketplaceListCategories`](docs/sdks/marketplace/README.md#listcategories)
+- [`marketplaceListIndex`](docs/sdks/marketplace/README.md#listindex)
+- [`marketplaceListPlugins`](docs/sdks/marketplace/README.md#listplugins)
+- [`marketplaceListSources`](docs/sdks/marketplace/README.md#listsources)
+- [`marketplaceSearch`](docs/sdks/marketplace/README.md#search)
+- [`mcpCreateAgentServer`](docs/sdks/mcp/README.md#createagentserver)
+- [`mcpCreateInspectorMcp`](docs/sdks/mcp/README.md#createinspectormcp)
+- [`mcpCreateInspectorMessage`](docs/sdks/mcp/README.md#createinspectormessage)
+- [`mcpCreateInspectorSse`](docs/sdks/mcp/README.md#createinspectorsse)
+- [`mcpCreatePortStatu`](docs/sdks/mcp/README.md#createportstatu)
+- [`mcpCreateProcessAlive`](docs/sdks/mcp/README.md#createprocessalive)
+- [`mcpDeleteAgentServer`](docs/sdks/mcp/README.md#deleteagentserver)
+- [`mcpDeleteInspectorMcp`](docs/sdks/mcp/README.md#deleteinspectormcp)
+- [`mcpDeleteInspectorSession`](docs/sdks/mcp/README.md#deleteinspectorsession)
+- [`mcpDisableAgentServer`](docs/sdks/mcp/README.md#disableagentserver)
+- [`mcpDownload`](docs/sdks/mcp/README.md#download) - Download MCP package to a directory
+- [`mcpEnableAgentServer`](docs/sdks/mcp/README.md#enableagentserver)
+- [`mcpGetAgentServer`](docs/sdks/mcp/README.md#getagentserver)
+- [`mcpGetAgentServers`](docs/sdks/mcp/README.md#getagentservers)
+- [`mcpGetInfo`](docs/sdks/mcp/README.md#getinfo) - Get MCP package details from marketplace
+- [`mcpGetInspectorConfig`](docs/sdks/mcp/README.md#getinspectorconfig)
+- [`mcpGetInspectorHealth`](docs/sdks/mcp/README.md#getinspectorhealth)
+- [`mcpGetInspectorToken`](docs/sdks/mcp/README.md#getinspectortoken)
+- [`mcpInstall`](docs/sdks/mcp/README.md#install) - Install an MCP package (supports name, name@version, gh:user/repo, ./path)
+- [`mcpKillProcess`](docs/sdks/mcp/README.md#killprocess)
+- [`mcpList`](docs/sdks/mcp/README.md#list) - List installed MCP packages
+- [`mcpListInspectorMcp`](docs/sdks/mcp/README.md#listinspectormcp)
+- [`mcpListInspectorSessions`](docs/sdks/mcp/README.md#listinspectorsessions)
+- [`mcpListInspectorSse`](docs/sdks/mcp/README.md#listinspectorsse)
+- [`mcpListInspectorStdio`](docs/sdks/mcp/README.md#listinspectorstdio)
+- [`mcpListInstalled`](docs/sdks/mcp/README.md#listinstalled) - List globally installed MCP servers
+- [`mcpMarketCreateComment`](docs/sdks/mcpmarket/README.md#createcomment)
+- [`mcpMarketCreateFavorite`](docs/sdks/mcpmarket/README.md#createfavorite)
+- [`mcpMarketCreateRating`](docs/sdks/mcpmarket/README.md#createrating)
+- [`mcpMarketDownload`](docs/sdks/mcpmarket/README.md#download)
+- [`mcpMarketGet`](docs/sdks/mcpmarket/README.md#get)
+- [`mcpMarketGetComments`](docs/sdks/mcpmarket/README.md#getcomments)
+- [`mcpMarketList`](docs/sdks/mcpmarket/README.md#list)
+- [`mcpMarketListCategories`](docs/sdks/mcpmarket/README.md#listcategories)
+- [`mcpMarketSearch`](docs/sdks/mcpmarket/README.md#search)
+- [`mcpSearch`](docs/sdks/mcp/README.md#search) - Search MCP packages in marketplace
+- [`mcpShow`](docs/sdks/mcp/README.md#show) - Get MCP package details
+- [`mcpUninstall`](docs/sdks/mcp/README.md#uninstall) - Uninstall an MCP package
+- [`mcpUpdateAgentServer`](docs/sdks/mcp/README.md#updateagentserver)
+- [`meshConnect`](docs/sdks/mesh/README.md#connect)
+- [`meshListPeers`](docs/sdks/mesh/README.md#listpeers)
+- [`modelsCreate`](docs/sdks/models/README.md#create)
+- [`modelsCreateAlias`](docs/sdks/models/README.md#createalias)
+- [`modelsDelete`](docs/sdks/models/README.md#delete)
+- [`modelsDeleteAlias`](docs/sdks/models/README.md#deletealias)
+- [`modelsDeleteConfig`](docs/sdks/models/README.md#deleteconfig)
+- [`modelsDisable`](docs/sdks/models/README.md#disable)
+- [`modelsEnable`](docs/sdks/models/README.md#enable)
+- [`modelsGet`](docs/sdks/models/README.md#get) - Get a specific model by ID
+- [`modelsGetConfig`](docs/sdks/models/README.md#getconfig)
+- [`modelsGetDefault`](docs/sdks/models/README.md#getdefault)
+- [`modelsList`](docs/sdks/models/README.md#list) - List all models
+- [`modelsListAliases`](docs/sdks/models/README.md#listaliases)
+- [`modelsReload`](docs/sdks/models/README.md#reload)
+- [`modelsUpdate`](docs/sdks/models/README.md#update)
+- [`modelsUpdateConfig`](docs/sdks/models/README.md#updateconfig)
+- [`modelsUpdateDefault`](docs/sdks/models/README.md#updatedefault)
+- [`officialRegistryDeleteCache`](docs/sdks/officialregistry/README.md#deletecache)
+- [`officialRegistryDeleteServerCache`](docs/sdks/officialregistry/README.md#deleteservercache)
+- [`officialRegistryGetServer`](docs/sdks/officialregistry/README.md#getserver)
+- [`officialRegistryGetServerVersions`](docs/sdks/officialregistry/README.md#getserverversions)
+- [`officialRegistryListServers`](docs/sdks/officialregistry/README.md#listservers)
+- [`packagesCreateUpdate`](docs/sdks/packages/README.md#createupdate)
+- [`packagesListInstalled`](docs/sdks/packages/README.md#listinstalled)
+- [`packagesListMcp`](docs/sdks/packages/README.md#listmcp)
+- [`packagesListSkills`](docs/sdks/packages/README.md#listskills)
+- [`pageCreateApplyTemplate`](docs/sdks/page/README.md#createapplytemplate) - Apply a page template to an empty markdown page
+- [`pageCreateCreate`](docs/sdks/page/README.md#createcreate) - Create a new page
+- [`pageCreateDelete`](docs/sdks/page/README.md#createdelete) - Delete a page
+- [`pageCreatePublish`](docs/sdks/page/README.md#createpublish)
+- [`pageCreatePublishHistory`](docs/sdks/page/README.md#createpublishhistory)
+- [`pageCreatePublishRollback`](docs/sdks/page/README.md#createpublishrollback)
+- [`pageCreatePublishStatu`](docs/sdks/page/README.md#createpublishstatu)
+- [`pageCreatePublishVersion`](docs/sdks/page/README.md#createpublishversion)
+- [`pageCreateTemplate`](docs/sdks/page/README.md#createtemplate) - List available page templates
+- [`pageCreateUpdateConfig`](docs/sdks/page/README.md#createupdateconfig) - Update page config (name, description, icon, cover, page_width, show_toc)
+- [`pageCreateUpdateContent`](docs/sdks/page/README.md#createupdatecontent) - Update page markdown content (preserves YAML frontmatter)
+- [`pageDuplicate`](docs/sdks/page/README.md#duplicate) - Duplicate a page (copy all files with a new uid)
+- [`pageGetSDKV1VibenPageSDK`](docs/sdks/page/README.md#getsdkv1vibenpagesdk) - Serve viben-page-sdk.js
+- [`pageGetSDKV1VibenPageTokens`](docs/sdks/page/README.md#getsdkv1vibenpagetokens) - Serve viben-page-tokens.css
+- [`pageList`](docs/sdks/page/README.md#list) - List pages in workspace
+- [`pageReorder`](docs/sdks/page/README.md#reorder) - Reorder pages within a parent level
+- [`pageServe`](docs/sdks/page/README.md#serve) - Serve page content
+- [`pageServe2`](docs/sdks/page/README.md#serve2) - Serve page content
+- [`pageUploadAsset`](docs/sdks/page/README.md#uploadasset)
+- [`pageView`](docs/sdks/page/README.md#view) - Get page by uid
+- [`patchesList`](docs/sdks/patches/README.md#list)
+- [`petAddSource`](docs/sdks/pet/README.md#addsource)
+- [`petExport`](docs/sdks/pet/README.md#export)
+- [`petGetAsset`](docs/sdks/pet/README.md#getasset)
+- [`petGetCommunity`](docs/sdks/pet/README.md#getcommunity)
+- [`petGetConfig`](docs/sdks/pet/README.md#getconfig)
+- [`petGetPreview`](docs/sdks/pet/README.md#getpreview)
+- [`petImport`](docs/sdks/pet/README.md#import)
+- [`petInstall`](docs/sdks/pet/README.md#install)
+- [`petList`](docs/sdks/pet/README.md#list)
+- [`petListSources`](docs/sdks/pet/README.md#listsources)
+- [`petRemove`](docs/sdks/pet/README.md#remove)
+- [`petRemoveSource`](docs/sdks/pet/README.md#removesource)
+- [`petSearch`](docs/sdks/pet/README.md#search)
+- [`petSet`](docs/sdks/pet/README.md#set)
+- [`petShow`](docs/sdks/pet/README.md#show)
+- [`petUpdateConfig`](docs/sdks/pet/README.md#updateconfig)
+- [`preferencesList`](docs/sdks/preferences/README.md#list)
+- [`preferencesListDeveloper`](docs/sdks/preferences/README.md#listdeveloper)
+- [`preferencesListDeveloperIde`](docs/sdks/preferences/README.md#listdeveloperide)
+- [`preferencesListDeveloperTerminal`](docs/sdks/preferences/README.md#listdeveloperterminal)
+- [`preferencesListNotifications`](docs/sdks/preferences/README.md#listnotifications)
+- [`preferencesUpdate`](docs/sdks/preferences/README.md#update)
+- [`preferencesUpdateDeveloper`](docs/sdks/preferences/README.md#updatedeveloper)
+- [`preferencesUpdateDeveloperIde`](docs/sdks/preferences/README.md#updatedeveloperide)
+- [`preferencesUpdateDeveloperTerminal`](docs/sdks/preferences/README.md#updatedeveloperterminal)
+- [`preferencesUpdateNotification`](docs/sdks/preferences/README.md#updatenotification)
+- [`previewCreateKillPort`](docs/sdks/preview/README.md#createkillport) - Kill the process occupying a specific port
+- [`previewCreateStopAll`](docs/sdks/preview/README.md#createstopall) - Stop all running preview servers
+- [`previewGetStatu`](docs/sdks/preview/README.md#getstatu) - Get status of a preview server
+- [`previewList`](docs/sdks/preview/README.md#list) - List all active preview servers
+- [`previewListNodeAvailable`](docs/sdks/preview/README.md#listnodeavailable) - Check if Node.js is available for Live Preview
+- [`previewListStartSse`](docs/sdks/preview/README.md#liststartsse) - Start a Vite preview server with SSE streaming for real-time feedback
+- [`previewStart`](docs/sdks/preview/README.md#start) - Start a Vite preview server for a task
+- [`previewStop`](docs/sdks/preview/README.md#stop) - Stop a Vite preview server
+- [`providersCreate`](docs/sdks/providers/README.md#create)
+- [`providersCreateValidateKey`](docs/sdks/providers/README.md#createvalidatekey)
+- [`providersDelete`](docs/sdks/providers/README.md#delete)
+- [`providersDisable`](docs/sdks/providers/README.md#disable)
+- [`providersDisableModel`](docs/sdks/providers/README.md#disablemodel)
+- [`providersEnable`](docs/sdks/providers/README.md#enable)
+- [`providersEnableModel`](docs/sdks/providers/README.md#enablemodel)
+- [`providersGet`](docs/sdks/providers/README.md#get) - Get a specific provider by ID
+- [`providersGetDefault`](docs/sdks/providers/README.md#getdefault)
+- [`providersGetDiscoverModels`](docs/sdks/providers/README.md#getdiscovermodels)
+- [`providersGetModels`](docs/sdks/providers/README.md#getmodels)
+- [`providersList`](docs/sdks/providers/README.md#list) - List all providers
+- [`providersListApiKeys`](docs/sdks/providers/README.md#listapikeys)
+- [`providersListApiKeysAll`](docs/sdks/providers/README.md#listapikeysall)
+- [`providersReload`](docs/sdks/providers/README.md#reload)
+- [`providersTest`](docs/sdks/providers/README.md#test)
+- [`providersUpdate`](docs/sdks/providers/README.md#update)
+- [`providersUpdateDefault`](docs/sdks/providers/README.md#updatedefault)
+- [`pythonCheck`](docs/sdks/python/README.md#check)
+- [`pythonCheckPackage`](docs/sdks/python/README.md#checkpackage)
+- [`pythonCreatePackageInstallCommand`](docs/sdks/python/README.md#createpackageinstallcommand)
+- [`pythonDetect`](docs/sdks/python/README.md#detect)
+- [`queueCreateClearHistory`](docs/sdks/queue/README.md#createclearhistory)
+- [`queueCreateEnqueueBatch`](docs/sdks/queue/README.md#createenqueuebatch)
+- [`queueDeleteTask`](docs/sdks/queue/README.md#deletetask)
+- [`queueEnqueue`](docs/sdks/queue/README.md#enqueue)
+- [`queueGetConfig`](docs/sdks/queue/README.md#getconfig)
+- [`queueGetStatus`](docs/sdks/queue/README.md#getstatus)
+- [`queueGetTask`](docs/sdks/queue/README.md#gettask)
+- [`queueGetTaskRunning`](docs/sdks/queue/README.md#gettaskrunning)
+- [`queueGetTaskStream`](docs/sdks/queue/README.md#gettaskstream)
+- [`queueListTasks`](docs/sdks/queue/README.md#listtasks)
+- [`queueRetryTask`](docs/sdks/queue/README.md#retrytask)
+- [`queueUpdateConfig`](docs/sdks/queue/README.md#updateconfig)
+- [`rewardCompute`](docs/sdks/reward/README.md#compute) - Compute reward for a task by spawning the reward agent
+- [`rewardCreateType`](docs/sdks/reward/README.md#createtype) - Create a new custom reward type
+- [`rewardDeleteType`](docs/sdks/reward/README.md#deletetype) - Delete a custom reward type
+- [`rewardGetType`](docs/sdks/reward/README.md#gettype) - Get a specific reward type by name
+- [`rewardListTypes`](docs/sdks/reward/README.md#listtypes) - List available reward types (builtin + custom)
+- [`rewardSelect`](docs/sdks/reward/README.md#select) - Select best task using PPO metrics
+- [`rewardUpdateType`](docs/sdks/reward/README.md#updatetype) - Update a custom reward type
+- [`sandboxCreateExec`](docs/sdks/sandbox/README.md#createexec)
+- [`sandboxCreateRunFile`](docs/sdks/sandbox/README.md#createrunfile)
+- [`sandboxGetAvailable`](docs/sdks/sandbox/README.md#getavailable)
+- [`sandboxStop`](docs/sdks/sandbox/README.md#stop)
+- [`serviceKeysCreate`](docs/sdks/servicekeys/README.md#create)
+- [`serviceKeysCreateUsage`](docs/sdks/servicekeys/README.md#createusage)
+- [`serviceKeysDelete`](docs/sdks/servicekeys/README.md#delete)
+- [`serviceKeysGet`](docs/sdks/servicekeys/README.md#get)
+- [`serviceKeysList`](docs/sdks/servicekeys/README.md#list)
+- [`serviceKeysUpdate`](docs/sdks/servicekeys/README.md#update)
+- [`serviceKeysValidate`](docs/sdks/servicekeys/README.md#validate)
+- [`sessionsCreate`](docs/sdks/sessions/README.md#create)
+- [`sessionsDelete`](docs/sdks/sessions/README.md#delete)
+- [`sessionsGet`](docs/sdks/sessions/README.md#get) - Get a specific session by ID
+- [`sessionsGetMessages`](docs/sdks/sessions/README.md#getmessages)
+- [`sessionsGetUiMessages`](docs/sdks/sessions/README.md#getuimessages)
+- [`sessionsList`](docs/sdks/sessions/README.md#list) - List all sessions
+- [`sessionsUpdate`](docs/sdks/sessions/README.md#update)
+- [`skillCreateFavorite`](docs/sdks/skill/README.md#createfavorite) - Toggle favorite for a marketplace skill
+- [`skillDisable`](docs/sdks/skill/README.md#disable) - Disable a skill for an agent
+- [`skillDownload`](docs/sdks/skill/README.md#download) - Download skill package to a directory
+- [`skillEnable`](docs/sdks/skill/README.md#enable) - Enable a skill for an agent
+- [`skillGetAvailable`](docs/sdks/skill/README.md#getavailable) - List available skills from marketplace
+- [`skillGetInfo`](docs/sdks/skill/README.md#getinfo) - Get skill package details from marketplace
+- [`skillInstall`](docs/sdks/skill/README.md#install) - Install a skill
+- [`skillList`](docs/sdks/skill/README.md#list) - List installed skills
+- [`skillListClawhubPackages`](docs/sdks/skill/README.md#listclawhubpackages) - List ClaWHub skill packages
+- [`skillListEnabled`](docs/sdks/skill/README.md#listenabled) - Get enabled skills for an agent
+- [`skillMarketCreateComment`](docs/sdks/skillmarket/README.md#createcomment)
+- [`skillMarketCreateFavorite`](docs/sdks/skillmarket/README.md#createfavorite)
+- [`skillMarketCreateRating`](docs/sdks/skillmarket/README.md#createrating)
+- [`skillMarketDownload`](docs/sdks/skillmarket/README.md#download)
+- [`skillMarketGet`](docs/sdks/skillmarket/README.md#get)
+- [`skillMarketGetComments`](docs/sdks/skillmarket/README.md#getcomments)
+- [`skillMarketList`](docs/sdks/skillmarket/README.md#list)
+- [`skillMarketListCategories`](docs/sdks/skillmarket/README.md#listcategories)
+- [`skillMarketSearch`](docs/sdks/skillmarket/README.md#search)
+- [`skillSearch`](docs/sdks/skill/README.md#search) - Search skill packages in marketplace
+- [`skillSearchClawhub`](docs/sdks/skill/README.md#searchclawhub) - Search ClaWHub skill packages
+- [`skillUninstall`](docs/sdks/skill/README.md#uninstall) - Uninstall a skill
+- [`skillView`](docs/sdks/skill/README.md#view) - Get skill by name
+- [`systemGetInfo`](docs/sdks/system/README.md#getinfo)
+- [`systemListPublicIp`](docs/sdks/system/README.md#listpublicip)
+- [`tasksApprove`](docs/sdks/tasks/README.md#approve) - Approve a task in review: review -> completed
+- [`tasksArchive`](docs/sdks/tasks/README.md#archive) - Archive a completed task: completed -> archived
+- [`tasksCancel`](docs/sdks/tasks/README.md#cancel) - Cancel a task: * -> cancelled (terminal state)
+- [`tasksCleanup`](docs/sdks/tasks/README.md#cleanup) - Cleanup worktrees and related resources
+- [`tasksCreate`](docs/sdks/tasks/README.md#create)
+- [`tasksCreateAddContext`](docs/sdks/tasks/README.md#createaddcontext) - Add context files to a task
+- [`tasksCreateAddSession`](docs/sdks/tasks/README.md#createaddsession) - Add a new session to journal file and update index.md
+- [`tasksCreateBatchEnqueue`](docs/sdks/tasks/README.md#createbatchenqueue) - Batch enqueue multiple tasks for execution
+- [`tasksCreateBatchEvent`](docs/sdks/tasks/README.md#createbatchevent) - Apply an event to multiple tasks (batch operation)
+- [`tasksCreateCheckPhase`](docs/sdks/tasks/README.md#createcheckphase) - Run check phase for a task (spawns check agent)
+- [`tasksCreateClearHistory`](docs/sdks/tasks/README.md#createclearhistory) - Clear completed and failed tasks from queue history
+- [`tasksCreateContext`](docs/sdks/tasks/README.md#createcontext) - Get session context for AI agents
+- [`tasksCreateCreate`](docs/sdks/tasks/README.md#createcreate) - Create a new task
+- [`tasksCreateCreatePr`](docs/sdks/tasks/README.md#createcreatepr) - Create PR from task
+- [`tasksCreateCreateWorktree`](docs/sdks/tasks/README.md#createcreateworktree) - Create isolated git worktree for a task
+- [`tasksCreateDelete`](docs/sdks/tasks/README.md#createdelete) - Delete a task
+- [`tasksCreateEvent`](docs/sdks/tasks/README.md#createevent) - Get event history for a task
+- [`tasksCreateEvent2`](docs/sdks/tasks/README.md#createevent2)
+- [`tasksCreateFinish`](docs/sdks/tasks/README.md#createfinish) - Finish a task: clear current task marker
+- [`tasksCreateImplementPhase`](docs/sdks/tasks/README.md#createimplementphase) - Run implement phase for a task (spawns implement agent)
+- [`tasksCreateInitContext`](docs/sdks/tasks/README.md#createinitcontext) - Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
+- [`tasksCreateListContext`](docs/sdks/tasks/README.md#createlistcontext) - List all context entries for a task
+- [`tasksCreatePlan`](docs/sdks/tasks/README.md#createplan) - Start Plan Agent to plan a task
+- [`tasksCreatePlanPhase`](docs/sdks/tasks/README.md#createplanphase) - Run plan phase for a task (spawns plan agent)
+- [`tasksCreateQueueConfig`](docs/sdks/tasks/README.md#createqueueconfig) - Get or update queue configuration
+- [`tasksCreateQueueStatu`](docs/sdks/tasks/README.md#createqueuestatu) - Get queue status
+- [`tasksCreateRemoveContext`](docs/sdks/tasks/README.md#createremovecontext) - Remove context files from a task
+- [`tasksCreateReview`](docs/sdks/tasks/README.md#createreview) - View task details for review
+- [`tasksCreateRunning`](docs/sdks/tasks/README.md#createrunning) - Check if task execution is running
+- [`tasksCreateSetAgent`](docs/sdks/tasks/README.md#createsetagent) - Set associated agent configuration for a task
+- [`tasksCreateSetBase`](docs/sdks/tasks/README.md#createsetbase) - Set PR target branch for a task
+- [`tasksCreateSetBranch`](docs/sdks/tasks/README.md#createsetbranch) - Set Git branch for a task
+- [`tasksCreateSpec`](docs/sdks/tasks/README.md#createspec) - Get task specs (PRD, subtasks, logs)
+- [`tasksCreateStatu`](docs/sdks/tasks/README.md#createstatu) - Get task status summary or details
+- [`tasksCreateUpdate`](docs/sdks/tasks/README.md#createupdate) - Update task fields (not status - use lifecycle endpoints for status changes)
+- [`tasksCreateValidateCheckPhasePassed`](docs/sdks/tasks/README.md#createvalidatecheckphasepassed) - Validate check phase passed (runs verify commands or checks completion markers)
+- [`tasksCreateValidateContext`](docs/sdks/tasks/README.md#createvalidatecontext) - Validate that all context file references exist
+- [`tasksCreateWorkPhase`](docs/sdks/tasks/README.md#createworkphase) - Run work phase for a task (spawns work agent)
+- [`tasksDelete`](docs/sdks/tasks/README.md#delete)
+- [`tasksDequeue`](docs/sdks/tasks/README.md#dequeue) - Remove task from queue back to backlog
+- [`tasksEnqueue`](docs/sdks/tasks/README.md#enqueue) - Move task from backlog to queue for execution
+- [`tasksExecute`](docs/sdks/tasks/README.md#execute) - Trigger task execution via queue system
+- [`tasksGet`](docs/sdks/tasks/README.md#get) - Get a specific task by ID
+- [`tasksGetEvents`](docs/sdks/tasks/README.md#getevents)
+- [`tasksGetEventStream`](docs/sdks/tasks/README.md#geteventstream)
+- [`tasksGetRunning`](docs/sdks/tasks/README.md#getrunning) - Check if a task's execution process is currently running
+- [`tasksGetSessions`](docs/sdks/tasks/README.md#getsessions)
+- [`tasksGetSpecs`](docs/sdks/tasks/README.md#getspecs) - Get task specs data (PRD, subtasks, logs, files)
+- [`tasksGetState`](docs/sdks/tasks/README.md#getstate)
+- [`tasksList`](docs/sdks/tasks/README.md#list) - List all tasks for a workspace (workspace_path required)
+- [`tasksList2`](docs/sdks/tasks/README.md#list2) - List tasks
+- [`tasksListEventsStream`](docs/sdks/tasks/README.md#listeventsstream) - SSE stream for task events
+- [`tasksListEventsStream2`](docs/sdks/tasks/README.md#listeventsstream2)
+- [`tasksListExecutionStream`](docs/sdks/tasks/README.md#listexecutionstream) - SSE stream for task execution progress
+- [`tasksListListArchive`](docs/sdks/tasks/README.md#listlistarchive) - List archived tasks
+- [`tasksPause`](docs/sdks/tasks/README.md#pause) - Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
+- [`tasksReject`](docs/sdks/tasks/README.md#reject) - Reject a task in review: review -> backlog
+- [`tasksResume`](docs/sdks/tasks/README.md#resume) - Resume a paused task: paused -> queue/in_progress
+- [`tasksRetry`](docs/sdks/tasks/README.md#retry) - Retry a failed task: failed -> queue
+- [`tasksStart`](docs/sdks/tasks/README.md#start) - Start a task: set as current task, queue -> in_progress, optionally trigger execution
+- [`tasksStop`](docs/sdks/tasks/README.md#stop) - Stop task execution
+- [`tasksUpdate`](docs/sdks/tasks/README.md#update)
+- [`tasksUpdate2`](docs/sdks/tasks/README.md#update2)
+- [`tasksValidateEvent`](docs/sdks/tasks/README.md#validateevent)
+- [`tasksView`](docs/sdks/tasks/README.md#view) - View task details
+- [`telemetryClean`](docs/sdks/telemetry/README.md#clean)
+- [`telemetryGetTrace`](docs/sdks/telemetry/README.md#gettrace)
+- [`telemetryGetTraceSpans`](docs/sdks/telemetry/README.md#gettracespans)
+- [`telemetryListDates`](docs/sdks/telemetry/README.md#listdates)
+- [`telemetryListStats`](docs/sdks/telemetry/README.md#liststats)
+- [`telemetryListTraces`](docs/sdks/telemetry/README.md#listtraces)
+- [`tunnelGetStatus`](docs/sdks/tunnel/README.md#getstatus)
+- [`tunnelRestart`](docs/sdks/tunnel/README.md#restart)
+- [`tunnelStart`](docs/sdks/tunnel/README.md#start)
+- [`tunnelStop`](docs/sdks/tunnel/README.md#stop)
+- [`userCreateMeApiKey`](docs/sdks/user/README.md#createmeapikey)
+- [`userDeleteMeApiKey`](docs/sdks/user/README.md#deletemeapikey)
+- [`userGet`](docs/sdks/user/README.md#get)
+- [`userListMe`](docs/sdks/user/README.md#listme)
+- [`userListMeApiKeys`](docs/sdks/user/README.md#listmeapikeys)
+- [`userListMeFavorites`](docs/sdks/user/README.md#listmefavorites)
+- [`userUpdateMe`](docs/sdks/user/README.md#updateme)
+- [`voiceCreateToken`](docs/sdks/voice/README.md#createtoken)
+- [`workspacesCreateCreate`](docs/sdks/workspaces/README.md#createcreate)
+- [`workspacesDelete`](docs/sdks/workspaces/README.md#delete)
+- [`workspacesDetect`](docs/sdks/workspaces/README.md#detect) - Detect folder status (.git and .viben directories)
+- [`workspacesList`](docs/sdks/workspaces/README.md#list) - List all workspaces including the global workspace
 
 </details>
 <!-- End Standalone functions [standalone-funcs] -->
@@ -1262,14 +1385,12 @@ Some of the endpoints in this SDK support retries.  If you use the SDK without a
 
 To change the default retry strategy for a single API call, simply provide a retryConfig object to the call:
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  await sdk.deleteApiAccountsId({
-    id: "<id>",
-  }, {
+  const result = await vibenClient.agent.list(undefined, {
     retries: {
       strategy: "backoff",
       backoff: {
@@ -1281,6 +1402,8 @@ async function run() {
       retryConnectionErrors: false,
     },
   });
+
+  console.log(result);
 }
 
 run();
@@ -1289,9 +1412,9 @@ run();
 
 If you'd like to override the default retry strategy for all operations that support retries, you can provide a retryConfig at SDK initialization:
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK({
+const vibenClient = new VibenClient({
   retryConfig: {
     strategy: "backoff",
     backoff: {
@@ -1305,9 +1428,9 @@ const sdk = new SDK({
 });
 
 async function run() {
-  await sdk.deleteApiAccountsId({
-    id: "<id>",
-  });
+  const result = await vibenClient.agent.list();
+
+  console.log(result);
 }
 
 run();
@@ -1330,16 +1453,16 @@ run();
 
 ### Example
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 import * as errors from "@viben/client-sdk/sdk/models/errors";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
   try {
-    await sdk.deleteApiAccountsId({
-      id: "<id>",
-    });
+    const result = await vibenClient.agent.list();
+
+    console.log(result);
   } catch (error) {
     if (error instanceof errors.SDKBaseError) {
       console.log(error.message);
@@ -1383,16 +1506,16 @@ run();
 
 The default server can be overridden globally by passing a URL to the `serverURL: string` optional parameter when initializing the SDK client instance. For example:
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK({
+const vibenClient = new VibenClient({
   serverURL: "http://127.0.0.1:18790",
 });
 
 async function run() {
-  await sdk.deleteApiAccountsId({
-    id: "<id>",
-  });
+  const result = await vibenClient.agent.list();
+
+  console.log(result);
 }
 
 run();
@@ -1419,7 +1542,7 @@ The following example shows how to:
 - use the `"requestError"` hook to log errors
 
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 import { ProxyAgent } from "undici";
 import { HTTPClient } from "@viben/client-sdk/lib/http";
 
@@ -1449,7 +1572,7 @@ httpClient.addHook("requestError", (error, request) => {
   console.groupEnd();
 });
 
-const sdk = new SDK({ httpClient: httpClient });
+const sdk = new VibenClient({ httpClient: httpClient });
 ```
 <!-- End Custom HTTP Client [http-client] -->
 
@@ -1464,9 +1587,9 @@ You can pass a logger that matches `console`'s interface as an SDK option.
 > Beware that debug logging will reveal secrets, like API tokens in headers, in log messages printed to a console or files. It's recommended to use this feature only during local development and not in production.
 
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK({ debugLogger: console });
+const sdk = new VibenClient({ debugLogger: console });
 ```
 <!-- End Debugging [debug] -->
 

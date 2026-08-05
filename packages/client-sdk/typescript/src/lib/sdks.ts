@@ -23,7 +23,7 @@ import {
   matchContentType,
 } from "./http.js";
 import { Logger } from "./logger.js";
-import { combineSignals } from "./primitives.js";
+import { combineSignals, isPlainObject } from "./primitives.js";
 import { retry, RetryConfig } from "./retries.js";
 import { SecurityState } from "./security.js";
 
@@ -53,6 +53,20 @@ export type RequestOptions = {
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options|Request}
    */
   fetchOptions?: Omit<RequestInit, "method" | "body">;
+  /**
+   * Additional query parameters to set on the request URL. Entries replace
+   * any query parameters of the same name produced by the operation. Entries
+   * with null or undefined values are skipped, array values are encoded as
+   * repeated keys and plain object values are JSON-encoded.
+   */
+  extraQuery?: Record<string, unknown>;
+  /**
+   * Additional fields to merge into the JSON object request body. Entries
+   * replace any fields of the same name produced by the operation. Entries
+   * with undefined values are skipped. Setting this option on an operation
+   * whose request body is not a JSON object results in an error.
+   */
+  extraBody?: Record<string, unknown>;
 } & Omit<RequestInit, "method" | "body">;
 
 type RequestConfig = {
@@ -161,7 +175,7 @@ export class ClientSDK {
           if (v == null) {
             return undefined;
           }
-          const value = v;
+          const value = isPlainObject(v) ? JSON.stringify(v) : v;
           return encodeForm(k, value, {
             explode: Array.isArray(value),
             charEncoding: "percent",
@@ -173,6 +187,7 @@ export class ClientSDK {
 
     const finalQuery = [
       query || "",
+      encodeQueryRecord(options?.extraQuery || {}),
       encodeQueryRecord(security?.queryParams || {}),
     ].reduce(mergeQuery, reqURL.search.slice(1));
 
@@ -219,6 +234,44 @@ export class ClientSDK {
       );
     }
 
+    let reqBody = conf.body;
+    const extraBody = Object.fromEntries(
+      Object.entries(options?.extraBody || {}).filter(
+        ([, v]) => typeof v !== "undefined",
+      ),
+    );
+    if (Object.keys(extraBody).length > 0) {
+      const contentType = new Headers(opHeaders).get("content-type") || "";
+      const isJSON = /^(application|text)\/([^+]+\+)*json/.test(contentType);
+      if (!isJSON || (typeof reqBody !== "string" && reqBody != null)) {
+        return ERR(
+          new InvalidRequestError(
+            "extraBody can only be merged into JSON object request bodies",
+          ),
+        );
+      }
+      let parsedBody: unknown;
+      try {
+        parsedBody = reqBody ? JSON.parse(reqBody) : {};
+      } catch (err: unknown) {
+        return ERR(
+          new InvalidRequestError(
+            "extraBody can only be merged into JSON object request bodies",
+            { cause: err },
+          ),
+        );
+      }
+      if (!isPlainObject(parsedBody)) {
+        return ERR(
+          new InvalidRequestError(
+            "extraBody can only be merged into JSON object request bodies",
+          ),
+        );
+      }
+      reqBody = JSON.stringify({ ...parsedBody, ...extraBody });
+      headers.delete("content-length");
+    }
+
     const fetchOptions: Omit<RequestInit, "method" | "body"> = {
       ...options?.fetchOptions,
       ...options,
@@ -237,7 +290,7 @@ export class ClientSDK {
         url: reqURL,
         options: {
           ...fetchOptions,
-          body: conf.body ?? null,
+          body: reqBody ?? null,
           headers,
           method,
         },

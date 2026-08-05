@@ -19,22 +19,20 @@ specific category of applications.
 ## Example
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { deleteApiAccountsId } from "@viben/client-sdk/funcs/deleteApiAccountsId.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { agentList } from "@viben/client-sdk/funcs/agentList.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await deleteApiAccountsId(sdk, {
-    id: "<id>",
-  });
+  const res = await agentList(vibenClient);
   if (res.ok) {
     const { value: result } = res;
-    
+    console.log(result);
   } else {
-    console.log("deleteApiAccountsId failed:", res.error);
+    console.log("agentList failed:", res.error);
   }
 }
 

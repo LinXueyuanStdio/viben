@@ -4,234 +4,35 @@
 
 ### Available Operations
 
-* [getApiSkillAvailable](#getapiskillavailable) - List available skills from marketplace
-* [getApiSkillEnabled](#getapiskillenabled) - Get enabled skills for an agent
-* [getApiSkillInfoIdOrSlug](#getapiskillinfoidorslug) - Get skill package details from marketplace
-* [getApiSkillList](#getapiskilllist) - List installed skills
-* [getApiSkillSearch](#getapiskillsearch) - Search skill packages in marketplace
-* [getApiSkillViewName](#getapiskillviewname) - Get skill by name
-* [postApiSkillDisable](#postapiskilldisable) - Disable a skill for an agent
-* [postApiSkillDownload](#postapiskilldownload) - Download skill package to a directory
-* [postApiSkillEnable](#postapiskillenable) - Enable a skill for an agent
-* [postApiSkillInstall](#postapiskillinstall) - Install a skill
-* [postApiSkillUninstall](#postapiskilluninstall) - Uninstall a skill
+* [list](#list) - List installed skills
+* [getAvailable](#getavailable) - List available skills from marketplace
+* [listEnabled](#listenabled) - Get enabled skills for an agent
+* [view](#view) - Get skill by name
+* [install](#install) - Install a skill
+* [uninstall](#uninstall) - Uninstall a skill
+* [enable](#enable) - Enable a skill for an agent
+* [disable](#disable) - Disable a skill for an agent
+* [search](#search) - Search skill packages in marketplace
+* [getInfo](#getinfo) - Get skill package details from marketplace
+* [listClawhubPackages](#listclawhubpackages) - List ClaWHub skill packages
+* [searchClawhub](#searchclawhub) - Search ClaWHub skill packages
+* [download](#download) - Download skill package to a directory
+* [createFavorite](#createfavorite) - Toggle favorite for a marketplace skill
 
-## getApiSkillAvailable
-
-List available skills from marketplace
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/skill/available" method="get" path="/api/skill/available" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.skill.getApiSkillAvailable();
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillGetApiSkillAvailable } from "@viben/client-sdk/funcs/skillGetApiSkillAvailable.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await skillGetApiSkillAvailable(sdk);
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("skillGetApiSkillAvailable failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.GetApiSkillAvailableResponse](../../sdk/models/operations/getapiskillavailableresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiSkillEnabled
-
-Get enabled skills for an agent
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/skill/enabled" method="get" path="/api/skill/enabled" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.skill.getApiSkillEnabled({
-    agentId: "<id>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillGetApiSkillEnabled } from "@viben/client-sdk/funcs/skillGetApiSkillEnabled.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await skillGetApiSkillEnabled(sdk, {
-    agentId: "<id>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("skillGetApiSkillEnabled failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiSkillEnabledRequest](../../sdk/models/operations/getapiskillenabledrequest.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.GetApiSkillEnabledResponse](../../sdk/models/operations/getapiskillenabledresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiSkillInfoIdOrSlug
-
-Get skill package details from marketplace
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/skill/info/{idOrSlug}" method="get" path="/api/skill/info/{idOrSlug}" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.skill.getApiSkillInfoIdOrSlug({
-    idOrSlug: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillGetApiSkillInfoIdOrSlug } from "@viben/client-sdk/funcs/skillGetApiSkillInfoIdOrSlug.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await skillGetApiSkillInfoIdOrSlug(sdk, {
-    idOrSlug: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("skillGetApiSkillInfoIdOrSlug failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiSkillInfoIdOrSlugRequest](../../sdk/models/operations/getapiskillinfoidorslugrequest.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.GetApiSkillInfoIdOrSlugResponse](../../sdk/models/operations/getapiskillinfoidorslugresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiSkillList
+## list
 
 List installed skills
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/skill/list" method="get" path="/api/skill/list" -->
+<!-- UsageSnippet language="typescript" operationID="skill_list" method="get" path="/api/skill/list" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.skill.getApiSkillList();
+  const result = await vibenClient.skill.list();
 
   console.log(result);
 }
@@ -244,20 +45,20 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillGetApiSkillList } from "@viben/client-sdk/funcs/skillGetApiSkillList.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillList } from "@viben/client-sdk/funcs/skillList.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await skillGetApiSkillList(sdk);
+  const res = await skillList(vibenClient);
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("skillGetApiSkillList failed:", res.error);
+    console.log("skillList failed:", res.error);
   }
 }
 
@@ -268,14 +69,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiSkillListRequest](../../sdk/models/operations/getapiskilllistrequest.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.SkillListRequest](../../sdk/models/operations/skilllistrequest.md)                                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiSkillListResponse](../../sdk/models/operations/getapiskilllistresponse.md)\>**
+**Promise\<[operations.SkillListResponse](../../sdk/models/operations/skilllistresponse.md)\>**
 
 ### Errors
 
@@ -283,21 +84,86 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiSkillSearch
+## getAvailable
 
-Search skill packages in marketplace
+List available skills from marketplace
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/skill/search" method="get" path="/api/skill/search" -->
+<!-- UsageSnippet language="typescript" operationID="skill_getAvailable" method="get" path="/api/skill/available" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.skill.getApiSkillSearch({
-    query: "<value>",
+  const result = await vibenClient.skill.getAvailable();
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillGetAvailable } from "@viben/client-sdk/funcs/skillGetAvailable.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillGetAvailable(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillGetAvailable failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillGetAvailableRequest](../../sdk/models/operations/skillgetavailablerequest.md)                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillGetAvailableResponse](../../sdk/models/operations/skillgetavailableresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## listEnabled
+
+Get enabled skills for an agent
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_listEnabled" method="get" path="/api/skill/enabled" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.listEnabled({
+    agentId: "<id>",
   });
 
   console.log(result);
@@ -311,22 +177,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillGetApiSkillSearch } from "@viben/client-sdk/funcs/skillGetApiSkillSearch.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillListEnabled } from "@viben/client-sdk/funcs/skillListEnabled.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await skillGetApiSkillSearch(sdk, {
-    query: "<value>",
+  const res = await skillListEnabled(vibenClient, {
+    agentId: "<id>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("skillGetApiSkillSearch failed:", res.error);
+    console.log("skillListEnabled failed:", res.error);
   }
 }
 
@@ -337,14 +203,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiSkillSearchRequest](../../sdk/models/operations/getapiskillsearchrequest.md)                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.SkillListEnabledRequest](../../sdk/models/operations/skilllistenabledrequest.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiSkillSearchResponse](../../sdk/models/operations/getapiskillsearchresponse.md)\>**
+**Promise\<[operations.SkillListEnabledResponse](../../sdk/models/operations/skilllistenabledresponse.md)\>**
 
 ### Errors
 
@@ -352,20 +218,20 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiSkillViewName
+## view
 
 Get skill by name
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/skill/view/{name}" method="get" path="/api/skill/view/{name}" -->
+<!-- UsageSnippet language="typescript" operationID="skill_view" method="get" path="/api/skill/view/{name}" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.skill.getApiSkillViewName({
+  const result = await vibenClient.skill.view({
     name: "<value>",
   });
 
@@ -380,22 +246,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillGetApiSkillViewName } from "@viben/client-sdk/funcs/skillGetApiSkillViewName.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillView } from "@viben/client-sdk/funcs/skillView.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await skillGetApiSkillViewName(sdk, {
+  const res = await skillView(vibenClient, {
     name: "<value>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("skillGetApiSkillViewName failed:", res.error);
+    console.log("skillView failed:", res.error);
   }
 }
 
@@ -406,14 +272,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiSkillViewNameRequest](../../sdk/models/operations/getapiskillviewnamerequest.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.SkillViewRequest](../../sdk/models/operations/skillviewrequest.md)                                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiSkillViewNameResponse](../../sdk/models/operations/getapiskillviewnameresponse.md)\>**
+**Promise\<[operations.SkillViewResponse](../../sdk/models/operations/skillviewresponse.md)\>**
 
 ### Errors
 
@@ -421,233 +287,20 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## postApiSkillDisable
-
-Disable a skill for an agent
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/skill/disable" method="post" path="/api/skill/disable" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.skill.postApiSkillDisable({
-    agentId: "<id>",
-    skillName: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillPostApiSkillDisable } from "@viben/client-sdk/funcs/skillPostApiSkillDisable.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await skillPostApiSkillDisable(sdk, {
-    agentId: "<id>",
-    skillName: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("skillPostApiSkillDisable failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiSkillDisableRequestBody](../../sdk/models/operations/postapiskilldisablerequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiSkillDisableResponse](../../sdk/models/operations/postapiskilldisableresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiSkillDownload
-
-Download skill package to a directory
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/skill/download" method="post" path="/api/skill/download" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.skill.postApiSkillDownload({
-    name: "<value>",
-    targetDir: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillPostApiSkillDownload } from "@viben/client-sdk/funcs/skillPostApiSkillDownload.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await skillPostApiSkillDownload(sdk, {
-    name: "<value>",
-    targetDir: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("skillPostApiSkillDownload failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiSkillDownloadRequestBody](../../sdk/models/operations/postapiskilldownloadrequestbody.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiSkillDownloadResponse](../../sdk/models/operations/postapiskilldownloadresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiSkillEnable
-
-Enable a skill for an agent
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/skill/enable" method="post" path="/api/skill/enable" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.skill.postApiSkillEnable({
-    agentId: "<id>",
-    skillName: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillPostApiSkillEnable } from "@viben/client-sdk/funcs/skillPostApiSkillEnable.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await skillPostApiSkillEnable(sdk, {
-    agentId: "<id>",
-    skillName: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("skillPostApiSkillEnable failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiSkillEnableRequestBody](../../sdk/models/operations/postapiskillenablerequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiSkillEnableResponse](../../sdk/models/operations/postapiskillenableresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiSkillInstall
+## install
 
 Install a skill
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="post_/api/skill/install" method="post" path="/api/skill/install" -->
+<!-- UsageSnippet language="typescript" operationID="skill_install" method="post" path="/api/skill/install" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.skill.postApiSkillInstall({
+  const result = await vibenClient.skill.install({
     name: "<value>",
   });
 
@@ -662,22 +315,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillPostApiSkillInstall } from "@viben/client-sdk/funcs/skillPostApiSkillInstall.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillInstall } from "@viben/client-sdk/funcs/skillInstall.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await skillPostApiSkillInstall(sdk, {
+  const res = await skillInstall(vibenClient, {
     name: "<value>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("skillPostApiSkillInstall failed:", res.error);
+    console.log("skillInstall failed:", res.error);
   }
 }
 
@@ -688,14 +341,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiSkillInstallRequestBody](../../sdk/models/operations/postapiskillinstallrequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.SkillInstallRequestBody](../../sdk/models/operations/skillinstallrequestbody.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.PostApiSkillInstallResponse](../../sdk/models/operations/postapiskillinstallresponse.md)\>**
+**Promise\<[operations.SkillInstallResponse](../../sdk/models/operations/skillinstallresponse.md)\>**
 
 ### Errors
 
@@ -703,20 +356,20 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## postApiSkillUninstall
+## uninstall
 
 Uninstall a skill
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="post_/api/skill/uninstall" method="post" path="/api/skill/uninstall" -->
+<!-- UsageSnippet language="typescript" operationID="skill_uninstall" method="post" path="/api/skill/uninstall" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.skill.postApiSkillUninstall({
+  const result = await vibenClient.skill.uninstall({
     name: "<value>",
   });
 
@@ -731,22 +384,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { skillPostApiSkillUninstall } from "@viben/client-sdk/funcs/skillPostApiSkillUninstall.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillUninstall } from "@viben/client-sdk/funcs/skillUninstall.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await skillPostApiSkillUninstall(sdk, {
+  const res = await skillUninstall(vibenClient, {
     name: "<value>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("skillPostApiSkillUninstall failed:", res.error);
+    console.log("skillUninstall failed:", res.error);
   }
 }
 
@@ -757,14 +410,568 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiSkillUninstallRequestBody](../../sdk/models/operations/postapiskilluninstallrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.SkillUninstallRequestBody](../../sdk/models/operations/skilluninstallrequestbody.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.PostApiSkillUninstallResponse](../../sdk/models/operations/postapiskilluninstallresponse.md)\>**
+**Promise\<[operations.SkillUninstallResponse](../../sdk/models/operations/skilluninstallresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## enable
+
+Enable a skill for an agent
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_enable" method="post" path="/api/skill/enable" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.enable({
+    skillName: "<value>",
+    agentId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillEnable } from "@viben/client-sdk/funcs/skillEnable.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillEnable(vibenClient, {
+    skillName: "<value>",
+    agentId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillEnable failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillEnableRequestBody](../../sdk/models/operations/skillenablerequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillEnableResponse](../../sdk/models/operations/skillenableresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## disable
+
+Disable a skill for an agent
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_disable" method="post" path="/api/skill/disable" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.disable({
+    skillName: "<value>",
+    agentId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillDisable } from "@viben/client-sdk/funcs/skillDisable.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillDisable(vibenClient, {
+    skillName: "<value>",
+    agentId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillDisable failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillDisableRequestBody](../../sdk/models/operations/skilldisablerequestbody.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillDisableResponse](../../sdk/models/operations/skilldisableresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## search
+
+Search skill packages in marketplace
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_search" method="get" path="/api/skill/search" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.search({
+    query: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillSearch } from "@viben/client-sdk/funcs/skillSearch.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillSearch(vibenClient, {
+    query: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillSearch failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillSearchRequest](../../sdk/models/operations/skillsearchrequest.md)                                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillSearchResponse](../../sdk/models/operations/skillsearchresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getInfo
+
+Get skill package details from marketplace
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_getInfo" method="get" path="/api/skill/info/{idOrSlug}" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.getInfo({
+    idOrSlug: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillGetInfo } from "@viben/client-sdk/funcs/skillGetInfo.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillGetInfo(vibenClient, {
+    idOrSlug: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillGetInfo failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillGetInfoRequest](../../sdk/models/operations/skillgetinforequest.md)                                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillGetInfoResponse](../../sdk/models/operations/skillgetinforesponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## listClawhubPackages
+
+List ClaWHub skill packages
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_listClawhubPackages" method="get" path="/api/skill/clawhub/packages" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.skill.listClawhubPackages();
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillListClawhubPackages } from "@viben/client-sdk/funcs/skillListClawhubPackages.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillListClawhubPackages(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("skillListClawhubPackages failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillListClawhubPackagesRequest](../../sdk/models/operations/skilllistclawhubpackagesrequest.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## searchClawhub
+
+Search ClaWHub skill packages
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_searchClawhub" method="get" path="/api/skill/clawhub/search" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.skill.searchClawhub({
+    query: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillSearchClawhub } from "@viben/client-sdk/funcs/skillSearchClawhub.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillSearchClawhub(vibenClient, {
+    query: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("skillSearchClawhub failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillSearchClawhubRequest](../../sdk/models/operations/skillsearchclawhubrequest.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## download
+
+Download skill package to a directory
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_download" method="post" path="/api/skill/download" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.download({
+    name: "<value>",
+    targetDir: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillDownload } from "@viben/client-sdk/funcs/skillDownload.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillDownload(vibenClient, {
+    name: "<value>",
+    targetDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillDownload failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillDownloadRequestBody](../../sdk/models/operations/skilldownloadrequestbody.md)                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillDownloadResponse](../../sdk/models/operations/skilldownloadresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createFavorite
+
+Toggle favorite for a marketplace skill
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="skill_createFavorite" method="post" path="/api/skill/{idOrSlug}/favorite" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.skill.createFavorite({
+    idOrSlug: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { skillCreateFavorite } from "@viben/client-sdk/funcs/skillCreateFavorite.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await skillCreateFavorite(vibenClient, {
+    idOrSlug: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("skillCreateFavorite failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.SkillCreateFavoriteRequest](../../sdk/models/operations/skillcreatefavoriterequest.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.SkillCreateFavoriteResponse](../../sdk/models/operations/skillcreatefavoriteresponse.md)\>**
 
 ### Errors
 

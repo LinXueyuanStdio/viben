@@ -1,0 +1,29 @@
+speakeasyVersion: 1.784.0
+sources:
+    viben-api:
+        sourceNamespace: viben-api
+        sourceRevisionDigest: sha256:c515ff7d4f8d18eeb06309c330ab18188dc91f4fad94441e9e09462bb954ed92
+        sourceBlobDigest: sha256:e9ae1eeb633228381a5be99f0e2ede8265c2f201859e61bc774a20347ebba5f2
+        tags:
+            - latest
+            - 0.1.0
+targets:
+    typescript:
+        source: viben-api
+        sourceNamespace: viben-api
+        sourceRevisionDigest: sha256:c515ff7d4f8d18eeb06309c330ab18188dc91f4fad94441e9e09462bb954ed92
+        sourceBlobDigest: sha256:e9ae1eeb633228381a5be99f0e2ede8265c2f201859e61bc774a20347ebba5f2
+workflow:
+    workflowVersion: 1.0.0
+    speakeasyVersion: 1.784.0
+    sources:
+        viben-api:
+            inputs:
+                - location: ../openapi.json
+            registry:
+                location: registry.speakeasyapi.dev/viben/viben/viben-api
+    targets:
+        typescript:
+            target: typescript
+            source: viben-api
+            output: ./

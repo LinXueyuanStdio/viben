@@ -12,5 +12,5 @@ let value: NextAction = {};
 
 | Field              | Type               | Required           | Description        |
 | ------------------ | ------------------ | ------------------ | ------------------ |
-| `action`           | *string*           | :heavy_minus_sign: | N/A                |
 | `phase`            | *number*           | :heavy_minus_sign: | N/A                |
+| `action`           | *string*           | :heavy_minus_sign: | N/A                |

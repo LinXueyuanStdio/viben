@@ -12,6 +12,6 @@ let value: Attachments = {};
 
 | Field              | Type               | Required           | Description        |
 | ------------------ | ------------------ | ------------------ | ------------------ |
+| `type`             | *string*           | :heavy_minus_sign: | N/A                |
 | `data`             | *string*           | :heavy_minus_sign: | N/A                |
 | `name`             | *string*           | :heavy_minus_sign: | N/A                |
-| `type`             | *string*           | :heavy_minus_sign: | N/A                |

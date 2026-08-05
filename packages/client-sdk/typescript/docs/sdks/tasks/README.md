@@ -6,284 +6,86 @@ Task management
 
 ### Available Operations
 
-* [getApiTaskEventsStream](#getapitaskeventsstream) - SSE stream for task events
-* [getApiTaskExecutionStream](#getapitaskexecutionstream) - SSE stream for task execution progress
-* [getApiTaskListArchive](#getapitasklistarchive) - List archived tasks
-* [getApiTasks](#getapitasks) - List all tasks for a workspace (workspace_path required)
-* [getApiTasksId](#getapitasksid) - Get a specific task by ID
-* [getApiTasksIdRunning](#getapitasksidrunning) - Check if a task's execution process is currently running
-* [getApiTasksIdSpecs](#getapitasksidspecs) - Get task specs data (PRD, subtasks, logs, files)
-* [postApiTaskAddContext](#postapitaskaddcontext) - Add context files to a task
-* [postApiTaskAddSession](#postapitaskaddsession) - Add a new session to journal file and update index.md
-* [postApiTaskApprove](#postapitaskapprove) - Approve a task in review: review -> completed
-* [postApiTaskArchive](#postapitaskarchive) - Archive a completed task: completed -> archived
-* [postApiTaskBatchEnqueue](#postapitaskbatchenqueue) - Batch enqueue multiple tasks for execution
-* [postApiTaskCancel](#postapitaskcancel) - Cancel a task: * -> cancelled (terminal state)
-* [postApiTaskCheckPhase](#postapitaskcheckphase) - Run check phase for a task (spawns check agent)
-* [postApiTaskCleanup](#postapitaskcleanup) - Cleanup worktrees and related resources
-* [postApiTaskClearHistory](#postapitaskclearhistory) - Clear completed and failed tasks from queue history
-* [postApiTaskContext](#postapitaskcontext) - Get session context for AI agents
-* [postApiTaskCreate](#postapitaskcreate) - Create a new task
-* [postApiTaskCreatePr](#postapitaskcreatepr) - Create PR from task
-* [postApiTaskCreateWorktree](#postapitaskcreateworktree) - Create isolated git worktree for a task
-* [postApiTaskDelete](#postapitaskdelete) - Delete a task
-* [postApiTaskDequeue](#postapitaskdequeue) - Remove task from queue back to backlog
-* [postApiTaskEnqueue](#postapitaskenqueue) - Move task from backlog to queue for execution
-* [postApiTaskEvents](#postapitaskevents) - Get event history for a task
-* [postApiTaskExecute](#postapitaskexecute) - Trigger task execution via queue system
-* [postApiTaskFinish](#postapitaskfinish) - Finish a task: clear current task marker
-* [postApiTaskImplementPhase](#postapitaskimplementphase) - Run implement phase for a task (spawns implement agent)
-* [postApiTaskInitContext](#postapitaskinitcontext) - Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
-* [postApiTaskList](#postapitasklist) - List tasks
-* [postApiTaskListContext](#postapitasklistcontext) - List all context entries for a task
-* [postApiTaskPause](#postapitaskpause) - Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
-* [postApiTaskPlan](#postapitaskplan) - Start Plan Agent to plan a task
-* [postApiTaskPlanPhase](#postapitaskplanphase) - Run plan phase for a task (spawns plan agent)
-* [postApiTaskQueueConfig](#postapitaskqueueconfig) - Get or update queue configuration
-* [postApiTaskQueueStatus](#postapitaskqueuestatus) - Get queue status
-* [postApiTaskReject](#postapitaskreject) - Reject a task in review: review -> backlog
-* [postApiTaskRemoveContext](#postapitaskremovecontext) - Remove context files from a task
-* [postApiTaskResume](#postapitaskresume) - Resume a paused task: paused -> queue/in_progress
-* [postApiTaskRetry](#postapitaskretry) - Retry a failed task: failed -> queue
-* [postApiTaskReview](#postapitaskreview) - View task details for review
-* [postApiTaskRunning](#postapitaskrunning) - Check if task execution is running
-* [postApiTaskSetAgent](#postapitasksetagent) - Set associated agent configuration for a task
-* [postApiTaskSetBase](#postapitasksetbase) - Set PR target branch for a task
-* [postApiTaskSetBranch](#postapitasksetbranch) - Set Git branch for a task
-* [postApiTaskSpecs](#postapitaskspecs) - Get task specs (PRD, subtasks, logs)
-* [postApiTaskStart](#postapitaskstart) - Start a task: set as current task, queue -> in_progress, optionally trigger execution
-* [postApiTaskStatus](#postapitaskstatus) - Get task status summary or details
-* [postApiTaskStop](#postapitaskstop) - Stop task execution
-* [postApiTaskUpdate](#postapitaskupdate) - Update task fields (not status - use lifecycle endpoints for status changes)
-* [postApiTaskValidateCheckPhasePassed](#postapitaskvalidatecheckphasepassed) - Validate check phase passed (runs verify commands or checks completion markers)
-* [postApiTaskValidateContext](#postapitaskvalidatecontext) - Validate that all context file references exist
-* [postApiTaskView](#postapitaskview) - View task details
-* [postApiTaskWorkPhase](#postapitaskworkphase) - Run work phase for a task (spawns work agent)
-* [postApiTasksBatchEvents](#postapitasksbatchevents) - Apply an event to multiple tasks (batch operation)
+* [list](#list) - List all tasks for a workspace (workspace_path required)
+* [create](#create)
+* [get](#get) - Get a specific task by ID
+* [update2](#update2)
+* [delete](#delete)
+* [update](#update)
+* [getSpecs](#getspecs) - Get task specs data (PRD, subtasks, logs, files)
+* [createBatchEvent](#createbatchevent) - Apply an event to multiple tasks (batch operation)
+* [getRunning](#getrunning) - Check if a task's execution process is currently running
+* [createSetBranch](#createsetbranch) - Set Git branch for a task
+* [createSetBase](#createsetbase) - Set PR target branch for a task
+* [createSetAgent](#createsetagent) - Set associated agent configuration for a task
+* [createInitContext](#createinitcontext) - Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
+* [createAddContext](#createaddcontext) - Add context files to a task
+* [createRemoveContext](#createremovecontext) - Remove context files from a task
+* [createListContext](#createlistcontext) - List all context entries for a task
+* [createValidateContext](#createvalidatecontext) - Validate that all context file references exist
+* [execute](#execute) - Trigger task execution via queue system
+* [stop](#stop) - Stop task execution
+* [createRunning](#createrunning) - Check if task execution is running
+* [createQueueStatu](#createqueuestatu) - Get queue status
+* [createQueueConfig](#createqueueconfig) - Get or update queue configuration
+* [createBatchEnqueue](#createbatchenqueue) - Batch enqueue multiple tasks for execution
+* [createClearHistory](#createclearhistory) - Clear completed and failed tasks from queue history
+* [createEvent](#createevent) - Get event history for a task
+* [createSpec](#createspec) - Get task specs (PRD, subtasks, logs)
+* [listEventsStream](#listeventsstream) - SSE stream for task events
+* [listExecutionStream](#listexecutionstream) - SSE stream for task execution progress
+* [start](#start) - Start a task: set as current task, queue -> in_progress, optionally trigger execution
+* [createFinish](#createfinish) - Finish a task: clear current task marker
+* [pause](#pause) - Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
+* [resume](#resume) - Resume a paused task: paused -> queue/in_progress
+* [approve](#approve) - Approve a task in review: review -> completed
+* [reject](#reject) - Reject a task in review: review -> backlog
+* [retry](#retry) - Retry a failed task: failed -> queue
+* [cancel](#cancel) - Cancel a task: * -> cancelled (terminal state)
+* [enqueue](#enqueue) - Move task from backlog to queue for execution
+* [dequeue](#dequeue) - Remove task from queue back to backlog
+* [archive](#archive) - Archive a completed task: completed -> archived
+* [listListArchive](#listlistarchive) - List archived tasks
+* [createReview](#createreview) - View task details for review
+* [createContext](#createcontext) - Get session context for AI agents
+* [createStatu](#createstatu) - Get task status summary or details
+* [createCreatePr](#createcreatepr) - Create PR from task
+* [createAddSession](#createaddsession) - Add a new session to journal file and update index.md
+* [createPlan](#createplan) - Start Plan Agent to plan a task
+* [createPlanPhase](#createplanphase) - Run plan phase for a task (spawns plan agent)
+* [createImplementPhase](#createimplementphase) - Run implement phase for a task (spawns implement agent)
+* [createCheckPhase](#createcheckphase) - Run check phase for a task (spawns check agent)
+* [createWorkPhase](#createworkphase) - Run work phase for a task (spawns work agent)
+* [view](#view) - View task details
+* [createDelete](#createdelete) - Delete a task
+* [list2](#list2) - List tasks
+* [createCreate](#createcreate) - Create a new task
+* [createUpdate](#createupdate) - Update task fields (not status - use lifecycle endpoints for status changes)
+* [createCreateWorktree](#createcreateworktree) - Create isolated git worktree for a task
+* [createValidateCheckPhasePassed](#createvalidatecheckphasepassed) - Validate check phase passed (runs verify commands or checks completion markers)
+* [cleanup](#cleanup) - Cleanup worktrees and related resources
+* [getSessions](#getsessions)
+* [listEventsStream2](#listeventsstream2)
+* [getEvents](#getevents)
+* [createEvent2](#createevent2)
+* [getEventStream](#geteventstream)
+* [getState](#getstate)
+* [validateEvent](#validateevent)
 
-## getApiTaskEventsStream
-
-SSE stream for task events
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/task/events-stream" method="get" path="/api/task/events-stream" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.getApiTaskEventsStream({
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTaskEventsStream } from "@viben/client-sdk/funcs/tasksGetApiTaskEventsStream.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksGetApiTaskEventsStream(sdk, {
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksGetApiTaskEventsStream failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTaskEventsStreamRequest](../../sdk/models/operations/getapitaskeventsstreamrequest.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiTaskExecutionStream
-
-SSE stream for task execution progress
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/task/execution-stream" method="get" path="/api/task/execution-stream" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.getApiTaskExecutionStream({
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTaskExecutionStream } from "@viben/client-sdk/funcs/tasksGetApiTaskExecutionStream.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksGetApiTaskExecutionStream(sdk, {
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksGetApiTaskExecutionStream failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTaskExecutionStreamRequest](../../sdk/models/operations/getapitaskexecutionstreamrequest.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiTaskListArchive
-
-List archived tasks
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="get_/api/task/list-archive" method="get" path="/api/task/list-archive" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.getApiTaskListArchive({
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTaskListArchive } from "@viben/client-sdk/funcs/tasksGetApiTaskListArchive.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksGetApiTaskListArchive(sdk, {
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksGetApiTaskListArchive failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTaskListArchiveRequest](../../sdk/models/operations/getapitasklistarchiverequest.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.GetApiTaskListArchiveResponse](../../sdk/models/operations/getapitasklistarchiveresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## getApiTasks
+## list
 
 List all tasks for a workspace (workspace_path required)
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/tasks" method="get" path="/api/tasks" -->
+<!-- UsageSnippet language="typescript" operationID="tasks_list" method="get" path="/api/tasks" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.tasks.getApiTasks({
+  const result = await vibenClient.tasks.list({
     workspacePath: "<value>",
   });
 
@@ -298,22 +100,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTasks } from "@viben/client-sdk/funcs/tasksGetApiTasks.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksList } from "@viben/client-sdk/funcs/tasksList.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await tasksGetApiTasks(sdk, {
+  const res = await tasksList(vibenClient, {
     workspacePath: "<value>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("tasksGetApiTasks failed:", res.error);
+    console.log("tasksList failed:", res.error);
   }
 }
 
@@ -324,14 +126,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTasksRequest](../../sdk/models/operations/getapitasksrequest.md)                                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.TasksListRequest](../../sdk/models/operations/taskslistrequest.md)                                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiTasksResponse](../../sdk/models/operations/getapitasksresponse.md)\>**
+**Promise\<[operations.TasksListResponse](../../sdk/models/operations/taskslistresponse.md)\>**
 
 ### Errors
 
@@ -339,20 +141,82 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiTasksId
+## create
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_create" method="post" path="/api/tasks" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.create();
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreate } from "@viben/client-sdk/funcs/tasksCreate.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreate(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreate failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## get
 
 Get a specific task by ID
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/tasks/{id}" method="get" path="/api/tasks/{id}" -->
+<!-- UsageSnippet language="typescript" operationID="tasks_get" method="get" path="/api/tasks/{id}" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.tasks.getApiTasksId({
+  const result = await vibenClient.tasks.get({
     id: "<id>",
   });
 
@@ -367,22 +231,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTasksId } from "@viben/client-sdk/funcs/tasksGetApiTasksId.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGet } from "@viben/client-sdk/funcs/tasksGet.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await tasksGetApiTasksId(sdk, {
+  const res = await tasksGet(vibenClient, {
     id: "<id>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("tasksGetApiTasksId failed:", res.error);
+    console.log("tasksGet failed:", res.error);
   }
 }
 
@@ -393,14 +257,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTasksIdRequest](../../sdk/models/operations/getapitasksidrequest.md)                                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.TasksGetRequest](../../sdk/models/operations/tasksgetrequest.md)                                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiTasksIdResponse](../../sdk/models/operations/getapitasksidresponse.md)\>**
+**Promise\<[operations.TasksGetResponse](../../sdk/models/operations/tasksgetresponse.md)\>**
 
 ### Errors
 
@@ -408,24 +272,22 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiTasksIdRunning
-
-Check if a task's execution process is currently running
+## update2
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/tasks/{id}/running" method="get" path="/api/tasks/{id}/running" -->
+<!-- UsageSnippet language="typescript" operationID="tasks_update_2" method="put" path="/api/tasks/{id}" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.tasks.getApiTasksIdRunning({
+  await vibenClient.tasks.update2({
     id: "<id>",
   });
 
-  console.log(result);
+
 }
 
 run();
@@ -436,22 +298,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTasksIdRunning } from "@viben/client-sdk/funcs/tasksGetApiTasksIdRunning.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksUpdate2 } from "@viben/client-sdk/funcs/tasksUpdate2.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await tasksGetApiTasksIdRunning(sdk, {
+  const res = await tasksUpdate2(vibenClient, {
     id: "<id>",
   });
   if (res.ok) {
     const { value: result } = res;
-    console.log(result);
+    
   } else {
-    console.log("tasksGetApiTasksIdRunning failed:", res.error);
+    console.log("tasksUpdate2 failed:", res.error);
   }
 }
 
@@ -462,14 +324,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTasksIdRunningRequest](../../sdk/models/operations/getapitasksidrunningrequest.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.TasksUpdate2Request](../../sdk/models/operations/tasksupdate2request.md)                                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiTasksIdRunningResponse](../../sdk/models/operations/getapitasksidrunningresponse.md)\>**
+**Promise\<void\>**
 
 ### Errors
 
@@ -477,20 +339,154 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## getApiTasksIdSpecs
+## delete
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_delete" method="delete" path="/api/tasks/{id}" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.delete({
+    id: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksDelete } from "@viben/client-sdk/funcs/tasksDelete.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksDelete(vibenClient, {
+    id: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksDelete failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksDeleteRequest](../../sdk/models/operations/tasksdeleterequest.md)                                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## update
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_update" method="patch" path="/api/tasks/{id}" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.update({
+    id: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksUpdate } from "@viben/client-sdk/funcs/tasksUpdate.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksUpdate(vibenClient, {
+    id: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksUpdate failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksUpdateRequest](../../sdk/models/operations/tasksupdaterequest.md)                                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getSpecs
 
 Get task specs data (PRD, subtasks, logs, files)
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="get_/api/tasks/{id}/specs" method="get" path="/api/tasks/{id}/specs" -->
+<!-- UsageSnippet language="typescript" operationID="tasks_getSpecs" method="get" path="/api/tasks/{id}/specs" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.tasks.getApiTasksIdSpecs({
+  const result = await vibenClient.tasks.getSpecs({
     id: "<id>",
   });
 
@@ -505,22 +501,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksGetApiTasksIdSpecs } from "@viben/client-sdk/funcs/tasksGetApiTasksIdSpecs.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGetSpecs } from "@viben/client-sdk/funcs/tasksGetSpecs.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await tasksGetApiTasksIdSpecs(sdk, {
+  const res = await tasksGetSpecs(vibenClient, {
     id: "<id>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("tasksGetApiTasksIdSpecs failed:", res.error);
+    console.log("tasksGetSpecs failed:", res.error);
   }
 }
 
@@ -531,14 +527,14 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.GetApiTasksIdSpecsRequest](../../sdk/models/operations/getapitasksidspecsrequest.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.TasksGetSpecsRequest](../../sdk/models/operations/tasksgetspecsrequest.md)                                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.GetApiTasksIdSpecsResponse](../../sdk/models/operations/getapitasksidspecsresponse.md)\>**
+**Promise\<[operations.TasksGetSpecsResponse](../../sdk/models/operations/tasksgetspecsresponse.md)\>**
 
 ### Errors
 
@@ -546,3302 +542,2296 @@ run();
 | --------------- | --------------- | --------------- |
 | errors.SDKError | 4XX, 5XX        | \*/\*           |
 
-## postApiTaskAddContext
-
-Add context files to a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/add-context" method="post" path="/api/task/add-context" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskAddContext({
-    files: [
-      {
-        path: "/selinux",
-      },
-    ],
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskAddContext } from "@viben/client-sdk/funcs/tasksPostApiTaskAddContext.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskAddContext(sdk, {
-    files: [
-      {
-        path: "/selinux",
-      },
-    ],
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskAddContext failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskAddContextRequestBody](../../sdk/models/operations/postapitaskaddcontextrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskAddContextResponse](../../sdk/models/operations/postapitaskaddcontextresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskAddSession
-
-Add a new session to journal file and update index.md
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/add-session" method="post" path="/api/task/add-session" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskAddSession({
-    requestBody: {
-      title: "<value>",
-    },
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskAddSession } from "@viben/client-sdk/funcs/tasksPostApiTaskAddSession.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskAddSession(sdk, {
-    requestBody: {
-      title: "<value>",
-    },
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskAddSession failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskAddSessionRequest](../../sdk/models/operations/postapitaskaddsessionrequest.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskApprove
-
-Approve a task in review: review -> completed
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/approve" method="post" path="/api/task/approve" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskApprove({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskApprove } from "@viben/client-sdk/funcs/tasksPostApiTaskApprove.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskApprove(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskApprove failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskApproveRequestBody](../../sdk/models/operations/postapitaskapproverequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskApproveResponse](../../sdk/models/operations/postapitaskapproveresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskArchive
-
-Archive a completed task: completed -> archived
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/archive" method="post" path="/api/task/archive" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskArchive({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskArchive } from "@viben/client-sdk/funcs/tasksPostApiTaskArchive.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskArchive(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskArchive failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskArchiveRequestBody](../../sdk/models/operations/postapitaskarchiverequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskArchiveResponse](../../sdk/models/operations/postapitaskarchiveresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskBatchEnqueue
-
-Batch enqueue multiple tasks for execution
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/batch-enqueue" method="post" path="/api/task/batch-enqueue" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskBatchEnqueue({
-    taskDirs: [
-      "<value 1>",
-      "<value 2>",
-      "<value 3>",
-    ],
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskBatchEnqueue } from "@viben/client-sdk/funcs/tasksPostApiTaskBatchEnqueue.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskBatchEnqueue(sdk, {
-    taskDirs: [
-      "<value 1>",
-      "<value 2>",
-      "<value 3>",
-    ],
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskBatchEnqueue failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskBatchEnqueueRequestBody](../../sdk/models/operations/postapitaskbatchenqueuerequestbody.md)                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskBatchEnqueueResponseBody](../../sdk/models/operations/postapitaskbatchenqueueresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskCancel
-
-Cancel a task: * -> cancelled (terminal state)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/cancel" method="post" path="/api/task/cancel" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskCancel({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskCancel } from "@viben/client-sdk/funcs/tasksPostApiTaskCancel.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskCancel(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskCancel failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskCancelRequestBody](../../sdk/models/operations/postapitaskcancelrequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskCancelResponse](../../sdk/models/operations/postapitaskcancelresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskCheckPhase
-
-Run check phase for a task (spawns check agent)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/check-phase" method="post" path="/api/task/check-phase" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskCheckPhase({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskCheckPhase } from "@viben/client-sdk/funcs/tasksPostApiTaskCheckPhase.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskCheckPhase(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskCheckPhase failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskCheckPhaseRequestBody](../../sdk/models/operations/postapitaskcheckphaserequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskCleanup
-
-Cleanup worktrees and related resources
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/cleanup" method="post" path="/api/task/cleanup" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskCleanup({
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskCleanup } from "@viben/client-sdk/funcs/tasksPostApiTaskCleanup.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskCleanup(sdk, {
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskCleanup failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskCleanupRequestBody](../../sdk/models/operations/postapitaskcleanuprequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskClearHistory
-
-Clear completed and failed tasks from queue history
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/clear-history" method="post" path="/api/task/clear-history" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskClearHistory();
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskClearHistory } from "@viben/client-sdk/funcs/tasksPostApiTaskClearHistory.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskClearHistory(sdk);
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskClearHistory failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskClearHistoryResponseBody](../../sdk/models/operations/postapitaskclearhistoryresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskContext
-
-Get session context for AI agents
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/context" method="post" path="/api/task/context" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskContext({
-    requestBody: {},
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskContext } from "@viben/client-sdk/funcs/tasksPostApiTaskContext.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskContext(sdk, {
-    requestBody: {},
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskContext failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskContextRequest](../../sdk/models/operations/postapitaskcontextrequest.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskCreate
-
-Create a new task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/create" method="post" path="/api/task/create" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskCreate({
-    title: "<value>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskCreate } from "@viben/client-sdk/funcs/tasksPostApiTaskCreate.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskCreate(sdk, {
-    title: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskCreate failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskCreateRequestBody](../../sdk/models/operations/postapitaskcreaterequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskCreatePr
-
-Create PR from task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/create-pr" method="post" path="/api/task/create-pr" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskCreatePr({
-    requestBody: {},
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskCreatePr } from "@viben/client-sdk/funcs/tasksPostApiTaskCreatePr.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskCreatePr(sdk, {
-    requestBody: {},
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskCreatePr failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskCreatePrRequest](../../sdk/models/operations/postapitaskcreateprrequest.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskCreateWorktree
-
-Create isolated git worktree for a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/create-worktree" method="post" path="/api/task/create-worktree" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskCreateWorktree({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskCreateWorktree } from "@viben/client-sdk/funcs/tasksPostApiTaskCreateWorktree.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskCreateWorktree(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskCreateWorktree failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskCreateWorktreeRequestBody](../../sdk/models/operations/postapitaskcreateworktreerequestbody.md)                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskDelete
-
-Delete a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/delete" method="post" path="/api/task/delete" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskDelete({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskDelete } from "@viben/client-sdk/funcs/tasksPostApiTaskDelete.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskDelete(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskDelete failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskDeleteRequestBody](../../sdk/models/operations/postapitaskdeleterequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskDequeue
-
-Remove task from queue back to backlog
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/dequeue" method="post" path="/api/task/dequeue" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskDequeue({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskDequeue } from "@viben/client-sdk/funcs/tasksPostApiTaskDequeue.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskDequeue(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskDequeue failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskDequeueRequestBody](../../sdk/models/operations/postapitaskdequeuerequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskEnqueue
-
-Move task from backlog to queue for execution
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/enqueue" method="post" path="/api/task/enqueue" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskEnqueue({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskEnqueue } from "@viben/client-sdk/funcs/tasksPostApiTaskEnqueue.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskEnqueue(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskEnqueue failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskEnqueueRequestBody](../../sdk/models/operations/postapitaskenqueuerequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskEvents
-
-Get event history for a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/events" method="post" path="/api/task/events" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskEvents({
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskEvents } from "@viben/client-sdk/funcs/tasksPostApiTaskEvents.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskEvents(sdk, {
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskEvents failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskEventsRequestBody](../../sdk/models/operations/postapitaskeventsrequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskEventsResponse](../../sdk/models/operations/postapitaskeventsresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskExecute
-
-Trigger task execution via queue system
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/execute" method="post" path="/api/task/execute" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskExecute({
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskExecute } from "@viben/client-sdk/funcs/tasksPostApiTaskExecute.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskExecute(sdk, {
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskExecute failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskExecuteRequestBody](../../sdk/models/operations/postapitaskexecuterequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskExecuteResponse](../../sdk/models/operations/postapitaskexecuteresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskFinish
-
-Finish a task: clear current task marker
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/finish" method="post" path="/api/task/finish" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskFinish({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskFinish } from "@viben/client-sdk/funcs/tasksPostApiTaskFinish.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskFinish(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskFinish failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskFinishRequestBody](../../sdk/models/operations/postapitaskfinishrequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskFinishResponseBody](../../sdk/models/operations/postapitaskfinishresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskImplementPhase
-
-Run implement phase for a task (spawns implement agent)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/implement-phase" method="post" path="/api/task/implement-phase" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskImplementPhase({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskImplementPhase } from "@viben/client-sdk/funcs/tasksPostApiTaskImplementPhase.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskImplementPhase(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskImplementPhase failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskImplementPhaseRequestBody](../../sdk/models/operations/postapitaskimplementphaserequestbody.md)                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskInitContext
-
-Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/init-context" method="post" path="/api/task/init-context" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskInitContext({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskInitContext } from "@viben/client-sdk/funcs/tasksPostApiTaskInitContext.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskInitContext(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskInitContext failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskInitContextRequestBody](../../sdk/models/operations/postapitaskinitcontextrequestbody.md)                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskInitContextResponse](../../sdk/models/operations/postapitaskinitcontextresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskList
-
-List tasks
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/list" method="post" path="/api/task/list" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskList({
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskList } from "@viben/client-sdk/funcs/tasksPostApiTaskList.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskList(sdk, {
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskList failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskListRequestBody](../../sdk/models/operations/postapitasklistrequestbody.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskListContext
-
-List all context entries for a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/list-context" method="post" path="/api/task/list-context" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskListContext({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskListContext } from "@viben/client-sdk/funcs/tasksPostApiTaskListContext.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskListContext(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskListContext failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskListContextRequestBody](../../sdk/models/operations/postapitasklistcontextrequestbody.md)                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskListContextResponse](../../sdk/models/operations/postapitasklistcontextresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskPause
-
-Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/pause" method="post" path="/api/task/pause" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskPause({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskPause } from "@viben/client-sdk/funcs/tasksPostApiTaskPause.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskPause(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskPause failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskPauseRequestBody](../../sdk/models/operations/postapitaskpauserequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskPauseResponse](../../sdk/models/operations/postapitaskpauseresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskPlan
-
-Start Plan Agent to plan a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/plan" method="post" path="/api/task/plan" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskPlan({
-    requestBody: {
-      name: "<value>",
-      requirement: "<value>",
-    },
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskPlan } from "@viben/client-sdk/funcs/tasksPostApiTaskPlan.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskPlan(sdk, {
-    requestBody: {
-      name: "<value>",
-      requirement: "<value>",
-    },
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskPlan failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskPlanRequest](../../sdk/models/operations/postapitaskplanrequest.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskPlanPhase
-
-Run plan phase for a task (spawns plan agent)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/plan-phase" method="post" path="/api/task/plan-phase" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskPlanPhase({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskPlanPhase } from "@viben/client-sdk/funcs/tasksPostApiTaskPlanPhase.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskPlanPhase(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskPlanPhase failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskPlanPhaseRequestBody](../../sdk/models/operations/postapitaskplanphaserequestbody.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskQueueConfig
-
-Get or update queue configuration
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/queue-config" method="post" path="/api/task/queue-config" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskQueueConfig({});
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskQueueConfig } from "@viben/client-sdk/funcs/tasksPostApiTaskQueueConfig.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskQueueConfig(sdk, {});
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskQueueConfig failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskQueueConfigRequestBody](../../sdk/models/operations/postapitaskqueueconfigrequestbody.md)                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskQueueConfigResponseBody](../../sdk/models/operations/postapitaskqueueconfigresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskQueueStatus
-
-Get queue status
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/queue-status" method="post" path="/api/task/queue-status" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskQueueStatus();
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskQueueStatus } from "@viben/client-sdk/funcs/tasksPostApiTaskQueueStatus.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskQueueStatus(sdk);
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskQueueStatus failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskQueueStatusResponseBody](../../sdk/models/operations/postapitaskqueuestatusresponsebody.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskReject
-
-Reject a task in review: review -> backlog
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/reject" method="post" path="/api/task/reject" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskReject({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskReject } from "@viben/client-sdk/funcs/tasksPostApiTaskReject.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskReject(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskReject failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskRejectRequestBody](../../sdk/models/operations/postapitaskrejectrequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskRejectResponse](../../sdk/models/operations/postapitaskrejectresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskRemoveContext
-
-Remove context files from a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/remove-context" method="post" path="/api/task/remove-context" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskRemoveContext({
-    files: [
-      "<value 1>",
-      "<value 2>",
-      "<value 3>",
-    ],
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskRemoveContext } from "@viben/client-sdk/funcs/tasksPostApiTaskRemoveContext.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskRemoveContext(sdk, {
-    files: [
-      "<value 1>",
-      "<value 2>",
-      "<value 3>",
-    ],
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskRemoveContext failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskRemoveContextRequestBody](../../sdk/models/operations/postapitaskremovecontextrequestbody.md)                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskRemoveContextResponse](../../sdk/models/operations/postapitaskremovecontextresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskResume
-
-Resume a paused task: paused -> queue/in_progress
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/resume" method="post" path="/api/task/resume" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskResume({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskResume } from "@viben/client-sdk/funcs/tasksPostApiTaskResume.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskResume(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskResume failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskResumeRequestBody](../../sdk/models/operations/postapitaskresumerequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskResumeResponse](../../sdk/models/operations/postapitaskresumeresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskRetry
-
-Retry a failed task: failed -> queue
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/retry" method="post" path="/api/task/retry" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskRetry({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskRetry } from "@viben/client-sdk/funcs/tasksPostApiTaskRetry.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskRetry(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskRetry failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskRetryRequestBody](../../sdk/models/operations/postapitaskretryrequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskRetryResponse](../../sdk/models/operations/postapitaskretryresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskReview
-
-View task details for review
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/review" method="post" path="/api/task/review" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskReview({
-    taskDir: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskReview } from "@viben/client-sdk/funcs/tasksPostApiTaskReview.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskReview(sdk, {
-    taskDir: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskReview failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskReviewRequest](../../sdk/models/operations/postapitaskreviewrequest.md)                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskRunning
-
-Check if task execution is running
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/running" method="post" path="/api/task/running" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskRunning({
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskRunning } from "@viben/client-sdk/funcs/tasksPostApiTaskRunning.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskRunning(sdk, {
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskRunning failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskRunningRequestBody](../../sdk/models/operations/postapitaskrunningrequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskRunningResponse](../../sdk/models/operations/postapitaskrunningresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskSetAgent
-
-Set associated agent configuration for a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/set-agent" method="post" path="/api/task/set-agent" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskSetAgent({
-    agentId: "<id>",
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskSetAgent } from "@viben/client-sdk/funcs/tasksPostApiTaskSetAgent.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskSetAgent(sdk, {
-    agentId: "<id>",
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskSetAgent failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskSetAgentRequestBody](../../sdk/models/operations/postapitasksetagentrequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskSetAgentResponse](../../sdk/models/operations/postapitasksetagentresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskSetBase
-
-Set PR target branch for a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/set-base" method="post" path="/api/task/set-base" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskSetBase({
-    baseBranch: "<value>",
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskSetBase } from "@viben/client-sdk/funcs/tasksPostApiTaskSetBase.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskSetBase(sdk, {
-    baseBranch: "<value>",
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskSetBase failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskSetBaseRequestBody](../../sdk/models/operations/postapitasksetbaserequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskSetBaseResponse](../../sdk/models/operations/postapitasksetbaseresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskSetBranch
-
-Set Git branch for a task
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/set-branch" method="post" path="/api/task/set-branch" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskSetBranch({
-    branch: "<value>",
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskSetBranch } from "@viben/client-sdk/funcs/tasksPostApiTaskSetBranch.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskSetBranch(sdk, {
-    branch: "<value>",
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskSetBranch failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskSetBranchRequestBody](../../sdk/models/operations/postapitasksetbranchrequestbody.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskSetBranchResponse](../../sdk/models/operations/postapitasksetbranchresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskSpecs
-
-Get task specs (PRD, subtasks, logs)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/specs" method="post" path="/api/task/specs" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskSpecs({
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskSpecs } from "@viben/client-sdk/funcs/tasksPostApiTaskSpecs.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskSpecs(sdk, {
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskSpecs failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskSpecsRequestBody](../../sdk/models/operations/postapitaskspecsrequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskSpecsResponse](../../sdk/models/operations/postapitaskspecsresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskStart
-
-Start a task: set as current task, queue -> in_progress, optionally trigger execution
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/start" method="post" path="/api/task/start" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskStart({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskStart } from "@viben/client-sdk/funcs/tasksPostApiTaskStart.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskStart(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskStart failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskStartRequestBody](../../sdk/models/operations/postapitaskstartrequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskStartResponse](../../sdk/models/operations/postapitaskstartresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskStatus
-
-Get task status summary or details
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/status" method="post" path="/api/task/status" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskStatus({
-    requestBody: {},
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskStatus } from "@viben/client-sdk/funcs/tasksPostApiTaskStatus.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskStatus(sdk, {
-    requestBody: {},
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskStatus failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskStatusRequest](../../sdk/models/operations/postapitaskstatusrequest.md)                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskStop
-
-Stop task execution
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/stop" method="post" path="/api/task/stop" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskStop({
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskStop } from "@viben/client-sdk/funcs/tasksPostApiTaskStop.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskStop(sdk, {
-    taskDir: "<value>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskStop failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskStopRequestBody](../../sdk/models/operations/postapitaskstoprequestbody.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskStopResponse](../../sdk/models/operations/postapitaskstopresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskUpdate
-
-Update task fields (not status - use lifecycle endpoints for status changes)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/update" method="post" path="/api/task/update" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskUpdate({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskUpdate } from "@viben/client-sdk/funcs/tasksPostApiTaskUpdate.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskUpdate(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskUpdate failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskUpdateRequestBody](../../sdk/models/operations/postapitaskupdaterequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskUpdateResponse](../../sdk/models/operations/postapitaskupdateresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskValidateCheckPhasePassed
-
-Validate check phase passed (runs verify commands or checks completion markers)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/validate-check-phase-passed" method="post" path="/api/task/validate-check-phase-passed" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskValidateCheckPhasePassed({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskValidateCheckPhasePassed } from "@viben/client-sdk/funcs/tasksPostApiTaskValidateCheckPhasePassed.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskValidateCheckPhasePassed(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskValidateCheckPhasePassed failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskValidateCheckPhasePassedRequestBody](../../sdk/models/operations/postapitaskvalidatecheckphasepassedrequestbody.md)                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskValidateContext
-
-Validate that all context file references exist
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/validate-context" method="post" path="/api/task/validate-context" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  const result = await sdk.tasks.postApiTaskValidateContext({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-  console.log(result);
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskValidateContext } from "@viben/client-sdk/funcs/tasksPostApiTaskValidateContext.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskValidateContext(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    console.log(result);
-  } else {
-    console.log("tasksPostApiTaskValidateContext failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskValidateContextRequestBody](../../sdk/models/operations/postapitaskvalidatecontextrequestbody.md)                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<[operations.PostApiTaskValidateContextResponse](../../sdk/models/operations/postapitaskvalidatecontextresponse.md)\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskView
-
-View task details
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/view" method="post" path="/api/task/view" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskView({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskView } from "@viben/client-sdk/funcs/tasksPostApiTaskView.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskView(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskView failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskViewRequestBody](../../sdk/models/operations/postapitaskviewrequestbody.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTaskWorkPhase
-
-Run work phase for a task (spawns work agent)
-
-### Example Usage
-
-<!-- UsageSnippet language="typescript" operationID="post_/api/task/work-phase" method="post" path="/api/task/work-phase" -->
-```typescript
-import { SDK } from "@viben/client-sdk";
-
-const sdk = new SDK();
-
-async function run() {
-  await sdk.tasks.postApiTaskWorkPhase({
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-
-
-}
-
-run();
-```
-
-### Standalone function
-
-The standalone function version of this method:
-
-```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTaskWorkPhase } from "@viben/client-sdk/funcs/tasksPostApiTaskWorkPhase.js";
-
-// Use `SDKCore` for best tree-shaking performance.
-// You can create one instance of it to use across an application.
-const sdk = new SDKCore();
-
-async function run() {
-  const res = await tasksPostApiTaskWorkPhase(sdk, {
-    taskId: "<id>",
-    workspacePath: "<value>",
-  });
-  if (res.ok) {
-    const { value: result } = res;
-    
-  } else {
-    console.log("tasksPostApiTaskWorkPhase failed:", res.error);
-  }
-}
-
-run();
-```
-
-### Parameters
-
-| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTaskWorkPhaseRequestBody](../../sdk/models/operations/postapitaskworkphaserequestbody.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
-| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
-| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
-| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
-
-### Response
-
-**Promise\<void\>**
-
-### Errors
-
-| Error Type      | Status Code     | Content Type    |
-| --------------- | --------------- | --------------- |
-| errors.SDKError | 4XX, 5XX        | \*/\*           |
-
-## postApiTasksBatchEvents
+## createBatchEvent
 
 Apply an event to multiple tasks (batch operation)
 
 ### Example Usage
 
-<!-- UsageSnippet language="typescript" operationID="post_/api/tasks/batch/events" method="post" path="/api/tasks/batch/events" -->
+<!-- UsageSnippet language="typescript" operationID="tasks_createBatchEvent" method="post" path="/api/tasks/batch/events" -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  const result = await sdk.tasks.postApiTasksBatchEvents({
+  const result = await vibenClient.tasks.createBatchEvent({
+    workspacePath: "<value>",
+    taskDirs: [
+      "<value 1>",
+    ],
     eventType: "<value>",
-    taskDirs: [],
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateBatchEvent } from "@viben/client-sdk/funcs/tasksCreateBatchEvent.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateBatchEvent(vibenClient, {
+    workspacePath: "<value>",
+    taskDirs: [
+      "<value 1>",
+    ],
+    eventType: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateBatchEvent failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksCreateBatchEventRequestBody](../../sdk/models/operations/taskscreatebatcheventrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TasksCreateBatchEventResponse](../../sdk/models/operations/taskscreatebatcheventresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getRunning
+
+Check if a task's execution process is currently running
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_getRunning" method="get" path="/api/tasks/{id}/running" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.getRunning({
+    id: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGetRunning } from "@viben/client-sdk/funcs/tasksGetRunning.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksGetRunning(vibenClient, {
+    id: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksGetRunning failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksGetRunningRequest](../../sdk/models/operations/tasksgetrunningrequest.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TasksGetRunningResponse](../../sdk/models/operations/tasksgetrunningresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createSetBranch
+
+Set Git branch for a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createSetBranch" method="post" path="/api/task/set-branch" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createSetBranch({
+    workspacePath: "<value>",
+    taskId: "<id>",
+    branch: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateSetBranch } from "@viben/client-sdk/funcs/tasksCreateSetBranch.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateSetBranch(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+    branch: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateSetBranch failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateSetBranchRequestBody](../../sdk/models/operations/taskcreatesetbranchrequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateSetBranchResponse](../../sdk/models/operations/taskcreatesetbranchresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createSetBase
+
+Set PR target branch for a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createSetBase" method="post" path="/api/task/set-base" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createSetBase({
+    workspacePath: "<value>",
+    taskId: "<id>",
+    baseBranch: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateSetBase } from "@viben/client-sdk/funcs/tasksCreateSetBase.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateSetBase(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+    baseBranch: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateSetBase failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateSetBaseRequestBody](../../sdk/models/operations/taskcreatesetbaserequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateSetBaseResponse](../../sdk/models/operations/taskcreatesetbaseresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createSetAgent
+
+Set associated agent configuration for a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createSetAgent" method="post" path="/api/task/set-agent" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createSetAgent({
+    workspacePath: "<value>",
+    taskId: "<id>",
+    agentId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateSetAgent } from "@viben/client-sdk/funcs/tasksCreateSetAgent.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateSetAgent(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+    agentId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateSetAgent failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateSetAgentRequestBody](../../sdk/models/operations/taskcreatesetagentrequestbody.md)                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateSetAgentResponse](../../sdk/models/operations/taskcreatesetagentresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createInitContext
+
+Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createInitContext" method="post" path="/api/task/init-context" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createInitContext({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateInitContext } from "@viben/client-sdk/funcs/tasksCreateInitContext.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateInitContext(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateInitContext failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateInitContextRequestBody](../../sdk/models/operations/taskcreateinitcontextrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateInitContextResponse](../../sdk/models/operations/taskcreateinitcontextresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createAddContext
+
+Add context files to a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createAddContext" method="post" path="/api/task/add-context" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createAddContext({
+    workspacePath: "<value>",
+    taskId: "<id>",
+    files: [],
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateAddContext } from "@viben/client-sdk/funcs/tasksCreateAddContext.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateAddContext(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+    files: [],
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateAddContext failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateAddContextRequestBody](../../sdk/models/operations/taskcreateaddcontextrequestbody.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateAddContextResponse](../../sdk/models/operations/taskcreateaddcontextresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createRemoveContext
+
+Remove context files from a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createRemoveContext" method="post" path="/api/task/remove-context" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createRemoveContext({
+    workspacePath: "<value>",
+    taskId: "<id>",
+    files: [
+      "<value 1>",
+    ],
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateRemoveContext } from "@viben/client-sdk/funcs/tasksCreateRemoveContext.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateRemoveContext(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+    files: [
+      "<value 1>",
+    ],
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateRemoveContext failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateRemoveContextRequestBody](../../sdk/models/operations/taskcreateremovecontextrequestbody.md)                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateRemoveContextResponse](../../sdk/models/operations/taskcreateremovecontextresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createListContext
+
+List all context entries for a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createListContext" method="post" path="/api/task/list-context" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createListContext({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateListContext } from "@viben/client-sdk/funcs/tasksCreateListContext.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateListContext(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateListContext failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateListContextRequestBody](../../sdk/models/operations/taskcreatelistcontextrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateListContextResponse](../../sdk/models/operations/taskcreatelistcontextresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createValidateContext
+
+Validate that all context file references exist
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createValidateContext" method="post" path="/api/task/validate-context" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createValidateContext({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateValidateContext } from "@viben/client-sdk/funcs/tasksCreateValidateContext.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateValidateContext(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateValidateContext failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateValidateContextRequestBody](../../sdk/models/operations/taskcreatevalidatecontextrequestbody.md)                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateValidateContextResponse](../../sdk/models/operations/taskcreatevalidatecontextresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## execute
+
+Trigger task execution via queue system
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_execute" method="post" path="/api/task/execute" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.execute({
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksExecute } from "@viben/client-sdk/funcs/tasksExecute.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksExecute(vibenClient, {
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksExecute failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskExecuteRequestBody](../../sdk/models/operations/taskexecuterequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskExecuteResponse](../../sdk/models/operations/taskexecuteresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## stop
+
+Stop task execution
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_stop" method="post" path="/api/task/stop" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.stop({
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksStop } from "@viben/client-sdk/funcs/tasksStop.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksStop(vibenClient, {
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksStop failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskStopRequestBody](../../sdk/models/operations/taskstoprequestbody.md)                                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskStopResponse](../../sdk/models/operations/taskstopresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createRunning
+
+Check if task execution is running
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createRunning" method="post" path="/api/task/running" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createRunning({
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateRunning } from "@viben/client-sdk/funcs/tasksCreateRunning.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateRunning(vibenClient, {
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateRunning failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateRunningRequestBody](../../sdk/models/operations/taskcreaterunningrequestbody.md)                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateRunningResponse](../../sdk/models/operations/taskcreaterunningresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createQueueStatu
+
+Get queue status
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createQueueStatu" method="post" path="/api/task/queue-status" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createQueueStatu();
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateQueueStatu } from "@viben/client-sdk/funcs/tasksCreateQueueStatu.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateQueueStatu(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateQueueStatu failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateQueueStatuResponseBody](../../sdk/models/operations/taskcreatequeuestaturesponsebody.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createQueueConfig
+
+Get or update queue configuration
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createQueueConfig" method="post" path="/api/task/queue-config" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createQueueConfig({});
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateQueueConfig } from "@viben/client-sdk/funcs/tasksCreateQueueConfig.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateQueueConfig(vibenClient, {});
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateQueueConfig failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateQueueConfigRequestBody](../../sdk/models/operations/taskcreatequeueconfigrequestbody.md)                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateQueueConfigResponseBody](../../sdk/models/operations/taskcreatequeueconfigresponsebody.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createBatchEnqueue
+
+Batch enqueue multiple tasks for execution
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createBatchEnqueue" method="post" path="/api/task/batch-enqueue" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createBatchEnqueue({
+    workspacePath: "<value>",
+    taskDirs: [
+      "<value 1>",
+      "<value 2>",
+      "<value 3>",
+    ],
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateBatchEnqueue } from "@viben/client-sdk/funcs/tasksCreateBatchEnqueue.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateBatchEnqueue(vibenClient, {
+    workspacePath: "<value>",
+    taskDirs: [
+      "<value 1>",
+      "<value 2>",
+      "<value 3>",
+    ],
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateBatchEnqueue failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateBatchEnqueueRequestBody](../../sdk/models/operations/taskcreatebatchenqueuerequestbody.md)                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateBatchEnqueueResponseBody](../../sdk/models/operations/taskcreatebatchenqueueresponsebody.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createClearHistory
+
+Clear completed and failed tasks from queue history
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createClearHistory" method="post" path="/api/task/clear-history" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createClearHistory();
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateClearHistory } from "@viben/client-sdk/funcs/tasksCreateClearHistory.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateClearHistory(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateClearHistory failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateClearHistoryResponseBody](../../sdk/models/operations/taskcreateclearhistoryresponsebody.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createEvent
+
+Get event history for a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createEvent" method="post" path="/api/task/events" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createEvent({
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateEvent } from "@viben/client-sdk/funcs/tasksCreateEvent.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateEvent(vibenClient, {
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateEvent failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateEventRequestBody](../../sdk/models/operations/taskcreateeventrequestbody.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateEventResponse](../../sdk/models/operations/taskcreateeventresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createSpec
+
+Get task specs (PRD, subtasks, logs)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createSpec" method="post" path="/api/task/specs" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createSpec({
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateSpec } from "@viben/client-sdk/funcs/tasksCreateSpec.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateSpec(vibenClient, {
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateSpec failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateSpecRequestBody](../../sdk/models/operations/taskcreatespecrequestbody.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateSpecResponse](../../sdk/models/operations/taskcreatespecresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## listEventsStream
+
+SSE stream for task events
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_listEventsStream" method="get" path="/api/task/events-stream" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.listEventsStream({
+    workspacePath: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksListEventsStream } from "@viben/client-sdk/funcs/tasksListEventsStream.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksListEventsStream(vibenClient, {
+    workspacePath: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksListEventsStream failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskListEventsStreamRequest](../../sdk/models/operations/tasklisteventsstreamrequest.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## listExecutionStream
+
+SSE stream for task execution progress
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_listExecutionStream" method="get" path="/api/task/execution-stream" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.listExecutionStream({
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksListExecutionStream } from "@viben/client-sdk/funcs/tasksListExecutionStream.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksListExecutionStream(vibenClient, {
+    workspacePath: "<value>",
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksListExecutionStream failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskListExecutionStreamRequest](../../sdk/models/operations/tasklistexecutionstreamrequest.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## start
+
+Start a task: set as current task, queue -> in_progress, optionally trigger execution
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_start" method="post" path="/api/task/start" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.start({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksStart } from "@viben/client-sdk/funcs/tasksStart.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksStart(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksStart failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskStartRequestBody](../../sdk/models/operations/taskstartrequestbody.md)                                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskStartResponse](../../sdk/models/operations/taskstartresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createFinish
+
+Finish a task: clear current task marker
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createFinish" method="post" path="/api/task/finish" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createFinish({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateFinish } from "@viben/client-sdk/funcs/tasksCreateFinish.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateFinish(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateFinish failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateFinishRequestBody](../../sdk/models/operations/taskcreatefinishrequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateFinishResponseBody](../../sdk/models/operations/taskcreatefinishresponsebody.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## pause
+
+Pause a task: in_progress/queue -> paused (saves pausedSnapshot)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_pause" method="post" path="/api/task/pause" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.pause({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksPause } from "@viben/client-sdk/funcs/tasksPause.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksPause(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksPause failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskPauseRequestBody](../../sdk/models/operations/taskpauserequestbody.md)                                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskPauseResponse](../../sdk/models/operations/taskpauseresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## resume
+
+Resume a paused task: paused -> queue/in_progress
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_resume" method="post" path="/api/task/resume" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.resume({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksResume } from "@viben/client-sdk/funcs/tasksResume.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksResume(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksResume failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskResumeRequestBody](../../sdk/models/operations/taskresumerequestbody.md)                                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskResumeResponse](../../sdk/models/operations/taskresumeresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## approve
+
+Approve a task in review: review -> completed
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_approve" method="post" path="/api/task/approve" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.approve({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksApprove } from "@viben/client-sdk/funcs/tasksApprove.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksApprove(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksApprove failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskApproveRequestBody](../../sdk/models/operations/taskapproverequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskApproveResponse](../../sdk/models/operations/taskapproveresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## reject
+
+Reject a task in review: review -> backlog
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_reject" method="post" path="/api/task/reject" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.reject({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksReject } from "@viben/client-sdk/funcs/tasksReject.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksReject(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksReject failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskRejectRequestBody](../../sdk/models/operations/taskrejectrequestbody.md)                                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskRejectResponse](../../sdk/models/operations/taskrejectresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## retry
+
+Retry a failed task: failed -> queue
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_retry" method="post" path="/api/task/retry" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.retry({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksRetry } from "@viben/client-sdk/funcs/tasksRetry.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksRetry(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksRetry failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskRetryRequestBody](../../sdk/models/operations/taskretryrequestbody.md)                                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskRetryResponse](../../sdk/models/operations/taskretryresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## cancel
+
+Cancel a task: * -> cancelled (terminal state)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_cancel" method="post" path="/api/task/cancel" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.cancel({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCancel } from "@viben/client-sdk/funcs/tasksCancel.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCancel(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCancel failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCancelRequestBody](../../sdk/models/operations/taskcancelrequestbody.md)                                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCancelResponse](../../sdk/models/operations/taskcancelresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## enqueue
+
+Move task from backlog to queue for execution
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_enqueue" method="post" path="/api/task/enqueue" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.enqueue({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksEnqueue } from "@viben/client-sdk/funcs/tasksEnqueue.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksEnqueue(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksEnqueue failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskEnqueueRequestBody](../../sdk/models/operations/taskenqueuerequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## dequeue
+
+Remove task from queue back to backlog
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_dequeue" method="post" path="/api/task/dequeue" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.dequeue({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksDequeue } from "@viben/client-sdk/funcs/tasksDequeue.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksDequeue(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksDequeue failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskDequeueRequestBody](../../sdk/models/operations/taskdequeuerequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## archive
+
+Archive a completed task: completed -> archived
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_archive" method="post" path="/api/task/archive" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.archive({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksArchive } from "@viben/client-sdk/funcs/tasksArchive.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksArchive(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksArchive failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskArchiveRequestBody](../../sdk/models/operations/taskarchiverequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskArchiveResponse](../../sdk/models/operations/taskarchiveresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## listListArchive
+
+List archived tasks
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_listListArchive" method="get" path="/api/task/list-archive" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.listListArchive({
     workspacePath: "<value>",
   });
 
@@ -3856,24 +2846,22 @@ run();
 The standalone function version of this method:
 
 ```typescript
-import { SDKCore } from "@viben/client-sdk/core.js";
-import { tasksPostApiTasksBatchEvents } from "@viben/client-sdk/funcs/tasksPostApiTasksBatchEvents.js";
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksListListArchive } from "@viben/client-sdk/funcs/tasksListListArchive.js";
 
-// Use `SDKCore` for best tree-shaking performance.
+// Use `VibenClientCore` for best tree-shaking performance.
 // You can create one instance of it to use across an application.
-const sdk = new SDKCore();
+const vibenClient = new VibenClientCore();
 
 async function run() {
-  const res = await tasksPostApiTasksBatchEvents(sdk, {
-    eventType: "<value>",
-    taskDirs: [],
+  const res = await tasksListListArchive(vibenClient, {
     workspacePath: "<value>",
   });
   if (res.ok) {
     const { value: result } = res;
     console.log(result);
   } else {
-    console.log("tasksPostApiTasksBatchEvents failed:", res.error);
+    console.log("tasksListListArchive failed:", res.error);
   }
 }
 
@@ -3884,14 +2872,1756 @@ run();
 
 | Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `request`                                                                                                                                                                      | [operations.PostApiTasksBatchEventsRequestBody](../../sdk/models/operations/postapitasksbatcheventsrequestbody.md)                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `request`                                                                                                                                                                      | [operations.TaskListListArchiveRequest](../../sdk/models/operations/tasklistlistarchiverequest.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
 | `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
 | `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
 | `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
 
 ### Response
 
-**Promise\<[operations.PostApiTasksBatchEventsResponse](../../sdk/models/operations/postapitasksbatcheventsresponse.md)\>**
+**Promise\<[operations.TaskListListArchiveResponse](../../sdk/models/operations/tasklistlistarchiveresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createReview
+
+View task details for review
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createReview" method="post" path="/api/task/review" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createReview({
+    taskDir: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateReview } from "@viben/client-sdk/funcs/tasksCreateReview.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateReview(vibenClient, {
+    taskDir: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateReview failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateReviewRequest](../../sdk/models/operations/taskcreatereviewrequest.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createContext
+
+Get session context for AI agents
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createContext" method="post" path="/api/task/context" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createContext({
+    workspacePath: "<value>",
+    requestBody: {},
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateContext } from "@viben/client-sdk/funcs/tasksCreateContext.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateContext(vibenClient, {
+    workspacePath: "<value>",
+    requestBody: {},
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateContext failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateContextRequest](../../sdk/models/operations/taskcreatecontextrequest.md)                                                                                 | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createStatu
+
+Get task status summary or details
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createStatu" method="post" path="/api/task/status" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createStatu({
+    requestBody: {},
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateStatu } from "@viben/client-sdk/funcs/tasksCreateStatu.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateStatu(vibenClient, {
+    requestBody: {},
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateStatu failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateStatuRequest](../../sdk/models/operations/taskcreatestaturequest.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createCreatePr
+
+Create PR from task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createCreatePr" method="post" path="/api/task/create-pr" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createCreatePr({
+    requestBody: {},
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateCreatePr } from "@viben/client-sdk/funcs/tasksCreateCreatePr.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateCreatePr(vibenClient, {
+    requestBody: {},
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateCreatePr failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateCreatePrRequest](../../sdk/models/operations/taskcreatecreateprrequest.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createAddSession
+
+Add a new session to journal file and update index.md
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createAddSession" method="post" path="/api/task/add-session" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createAddSession({
+    workspacePath: "<value>",
+    requestBody: {
+      title: "<value>",
+    },
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateAddSession } from "@viben/client-sdk/funcs/tasksCreateAddSession.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateAddSession(vibenClient, {
+    workspacePath: "<value>",
+    requestBody: {
+      title: "<value>",
+    },
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateAddSession failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateAddSessionRequest](../../sdk/models/operations/taskcreateaddsessionrequest.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createPlan
+
+Start Plan Agent to plan a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createPlan" method="post" path="/api/task/plan" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createPlan({
+    workspacePath: "<value>",
+    requestBody: {
+      name: "<value>",
+      requirement: "<value>",
+    },
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreatePlan } from "@viben/client-sdk/funcs/tasksCreatePlan.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreatePlan(vibenClient, {
+    workspacePath: "<value>",
+    requestBody: {
+      name: "<value>",
+      requirement: "<value>",
+    },
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreatePlan failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreatePlanRequest](../../sdk/models/operations/taskcreateplanrequest.md)                                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createPlanPhase
+
+Run plan phase for a task (spawns plan agent)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createPlanPhase" method="post" path="/api/task/plan-phase" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createPlanPhase({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreatePlanPhase } from "@viben/client-sdk/funcs/tasksCreatePlanPhase.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreatePlanPhase(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreatePlanPhase failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreatePlanPhaseRequestBody](../../sdk/models/operations/taskcreateplanphaserequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createImplementPhase
+
+Run implement phase for a task (spawns implement agent)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createImplementPhase" method="post" path="/api/task/implement-phase" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createImplementPhase({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateImplementPhase } from "@viben/client-sdk/funcs/tasksCreateImplementPhase.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateImplementPhase(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateImplementPhase failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateImplementPhaseRequestBody](../../sdk/models/operations/taskcreateimplementphaserequestbody.md)                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createCheckPhase
+
+Run check phase for a task (spawns check agent)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createCheckPhase" method="post" path="/api/task/check-phase" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createCheckPhase({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateCheckPhase } from "@viben/client-sdk/funcs/tasksCreateCheckPhase.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateCheckPhase(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateCheckPhase failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateCheckPhaseRequestBody](../../sdk/models/operations/taskcreatecheckphaserequestbody.md)                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createWorkPhase
+
+Run work phase for a task (spawns work agent)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createWorkPhase" method="post" path="/api/task/work-phase" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createWorkPhase({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateWorkPhase } from "@viben/client-sdk/funcs/tasksCreateWorkPhase.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateWorkPhase(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateWorkPhase failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateWorkPhaseRequestBody](../../sdk/models/operations/taskcreateworkphaserequestbody.md)                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## view
+
+View task details
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_view" method="post" path="/api/task/view" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.view({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksView } from "@viben/client-sdk/funcs/tasksView.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksView(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksView failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskViewRequestBody](../../sdk/models/operations/taskviewrequestbody.md)                                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createDelete
+
+Delete a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createDelete" method="post" path="/api/task/delete" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createDelete({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateDelete } from "@viben/client-sdk/funcs/tasksCreateDelete.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateDelete(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateDelete failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateDeleteRequestBody](../../sdk/models/operations/taskcreatedeleterequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## list2
+
+List tasks
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_list" method="post" path="/api/task/list" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.list2({
+    workspacePath: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksList2 } from "@viben/client-sdk/funcs/tasksList2.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksList2(vibenClient, {
+    workspacePath: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksList2 failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskListRequestBody](../../sdk/models/operations/tasklistrequestbody.md)                                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createCreate
+
+Create a new task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createCreate" method="post" path="/api/task/create" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createCreate({
+    workspacePath: "<value>",
+    title: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateCreate } from "@viben/client-sdk/funcs/tasksCreateCreate.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateCreate(vibenClient, {
+    workspacePath: "<value>",
+    title: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateCreate failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateCreateRequestBody](../../sdk/models/operations/taskcreatecreaterequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createUpdate
+
+Update task fields (not status - use lifecycle endpoints for status changes)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createUpdate" method="post" path="/api/task/update" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  const result = await vibenClient.tasks.createUpdate({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+  console.log(result);
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateUpdate } from "@viben/client-sdk/funcs/tasksCreateUpdate.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateUpdate(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    console.log(result);
+  } else {
+    console.log("tasksCreateUpdate failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateUpdateRequestBody](../../sdk/models/operations/taskcreateupdaterequestbody.md)                                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<[operations.TaskCreateUpdateResponse](../../sdk/models/operations/taskcreateupdateresponse.md)\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createCreateWorktree
+
+Create isolated git worktree for a task
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createCreateWorktree" method="post" path="/api/task/create-worktree" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createCreateWorktree({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateCreateWorktree } from "@viben/client-sdk/funcs/tasksCreateCreateWorktree.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateCreateWorktree(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateCreateWorktree failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateCreateWorktreeRequestBody](../../sdk/models/operations/taskcreatecreateworktreerequestbody.md)                                                           | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createValidateCheckPhasePassed
+
+Validate check phase passed (runs verify commands or checks completion markers)
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_createValidateCheckPhasePassed" method="post" path="/api/task/validate-check-phase-passed" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createValidateCheckPhasePassed({
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateValidateCheckPhasePassed } from "@viben/client-sdk/funcs/tasksCreateValidateCheckPhasePassed.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateValidateCheckPhasePassed(vibenClient, {
+    workspacePath: "<value>",
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateValidateCheckPhasePassed failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCreateValidateCheckPhasePassedRequestBody](../../sdk/models/operations/taskcreatevalidatecheckphasepassedrequestbody.md)                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## cleanup
+
+Cleanup worktrees and related resources
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="task_cleanup" method="post" path="/api/task/cleanup" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.cleanup({
+    workspacePath: "<value>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCleanup } from "@viben/client-sdk/funcs/tasksCleanup.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCleanup(vibenClient, {
+    workspacePath: "<value>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCleanup failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TaskCleanupRequestBody](../../sdk/models/operations/taskcleanuprequestbody.md)                                                                                     | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getSessions
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_getSessions" method="get" path="/api/tasks/{taskId}/sessions" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.getSessions({
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGetSessions } from "@viben/client-sdk/funcs/tasksGetSessions.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksGetSessions(vibenClient, {
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksGetSessions failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksGetSessionsRequest](../../sdk/models/operations/tasksgetsessionsrequest.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## listEventsStream2
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_listEventsStream" method="get" path="/api/tasks/events/stream" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.listEventsStream2();
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksListEventsStream2 } from "@viben/client-sdk/funcs/tasksListEventsStream2.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksListEventsStream2(vibenClient);
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksListEventsStream2 failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getEvents
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_getEvents" method="get" path="/api/tasks/{task_id}/events" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.getEvents({
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGetEvents } from "@viben/client-sdk/funcs/tasksGetEvents.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksGetEvents(vibenClient, {
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksGetEvents failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksGetEventsRequest](../../sdk/models/operations/tasksgeteventsrequest.md)                                                                                       | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## createEvent2
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_createEvent" method="post" path="/api/tasks/{task_id}/events" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.createEvent2({
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksCreateEvent2 } from "@viben/client-sdk/funcs/tasksCreateEvent2.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksCreateEvent2(vibenClient, {
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksCreateEvent2 failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksCreateEventRequest](../../sdk/models/operations/taskscreateeventrequest.md)                                                                                   | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getEventStream
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_getEventStream" method="get" path="/api/tasks/{task_id}/events/stream" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.getEventStream({
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGetEventStream } from "@viben/client-sdk/funcs/tasksGetEventStream.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksGetEventStream(vibenClient, {
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksGetEventStream failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksGetEventStreamRequest](../../sdk/models/operations/tasksgeteventstreamrequest.md)                                                                             | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## getState
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_getState" method="get" path="/api/tasks/{task_id}/state" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.getState({
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksGetState } from "@viben/client-sdk/funcs/tasksGetState.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksGetState(vibenClient, {
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksGetState failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksGetStateRequest](../../sdk/models/operations/tasksgetstaterequest.md)                                                                                         | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
+
+### Errors
+
+| Error Type      | Status Code     | Content Type    |
+| --------------- | --------------- | --------------- |
+| errors.SDKError | 4XX, 5XX        | \*/\*           |
+
+## validateEvent
+
+### Example Usage
+
+<!-- UsageSnippet language="typescript" operationID="tasks_validateEvent" method="post" path="/api/tasks/{task_id}/events/validate" -->
+```typescript
+import { VibenClient } from "@viben/client-sdk";
+
+const vibenClient = new VibenClient();
+
+async function run() {
+  await vibenClient.tasks.validateEvent({
+    taskId: "<id>",
+  });
+
+
+}
+
+run();
+```
+
+### Standalone function
+
+The standalone function version of this method:
+
+```typescript
+import { VibenClientCore } from "@viben/client-sdk/core.js";
+import { tasksValidateEvent } from "@viben/client-sdk/funcs/tasksValidateEvent.js";
+
+// Use `VibenClientCore` for best tree-shaking performance.
+// You can create one instance of it to use across an application.
+const vibenClient = new VibenClientCore();
+
+async function run() {
+  const res = await tasksValidateEvent(vibenClient, {
+    taskId: "<id>",
+  });
+  if (res.ok) {
+    const { value: result } = res;
+    
+  } else {
+    console.log("tasksValidateEvent failed:", res.error);
+  }
+}
+
+run();
+```
+
+### Parameters
+
+| Parameter                                                                                                                                                                      | Type                                                                                                                                                                           | Required                                                                                                                                                                       | Description                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `request`                                                                                                                                                                      | [operations.TasksValidateEventRequest](../../sdk/models/operations/tasksvalidateeventrequest.md)                                                                               | :heavy_check_mark:                                                                                                                                                             | The request object to use for the request.                                                                                                                                     |
+| `options`                                                                                                                                                                      | RequestOptions                                                                                                                                                                 | :heavy_minus_sign:                                                                                                                                                             | Used to set various options for making HTTP requests.                                                                                                                          |
+| `options.fetchOptions`                                                                                                                                                         | [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#options)                                                                                        | :heavy_minus_sign:                                                                                                                                                             | Options that are passed to the underlying HTTP request. This can be used to inject extra headers for examples. All `Request` options, except `method` and `body`, are allowed. |
+| `options.retries`                                                                                                                                                              | [RetryConfig](../../lib/utils/retryconfig.md)                                                                                                                                  | :heavy_minus_sign:                                                                                                                                                             | Enables retrying HTTP requests under certain failure conditions.                                                                                                               |
+
+### Response
+
+**Promise\<void\>**
 
 ### Errors
 

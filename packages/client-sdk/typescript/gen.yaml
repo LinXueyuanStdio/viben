@@ -1,17 +1,20 @@
 configVersion: 2.0.0
 generation:
-  sdkClassName: SDK
+  sdkClassName: VibenClient
+  maintainOpenAPIOrder: true
   usageSnippets:
     optionalPropertyRendering: withExample
     sdkInitStyle: constructor
+  useClassNamesForArrayFields: true
   fixes:
+    nameResolutionDec2023: true
     nameResolutionFeb2025: false
-    parameterOrderingFeb2024: false
-    requestResponseComponentNamesFeb2024: false
+    parameterOrderingFeb2024: true
+    requestResponseComponentNamesFeb2024: true
     securityFeb2025: false
     sharedErrorComponentsApr2025: false
     sharedNestedComponentsJan2026: false
-    nameOverrideFeb2026: false
+    nameOverrideFeb2026: true
   auth:
     oAuth2ClientCredentialsEnabled: false
     oAuth2PasswordEnabled: false
@@ -29,7 +32,7 @@ generate:
   version: ""
   baseServerUrl: http://127.0.0.1:18790
 typescript:
-  version: 0.2.0
+  version: 0.3.0
   acceptHeaderEnum: true
   additionalDependencies:
     dependencies: {}
@@ -47,10 +50,10 @@ typescript:
   description: Viben Gateway TypeScript Client SDK
   enableCustomCodeRegions: false
   enableMCPServer: false
-  enableReactQuery: false
+  enableReactQuery: true
   enumFormat: union
   eventStreamClassName: EventStream
-  exportZodModelNamespace: false
+  exportZodModelNamespace: true
   fixEnumNameSanitization: false
   flatAdditionalProperties: false
   flattenGlobalSecurity: true
@@ -82,7 +85,7 @@ typescript:
   preApplyUnionDiscriminators: true
   preserveModelFieldNames: false
   privateIdentifierPrefix: '#'
-  requestExtras: false
+  requestExtras: true
   responseFormat: flat
   sseFlatResponse: false
   templateVersion: v2

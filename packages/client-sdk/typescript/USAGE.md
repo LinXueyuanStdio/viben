@@ -1,13 +1,13 @@
 <!-- Start SDK Example Usage [usage] -->
 ```typescript
-import { SDK } from "@viben/client-sdk";
+import { VibenClient } from "@viben/client-sdk";
 
-const sdk = new SDK();
+const vibenClient = new VibenClient();
 
 async function run() {
-  await sdk.deleteApiAccountsId({
-    id: "<id>",
-  });
+  const result = await vibenClient.agent.list();
+
+  console.log(result);
 }
 
 run();

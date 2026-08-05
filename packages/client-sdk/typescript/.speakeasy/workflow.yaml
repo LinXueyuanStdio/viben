@@ -1,0 +1,13 @@
+workflowVersion: 1.0.0
+speakeasyVersion: 1.784.0
+sources:
+    viben-api:
+        inputs:
+            - location: ../openapi.json
+        registry:
+            location: registry.speakeasyapi.dev/viben/viben/viben-api
+targets:
+    typescript:
+        target: typescript
+        source: viben-api
+        output: ./

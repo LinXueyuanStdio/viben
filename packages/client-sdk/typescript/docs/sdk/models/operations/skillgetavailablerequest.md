@@ -1,0 +1,20 @@
+# SkillGetAvailableRequest
+
+## Example Usage
+
+```typescript
+import { SkillGetAvailableRequest } from "@viben/client-sdk/sdk/models/operations";
+
+let value: SkillGetAvailableRequest = {};
+```
+
+## Fields
+
+| Field                                                                                                           | Type                                                                                                            | Required                                                                                                        | Description                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `page`                                                                                                          | *string*                                                                                                        | :heavy_minus_sign:                                                                                              | Page number                                                                                                     |
+| `limit`                                                                                                         | *string*                                                                                                        | :heavy_minus_sign:                                                                                              | Maximum results                                                                                                 |
+| `sort`                                                                                                          | [operations.Sort](../../../sdk/models/operations/sort.md)                                                       | :heavy_minus_sign:                                                                                              | Sort order                                                                                                      |
+| `category`                                                                                                      | *string*                                                                                                        | :heavy_minus_sign:                                                                                              | Category filter                                                                                                 |
+| `type`                                                                                                          | [operations.SkillGetAvailableQueryParamType](../../../sdk/models/operations/skillgetavailablequeryparamtype.md) | :heavy_minus_sign:                                                                                              | Filter by skill type                                                                                            |
+| `format`                                                                                                        | [operations.Format](../../../sdk/models/operations/format.md)                                                   | :heavy_minus_sign:                                                                                              | Response shape                                                                                                  |

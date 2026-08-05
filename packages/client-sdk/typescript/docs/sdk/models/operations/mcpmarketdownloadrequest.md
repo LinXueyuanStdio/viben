@@ -1,0 +1,17 @@
+# McpMarketDownloadRequest
+
+## Example Usage
+
+```typescript
+import { McpMarketDownloadRequest } from "@viben/client-sdk/sdk/models/operations";
+
+let value: McpMarketDownloadRequest = {
+  id: "<id>",
+};
+```
+
+## Fields
+
+| Field              | Type               | Required           | Description        |
+| ------------------ | ------------------ | ------------------ | ------------------ |
+| `id`               | *string*           | :heavy_check_mark: | N/A                |

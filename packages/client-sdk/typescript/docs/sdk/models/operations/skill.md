@@ -12,11 +12,9 @@ let value: Skill = {};
 
 | Field              | Type               | Required           | Description        |
 | ------------------ | ------------------ | ------------------ | ------------------ |
-| `description`      | *string*           | :heavy_minus_sign: | N/A                |
-| `downloadsCount`   | *number*           | :heavy_minus_sign: | N/A                |
-| `favoritesCount`   | *number*           | :heavy_minus_sign: | N/A                |
 | `id`               | *string*           | :heavy_minus_sign: | N/A                |
 | `name`             | *string*           | :heavy_minus_sign: | N/A                |
-| `skillType`        | *string*           | :heavy_minus_sign: | N/A                |
-| `slug`             | *string*           | :heavy_minus_sign: | N/A                |
+| `description`      | *string*           | :heavy_minus_sign: | N/A                |
 | `version`          | *string*           | :heavy_minus_sign: | N/A                |
+| `path`             | *string*           | :heavy_minus_sign: | N/A                |
+| `source`           | *string*           | :heavy_minus_sign: | N/A                |
