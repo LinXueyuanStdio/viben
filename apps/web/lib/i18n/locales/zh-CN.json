@@ -1182,7 +1182,13 @@
     "passwordResetRedirect": "密码已重置。即将跳转到登录页面。",
     "resetPassword": "重置密码",
     "agreeToTerms": "我同意",
-    "termsOfService": "服务条款"
+    "termsOfService": "服务条款",
+    "privacyStatement": "隐私声明",
+    "and": "和"
+  },
+  "legal": {
+    "backToRegister": "返回注册",
+    "lastUpdated": "最后更新于"
   },
   "inspector": {
     "title": "MCP 检查器",

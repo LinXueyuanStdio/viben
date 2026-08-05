@@ -251,6 +251,10 @@ export function RegisterForm() {
           <Link href="/terms" className="text-primary hover:underline">
             {t('auth.termsOfService')}
           </Link>
+          {' '}{t('auth.and')}{' '}
+          <Link href="/privacy" className="text-primary hover:underline">
+            {t('auth.privacyStatement')}
+          </Link>
         </Label>
       </div>
       {fieldErrors.agreeToTerms && (

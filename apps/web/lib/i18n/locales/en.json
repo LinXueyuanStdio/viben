@@ -1183,7 +1183,13 @@
     "passwordResetRedirect": "Your password has been reset. You will be redirected to the login page shortly.",
     "resetPassword": "Reset Password",
     "agreeToTerms": "I agree to the",
-    "termsOfService": "Terms of Service"
+    "termsOfService": "Terms of Service",
+    "privacyStatement": "Privacy Statement",
+    "and": "and"
+  },
+  "legal": {
+    "backToRegister": "Back to register",
+    "lastUpdated": "Last updated"
   },
   "inspector": {
     "title": "MCP Inspector",
