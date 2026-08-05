@@ -1,7 +1,6 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useTheme } from "next-themes";
 import {
   DEFAULT_SANDBOX_TYPE,
   type SandboxType,
@@ -19,28 +18,16 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import type { DiffMode } from "@/hooks/assistant/use-user-preferences";
-import { usePreferencesSectionState } from "../assistant/preferences-section";
-
-type ThemePreference = "system" | "light" | "dark";
+import { useGeneralPreferences } from "@/hooks/assistant/use-general-preferences";
 
 const SANDBOX_OPTIONS: Array<{ id: SandboxType; name: string }> = [
   { id: "vercel", name: "Vercel" },
-];
-
-const THEME_OPTIONS: Array<{ id: ThemePreference; name: string }> = [
-  { id: "system", name: "System" },
-  { id: "light", name: "Light" },
-  { id: "dark", name: "Dark" },
 ];
 
 const DIFF_MODE_OPTIONS: Array<{ id: DiffMode; name: string }> = [
   { id: "unified", name: "Unified" },
   { id: "split", name: "Split" },
 ];
-
-function isThemePreference(value: string): value is ThemePreference {
-  return THEME_OPTIONS.some((option) => option.id === value);
-}
 
 export function SandboxSectionSkeleton() {
   const { t } = useTranslation();
@@ -62,15 +49,9 @@ export function SandboxSectionSkeleton() {
 }
 
 export function SandboxSection() {
-  const state = usePreferencesSectionState();
-  const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
-
-  if (state.loading) {
-    return <SandboxSectionSkeleton />;
-  }
-
   const {
+    loading,
     preferences,
     isSaving,
     copiedPublicProfile,
@@ -83,13 +64,11 @@ export function SandboxSection() {
     handleAlertSoundEnabledChange,
     handlePublicUsageEnabledChange,
     handleCopyPublicProfileUrl,
-  } = state;
+  } = useGeneralPreferences();
 
-  const handleThemeChange = (nextTheme: string) => {
-    if (isThemePreference(nextTheme)) {
-      setTheme(nextTheme);
-    }
-  };
+  if (loading) {
+    return <SandboxSectionSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
@@ -101,25 +80,6 @@ export function SandboxSection() {
         <div className="grid gap-6 sm:grid-cols-2">
           {/* Left column: dropdowns */}
           <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="appearance">{t("settings.sandbox.theme")}</Label>
-              <Select value={theme} onValueChange={handleThemeChange}>
-                <SelectTrigger id="appearance" className="w-full">
-                  <SelectValue placeholder={t("settings.sandbox.selectAppearance")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {THEME_OPTIONS.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {t("settings.sandbox.themeHint")}
-              </p>
-            </div>
-
             <div className="grid gap-2">
               <Label htmlFor="sandbox">{t("settings.sandbox.defaultSandbox")}</Label>
               <Select

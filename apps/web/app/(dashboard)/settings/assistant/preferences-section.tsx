@@ -1,85 +1,14 @@
-"use client";
+﻿"use client";
 
 import { useTranslation } from "react-i18next";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Plus, Search, Trash2, X } from "lucide-react";
-import { useTheme } from "next-themes";
-
-type ThemePreference = "system" | "light" | "dark";
-import {
-  DEFAULT_SANDBOX_TYPE,
-  type SandboxType,
-} from "@/components/assistant/sandbox-selector-compact";
-import { Button } from "@/components/ui/button";
+import { useMemo, useRef, useState } from "react";
+import { Plus, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { ModelCombobox } from "@/components/assistant/model-combobox";
-import { useModelOptions } from "@/hooks/assistant/use-model-options";
-import { useSession } from "@/hooks/assistant/use-session";
-import {
-  type DiffMode,
-  useUserPreferences,
-} from "@/hooks/assistant/use-user-preferences";
-import {
-  globalSkillRefSchema,
-  type GlobalSkillRef,
-} from "@/lib/skills/global-skill-refs";
-import {
-  type ModelOption,
-  getDefaultModelOptionId,
-  withMissingModelOption,
-} from "@/lib/model-options";
-
-const SANDBOX_OPTIONS: Array<{ id: SandboxType; name: string }> = [
-  { id: "vercel", name: "Vercel" },
-];
-
-const THEME_OPTIONS: Array<{ id: ThemePreference; name: string }> = [
-  { id: "system", name: "System" },
-  { id: "light", name: "Light" },
-  { id: "dark", name: "Dark" },
-];
-
-const DIFF_MODE_OPTIONS: Array<{ id: DiffMode; name: string }> = [
-  { id: "unified", name: "Unified" },
-  { id: "split", name: "Split" },
-];
-
-function isThemePreference(value: string): value is ThemePreference {
-  return THEME_OPTIONS.some((option) => option.id === value);
-}
-
-function getGlobalSkillRefError(params: {
-  source: string;
-  skillName: string;
-  existingRefs: GlobalSkillRef[];
-}): string | null {
-  const parsedRef = globalSkillRefSchema.safeParse({
-    source: params.source,
-    skillName: params.skillName,
-  });
-
-  if (!parsedRef.success) {
-    return parsedRef.error.issues[0]?.message ?? "Invalid global skill ref";
-  }
-
-  const duplicateExists = params.existingRefs.some(
-    (ref) =>
-      ref.source.toLowerCase() === parsedRef.data.source.toLowerCase() &&
-      ref.skillName.toLowerCase() === parsedRef.data.skillName.toLowerCase(),
-  );
-
-  return duplicateExists ? "That global skill has already been added" : null;
-}
+import { useModelPreferences } from "@/hooks/assistant/use-model-preferences";
+import type { ModelOption } from "@/lib/model-options";
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -134,342 +63,24 @@ export function ModelPreferencesSectionSkeleton() {
   );
 }
 
-export function usePreferencesSectionState() {
-  const { theme, setTheme } = useTheme();
-  const { session } = useSession();
-  const { preferences, loading, updatePreferences } = useUserPreferences();
-  const { modelOptions, loading: modelOptionsLoading } = useModelOptions();
-  const [isSaving, setIsSaving] = useState(false);
-  const [globalSkillSource, setGlobalSkillSource] = useState("");
-  const [globalSkillName, setGlobalSkillName] = useState("");
-  const [globalSkillsError, setGlobalSkillsError] = useState<string | null>(
-    null,
-  );
-  const [copiedPublicProfile, setCopiedPublicProfile] = useState(false);
-
-  const selectedDefaultModelId =
-    preferences?.defaultModelId ?? getDefaultModelOptionId(modelOptions);
-  const selectedSubagentModelId = preferences?.defaultSubagentModelId ?? "auto";
-  const publicProfilePath = session?.user?.username
-    ? `/u/${session.user.username}`
-    : null;
-
-  const defaultModelOptions = useMemo(
-    () => withMissingModelOption(modelOptions, selectedDefaultModelId),
-    [modelOptions, selectedDefaultModelId],
-  );
-  const subagentModelOptions = useMemo(
-    () =>
-      withMissingModelOption(modelOptions, preferences?.defaultSubagentModelId),
-    [modelOptions, preferences?.defaultSubagentModelId],
-  );
-
-  const handleThemeChange = (nextTheme: string) => {
-    if (isThemePreference(nextTheme)) {
-      setTheme(nextTheme);
-    }
-  };
-
-  const handleModelChange = async (modelId: string) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ defaultModelId: modelId });
-    } catch (error) {
-      console.error("Failed to update model preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSubagentModelChange = async (value: string) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({
-        defaultSubagentModelId: value === "auto" ? null : value,
-      });
-    } catch (error) {
-      console.error("Failed to update subagent model preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSandboxChange = async (sandboxType: SandboxType) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ defaultSandboxType: sandboxType });
-    } catch (error) {
-      console.error("Failed to update sandbox preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDiffModeChange = async (diffMode: DiffMode) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ defaultDiffMode: diffMode });
-    } catch (error) {
-      console.error("Failed to update diff mode preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAutoCommitPushChange = async (enabled: boolean) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ autoCommitPush: enabled });
-    } catch (error) {
-      console.error("Failed to update auto-commit preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAutoCreatePrChange = async (enabled: boolean) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ autoCreatePr: enabled });
-    } catch (error) {
-      console.error("Failed to update auto-PR preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAlertsEnabledChange = async (enabled: boolean) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ alertsEnabled: enabled });
-    } catch (error) {
-      console.error("Failed to update alerts preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAlertSoundEnabledChange = async (enabled: boolean) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ alertSoundEnabled: enabled });
-    } catch (error) {
-      console.error("Failed to update alert sound preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handlePublicUsageEnabledChange = async (enabled: boolean) => {
-    setIsSaving(true);
-    try {
-      await updatePreferences({ publicUsageEnabled: enabled });
-      if (!enabled) {
-        setCopiedPublicProfile(false);
-      }
-    } catch (error) {
-      console.error("Failed to update public usage preference:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCopyPublicProfileUrl = async () => {
-    if (!publicProfilePath || typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}${publicProfilePath}`,
-      );
-      setCopiedPublicProfile(true);
-      window.setTimeout(() => setCopiedPublicProfile(false), 1500);
-    } catch (error) {
-      console.error("Failed to copy public usage URL:", error);
-    }
-  };
-
-  const handleAddGlobalSkillRef = async () => {
-    const existingRefs = preferences?.globalSkillRefs ?? [];
-    const errorMessage = getGlobalSkillRefError({
-      source: globalSkillSource,
-      skillName: globalSkillName,
-      existingRefs,
-    });
-
-    if (errorMessage) {
-      setGlobalSkillsError(errorMessage);
-      return;
-    }
-
-    setIsSaving(true);
-    setGlobalSkillsError(null);
-    try {
-      const nextRef = globalSkillRefSchema.parse({
-        source: globalSkillSource,
-        skillName: globalSkillName,
-      });
-      await updatePreferences({
-        globalSkillRefs: [...existingRefs, nextRef],
-      });
-      setGlobalSkillSource("");
-      setGlobalSkillName("");
-    } catch (error) {
-      console.error("Failed to add global skill preference:", error);
-      setGlobalSkillsError("Failed to add global skill");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRemoveGlobalSkillRef = async (index: number) => {
-    const existingRefs = preferences?.globalSkillRefs ?? [];
-
-    setIsSaving(true);
-    setGlobalSkillsError(null);
-    try {
-      await updatePreferences({
-        globalSkillRefs: existingRefs.filter(
-          (_, refIndex) => refIndex !== index,
-        ),
-      });
-    } catch (error) {
-      console.error("Failed to remove global skill preference:", error);
-      setGlobalSkillsError("Failed to remove global skill");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const enabledModelIds = useMemo(
-    () => new Set(preferences?.enabledModelIds),
-    [preferences?.enabledModelIds],
-  );
-
-  const handleAddModel = useCallback(
-    async (modelId: string) => {
-      const currentIds = preferences?.enabledModelIds ?? [];
-      if (currentIds.includes(modelId)) return;
-
-      setIsSaving(true);
-      try {
-        await updatePreferences({ enabledModelIds: [...currentIds, modelId] });
-      } catch (error) {
-        console.error("Failed to update enabled models:", error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [preferences?.enabledModelIds, updatePreferences],
-  );
-
-  const handleRemoveModel = useCallback(
-    async (modelId: string) => {
-      const currentIds = preferences?.enabledModelIds ?? [];
-
-      setIsSaving(true);
-      try {
-        await updatePreferences({
-          enabledModelIds: currentIds.filter((id) => id !== modelId),
-        });
-      } catch (error) {
-        console.error("Failed to update enabled models:", error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [preferences?.enabledModelIds, updatePreferences],
-  );
-
-  const handleSetEnabledModels = useCallback(
-    async (nextIds: string[]) => {
-      setIsSaving(true);
-      try {
-        await updatePreferences({ enabledModelIds: nextIds });
-      } catch (error) {
-        console.error("Failed to update enabled models:", error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [updatePreferences],
-  );
-
-  return {
-    theme,
-    setTheme,
-    preferences,
+export function ModelPreferencesSection() {
+  const { t } = useTranslation();
+  const {
     loading,
-    updatePreferences,
-    modelOptions,
-    modelOptionsLoading,
-    isSaving,
-    globalSkillSource,
-    setGlobalSkillSource,
-    globalSkillName,
-    setGlobalSkillName,
-    globalSkillsError,
-    setGlobalSkillsError,
-    copiedPublicProfile,
-    setCopiedPublicProfile,
+    defaultModelOptions,
     selectedDefaultModelId,
     selectedSubagentModelId,
-    publicProfilePath,
-    defaultModelOptions,
     subagentModelOptions,
-    handleThemeChange,
+    modelOptions,
+    modelOptionsLoading,
+    enabledModelIds,
+    isSaving,
     handleModelChange,
     handleSubagentModelChange,
-    handleSandboxChange,
-    handleDiffModeChange,
-    handleAutoCommitPushChange,
-    handleAutoCreatePrChange,
-    handleAlertsEnabledChange,
-    handleAlertSoundEnabledChange,
-    handlePublicUsageEnabledChange,
-    handleCopyPublicProfileUrl,
-    handleAddGlobalSkillRef,
-    handleRemoveGlobalSkillRef,
-    enabledModelIds,
     handleAddModel,
     handleRemoveModel,
     handleSetEnabledModels,
-  };
-}
-
-export function ModelPreferencesSection({
-  loading,
-  defaultModelOptions,
-  selectedDefaultModelId,
-  selectedSubagentModelId,
-  subagentModelOptions,
-  modelOptions,
-  modelOptionsLoading,
-  enabledModelIds,
-  isSaving,
-  onModelChange,
-  onSubagentModelChange,
-  onAddModel,
-  onRemoveModel,
-  onSetEnabledModels,
-}: {
-  loading: boolean;
-  defaultModelOptions: ReturnType<typeof usePreferencesSectionState>["defaultModelOptions"];
-  selectedDefaultModelId: string;
-  selectedSubagentModelId: string;
-  subagentModelOptions: ReturnType<typeof usePreferencesSectionState>["subagentModelOptions"];
-  modelOptions: ReturnType<typeof usePreferencesSectionState>["modelOptions"];
-  modelOptionsLoading: boolean;
-  enabledModelIds: Set<string>;
-  isSaving: boolean;
-  onModelChange: (modelId: string) => Promise<void>;
-  onSubagentModelChange: (value: string) => Promise<void>;
-  onAddModel: (modelId: string) => Promise<void>;
-  onRemoveModel: (modelId: string) => Promise<void>;
-  onSetEnabledModels: (ids: string[]) => Promise<void>;
-}) {
-  const { t } = useTranslation();
+  } = useModelPreferences();
 
   if (loading) {
     return <ModelPreferencesSectionSkeleton />;
@@ -494,7 +105,7 @@ export function ModelPreferencesSection({
             searchPlaceholder={t("settings.assistant.models.searchModels")}
             emptyText={modelOptionsLoading ? t("settings.assistant.models.loading") : t("settings.assistant.models.noModelsFound")}
             disabled={isSaving || modelOptionsLoading}
-            onChange={onModelChange}
+            onChange={handleModelChange}
           />
           <p className="text-xs text-muted-foreground">
             {t("settings.assistant.models.defaultModelHint")}
@@ -518,7 +129,7 @@ export function ModelPreferencesSection({
             searchPlaceholder={t("settings.assistant.models.searchModels")}
             emptyText={modelOptionsLoading ? t("settings.assistant.models.loading") : t("settings.assistant.models.noModelsFound")}
             disabled={isSaving || modelOptionsLoading}
-            onChange={onSubagentModelChange}
+            onChange={handleSubagentModelChange}
           />
           <p className="text-xs text-muted-foreground">
             {t("settings.assistant.models.subagentModelHint")}
@@ -530,9 +141,9 @@ export function ModelPreferencesSection({
         modelOptions={modelOptions}
         modelOptionsLoading={modelOptionsLoading}
         enabledModelIds={enabledModelIds}
-        onAddModel={onAddModel}
-        onRemoveModel={onRemoveModel}
-        onSetEnabledModels={onSetEnabledModels}
+        onAddModel={handleAddModel}
+        onRemoveModel={handleRemoveModel}
+        onSetEnabledModels={handleSetEnabledModels}
         disabled={isSaving}
       />
     </div>

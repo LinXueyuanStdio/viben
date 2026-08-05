@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { GlobalSkillRef } from "@/lib/skills/global-skill-refs";
-import type { UserPreferences } from "@/hooks/assistant/use-user-preferences";
+import { useSkillsPreferences } from "@/hooks/assistant/use-skills-preferences";
 
 export function SkillsSectionSkeleton() {
   const { t } = useTranslation();
@@ -54,30 +53,20 @@ export function SkillsSectionSkeleton() {
   );
 }
 
-export function SkillsSection({
-  loading,
-  preferences,
-  isSaving,
-  globalSkillSource,
-  onGlobalSkillSourceChange,
-  globalSkillName,
-  onGlobalSkillNameChange,
-  globalSkillsError,
-  onAddGlobalSkillRef,
-  onRemoveGlobalSkillRef,
-}: {
-  loading: boolean;
-  preferences: UserPreferences | undefined;
-  isSaving: boolean;
-  globalSkillSource: string;
-  onGlobalSkillSourceChange: (value: string) => void;
-  globalSkillName: string;
-  onGlobalSkillNameChange: (value: string) => void;
-  globalSkillsError: string | null;
-  onAddGlobalSkillRef: () => Promise<void>;
-  onRemoveGlobalSkillRef: (index: number) => Promise<void>;
-}) {
+export function SkillsSection() {
   const { t } = useTranslation();
+  const {
+    loading,
+    preferences,
+    isSaving,
+    globalSkillSource,
+    setGlobalSkillSource,
+    globalSkillName,
+    setGlobalSkillName,
+    globalSkillsError,
+    handleAddGlobalSkillRef,
+    handleRemoveGlobalSkillRef,
+  } = useSkillsPreferences();
 
   if (loading) {
     return <SkillsSectionSkeleton />;
@@ -118,7 +107,7 @@ export function SkillsSection({
                     variant="ghost"
                     size="icon"
                     className="text-muted-foreground hover:text-destructive shrink-0"
-                    onClick={() => onRemoveGlobalSkillRef(index)}
+                    onClick={() => handleRemoveGlobalSkillRef(index)}
                     disabled={isSaving}
                     aria-label={t("settings.assistant.skills.removeSkill", { name: globalSkillRef.skillName })}
                   >
@@ -146,7 +135,7 @@ export function SkillsSection({
               <Input
                 id="global-skill-source"
                 value={globalSkillSource}
-                onChange={(event) => onGlobalSkillSourceChange(event.target.value)}
+                onChange={(event) => setGlobalSkillSource(event.target.value)}
                 placeholder={t("settings.assistant.skills.repositorySourcePlaceholder")}
                 disabled={isSaving}
               />
@@ -161,14 +150,14 @@ export function SkillsSection({
               <Input
                 id="global-skill-name"
                 value={globalSkillName}
-                onChange={(event) => onGlobalSkillNameChange(event.target.value)}
+                onChange={(event) => setGlobalSkillName(event.target.value)}
                 placeholder={t("settings.assistant.skills.skillNamePlaceholder")}
                 disabled={isSaving}
               />
             </div>
             <Button
               type="button"
-              onClick={onAddGlobalSkillRef}
+              onClick={handleAddGlobalSkillRef}
               disabled={isSaving}
             >
               <Plus />
