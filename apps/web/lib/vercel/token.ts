@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth/config";
+import { auth } from "@/lib/session/get-server-session";
 import { db } from "@/lib/db/client";
 import { accounts } from "@/lib/db/schema";
 

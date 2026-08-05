@@ -5,7 +5,7 @@ import {
   updateUserPreferences,
 } from "@/lib/db/user-preferences";
 import { sanitizeUserPreferencesForSession } from "@/lib/model-access";
-import type { SandboxType } from "@/components/sandbox-selector-compact";
+import type { SandboxType } from "@/components/assistant/sandbox-selector-compact";
 import {
   globalSkillRefsSchema,
   type GlobalSkillRef,

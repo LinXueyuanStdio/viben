@@ -7,7 +7,7 @@ import {
   getStreamRecoveryDelayMs,
   isChatStreamingProbeResponse,
   shouldScheduleStallRecovery,
-} from "../stream-recovery-policy";
+} from "@/lib/stream-recovery-policy";
 
 type RetryChatStream = (opts?: {
   auto?: boolean;

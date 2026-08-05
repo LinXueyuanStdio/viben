@@ -11,7 +11,7 @@ import {
 import {
   getProviderFromModelId,
   stripProviderPrefix,
-} from "@/components/provider-icons";
+} from "@/components/assistant/provider-icons";
 
 export interface ModelOption {
   id: string;

@@ -1,5 +1,5 @@
 import "server-only";
-import { auth } from "@/lib/auth/config";
+import { auth } from "@/lib/session/get-server-session";
 
 /**
  * Get a valid GitHub access token for the given user.

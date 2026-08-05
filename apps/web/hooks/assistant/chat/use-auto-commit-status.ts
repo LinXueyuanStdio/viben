@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SessionGitStatus } from "@/hooks/use-session-git-status";
+import type { SessionGitStatus } from "@/hooks/assistant/use-session-git-status";
 
 const AUTO_COMMIT_REFRESH_DELAYS_MS = [3000, 8000, 16000] as const;
 const AUTO_COMMIT_UI_TIMEOUT_MS = 30_000;

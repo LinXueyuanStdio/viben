@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { Session } from "./types";
-import { auth } from "@/lib/auth/config";
+import { auth } from "@/lib/session/get-server-session";
 
 function extractUsername(user: {
   name?: string | null;

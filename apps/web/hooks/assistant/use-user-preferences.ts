@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/swr";
-import type { SandboxType } from "@/components/sandbox-selector-compact";
+import type { SandboxType } from "@/components/assistant/sandbox-selector-compact";
 import type { ModelVariant } from "@/lib/model-variants";
 import type { GlobalSkillRef } from "@/lib/skills/global-skill-refs";
 

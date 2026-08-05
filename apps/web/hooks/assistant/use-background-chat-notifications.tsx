@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import type { SessionWithUnread } from "@/hooks/use-sessions";
+import type { SessionWithUnread } from "@/hooks/assistant/use-sessions";
 
 type StreamingItem = { id: string; streaming: boolean };
 
