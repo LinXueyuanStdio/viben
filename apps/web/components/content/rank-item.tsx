@@ -90,7 +90,8 @@ export function RankItem({ data, href, className }: RankItemProps) {
           <Stat icon={ThumbsUp} value={stats.likes} format />
           <Stat icon={MessageCircle} value={stats.comments} format className="hidden sm:inline-flex" />
           {/* 移动端序号：统计行末尾小标签 */}
-          <span className="flex lg:hidden items-center gap-0.5 ml-auto">
+          <span className="flex lg:hidden items-center gap-1 ml-auto text-muted-foreground">
+            <span className="text-[11px] font-bold">No.</span>
             <svg viewBox="0 0 18 22" className="h-4 w-3.5 shrink-0">
               <text
                 x="9" y="17"
