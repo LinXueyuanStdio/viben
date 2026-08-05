@@ -42,6 +42,11 @@ export const users = pgTable(
     })
       .default('developer')
       .notNull(),
+
+    // Account type - distinguishes personal users from team accounts
+    type: text('type', {
+      enum: ['user', 'team'],
+    }).default('user').notNull(),
     followersCount: integer('followers_count').default(0).notNull(),
     pageCount: integer('page_count').default(0),
 
