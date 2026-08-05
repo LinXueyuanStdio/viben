@@ -47,10 +47,11 @@ export function RankItem({ data, href, className }: RankItemProps) {
       href={href}
       className={cn(
         "grid gap-2.5 rounded-[12px] p-[9px]",
+        // 响应式封面宽度：移动端 100px，平板 130px，桌面 180px
+        "grid-cols-[46px_100px_minmax(0,1fr)] sm:grid-cols-[46px_130px_minmax(0,1fr)] lg:grid-cols-[46px_180px_minmax(0,1fr)]",
         "hover:bg-accent/50 transition-colors duration-150",
         className
       )}
-      style={{ gridTemplateColumns: "46px 180px minmax(0, 1fr)" }}
     >
       {/* Rank — SVG 艺术字 + 排名变化 */}
       <div className="flex flex-col items-center justify-center gap-0.5">
@@ -82,12 +83,12 @@ export function RankItem({ data, href, className }: RankItemProps) {
         <div className="flex items-center gap-[7px]">
           <strong className="font-['Lexend'] text-[15px] font-bold line-clamp-2">{title}</strong>
         </div>
-        <p className="text-[13px] text-muted-foreground truncate">{description}</p>
+        <p className="text-[13px] text-muted-foreground truncate hidden sm:block">{description}</p>
         <MetaRow author={author} />
         <div className="flex items-center gap-2">
           <Stat icon={Eye} value={stats.views} format />
           <Stat icon={ThumbsUp} value={stats.likes} format />
-          <Stat icon={MessageCircle} value={stats.comments} format />
+          <Stat icon={MessageCircle} value={stats.comments} format className="hidden sm:inline-flex" />
         </div>
       </div>
     </Link>
