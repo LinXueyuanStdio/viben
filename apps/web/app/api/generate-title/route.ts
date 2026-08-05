@@ -1,5 +1,6 @@
 import { checkBotProtection } from "@/lib/botid";
-import { gateway, generateText } from "ai";
+import { gateway } from "@/lib/ai-gateway";
+import { generateText } from "ai";
 import { z } from "zod";
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { getServerSession } from "@/lib/session/get-server-session";
