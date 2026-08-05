@@ -7,7 +7,6 @@ import { T } from "@/components/content/i18n-text"
 import { HomeFeedSection } from "@/components/home/home-feed-section"
 import { HomeSidebarSection } from "@/components/home/home-sidebar-section"
 import { FeedSkeleton } from "@/components/shared/skeletons"
-import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { Footer } from "@/components/layout/footer"
 import { getHomePageData, getHomeTopAuthors } from "@/lib/services/community"
 import type { HomePageData, HomePageAuthors } from "@/lib/services/community"
@@ -134,9 +133,6 @@ export default async function HomePage() {
       {preloadUrls.map((url) => (
         <link key={url} rel="preload" as="image" href={url} />
       ))}
-      <div className="mb-3">
-        <HomeTabBar />
-      </div>
       <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
       <div className="grid gap-3">
         {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}

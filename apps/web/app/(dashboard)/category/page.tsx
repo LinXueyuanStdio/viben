@@ -3,7 +3,6 @@ import { AuthorCard } from "@/components/content/author-card"
 import { SectionHead } from "@/components/content/section-head"
 import { RefreshButton } from "@/components/content/refresh-button"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
-import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { db, publishedPages, pageCategories, users } from "@/lib/db"
 import { eq, desc, and, asc, ne } from "drizzle-orm"
 import { getSession } from "@/lib/auth/cookies"
@@ -103,9 +102,6 @@ export default async function CategoryPage() {
   if (categories.length === 0) {
     return (
       <>
-        <div className="mb-3">
-          <HomeTabBar />
-        </div>
         <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
           <div className="grid gap-3">
             <SectionHead title="全部页面">
@@ -131,9 +127,6 @@ export default async function CategoryPage() {
   // Normal flow with categories
   return (
     <>
-      <div className="mb-3">
-        <HomeTabBar />
-      </div>
       <div className="grid gap-[14px] grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_330px]">
         <div className="grid gap-3">
           <VibenTabs defaultValue={categories[0]?.slug ?? ""}>

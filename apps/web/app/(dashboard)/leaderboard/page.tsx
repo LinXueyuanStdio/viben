@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query"
 import { RankItem } from "@/components/content/rank-item"
 import { SectionHead } from "@/components/content/section-head"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
-import { HomeTabBar } from "@/components/layout/home-tab-bar"
 import { EmptyState } from "@/components/content/i18n-text"
 import type { RankItemData } from "@/components/content/rank-item"
 
@@ -59,9 +58,6 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      <div className="mb-3">
-        <HomeTabBar />
-      </div>
       <div className="grid gap-3">
       <SectionHead title="热门页面" />
       <VibenTabs defaultValue={DEFAULT_TAB} onValueChange={setActiveTab}>
