@@ -148,7 +148,7 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
         sessionUsername={session?.username}
         sessionAvatarUrl={session?.avatarUrl ?? undefined}
         sessionUserId={session?.userId}
-        tabs={["details", "comments"]}
+        tabs={["details", "comments", "notes"]}
       />
     </>
   )

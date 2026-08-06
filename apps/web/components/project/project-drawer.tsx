@@ -31,6 +31,11 @@ const LazyCommentsPanel = dynamic(
   { loading: () => loadingSkeleton },
 )
 
+const LazyNotesPanel = dynamic(
+  () => import("@/components/content/notes-panel").then((m) => ({ default: m.NotesPanel })),
+  { loading: () => loadingSkeleton },
+)
+
 // --- Typed tabs ---
 
 export interface ProjectDrawerDetailsTab {
@@ -88,6 +93,13 @@ function TabContent({ tab }: { tab: ProjectDrawerTab }) {
           sessionUserId={tab.sessionUserId}
           initialComments={tab.initialComments}
           initialNextCursor={tab.initialNextCursor}
+        />
+      )
+    case "notes":
+      return (
+        <LazyNotesPanel
+          entityType={tab.entityType}
+          entityId={tab.entityId}
         />
       )
     default:
