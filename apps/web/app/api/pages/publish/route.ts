@@ -70,7 +70,40 @@ export async function POST(request: NextRequest) {
       collection_slug: collectionSlug,
       collection_name: collectionName,
       scheduled_at: scheduledAtRaw,
+      author_slug: authorSlugParam,
     } = body;
+
+    // Determine the actual author — if author_slug is provided (e.g., for team project pages),
+    // use that team/user as the page owner instead of the session user.
+    let effectiveUserId = session.userId;
+    let effectiveUserSlug = session.userSlug;
+    let effectiveDisplayName: string | null = null;
+    let effectiveAvatarUrl: string | null = null;
+
+    if (typeof authorSlugParam === "string" && authorSlugParam.trim() && authorSlugParam.trim() !== session.userSlug) {
+      const targetAuthor = await db.query.users.findFirst({
+        where: eq(users.userSlug, authorSlugParam.trim()),
+        columns: { id: true, userSlug: true, displayName: true, avatarUrl: true, type: true },
+      });
+      if (!targetAuthor) {
+        return NextResponse.json({ error: "Author not found" }, { status: 404 });
+      }
+      // For team authors, verify the current user is a member
+      if (targetAuthor.type === "team") {
+        const { teamMembers } = await import("@/lib/db");
+        const membership = await db.query.teamMembers.findFirst({
+          where: and(eq(teamMembers.teamId, targetAuthor.id), eq(teamMembers.userId, session.userId)),
+          columns: { role: true },
+        });
+        if (!membership) {
+          return NextResponse.json({ error: "Not a member of this team" }, { status: 403 });
+        }
+      }
+      effectiveUserId = targetAuthor.id;
+      effectiveUserSlug = targetAuthor.userSlug;
+      effectiveDisplayName = targetAuthor.displayName;
+      effectiveAvatarUrl = targetAuthor.avatarUrl;
+    }
 
     if (typeof uid !== 'string' || !uid.trim() || typeof title !== 'string' || !title.trim() || typeof html !== 'string' || !html) {
       return NextResponse.json(
@@ -114,14 +147,13 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
-    // Fetch user info for denormalized author fields
-    const author = await db.query.users.findFirst({
-      where: eq(users.id, session.userId),
-      columns: {
-        displayName: true,
-        avatarUrl: true,
-      },
-    });
+    // Fetch user info for denormalized author fields (use effective author if set)
+    const author = effectiveUserId !== session.userId
+      ? { displayName: effectiveDisplayName, avatarUrl: effectiveAvatarUrl }
+      : await db.query.users.findFirst({
+          where: eq(users.id, effectiveUserId),
+          columns: { displayName: true, avatarUrl: true },
+        });
     const authorDisplayName = author?.displayName ?? session.username;
     const authorAvatarUrl = author?.avatarUrl ?? session.avatarUrl ?? null;
 
@@ -131,7 +163,7 @@ export async function POST(request: NextRequest) {
 
     const latestVersion = await db.query.publishedPageVersions.findFirst({
       where: and(
-        eq(publishedPageVersions.userId, session.userId),
+        eq(publishedPageVersions.userId, effectiveUserId),
         eq(publishedPageVersions.uid, uid)
       ),
       orderBy: [desc(publishedPageVersions.version)],
@@ -154,7 +186,7 @@ export async function POST(request: NextRequest) {
       // Find existing pages in the same collection (same author)
       const siblingPages = await db.query.publishedPages.findMany({
         where: and(
-          eq(publishedPages.userId, session.userId),
+          eq(publishedPages.userId, effectiveUserId),
           isNotNull(publishedPages.chaptersJson)
         ),
       });
@@ -212,7 +244,7 @@ export async function POST(request: NextRequest) {
       .insert(publishedPages)
       .values({
         uid,
-        userId: session.userId,
+        userId: effectiveUserId,
         title,
         icon: icon ?? null,
         description: description ?? null,
@@ -223,7 +255,7 @@ export async function POST(request: NextRequest) {
         tags: normalizedTags,
         visibility: normalizedVisibility,
         moderationStatus: 'approved',
-        authorSlug: session.userSlug,
+        authorSlug: effectiveUserSlug,
         authorDisplayName,
         authorAvatarUrl,
         publishedAt: nowOrScheduled,
@@ -245,7 +277,7 @@ export async function POST(request: NextRequest) {
           tags: normalizedTags,
           visibility: normalizedVisibility,
           moderationStatus: 'approved',
-          authorSlug: session.userSlug,
+          authorSlug: effectiveUserSlug,
           authorDisplayName,
           authorAvatarUrl,
           lastPublishedAt: nowOrScheduled,
@@ -258,7 +290,7 @@ export async function POST(request: NextRequest) {
 
     const updatedPublishedPage = await db.query.publishedPages.findFirst({
       where: and(
-        eq(publishedPages.userId, session.userId),
+        eq(publishedPages.userId, effectiveUserId),
         eq(publishedPages.uid, uid)
       ),
     });
@@ -273,7 +305,7 @@ export async function POST(request: NextRequest) {
       if (collectionSlugVal) {
         const siblingPages = await db.query.publishedPages.findMany({
           where: and(
-            eq(publishedPages.userId, session.userId),
+            eq(publishedPages.userId, effectiveUserId),
             isNotNull(publishedPages.chaptersJson),
             // Exclude the page we just upserted
             sql`${publishedPages.id} != ${updatedPublishedPage.id}`
@@ -295,7 +327,7 @@ export async function POST(request: NextRequest) {
     await db.insert(publishedPageVersions).values({
       publishedPageId: updatedPublishedPage.id,
       uid,
-      userId: session.userId,
+      userId: effectiveUserId,
       version: nextVersion,
       title,
       icon: icon ?? null,
@@ -312,7 +344,7 @@ export async function POST(request: NextRequest) {
 
     const latestRecord = await db.query.publishedPageRecords.findFirst({
       where: and(
-        eq(publishedPageRecords.userId, session.userId),
+        eq(publishedPageRecords.userId, effectiveUserId),
         eq(publishedPageRecords.uid, uid)
       ),
       orderBy: [desc(publishedPageRecords.recordNumber)],
@@ -321,7 +353,7 @@ export async function POST(request: NextRequest) {
     await db.insert(publishedPageRecords).values({
       publishedPageId: updatedPublishedPage.id,
       uid,
-      userId: session.userId,
+      userId: effectiveUserId,
       recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
       version: nextVersion,
       action: 'publish',
@@ -335,13 +367,13 @@ export async function POST(request: NextRequest) {
       await db
         .update(users)
         .set({ pageCount: sql`COALESCE(${users.pageCount}, 0) + 1` })
-        .where(eq(users.id, session.userId));
+        .where(eq(users.id, effectiveUserId));
     }
 
     await recordPageUpdateAndNotify(db, {
       publishedPageId: updatedPublishedPage.id,
-      userId: session.userId,
-      userSlug: session.userSlug,
+      userId: effectiveUserId,
+      userSlug: effectiveUserSlug,
       pageId: uid,
       version: nextVersion,
       eventType,
@@ -352,16 +384,16 @@ export async function POST(request: NextRequest) {
     });
 
     // 发布/更新页面后刷新该页面及作者主页的内容缓存
-    revalidateTag(`page-ctx-${session.userSlug}-${uid}`);
+    revalidateTag(`page-ctx-${effectiveUserSlug}-${uid}`);
     revalidateTag(`page-entity-${updatedPublishedPage.id}`);
-    revalidateTag(`profile-${session.userSlug}`);
+    revalidateTag(`profile-${effectiveUserSlug}`);
 
     return NextResponse.json({
       success: true,
       page_uid: uid,
       page_id: updatedPublishedPage.id,
-      url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
-      read_url: `/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}?tab=read`,
+      url: `/page/${encodeURIComponent(effectiveUserSlug)}/${encodeURIComponent(uid)}`,
+      read_url: `/${encodeURIComponent(effectiveUserSlug)}/${encodeURIComponent(uid)}?tab=read`,
       updated: true,
     });
   } catch (error) {

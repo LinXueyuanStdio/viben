@@ -54,7 +54,7 @@ export function ProjectPagesList({ teamSlug, projectSlug, pages }: ProjectPagesL
           {pages.map((page) => (
             <Link
               key={page.pageId}
-              href={`/${page.authorSlug}/${page.uid}?tab=read`}
+              href={`/${teamSlug}/${page.uid}?tab=read`}
               target="_blank"
             >
               <Card className="hover:border-primary/50 transition-colors h-full">

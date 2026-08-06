@@ -202,7 +202,9 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
     clearTimeout(uidCheckRef.current)
     uidCheckRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/pages/check-uid?uid=${encodeURIComponent(displayedUid)}`)
+        const scopedUid = `${projectSlug}/${displayedUid}`
+        const params = new URLSearchParams({ uid: scopedUid, author_slug: teamSlug })
+        const res = await fetch(`/api/pages/check-uid?${params}`)
         if (!res.ok) { setUidStatus("available"); return }
         const data = await res.json()
         setUidStatus(data.available ? "available" : "unavailable")
@@ -238,8 +240,8 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
       const formData = new FormData()
       formData.append("file", file)
       formData.append("kind", "page_cover")
-      formData.append("user_slug", userSlug)
-      formData.append("uid", uid || autoUid)
+      formData.append("user_slug", teamSlug)
+      formData.append("uid", `${projectSlug}/${uid || autoUid}`)
       const res = await fetch("/api/media/upload", { method: "POST", body: formData })
       if (!res.ok) throw new Error("Upload failed")
       const data = await res.json()
@@ -309,8 +311,8 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
             const formData = new FormData()
             formData.append("file", new File([blob], "cover.png", { type: "image/png" }))
             formData.append("kind", "page_cover")
-            formData.append("user_slug", userSlug)
-            formData.append("uid", finalUid)
+            formData.append("user_slug", teamSlug)
+            formData.append("uid", `${projectSlug}/${finalUid}`)
             const uploadRes = await fetch("/api/media/upload", { method: "POST", body: formData })
             if (uploadRes.ok) {
               const data = await uploadRes.json()
@@ -320,15 +322,18 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
         } catch (e) { console.warn("Auto cover capture failed:", e) }
       }
       const html = DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true })
+      // Compose project-scoped uid: {projectSlug}/{pageUid}
+      const scopedUid = `${projectSlug}/${finalUid}`
       const res = await fetch("/api/pages/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uid: finalUid, title: title.trim(), html,
+          uid: scopedUid, title: title.trim(), html,
           description: description.trim() || undefined,
           visibility, tags: tags.length > 0 ? tags : undefined,
           cover_url: finalCoverUrl,
           collection_slug: collection?.slug, collection_name: collection?.name,
           scheduled_at: publishMode === "scheduled" && scheduledAt ? scheduledAt : undefined,
+          author_slug: teamSlug,
         }),
       })
       const data = await res.json()
