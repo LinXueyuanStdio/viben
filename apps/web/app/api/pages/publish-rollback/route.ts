@@ -43,14 +43,10 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
-    let result: { status: number; body: Record<string, unknown> };
+    const { findEditablePage } = await import("@/lib/db/page-auth");
+    const publishedPage = await findEditablePage(uid, session.userId);
 
-    const publishedPage = await db.query.publishedPages.findFirst({
-      where: and(
-        eq(publishedPages.userId, session.userId),
-        eq(publishedPages.uid, uid)
-      ),
-    });
+    let result: { status: number; body: Record<string, unknown> };
 
     if (!publishedPage) {
       result = {
@@ -65,7 +61,7 @@ export async function POST(request: NextRequest) {
     } else {
       const publishedVersion = await db.query.publishedPageVersions.findFirst({
         where: and(
-          eq(publishedPageVersions.userId, session.userId),
+          eq(publishedPageVersions.userId, publishedPage.userId),
           eq(publishedPageVersions.uid, uid),
           eq(publishedPageVersions.version, version)
         ),
@@ -89,14 +85,14 @@ export async function POST(request: NextRequest) {
           })
           .where(
             and(
-              eq(publishedPages.userId, session.userId),
+              eq(publishedPages.userId, publishedPage.userId),
               eq(publishedPages.uid, uid)
             )
           );
 
         const latestRecord = await db.query.publishedPageRecords.findFirst({
           where: and(
-            eq(publishedPageRecords.userId, session.userId),
+            eq(publishedPageRecords.userId, publishedPage.userId),
             eq(publishedPageRecords.uid, uid)
           ),
           orderBy: [desc(publishedPageRecords.recordNumber)],
@@ -105,7 +101,7 @@ export async function POST(request: NextRequest) {
         await db.insert(publishedPageRecords).values({
           publishedPageId: publishedPage.id,
           uid,
-          userId: session.userId,
+          userId: publishedPage.userId,
           recordNumber: (latestRecord?.recordNumber ?? 0) + 1,
           version: publishedVersion.version,
           action: 'rollback',

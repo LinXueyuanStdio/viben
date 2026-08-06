@@ -43,12 +43,8 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable()
 
-    const page = await db.query.publishedPages.findFirst({
-      where: and(
-        eq(publishedPages.userId, session.userId),
-        eq(publishedPages.uid, uid),
-      ),
-    })
+    const { findEditablePage } = await import("@/lib/db/page-auth")
+    const page = await findEditablePage(uid, session.userId)
 
     if (!page) {
       return NextResponse.json(
@@ -84,7 +80,7 @@ export async function POST(request: NextRequest) {
       .set(updates)
       .where(
         and(
-          eq(publishedPages.userId, session.userId),
+          eq(publishedPages.userId, page.userId),
           eq(publishedPages.uid, uid),
         ),
       )

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { db, publishedPages, users } from "@/lib/db"
 import { requireAuth, AuthError } from "@/lib/auth/middleware"
-import { eq, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 /**
  * 删除已发布页面
@@ -38,10 +38,29 @@ export async function DELETE(
     }
 
     if (page.userId !== session.userId) {
-      return NextResponse.json(
-        { error: { code: "forbidden", message: "You can only delete your own pages" } },
-        { status: 403 }
-      )
+      // Allow team members to manage team-owned pages
+      const { users: u, teamMembers: tm } = await import("@/lib/db")
+      const owner = await db.query.users.findFirst({
+        where: eq(u.id, page.userId),
+        columns: { type: true },
+      })
+      if (owner?.type === "team") {
+        const membership = await db.query.teamMembers.findFirst({
+          where: and(eq(tm.teamId, page.userId), eq(tm.userId, session.userId)),
+          columns: { role: true },
+        })
+        if (!membership) {
+          return NextResponse.json(
+            { error: { code: "forbidden", message: "You can only delete your own pages" } },
+            { status: 403 }
+          )
+        }
+      } else {
+        return NextResponse.json(
+          { error: { code: "forbidden", message: "You can only delete your own pages" } },
+          { status: 403 }
+        )
+      }
     }
 
     // 删除前扣减用户 pageCount（仅公开且已审核的页面才计入）

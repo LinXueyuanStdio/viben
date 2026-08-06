@@ -47,12 +47,8 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
-    const publishedPage = await db.query.publishedPages.findFirst({
-      where: and(
-        eq(publishedPages.userId, session.userId),
-        eq(publishedPages.uid, uid)
-      ),
-    });
+    const { findEditablePage } = await import("@/lib/db/page-auth");
+    const publishedPage = await findEditablePage(uid, session.userId);
 
     if (!publishedPage) {
       return NextResponse.json(
@@ -63,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const records = await db.query.publishedPageRecords.findMany({
       where: and(
-        eq(publishedPageRecords.userId, session.userId),
+        eq(publishedPageRecords.userId, publishedPage.userId),
         eq(publishedPageRecords.uid, uid)
       ),
       orderBy: [desc(publishedPageRecords.recordNumber)],
@@ -83,7 +79,7 @@ export async function POST(request: NextRequest) {
         description: record.description,
         created_at: toIsoString(record.createdAt),
         is_current: record.version === publishedPage.currentVersion,
-        url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}/versions/${record.version}`,
+        url: `/page/${encodeURIComponent(publishedPage.authorSlug)}/${encodeURIComponent(uid)}/versions/${record.version}`,
       })),
     });
   } catch (error) {

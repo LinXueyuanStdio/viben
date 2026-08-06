@@ -47,9 +47,18 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
+    const { findEditablePage } = await import("@/lib/db/page-auth");
+    const page = await findEditablePage(uid, session.userId);
+    if (!page) {
+      return NextResponse.json(
+        { success: false, error: 'Published page not found' },
+        { status: 404 }
+      );
+    }
+
     const publishedVersion = await db.query.publishedPageVersions.findFirst({
       where: and(
-        eq(publishedPageVersions.userId, session.userId),
+        eq(publishedPageVersions.userId, page.userId),
         eq(publishedPageVersions.uid, uid),
         eq(publishedPageVersions.version, version)
       ),
