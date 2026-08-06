@@ -26,6 +26,11 @@ const LazyProjectMeta = dynamic(
   { loading: () => loadingSkeleton },
 )
 
+const LazyCommentsPanel = dynamic(
+  () => import("@/components/content/comments-panel").then((m) => ({ default: m.CommentsPanel })),
+  { loading: () => loadingSkeleton },
+)
+
 // --- Typed tabs ---
 
 export interface ProjectDrawerDetailsTab {
@@ -71,7 +76,20 @@ function TabContent({ tab }: { tab: ProjectDrawerTab }) {
   switch (tab.type) {
     case "details":
       return <LazyProjectMeta data={tab.projectMeta} />
-    // comments and notes tabs added in later tasks
+    case "comments":
+      return (
+        <LazyCommentsPanel
+          communityEntityId={tab.communityEntityId}
+          pageDbId={tab.projectDbId}
+          entityType="project"
+          isAuthenticated={tab.isAuthenticated}
+          sessionUsername={tab.sessionUsername}
+          sessionAvatarUrl={tab.sessionAvatarUrl}
+          sessionUserId={tab.sessionUserId}
+          initialComments={tab.initialComments}
+          initialNextCursor={tab.initialNextCursor}
+        />
+      )
     default:
       return null
   }
