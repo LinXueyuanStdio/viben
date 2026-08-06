@@ -188,9 +188,9 @@ export function Topbar({
             className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
           >
             {hamburgerClosed ? (
-              <PanelLeftOpen className="size-[18px]" />
+              <PanelLeftOpen className="h-4 w-4" />
             ) : (
-              <PanelLeftClose className="size-[18px]" />
+              <PanelLeftClose className="h-4 w-4" />
             )}
           </button>
 
