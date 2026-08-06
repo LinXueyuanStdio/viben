@@ -108,10 +108,16 @@ export function Topbar({
   // 判断是否为团队页面（需要显示 TeamTabs）
   // /team/{slug}/... 从 pathname 检测（SSR 可用）
   // /{team_slug} overview 从 #viben-team-meta 检测（useLayoutEffect 补检，减少闪烁）
+  // 注意：如果存在 project meta，则不是 team route
   const [isTeamRoute, setIsTeamRoute] = React.useState(
     () => pathname.startsWith("/team/")
   )
   React.useLayoutEffect(() => {
+    // 项目页面优先：如果存在 project meta，则不是 team route
+    if (typeof window !== "undefined" && document.getElementById("viben-project-meta")) {
+      setIsTeamRoute(false)
+      return
+    }
     if (pathname.startsWith("/team/")) {
       setIsTeamRoute(true)
       return
@@ -242,7 +248,9 @@ export function Topbar({
                 )
           }
         >
-          {isRead ? (
+          {isProjectRoute ? (
+            <ProjectTabs />
+          ) : isRead ? (
             topbarSlots?.centerContent ?? centerContent ?? (
               <div className="pointer-events-auto h-full">
                 {/* 仅在有 sidePage 或是作者时渲染 TabList（否则只有一个 tab 不展示） */}
@@ -274,8 +282,6 @@ export function Topbar({
             <HomeTabBar iconOnly={isMobile} />
           ) : isTeamRoute ? (
             <TeamTabs />
-          ) : isProjectRoute ? (
-            <ProjectTabs />
           ) : null}
         </div>
 

@@ -290,6 +290,14 @@ const TEAM_SUB_LABELS: Record<string, string> = {
   new: "新建项目",
 }
 
+/** 从服务端注入的 <script id="viben-project-meta"> 读取当前项目信息 */
+function getProjectMeta(): { teamSlug: string; projectSlug: string } | null {
+  if (typeof window === "undefined") return null
+  const el = document.getElementById("viben-project-meta")
+  if (!el) return null
+  try { return JSON.parse(el.textContent ?? "") } catch { return null }
+}
+
 /** 获取面包屑段，支持传入动态段标签 */
 export function resolveBreadcrumbSegments(
   pathname: string,
@@ -299,25 +307,39 @@ export function resolveBreadcrumbSegments(
   const parts = pathname.split("/").filter(Boolean)
 
   // 处理团队子路由 /team/{slug}/...  — 跳过 /team 前缀，用 displayName 替代 slug
+  // 面包屑保持简洁：tablist 已提供子导航，面包屑只显示团队名（或团队名+项目名）
   if (parts[0] === "team" && parts.length >= 2) {
     const teamSlug = parts[1]
     const teamMeta = getTeamMeta()
     const teamLabel = teamMeta?.teamName ?? teamSlug
 
+    // 检测项目上下文：/team/{slug}/projects/{projectSlug}/...（projectSlug ≠ "new"）
+    const isProjectContext = parts[2] === "projects" && parts.length >= 4 && parts[3] !== "new"
+
+    if (isProjectContext) {
+      const projectSlug = parts[3]
+      const projectMeta = getProjectMeta()
+      const projectLabel = projectMeta?.projectSlug ?? projectSlug
+
+      segments.push({
+        href: `/${teamSlug}`,
+        config: { label: teamLabel },
+        isLast: false,
+      })
+      segments.push({
+        href: `/${teamSlug}/${projectSlug}`,
+        config: { label: projectLabel },
+        isLast: true,
+      })
+      return segments
+    }
+
+    // 非项目上下文：只显示团队名
     segments.push({
       href: `/${teamSlug}`,
       config: { label: teamLabel },
-      isLast: parts.length === 2,
+      isLast: true,
     })
-
-    for (let i = 2; i < parts.length; i++) {
-      const isLast = i === parts.length - 1
-      segments.push({
-        href: `/${parts.slice(0, i + 1).join("/")}`,
-        config: { label: TEAM_SUB_LABELS[parts[i]] ?? parts[i] },
-        isLast,
-      })
-    }
 
     return segments
   }
