@@ -256,6 +256,20 @@ export function Sidebar({
                 );
               })}
 
+              <div className="my-2 border-t" />
+              <Link
+                href="/settings/teams"
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  pathname.startsWith('/settings/teams') || pathname.startsWith('/team/')
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Users className="h-4 w-4" />
+                {t('nav.teams')}
+              </Link>
+
               {/* Docs entry — opens docs sub-panel */}
               <div className="my-3 border-t" />
               <button

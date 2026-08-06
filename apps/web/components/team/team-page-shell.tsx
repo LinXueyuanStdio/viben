@@ -1,6 +1,5 @@
 "use client"
 
-import { TeamOverview } from "./team-overview"
 import type { ReactNode } from "react"
 
 interface ProjectItem {
@@ -36,13 +35,6 @@ export function TeamPageShell({
         <h1 className="text-2xl font-bold">{teamName}</h1>
 
         <div className="min-w-0">
-          {activeTab === "overview" && (
-            <TeamOverview
-              teamSlug={teamSlug}
-              projects={projects}
-              currentUserRole={currentUserRole}
-            />
-          )}
           {children}
         </div>
       </div>

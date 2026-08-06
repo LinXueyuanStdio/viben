@@ -1,8 +1,38 @@
+import { Suspense } from "react"
 import { db, users, teamMembers, projects } from "@/lib/db"
 import { eq, and } from "drizzle-orm"
 import { notFound } from "next/navigation"
 import type { Session } from "@/lib/auth/types"
 import { TeamPageShell } from "@/components/team/team-page-shell"
+import { TeamOverview } from "@/components/team/team-overview"
+import { ProjectListSkeleton } from "@/components/team/team-skeletons"
+
+interface ProjectsLoaderProps {
+  teamId: string
+  teamSlug: string
+  currentUserRole: string | null
+}
+
+async function ProjectsLoader({ teamId, teamSlug, currentUserRole }: ProjectsLoaderProps) {
+  const projectList = await db
+    .select({
+      projectSlug: projects.projectSlug,
+      name: projects.name,
+      description: projects.description,
+      createdAt: projects.createdAt,
+    })
+    .from(projects)
+    .where(eq(projects.teamId, teamId))
+    .orderBy(projects.updatedAt)
+
+  return (
+    <TeamOverview
+      teamSlug={teamSlug}
+      projects={projectList}
+      currentUserRole={currentUserRole}
+    />
+  )
+}
 
 interface TeamPageProps {
   teamSlug: string
@@ -28,24 +58,20 @@ export async function TeamPage({ teamSlug, session }: TeamPageProps) {
     currentUserRole = membership?.role ?? null
   }
 
-  const projectList = await db
-    .select({
-      projectSlug: projects.projectSlug,
-      name: projects.name,
-      description: projects.description,
-      createdAt: projects.createdAt,
-    })
-    .from(projects)
-    .where(eq(projects.teamId, team.id))
-    .orderBy(projects.updatedAt)
-
   return (
     <TeamPageShell
       teamSlug={team.userSlug}
       teamName={team.displayName}
       teamAvatarUrl={team.avatarUrl}
       currentUserRole={currentUserRole}
-      projects={projectList}
-    />
+    >
+      <Suspense fallback={<ProjectListSkeleton />}>
+        <ProjectsLoader
+          teamId={team.id}
+          teamSlug={team.userSlug}
+          currentUserRole={currentUserRole}
+        />
+      </Suspense>
+    </TeamPageShell>
   )
 }

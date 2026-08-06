@@ -52,12 +52,19 @@ export const TeamTabs = React.memo(function TeamTabs({ className }: TeamTabsProp
     })?.value ?? "overview"
   }, [pathname, teamSlug])
 
+  // Optimistic tab switch: update underline immediately on click, reset when navigation completes
+  const [optimisticTab, setOptimisticTab] = React.useState<string | null>(null)
+  React.useEffect(() => { setOptimisticTab(null) }, [pathname])
+
+  const value = optimisticTab ?? activeTab
+
   if (!teamSlug) return null
 
   return (
     <VibenTabs
-      value={activeTab}
+      value={value}
       onValueChange={(v) => {
+        setOptimisticTab(v)
         if (v === "overview") router.push(`/${teamSlug}`)
         else router.push(`/team/${teamSlug}/${v}`)
       }}

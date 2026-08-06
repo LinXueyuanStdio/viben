@@ -1,11 +1,57 @@
+import { Suspense } from "react"
 import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { TeamPageShell } from "@/components/team/team-page-shell"
 import { TeamMembersList } from "@/components/team/team-members-list"
+import { MemberListSkeleton } from "@/components/team/team-skeletons"
 import { db, users, teamMembers } from "@/lib/db"
 import { eq, and, count } from "drizzle-orm"
 
 const PAGE_SIZE = 20
+
+interface MembersListLoaderProps {
+  teamId: string
+  teamSlug: string
+  currentUserRole: string | null
+  page: number
+}
+
+async function MembersListLoader({ teamId, teamSlug, currentUserRole, page }: MembersListLoaderProps) {
+  const [countResult, members] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(teamMembers)
+      .where(eq(teamMembers.teamId, teamId)),
+    db
+      .select({
+        userId: teamMembers.userId,
+        userSlug: users.userSlug,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        role: teamMembers.role,
+        joinedAt: teamMembers.joinedAt,
+      })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(eq(teamMembers.teamId, teamId))
+      .orderBy(teamMembers.joinedAt)
+      .limit(PAGE_SIZE)
+      .offset((page - 1) * PAGE_SIZE),
+  ])
+
+  const total = countResult[0]?.count ?? 0
+
+  return (
+    <TeamMembersList
+      teamSlug={teamSlug}
+      members={members}
+      currentUserRole={currentUserRole}
+      total={total}
+      page={page}
+      pageSize={PAGE_SIZE}
+    />
+  )
+}
 
 export default async function TeamMembersPage({
   params,
@@ -34,30 +80,6 @@ export default async function TeamMembersPage({
     currentUserRole = membership?.role ?? null
   }
 
-  const [countResult, members] = await Promise.all([
-    db
-      .select({ count: count() })
-      .from(teamMembers)
-      .where(eq(teamMembers.teamId, team.id)),
-    db
-      .select({
-        userId: teamMembers.userId,
-        userSlug: users.userSlug,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        role: teamMembers.role,
-        joinedAt: teamMembers.joinedAt,
-      })
-      .from(teamMembers)
-      .innerJoin(users, eq(teamMembers.userId, users.id))
-      .where(eq(teamMembers.teamId, team.id))
-      .orderBy(teamMembers.joinedAt)
-      .limit(PAGE_SIZE)
-      .offset((page - 1) * PAGE_SIZE),
-  ])
-
-  const total = countResult[0]?.count ?? 0
-
   return (
     <TeamPageShell
       teamSlug={team_slug}
@@ -66,14 +88,14 @@ export default async function TeamMembersPage({
       currentUserRole={currentUserRole}
       activeTab="members"
     >
-      <TeamMembersList
-        teamSlug={team_slug}
-        members={members}
-        currentUserRole={currentUserRole}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-      />
+      <Suspense fallback={<MemberListSkeleton />}>
+        <MembersListLoader
+          teamId={team.id}
+          teamSlug={team_slug}
+          currentUserRole={currentUserRole}
+          page={page}
+        />
+      </Suspense>
     </TeamPageShell>
   )
 }
