@@ -55,7 +55,7 @@ interface CommentsPanelProps {
   /** 页面在 published_pages 表中的 DB ID，用于评论 API 的 entity_id */
   pageDbId: string
   /** entity_type for comments API, defaults to "published_page" */
-  entityType?: "published_page" | "moment"
+  entityType?: "published_page" | "moment" | "project"
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
@@ -80,7 +80,7 @@ function CommentComposer({
 }: {
   communityEntityId: string
   pageDbId: string
-  entityType?: "published_page" | "moment"
+  entityType?: "published_page" | "moment" | "project"
   isAuthenticated: boolean
   sessionUsername?: string
   sessionAvatarUrl?: string
@@ -180,7 +180,7 @@ function CommentCard({
   sessionUserId,
 }: {
   comment: CommunityComment
-  entityType?: "published_page" | "moment"
+  entityType?: "published_page" | "moment" | "project"
   pageDbId?: string
   isAuthenticated?: boolean
   onReply?: (username: string, commentId: string) => void

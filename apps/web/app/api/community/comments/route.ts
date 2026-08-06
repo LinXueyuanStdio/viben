@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const entityId = searchParams.get('entity_id');
 
   if (
-    (entityType !== 'published_page' && entityType !== 'moment' && entityType !== 'comment') ||
+    (entityType !== 'published_page' && entityType !== 'moment' && entityType !== 'comment' && entityType !== 'project') ||
     !entityId
   ) {
     return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (
-      (body.entity_type !== 'published_page' && body.entity_type !== 'moment') ||
+      (body.entity_type !== 'published_page' && body.entity_type !== 'moment' && body.entity_type !== 'project') ||
       typeof body.entity_id !== 'string' ||
       typeof body.content !== 'string'
     ) {

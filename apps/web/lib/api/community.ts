@@ -59,7 +59,7 @@ export interface CreateCommentResult {
 }
 
 export async function createComment(params: {
-  entityType: "moment" | "published_page"
+  entityType: "moment" | "published_page" | "project"
   entityId: string
   content: string
   parentCommentId?: string | null

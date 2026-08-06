@@ -18,6 +18,7 @@ import {
   pageSubscriptions,
   pageUpdateEvents,
   profilePins,
+  projects,
   publishedPages,
   rankingItems,
   rankingSnapshots,
@@ -305,7 +306,7 @@ export async function ensureCommunityEntityForPage(context: PublicPageContext) {
 }
 
 export async function getCommunitySummary(
-  entityType: 'published_page' | 'moment' | 'comment',
+  entityType: 'published_page' | 'moment' | 'comment' | 'project',
   entityId: string,
   session: Session | null
 ) {
@@ -356,7 +357,7 @@ export async function getCommunitySummary(
 }
 
 export async function listCommunityComments(params: {
-  entityType: 'published_page' | 'moment' | 'comment';
+  entityType: 'published_page' | 'moment' | 'comment' | 'project';
   entityId: string;
   parentCommentId: string | null;
   limit: number;
@@ -472,7 +473,7 @@ export async function listCommunityComments(params: {
 }
 
 export async function createCommunityComment(params: {
-  entityType: 'published_page' | 'moment';
+  entityType: 'published_page' | 'moment' | 'project';
   entityId: string;
   parentCommentId: string | null;
   content: string;
@@ -530,6 +531,7 @@ export async function createCommunityComment(params: {
       .set({ commentCount: sql`${moments.commentCount} + 1` })
       .where(eq(moments.id, params.entityId));
   }
+  // project: no denormalized counter on projects table yet — communityEntities counter is sufficient
 
   if (parent) {
     await db
@@ -665,7 +667,7 @@ function canManageComment(
 }
 
 export async function ensureCommunityEntity(
-  entityType: 'published_page' | 'moment' | 'comment',
+  entityType: 'published_page' | 'moment' | 'comment' | 'project',
   entityId: string
 ): Promise<typeof communityEntities.$inferSelect> {
   const existing = await db.query.communityEntities.findFirst({
@@ -722,11 +724,27 @@ export async function ensureCommunityEntity(
     return created;
   }
 
+  if (entityType === 'project') {
+    const [proj] = await db.select({
+      userId: projects.createdBy,
+      name: projects.name,
+    }).from(projects).where(eq(projects.id, entityId));
+    if (!proj) throw new Error('community_entity_not_found');
+    const [created] = await db.insert(communityEntities).values({
+      entityType: 'project', entityId, ownerUserId: proj.userId,
+      visibility: 'public', status: 'active', title: proj.name,
+    }).onConflictDoUpdate({
+      target: [communityEntities.entityType, communityEntities.entityId],
+      set: { title: proj.name, status: 'active', visibility: 'public' },
+    }).returning();
+    return created;
+  }
+
   throw new Error('community_entity_not_found');
 }
 
 export async function toggleReaction(params: {
-  entityType: 'published_page' | 'moment' | 'comment';
+  entityType: 'published_page' | 'moment' | 'comment' | 'project';
   entityId: string;
   reactionType: 'like';
   session: Session;
@@ -789,7 +807,7 @@ export async function toggleReaction(params: {
 }
 
 export async function toggleBookmark(params: {
-  entityType: 'published_page' | 'moment';
+  entityType: 'published_page' | 'moment' | 'project';
   entityId: string;
   session: Session;
 }) {
@@ -840,7 +858,7 @@ export async function toggleBookmark(params: {
 
 export async function listCommunityBookmarks(params: {
   session: Session;
-  entityType?: 'published_page' | 'moment';
+  entityType?: 'published_page' | 'moment' | 'project';
   limit: number;
   cursor: string | null;
 }) {

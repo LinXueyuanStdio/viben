@@ -1057,7 +1057,7 @@ export const communityEntities = pgTable(
   {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     entityType: text('entity_type', {
-      enum: ['published_page', 'moment', 'comment'],
+      enum: ['published_page', 'moment', 'comment', 'project'],
     }).notNull(),
     entityId: text('entity_id').notNull(),
     ownerUserId: text('owner_user_id').references(() => users.id, {
