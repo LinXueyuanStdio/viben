@@ -9,6 +9,7 @@ import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { getCachedProfileData } from "@/lib/services/community"
 import type { CachedProfileData } from "@/lib/services/community"
+import { TeamPage } from "./team-page"
 import { EmptyState, T } from "@/components/content/i18n-text"
 import { FollowButton } from "@/components/content/follow-button"
 import Link from "next/link"
@@ -137,6 +138,16 @@ export default async function UserSlugPage({
   if (!cached) notFound()
 
   const { user } = cached
+
+  // Team account → render team homepage
+  if ((user as Record<string, unknown>).type === "team") {
+    return (
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
+        <TeamPage teamSlug={slug} session={session} />
+      </Suspense>
+    )
+  }
+
   const isOwnProfile = session?.userId === user.id
   const displayName = user.displayName ?? "?"
   const avatarUrl = user.avatarUrl

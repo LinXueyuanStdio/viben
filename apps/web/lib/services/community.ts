@@ -2158,6 +2158,7 @@ export interface CachedProfileData {
     avatarUrl: string | null;
     websiteUrl: string | null;
     followersCount: number;
+    type: string;
   };
   authorPages: Array<{
     id: string;
@@ -2386,6 +2387,7 @@ export async function getCachedProfileData(userSlug: string): Promise<CachedProf
           avatarUrl: user.avatarUrl,
           websiteUrl: user.websiteUrl,
           followersCount: user.followersCount,
+          type: user.type,
         },
         authorPages,
         pageCount: pageCountResult[0]?.count ?? 0,
