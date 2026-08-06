@@ -3072,7 +3072,8 @@
       "empty": "暂无页面",
       "emptyHint": "已添加到项目的页面将显示在此处。",
       "title": "页面 ({{count}})",
-      "by": "by @{{author}}"
+      "by": "by @{{author}}",
+      "createPage": "创建页面"
     },
     "settings": {
       "title": "项目设置",
@@ -3233,7 +3234,8 @@
       "title": "{{count}} 个页面",
       "empty": "暂无页面",
       "emptyHint": "添加页面到此项目",
-      "by": "作者 {{author}}"
+      "by": "作者 {{author}}",
+      "createPage": "创建页面"
     },
     "settings": {
       "title": "项目设置",

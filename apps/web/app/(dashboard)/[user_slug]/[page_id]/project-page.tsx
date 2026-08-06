@@ -101,23 +101,33 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
     switch (tab) {
       case "pages":
         return (
-          <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
-            <Suspense fallback={<ProjectListSkeleton />}>
-              <PagesLoader projectId={project.id} teamSlug={teamSlug} projectSlug={projectSlug} />
-            </Suspense>
+          <div
+            className="overflow-y-auto"
+            style={{ height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))" }}
+          >
+            <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
+              <Suspense fallback={<ProjectListSkeleton />}>
+                <PagesLoader projectId={project.id} teamSlug={teamSlug} projectSlug={projectSlug} />
+              </Suspense>
+            </div>
           </div>
         )
       case "settings":
         return (
-          <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
-            <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
-              <ProjectSettingsLoader
-                projectSlug={projectSlug}
-                teamSlug={teamSlug}
-                description={project.description}
-                createdBy={project.createdBy}
-              />
-            </Suspense>
+          <div
+            className="overflow-y-auto"
+            style={{ height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))" }}
+          >
+            <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
+              <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
+                <ProjectSettingsLoader
+                  projectSlug={projectSlug}
+                  teamSlug={teamSlug}
+                  description={project.description}
+                  createdBy={project.createdBy}
+                />
+              </Suspense>
+            </div>
           </div>
         )
       default:
@@ -133,11 +143,7 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
 
   return (
     <>
-      <ProjectPageShell
-        teamSlug={teamSlug}
-        projectSlug={projectSlug}
-        projectName={project.name}
-      >
+      <ProjectPageShell teamSlug={teamSlug} projectSlug={projectSlug}>
         {content}
       </ProjectPageShell>
       <ProjectDrawerClient

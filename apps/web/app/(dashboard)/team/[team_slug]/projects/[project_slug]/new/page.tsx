@@ -35,16 +35,17 @@ export default async function NewProjectPagePage({
   if (!membership) redirect(`/${team_slug}/${project_slug}`)
 
   return (
-    <ProjectPageShell
-      teamSlug={team_slug}
-      projectSlug={project_slug}
-      projectName={project.name}
-    >
-      <ProjectPageEditor
-        userSlug={session.userSlug}
-        teamSlug={team_slug}
-        projectSlug={project_slug}
-      />
+    <ProjectPageShell teamSlug={team_slug} projectSlug={project_slug}>
+      <div
+        className="overflow-y-auto"
+        style={{ height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))" }}
+      >
+        <ProjectPageEditor
+          userSlug={session.userSlug}
+          teamSlug={team_slug}
+          projectSlug={project_slug}
+        />
+      </div>
     </ProjectPageShell>
   )
 }

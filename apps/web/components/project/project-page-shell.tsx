@@ -5,15 +5,16 @@ import type { ReactNode } from "react"
 interface ProjectPageShellProps {
   teamSlug: string
   projectSlug: string
-  projectName: string
   children?: ReactNode
 }
 
-export function ProjectPageShell({ teamSlug, projectSlug, projectName, children }: ProjectPageShellProps) {
+export function ProjectPageShell({ children }: ProjectPageShellProps) {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{projectName}</h1>
-      <div className="min-w-0">{children}</div>
+    <div
+      className="h-full"
+      style={{ paddingTop: "var(--reader-header-safe, var(--nav-h, 56px))" }}
+    >
+      {children}
     </div>
   )
 }

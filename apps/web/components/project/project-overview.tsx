@@ -21,7 +21,12 @@ export function ProjectOverview({ defaultPage, teamSlug, projectSlug }: ProjectO
 
   if (!defaultPage) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg gap-4">
+      <div
+        className="flex flex-col items-center justify-center text-center gap-4 bg-white dark:bg-[#0a0a0a]"
+        style={{
+          minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+        }}
+      >
         <FileText className="h-12 w-12 text-muted-foreground/40" />
         <div>
           <h3 className="text-lg font-medium">{t("project.overview.empty")}</h3>
@@ -43,8 +48,11 @@ export function ProjectOverview({ defaultPage, teamSlug, projectSlug }: ProjectO
       title={defaultPage.title}
       srcDoc={defaultPage.html}
       sandbox="allow-scripts allow-same-origin"
-      className="w-full border rounded-lg"
-      style={{ minHeight: "60vh" }}
+      className="w-full border-0 bg-white dark:bg-[#0a0a0a]"
+      style={{
+        height: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+        minHeight: "calc(100vh - var(--reader-header-safe, var(--nav-h, 56px)))",
+      }}
     />
   )
 }

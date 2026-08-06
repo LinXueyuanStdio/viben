@@ -406,8 +406,8 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           />
           <div className="space-y-1">
             <div className="flex items-center gap-0 rounded-md border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
-              <span className="shrink-0 px-3 py-2 text-sm text-muted-foreground bg-surface-secondary border-r border-border select-none">
-                {userSlug} /
+              <span className="shrink-0 px-3 py-2 text-sm text-muted-foreground bg-surface-secondary border-r border-border select-none font-mono">
+                {teamSlug}/{projectSlug}/
               </span>
               <input
                 value={uidManuallyEdited ? uid : autoUid}
@@ -429,7 +429,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
             )}
             {uidStatus === "available" && (
               <p className="text-[13px] text-emerald-600 dark:text-emerald-400 leading-relaxed">
-                {t("pageEditor.availableMsg", { userSlug, uid: displayedUid })}
+                {t("pageEditor.availableMsg", { userSlug: teamSlug, uid: `${projectSlug}/${displayedUid}` })}
               </p>
             )}
             {uidStatus === "unavailable" && (
@@ -590,7 +590,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
       <div className="sticky bottom-0 -mx-4 px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <p className="text-[13px] text-muted-foreground">
-            {title.trim() ? `${userSlug}/${uid}` : t("pageEditor.fillTitleFirst")}
+            {title.trim() ? `${teamSlug}/${projectSlug}/${uid}` : t("pageEditor.fillTitleFirst")}
           </p>
           {/* Auto-save status */}
           {hasChanges && (
