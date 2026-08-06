@@ -3296,6 +3296,28 @@
       "makeOwner": "设为 Owner",
       "revokeOwner": "取消 Owner"
     },
+    "newProject": {
+      "title": "新建项目",
+      "basicInfo": "基础信息",
+      "basicInfoDesc": "设置项目名称、标识和描述",
+      "nameLabel": "项目名称",
+      "namePlaceholder": "我的项目",
+      "slugLabel": "项目标识",
+      "slugPlaceholder": "my-project",
+      "urlHint": "项目地址：{{teamSlug}}/{{slug}}",
+      "descriptionLabel": "项目描述",
+      "descriptionPlaceholder": "简单描述这个项目…",
+      "configuration": "配置",
+      "configurationDesc": "设置项目可见性",
+      "visibilityLabel": "可见性",
+      "required": "必填",
+      "public": "公开",
+      "private": "私有",
+      "create": "创建项目",
+      "cancel": "取消",
+      "created": "项目创建成功",
+      "createFailed": "创建项目失败"
+    },
     "settings": {
       "profile": "团队信息",
       "name": "团队名称",

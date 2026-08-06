@@ -56,7 +56,7 @@ export function NewProjectForm({ teamSlug }: { teamSlug: string }) {
       })
       if (res.ok) {
         toast.success(t("team.newProject.created"))
-        router.push(`/team/${teamSlug}/projects`)
+        router.push(`/${teamSlug}/${finalSlug}`)
         router.refresh()
       } else {
         const data = await res.json()
@@ -100,8 +100,8 @@ export function NewProjectForm({ teamSlug }: { teamSlug: string }) {
             {t("team.newProject.slugLabel")} <span className="text-red-500">*</span>
           </Label>
           <div className="flex items-center gap-0 rounded-md border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
-            <span className="shrink-0 px-3 py-2 text-sm text-muted-foreground bg-surface-secondary border-r border-border select-none">
-              {teamSlug} /
+            <span className="shrink-0 px-3 py-2 text-sm text-muted-foreground bg-surface-secondary border-r border-border select-none font-mono">
+              {teamSlug}/
             </span>
             <input
               id="projectSlug"

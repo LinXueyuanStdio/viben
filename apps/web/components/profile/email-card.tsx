@@ -1,8 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { Mail, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Mail } from "lucide-react";
 
 interface EmailCardProps {
   email: string;
@@ -13,18 +12,11 @@ export function EmailCard({ email }: EmailCardProps) {
 
   return (
     <section className="rounded-lg border">
-      <div className="flex items-center justify-between border-b px-6 py-4">
-        <div>
-          <h2 className="text-lg font-semibold">{t("profile.email.title")}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t("profile.email.description")}
-          </p>
-        </div>
-        {/* 后续支持多邮箱时启用 */}
-        <Button type="button" variant="outline" size="sm" disabled>
-          <Plus className="mr-1.5 h-4 w-4" />
-          {t("common.add")}
-        </Button>
+      <div className="border-b px-6 py-4">
+        <h2 className="text-lg font-semibold">{t("profile.email.title")}</h2>
+        <p className="text-sm text-muted-foreground">
+          {t("profile.email.description")}
+        </p>
       </div>
       <div className="px-6 py-3">
         <div className="flex items-center gap-3">

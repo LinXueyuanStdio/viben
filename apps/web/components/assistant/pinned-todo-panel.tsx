@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowRight, CheckCircle, ChevronDown, ChevronRight, Circle } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { isToolUIPart } from "ai";
@@ -43,23 +43,7 @@ export function getLatestTodos(messages: WebAgentUIMessage[]): TodoItem[] {
 
 /** Completed: check inside a circle */
 function CompletedIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      className={cn("h-4 w-4", className)}
-      aria-hidden="true"
-    >
-      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M5 8.5L7 10.5L11 6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <CheckCircle className={cn("h-4 w-4", className)} aria-hidden="true" />;
 }
 
 /** In-progress: filled circle with arrow-right icon inside */
@@ -71,16 +55,7 @@ function InProgressIcon({ className }: { className?: string }) {
         className,
       )}
     >
-      {/* Filled circle background */}
-      <svg
-        viewBox="0 0 16 16"
-        fill="none"
-        className="absolute inset-0 h-4 w-4"
-        aria-hidden="true"
-      >
-        <circle cx="8" cy="8" r="7.25" fill="currentColor" />
-      </svg>
-      {/* Arrow icon on top, colored to contrast */}
+      <Circle className="absolute inset-0 h-4 w-4" fill="currentColor" stroke="none" />
       <ArrowRight className="relative h-2.5 w-2.5 text-muted" strokeWidth={3} />
     </span>
   );

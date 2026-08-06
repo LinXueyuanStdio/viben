@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, LayoutList, ListChecks, ListTodo } from "lucide-react";
+import { ArrowRight, CheckCircle, Circle, LayoutList, ListChecks, ListTodo } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { ToolRendererProps } from "@/lib/render-tool";
@@ -11,23 +11,7 @@ type Todo = Record<string, any>;
 
 /** Completed: check inside a circle */
 function CompletedIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      className={cn("h-3.5 w-3.5", className)}
-      aria-hidden="true"
-    >
-      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M5 8.5L7 10.5L11 6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <CheckCircle className={cn("h-3.5 w-3.5", className)} aria-hidden="true" />;
 }
 
 /** In-progress: filled circle with arrow-right icon inside */
@@ -39,14 +23,7 @@ function InProgressIcon({ className }: { className?: string }) {
         className,
       )}
     >
-      <svg
-        viewBox="0 0 16 16"
-        fill="none"
-        className="absolute inset-0 h-3.5 w-3.5"
-        aria-hidden="true"
-      >
-        <circle cx="8" cy="8" r="7.25" fill="currentColor" />
-      </svg>
+      <Circle className="absolute inset-0 h-3.5 w-3.5" fill="currentColor" stroke="none" />
       <ArrowRight className="relative h-2 w-2 text-muted" strokeWidth={3} />
     </span>
   );

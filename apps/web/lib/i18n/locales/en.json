@@ -3272,6 +3272,28 @@
       "makeOwner": "Make Owner",
       "revokeOwner": "Revoke Owner"
     },
+    "newProject": {
+      "title": "New Project",
+      "basicInfo": "Basic Info",
+      "basicInfoDesc": "Set project name, slug and description",
+      "nameLabel": "Project Name",
+      "namePlaceholder": "My Project",
+      "slugLabel": "Project Slug",
+      "slugPlaceholder": "my-project",
+      "urlHint": "Project URL: {{teamSlug}}/{{slug}}",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe this project…",
+      "configuration": "Configuration",
+      "configurationDesc": "Set project visibility",
+      "visibilityLabel": "Visibility",
+      "required": "Required",
+      "public": "Public",
+      "private": "Private",
+      "create": "Create Project",
+      "cancel": "Cancel",
+      "created": "Project created",
+      "createFailed": "Failed to create project"
+    },
     "settings": {
       "profile": "Team Profile",
       "name": "Team Name",

@@ -22,22 +22,22 @@ interface UsageResponse {
 const MONTHLY_TOKEN_LIMIT = 1_000_000;
 
 const FREE_FEATURES = [
-  "subscription.features.publicPages",
-  "subscription.features.basicThemes",
-  "subscription.features.communityAccess",
-  "subscription.features.aiAssistant",
-  "subscription.features.githubIntegration",
-  "subscription.features.analytics",
+  "settings.subscription.features.publicPages",
+  "settings.subscription.features.basicThemes",
+  "settings.subscription.features.communityAccess",
+  "settings.subscription.features.aiAssistant",
+  "settings.subscription.features.githubIntegration",
+  "settings.subscription.features.analytics",
 ];
 
 const PRO_FEATURES = [
   ...FREE_FEATURES,
-  "subscription.features.customDomain",
-  "subscription.features.prioritySupport",
-  "subscription.features.higherLimits",
-  "subscription.features.advancedAnalytics",
-  "subscription.features.teamCollaboration",
-  "subscription.features.apiAccess",
+  "settings.subscription.features.customDomain",
+  "settings.subscription.features.prioritySupport",
+  "settings.subscription.features.higherLimits",
+  "settings.subscription.features.advancedAnalytics",
+  "settings.subscription.features.teamCollaboration",
+  "settings.subscription.features.apiAccess",
 ];
 
 function PlanCardSkeleton() {

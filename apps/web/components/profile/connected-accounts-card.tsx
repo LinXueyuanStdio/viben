@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Google from "@lobehub/icons/es/Google";
 import Github from "@lobehub/icons/es/Github";
 import type { OAuthConnectionStatus } from "@/app/api/account/oauth-connections/route";
@@ -137,18 +137,11 @@ export function ConnectedAccountsCard() {
 
   return (
     <section className="rounded-lg border">
-      <div className="flex items-center justify-between border-b px-6 py-4">
-        <div>
-          <h2 className="text-lg font-semibold">{t("profile.connectedAccounts.title")}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t("profile.connectedAccounts.description")}
-          </p>
-        </div>
-        {/* "Add" button — 保留以备未来扩展更多 provider */}
-        <Button type="button" variant="outline" size="sm" disabled>
-          <Plus className="mr-1.5 h-4 w-4" />
-          {t("common.add")}
-        </Button>
+      <div className="border-b px-6 py-4">
+        <h2 className="text-lg font-semibold">{t("profile.connectedAccounts.title")}</h2>
+        <p className="text-sm text-muted-foreground">
+          {t("profile.connectedAccounts.description")}
+        </p>
       </div>
       <div className="divide-y px-6">
         {loading ? (
