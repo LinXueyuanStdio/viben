@@ -160,7 +160,7 @@ export function Topbar({
         className={cn(
           "relative h-full mx-auto grid items-center gap-3",
           isMobile
-            ? isReadLike ? "w-full pl-3 pr-2.5" : "w-full px-3"
+            ? "w-full px-3"
             : isReadLike
               ? "w-full pl-4 pr-2.5"
               : "w-[min(1280px,calc(100%-28px))]"
@@ -174,7 +174,7 @@ export function Topbar({
         }}
       >
         {/* ===== Left ===== */}
-        <div className="flex items-center gap-0 min-w-0">
+        <div className="flex items-center gap-0 min-w-0" style={{ gridColumn: 1 }}>
           {/* 侧边栏切换按钮 — 动画汉堡图标（桌面+移动端共用） */}
           <button
             aria-label={t("community.toggleSidebar")}
@@ -250,21 +250,22 @@ export function Topbar({
         </div>
 
         {/* ===== Right ===== */}
-        <div className="flex items-center justify-end gap-1.5 min-w-0">
-          {isReadLike ? (
-            // 阅读/项目模式（含展开侧栏按钮）
-            rightContent ?? topbarSlots?.rightContent ?? (
-              isMobile ? (
-                // 移动端阅读模式 — 展开详情按钮
-                <button
-                  className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
-                  aria-label={t("community.expandDetails")}
-                  onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}
-                >
-                  {drawerOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
-                </button>
-              ) : (
-                // 桌面端阅读模式 — 搜索/创建/动态/通知/历史/头像 + 展开侧栏
+        {isReadLike && isMobile ? (
+          // 移动端阅读/项目模式 — 与左边完全对称的 wrapper，显式放在第 3 列
+          <div className="flex items-center gap-0 min-w-0" style={{ gridColumn: 3 }}>
+            <button
+              className="inline-flex items-center justify-center size-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+              aria-label={t("community.expandDetails")}
+              onClick={() => { toggleDrawer(); trackAnalytics("drawer_open") }}
+            >
+              {drawerOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end gap-1.5 min-w-0" style={{ gridColumn: 3 }}>
+            {isReadLike ? (
+              // 桌面端阅读/项目模式 — 搜索/创建/动态/通知/历史/头像 + 展开侧栏
+              rightContent ?? topbarSlots?.rightContent ?? (
                 <>
                   <SearchTrigger />
                   {session ? (
@@ -287,35 +288,35 @@ export function Topbar({
                   </button>
                 </>
               )
-            )
-          ) : isMobile ? (
-            // 移动端非阅读模式 — 搜索 + 用户菜单（整合了创建/通知/动态/历史）
-            <>
-              <SearchTrigger />
-              {session ? (
-                <UserMenu session={session} isMobile isRead={isRead} />
-              ) : (
-                <HeaderAuthButtons />
-              )}
-            </>
-          ) : (
-            // 桌面端非阅读模式 — 搜索/创建/通知/动态/历史/头像
-            <>
-              <SearchTrigger />
-              {session ? (
-                <>
-                  <CreateDropdown />
-                  <MomentPopover />
-                  <NotificationPopover />
-                  <HistoryPopover />
-                  <UserMenu session={session} isRead={isRead} />
-                </>
-              ) : (
-                <HeaderAuthButtons />
-              )}
-            </>
-          )}
-        </div>
+            ) : isMobile ? (
+              // 移动端非阅读模式 — 搜索 + 用户菜单
+              <>
+                <SearchTrigger />
+                {session ? (
+                  <UserMenu session={session} isMobile isRead={isRead} />
+                ) : (
+                  <HeaderAuthButtons />
+                )}
+              </>
+            ) : (
+              // 桌面端非阅读模式 — 搜索/创建/通知/动态/历史/头像
+              <>
+                <SearchTrigger />
+                {session ? (
+                  <>
+                    <CreateDropdown />
+                    <MomentPopover />
+                    <NotificationPopover />
+                    <HistoryPopover />
+                    <UserMenu session={session} isRead={isRead} />
+                  </>
+                ) : (
+                  <HeaderAuthButtons />
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </header>
   )
