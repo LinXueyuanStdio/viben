@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   // 创建 team user 记录
   // email 有 UNIQUE 约束，使用合成 email 避免与创建者冲突
-  const teamEmail = `team+${slug}@viben.local`
+  const teamEmail = `${slug}@team.viben.local`
   await db.insert(users).values({
     id: teamId,
     email: teamEmail,
