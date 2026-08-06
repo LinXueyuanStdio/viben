@@ -59,7 +59,9 @@ export function BreadcrumbNav({ variant = "global", className, resolution }: Bre
 
   // 从 resolution 推导面包屑决策
   const rType = resolution?.type
-  const isProjectPage = rType === "project-overview" || rType === "project-page"
+  // read-page 且带 projectSlug = 3 段 project-scoped page URL（/{team}/{project}/{page}）
+  const isProjectScopedRead = rType === "read-page" && !!resolution?.projectSlug
+  const isProjectPage = rType === "project-overview" || rType === "project-page" || isProjectScopedRead
   const isTeamOrProjectPage = rType === "team-overview" || rType === "team-sub" || isProjectPage
   const currentTeamSlug = resolution?.teamSlug
     ?? (pathname.startsWith("/team/") ? pathname.split("/")[2] : "")
@@ -117,7 +119,7 @@ export function BreadcrumbNav({ variant = "global", className, resolution }: Bre
           ? `/${resolution?.userSlug ?? resolution?.teamSlug}/${resolution.pageSlug}` : ""
 
         const isTeamSwitcher = isTeamOrProjectPage && teamSegHref && seg.href === teamSegHref
-        const isProjectSwitcher = rType === "project-overview" && projectSegHref && seg.href === projectSegHref
+        const isProjectSwitcher = (rType === "project-overview" || isProjectScopedRead) && projectSegHref && seg.href === projectSegHref
         const isPageSwitcher = readPageInfo.userSlug && readPageInfo.pageId && seg.href === pageSegHref && (
           rType === "read-page" || rType === "project-page" || rType === null
         )

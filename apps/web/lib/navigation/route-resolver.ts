@@ -68,9 +68,17 @@ export function matchKnownPatterns(pathname: string): RouteResolution | null {
     return { type: "dashboard" }
   }
 
-  // 3 段：可能是 /{team}/{project}/{page} — 需要 API 查询
+  // 3 段：/{team}/{project}/{page} — project-scoped read page
   if (parts.length === 3) {
-    return null
+    // 第三段可以是 page uid（可能含 /，如 "project/page-slug"），
+    // 这里 parts[1] 是 project slug，parts[2] 是 page slug
+    return {
+      type: "read-page",
+      userSlug: parts[0],
+      pageSlug: parts[1] + "/" + parts[2],
+      teamSlug: parts[0],
+      projectSlug: parts[1],
+    }
   }
 
   // 2 段：可能是 /{user}/{page} 或 /{team}/{project} — 需要 API 查询
