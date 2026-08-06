@@ -160,7 +160,7 @@ export function Topbar({
         className={cn(
           "relative h-full mx-auto grid items-center gap-3",
           isMobile
-            ? isReadLike ? "w-full px-3" : "w-full px-3"
+            ? isReadLike ? "w-full pl-3 pr-2.5" : "w-full px-3"
             : isReadLike
               ? "w-full pl-4 pr-2.5"
               : "w-[min(1280px,calc(100%-28px))]"
