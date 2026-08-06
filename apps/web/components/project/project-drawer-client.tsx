@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
 import { ProjectDrawer } from "@/components/project/project-drawer"
 import { useAppShell } from "@/components/layout/app-shell"
 import type { ProjectMetaData } from "@/components/project/project-meta"
@@ -26,6 +27,7 @@ export function ProjectDrawerClient({
   sessionUserId,
   tabs,
 }: ProjectDrawerClientProps) {
+  const { t } = useTranslation()
   const { isMobile } = useAppShell()
 
   const drawerTabs: Array<
@@ -55,12 +57,12 @@ export function ProjectDrawerClient({
   > = []
 
   if (tabs.includes("details")) {
-    drawerTabs.push({ value: "details", label: "详情", type: "details", projectMeta })
+    drawerTabs.push({ value: "details", label: t("community.details"), type: "details", projectMeta })
   }
   if (tabs.includes("comments")) {
     drawerTabs.push({
       value: "comments",
-      label: "评论",
+      label: t("community.comments"),
       type: "comments",
       communityEntityId,
       projectDbId,
@@ -75,7 +77,7 @@ export function ProjectDrawerClient({
   if (tabs.includes("notes")) {
     drawerTabs.push({
       value: "notes",
-      label: "笔记",
+      label: t("community.notes"),
       type: "notes",
       entityType: "project",
       entityId: projectDbId,

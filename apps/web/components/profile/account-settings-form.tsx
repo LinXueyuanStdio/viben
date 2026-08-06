@@ -16,6 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { EmailCard } from '@/components/profile/email-card';
+import { ConnectedAccountsCard } from '@/components/profile/connected-accounts-card';
 
 // ============================================
 // Types
@@ -155,6 +157,12 @@ export function AccountSettingsForm({ user }: AccountSettingsFormProps) {
           </div>
         </div>
       </section>
+
+      {/* Email Management */}
+      <EmailCard email={user.email} />
+
+      {/* Connected Accounts */}
+      <ConnectedAccountsCard />
 
       {/* Section 2: Security */}
       <section className="rounded-lg border">

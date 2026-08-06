@@ -139,16 +139,14 @@ function DrawerHeader({
         </VibenTabsList>
       </VibenTabs>
 
-      {/* Close button (mobile only) */}
-      {isMobile && (
-        <button
-          className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
-          aria-label={t("community.closeDrawer")}
-          onClick={() => setOpen(false)}
-        >
-          <X className="h-[18px] w-[18px]" />
-        </button>
-      )}
+      {/* Close button */}
+      <button
+        className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
+        aria-label={t("community.closeDrawer")}
+        onClick={() => setOpen(false)}
+      >
+        <X className="h-[18px] w-[18px]" />
+      </button>
     </div>
   )
 }

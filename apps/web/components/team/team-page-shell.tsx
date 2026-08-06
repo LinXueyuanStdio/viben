@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
+import { Settings } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface TeamStats {
@@ -46,7 +47,16 @@ export function TeamPageShell({
     <div className="space-y-6">
       {showHeader && (showProfileHeader ? (
         /* 团队资料头部 — 仅 overview，参考用户 profile 左侧栏 */
-        <div className="flex flex-col sm:flex-row items-start gap-5 p-5 rounded-xl border bg-card/50">
+        <div className="relative flex flex-col sm:flex-row items-start gap-5 p-5 rounded-xl border bg-card/50">
+          {currentUserRole === "owner" && (
+            <Link
+              href={`/team/${encodeURIComponent(teamSlug)}/settings`}
+              className="absolute top-3 right-3 inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+              aria-label={t("common.settings")}
+            >
+              <Settings className="size-4" />
+            </Link>
+          )}
           <Avatar className="h-20 w-20 sm:h-24 sm:w-24 rounded-full ring-2 ring-border shrink-0">
             <AvatarImage src={teamAvatarUrl ?? undefined} alt={teamName} />
             <AvatarFallback className="text-3xl font-semibold text-muted-foreground">

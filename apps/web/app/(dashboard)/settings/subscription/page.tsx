@@ -85,7 +85,7 @@ export default function SubscriptionPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
-                Free
+                {t("settings.subscription.freeLabel")}
                 <Badge variant="secondary" className="text-xs">
                   {t("settings.subscription.currentPlan")}
                 </Badge>
@@ -129,7 +129,7 @@ export default function SubscriptionPage() {
         {/* Free */}
         <Card className={cn("relative")}>
           <CardHeader>
-            <CardTitle>Free</CardTitle>
+            <CardTitle>{t("settings.subscription.freeLabel")}</CardTitle>
             <CardDescription>
               {t("settings.subscription.freePrice")}
             </CardDescription>
@@ -153,7 +153,7 @@ export default function SubscriptionPage() {
           </div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Pro
+              {t("settings.subscription.proLabel")}
               <Zap className="size-4 text-primary" />
             </CardTitle>
             <CardDescription>

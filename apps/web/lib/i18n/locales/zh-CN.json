@@ -940,6 +940,8 @@
       "freeDescription": "适合个人创作者的基础功能，每月 100 万词元额度。",
       "monthlyUsage": "月度词元用量",
       "usageHint": "每月 1 日重置。升级到 Pro 可解锁更高配额。",
+      "freeLabel": "免费版",
+      "proLabel": "Pro",
       "freePrice": "免费",
       "proPrice": "即将推出",
       "comingSoon": "即将上线",
@@ -2015,6 +2017,26 @@
       "deleted": "账户已删除",
       "deleteFailed": "删除账户失败",
       "typeToConfirm": "输入 <strong>{{username}}</strong> 以确认："
+    },
+    "email": {
+      "title": "邮箱",
+      "description": "所有邮箱均可登录此账户。主邮箱用于接收通知。",
+      "primary": "主邮箱"
+    },
+    "connectedAccounts": {
+      "title": "关联账号",
+      "description": "使用第三方账号登录",
+      "connected": "已连接",
+      "notConnected": "未连接",
+      "connect": "连接",
+      "disconnect": "断开连接",
+      "loadError": "获取关联账号信息失败",
+      "disconnectedSuccess": "已断开连接",
+      "disconnectError": "断开连接失败",
+      "providers": {
+        "google": "Google",
+        "github": "GitHub"
+      }
     },
     "header": {
       "memberSince": "注册于 {{date}}",
@@ -3196,6 +3218,43 @@
     "createFailed": "创建团队失败",
     "networkError": "网络错误"
   },
+  "project": {
+    "tabs": {
+      "overview": "概览",
+      "pages": "页面",
+      "settings": "设置"
+    },
+    "overview": {
+      "empty": "暂无页面",
+      "emptyHint": "添加页面到项目以开始",
+      "createPage": "创建页面"
+    },
+    "pages": {
+      "title": "{{count}} 个页面",
+      "empty": "暂无页面",
+      "emptyHint": "添加页面到此项目",
+      "by": "作者 {{author}}"
+    },
+    "settings": {
+      "title": "项目设置",
+      "slug": "项目标识",
+      "team": "所属团队",
+      "description": "描述",
+      "url": "URL"
+    },
+    "details": {
+      "description": "描述",
+      "noDescription": "暂无描述",
+      "team": "所属团队",
+      "createdBy": "创建者",
+      "createdAt": "创建时间",
+      "pagesCount": "页面数",
+      "url": "项目 URL"
+    },
+    "editor": {
+      "createPageFor": "为 {{projectSlug}} 创建页面"
+    }
+  },
   "team": {
     "tabs": {
       "overview": "概览",
@@ -3205,7 +3264,12 @@
       "new": "新建项目"
     },
     "overview": {
-      "addBioHint": "添加团队简介，向大家介绍你的团队…"
+      "addBioHint": "添加团队简介，向大家介绍你的团队…",
+      "projects": "项目",
+      "newProject": "新建项目",
+      "empty": "暂无项目",
+      "emptyHint": "创建你的第一个项目",
+      "createProject": "创建项目"
     },
     "stats": {
       "followers": "关注者",
@@ -3213,7 +3277,35 @@
       "members": "成员",
       "projects": "项目"
     },
+    "roles": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "members": {
+      "title": "{{total}} 位成员",
+      "invite": "邀请",
+      "inviteTitle": "邀请成员",
+      "inviteDesc": "搜索用户并邀请加入团队",
+      "searchPlaceholder": "按用户名搜索…",
+      "noUsersFound": "未找到用户",
+      "invited": "已邀请",
+      "inviteFailed": "邀请失败",
+      "removeConfirm": "确定要移除 {{name}} 吗？",
+      "removeFailed": "移除失败",
+      "roleChangeFailed": "角色变更失败",
+      "makeOwner": "设为 Owner",
+      "revokeOwner": "取消 Owner"
+    },
     "settings": {
+      "profile": "团队信息",
+      "name": "团队名称",
+      "slug": "团队标识",
+      "description": "简介",
+      "website": "网站",
+      "websitePlaceholder": "https://example.com",
+      "save": "保存",
+      "saving": "保存中…",
+      "saved": "已保存",
       "avatar": "头像",
       "avatarHint": "支持 PNG、JPEG、WebP，最大 2MB",
       "avatarFormatError": "不支持的格式，请使用 PNG、JPEG 或 WebP",
