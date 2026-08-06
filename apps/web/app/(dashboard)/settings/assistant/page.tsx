@@ -1,21 +1,17 @@
-"use client";
-
-import { useTranslation } from "react-i18next";
+import { SettingsPageHeader } from "@/components/profile/settings-page-header";
 import { ModelVariantsSection } from "./model-variants-section";
 import { ModelPreferencesSection } from "./preferences-section";
 import { SkillsSection } from "./skills-section";
 
 export default function AssistantSettingsPage() {
-  const { t } = useTranslation();
-
   return (
     <div className="space-y-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">{t("settings.assistant.title")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("settings.assistant.description")}
-        </p>
-      </div>
+      <SettingsPageHeader
+        titleKey="settings.assistant.title"
+        descriptionKey="settings.assistant.description"
+        titleFallback="助手设置"
+        descriptionFallback="配置默认模型、自定义模型变体和技能偏好。"
+      />
 
       <ModelPreferencesSection />
 
