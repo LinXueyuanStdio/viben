@@ -41,13 +41,15 @@ export default async function TeamSettingsPage({
       teamAvatarUrl={team.avatarUrl}
       currentUserRole={currentUserRole}
       activeTab="settings"
+      showHeader={false}
     >
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6">
         <TeamSettingsForm
           teamSlug={team.userSlug}
           displayName={team.displayName}
           bio={team.bio}
           websiteUrl={team.websiteUrl}
+          avatarUrl={team.avatarUrl}
           isOwner={isOwner}
         />
         {isOwner && <TeamApiKeys teamSlug={team_slug} />}
