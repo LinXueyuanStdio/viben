@@ -119,7 +119,13 @@
     "adminSystem": "系统",
     "sandbox": "沙盒",
     "usage": "用量统计",
-    "subscription": "订阅管理"
+    "subscription": "订阅管理",
+    "userDocs": "用户文档",
+    "officialCurated": "官方精选",
+    "newPage": "新建页面",
+    "editPage": "编辑页面",
+    "codeStats": "代码统计",
+    "web": "Web"
   },
   "adminNav": {
     "dashboard": "仪表盘",
@@ -145,7 +151,9 @@
     "media": "媒体管理",
     "shares": "分享管理",
     "notifications": "通知管理",
-    "apiKeys": "API 密钥"
+    "apiKeys": "API 密钥",
+    "mcpReview": "MCP 审核",
+    "skillReview": "技能审核"
   },
   "sidebar": {
     "setupComplete": "设置完成",
@@ -3189,6 +3197,13 @@
     "networkError": "网络错误"
   },
   "team": {
+    "tabs": {
+      "overview": "概览",
+      "projects": "项目",
+      "members": "成员",
+      "settings": "设置",
+      "new": "新建项目"
+    },
     "overview": {
       "addBioHint": "添加团队简介，向大家介绍你的团队…"
     },

@@ -120,7 +120,13 @@
     "adminSystem": "System",
     "sandbox": "Sandbox",
     "usage": "Usage",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "userDocs": "User Docs",
+    "officialCurated": "Official Curated",
+    "newPage": "New Page",
+    "editPage": "Edit Page",
+    "codeStats": "Code Stats",
+    "web": "Web"
   },
   "adminNav": {
     "dashboard": "Dashboard",
@@ -146,7 +152,9 @@
     "media": "Media",
     "shares": "Share Links",
     "notifications": "Notifications",
-    "apiKeys": "API Keys"
+    "apiKeys": "API Keys",
+    "mcpReview": "MCP Review",
+    "skillReview": "Skill Review"
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
@@ -3165,6 +3173,13 @@
     "networkError": "Network error"
   },
   "team": {
+    "tabs": {
+      "overview": "Overview",
+      "projects": "Projects",
+      "members": "Members",
+      "settings": "Settings",
+      "new": "New Project"
+    },
     "overview": {
       "addBioHint": "Add a team bio to introduce your team…"
     },

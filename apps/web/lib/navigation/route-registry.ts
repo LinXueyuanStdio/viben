@@ -52,39 +52,39 @@ export interface DynamicSegmentLabel {
 /** 全局路由注册表 — 路径→配置映射 */
 export const routeRegistry: Record<string, RouteConfig> = {
   // 根路由
-  "/": { label: "首页", icon: Home },
+  "/": { label: "首页", titleKey: "nav.home", icon: Home },
 
   // 社区浏览
-  "/leaderboard": { label: "榜单", icon: TrendingUp, parent: "/", dropdownCategory: "浏览" },
-  "/moment": { label: "动态", icon: MessageSquare, parent: "/", dropdownCategory: "浏览" },
-  "/category": { label: "分类", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
-  "/notifications": { label: "通知", icon: Bell, parent: "/", dropdownCategory: "浏览" },
-  "/history": { label: "浏览历史", icon: Clock, parent: "/", dropdownCategory: "浏览" },
-  "/search": { label: "搜索", icon: Search, parent: "/" },
-  "/tags": { label: "标签", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
+  "/leaderboard": { label: "榜单", titleKey: "nav.leaderboard", icon: TrendingUp, parent: "/", dropdownCategory: "浏览" },
+  "/moment": { label: "动态", titleKey: "nav.moment", icon: MessageSquare, parent: "/", dropdownCategory: "浏览" },
+  "/category": { label: "分类", titleKey: "nav.category", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
+  "/notifications": { label: "通知", titleKey: "nav.notifications", icon: Bell, parent: "/", dropdownCategory: "浏览" },
+  "/history": { label: "浏览历史", titleKey: "nav.history", icon: Clock, parent: "/", dropdownCategory: "浏览" },
+  "/search": { label: "搜索", titleKey: "nav.search", icon: Search, parent: "/" },
+  "/tags": { label: "标签", titleKey: "nav.tags", icon: Grid3X3, parent: "/", dropdownCategory: "浏览" },
 
   // 市场
-  "/market": { label: "市场", icon: ShoppingBag, parent: "/", dropdownCategory: "市场" },
-  "/mcp-market": { label: "MCP 市场", icon: Package, parent: "/", dropdownCategory: "市场" },
-  "/skill-market": { label: "技能市场", icon: Sparkles, parent: "/", dropdownCategory: "市场" },
+  "/market": { label: "市场", titleKey: "nav.market", icon: ShoppingBag, parent: "/", dropdownCategory: "市场" },
+  "/mcp-market": { label: "MCP 市场", titleKey: "nav.mcpMarketplace", icon: Package, parent: "/", dropdownCategory: "市场" },
+  "/skill-market": { label: "技能市场", titleKey: "nav.skillsMarket", icon: Sparkles, parent: "/", dropdownCategory: "市场" },
 
   // 创作者
-  "/publish": { label: "发布", icon: Upload, parent: "/", dropdownCategory: "创作" },
-  "/assistant": { label: "助手", icon: Sparkles, parent: "/", dropdownCategory: "创作" },
+  "/publish": { label: "发布", titleKey: "nav.publish", icon: Upload, parent: "/", dropdownCategory: "创作" },
+  "/assistant": { label: "助手", titleKey: "nav.assistant", icon: Sparkles, parent: "/", dropdownCategory: "创作" },
 
   // 市场详情（动态段父路由已注册，此处注册静态子页面）
-  "/mcp-market/official": { label: "官方精选", icon: Package, parent: "/mcp-market" },
-  "/skill-market/official": { label: "官方精选", icon: Sparkles, parent: "/skill-market" },
+  "/mcp-market/official": { label: "官方精选", titleKey: "nav.officialCurated", icon: Package, parent: "/mcp-market" },
+  "/skill-market/official": { label: "官方精选", titleKey: "nav.officialCurated", icon: Sparkles, parent: "/skill-market" },
 
   // 个人（动态段路由 /[user_slug] 已存在，此处不再注册静态 /profile）
 
   // 合集
-  "/collections": { label: "合集", icon: Layers, parent: "/" },
+  "/collections": { label: "合集", titleKey: "nav.collections", icon: Layers, parent: "/" },
 
   // 创作
-  "/pages": { label: "页面", icon: FileText, parent: "/" },
-  "/pages/new": { label: "新建页面", icon: FileText, parent: "/publish" },
-  "/pages/edit": { label: "编辑页面", icon: FileEdit, parent: "/pages" },
+  "/pages": { label: "页面", titleKey: "nav.pages", icon: FileText, parent: "/" },
+  "/pages/new": { label: "新建页面", titleKey: "nav.newPage", icon: FileText, parent: "/publish" },
+  "/pages/edit": { label: "编辑页面", titleKey: "nav.editPage", icon: FileEdit, parent: "/pages" },
 
   // 设置
   "/settings": { label: "设置", titleKey: "common.settings", icon: User, parent: "/", dropdownCategory: "我的" },
@@ -97,180 +97,104 @@ export const routeRegistry: Record<string, RouteConfig> = {
   "/settings/subscription": { label: "订阅管理", titleKey: "nav.subscription", icon: CreditCard, parent: "/settings" },
 
   // 其他
-  "/code-stats": { label: "代码统计", icon: BarChart3, parent: "/" },
-  "/home": { label: "产品首页", icon: Home, parent: "/" },
-  "/web": { label: "Web", icon: FileText, parent: "/" },
-  "/docs/api/v1": { label: "API 文档", icon: ScrollText, parent: "/" },
-  "/docs/mcp/v1": { label: "MCP 文档", icon: Package, parent: "/" },
-  "/docs": { label: "文档", icon: FileText, parent: "/" },
-  "/docs/api": { label: "API 文档", icon: ScrollText },
-  "/docs/mcp": { label: "MCP 文档", icon: Package },
+  "/code-stats": { label: "代码统计", titleKey: "nav.codeStats", icon: BarChart3, parent: "/" },
+  "/home": { label: "产品首页", titleKey: "nav.home", icon: Home, parent: "/" },
+  "/web": { label: "Web", titleKey: "nav.web", icon: FileText, parent: "/" },
+  "/docs/api/v1": { label: "API 文档", titleKey: "nav.docsApi", icon: ScrollText, parent: "/" },
+  "/docs/mcp/v1": { label: "MCP 文档", titleKey: "nav.docsMcp", icon: Package, parent: "/" },
+  "/docs": { label: "文档", titleKey: "nav.docs", icon: FileText, parent: "/" },
+  "/docs/api": { label: "API 文档", titleKey: "nav.docsApi", icon: ScrollText },
+  "/docs/mcp": { label: "MCP 文档", titleKey: "nav.docsMcp", icon: Package },
 
   // 管理员路由（仅 role=admin 可见）
   "/admin": {
-    label: "管理后台",
-    icon: BarChart3,
-    parent: "/",
-    dropdownCategory: "管理",
+    label: "管理后台", titleKey: "nav.admin", icon: BarChart3, parent: "/", dropdownCategory: "管理",
   },
   "/admin/packages": {
-    label: "包审核",
-    icon: Package,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "包审核", titleKey: "adminNav.packages", icon: Package, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/packages/mcp-market": {
-    label: "MCP 审核",
-    icon: Package,
-    parent: "/admin/packages",
+    label: "MCP 审核", titleKey: "adminNav.mcpReview", icon: Package, parent: "/admin/packages",
   },
   "/admin/packages/skill-market": {
-    label: "技能审核",
-    icon: Sparkles,
-    parent: "/admin/packages",
+    label: "技能审核", titleKey: "adminNav.skillReview", icon: Sparkles, parent: "/admin/packages",
   },
   "/admin/users": {
-    label: "用户管理",
-    icon: Sparkles,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "用户管理", titleKey: "adminNav.users", icon: Sparkles, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/reports": {
-    label: "举报管理",
-    icon: Flag,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "举报管理", titleKey: "adminNav.reports", icon: Flag, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/logs": {
-    label: "操作日志",
-    icon: ScrollText,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "操作日志", titleKey: "adminNav.logs", icon: ScrollText, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/comments": {
-    label: "评论管理",
-    icon: MessageSquare,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "评论管理", titleKey: "adminNav.comments", icon: MessageSquare, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/collections": {
-    label: "合集管理",
-    icon: Layers,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "合集管理", titleKey: "adminNav.collections", icon: Layers, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/categories": {
-    label: "分类管理",
-    icon: Grid3X3,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "分类管理", titleKey: "adminNav.categories", icon: Grid3X3, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/topics": {
-    label: "话题管理",
-    icon: MessageSquare,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "话题管理", titleKey: "adminNav.topics", icon: MessageSquare, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/rankings": {
-    label: "榜单管理",
-    icon: TrendingUp,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "榜单管理", titleKey: "adminNav.rankings", icon: TrendingUp, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/operations": {
-    label: "运营位管理",
-    icon: Layers,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "运营位管理", titleKey: "adminNav.operations", icon: Layers, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/pages": {
-    label: "页面审核",
-    icon: FileText,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "页面审核", titleKey: "adminNav.pageReview", icon: FileText, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/moments": {
-    label: "动态管理",
-    icon: Clock,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "动态管理", titleKey: "adminNav.moments", icon: Clock, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/feedbacks": {
-    label: "反馈管理",
-    icon: Heart,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "反馈管理", titleKey: "adminNav.feedbacks", icon: Heart, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/notifications": {
-    label: "通知管理",
-    icon: Bell,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "通知管理", titleKey: "adminNav.notifications", icon: Bell, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/search-analytics": {
-    label: "搜索分析",
-    icon: Search,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "搜索分析", titleKey: "adminNav.searchAnalytics", icon: Search, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/activity": {
-    label: "活动流",
-    icon: Activity,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "活动流", titleKey: "adminNav.activity", icon: Activity, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/api-keys": {
-    label: "API 密钥",
-    icon: Key,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "API 密钥", titleKey: "adminNav.apiKeys", icon: Key, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/analytics": {
-    label: "内容分析",
-    icon: BarChart3,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "内容分析", titleKey: "adminNav.analytics", icon: BarChart3, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/media": {
-    label: "媒体管理",
-    icon: Image,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "媒体管理", titleKey: "adminNav.media", icon: Image, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/downloads": {
-    label: "下载统计",
-    icon: Download,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "下载统计", titleKey: "adminNav.downloads", icon: Download, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/ratings": {
-    label: "评分管理",
-    icon: Star,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "评分管理", titleKey: "adminNav.ratings", icon: Star, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/drafts": {
-    label: "草稿管理",
-    icon: FileEdit,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "草稿管理", titleKey: "adminNav.drafts", icon: FileEdit, parent: "/admin", dropdownCategory: "管理",
   },
   "/admin/shares": {
-    label: "分享管理",
-    icon: Link,
-    parent: "/admin",
-    dropdownCategory: "管理",
+    label: "分享管理", titleKey: "adminNav.shares", icon: Link, parent: "/admin", dropdownCategory: "管理",
   },
 
   // 阅读面包屑（模式=read 时使用）
-  "/read": { label: "页面", icon: FileText, mode: "read" },
+  "/read": { label: "页面", titleKey: "nav.pages", icon: FileText, mode: "read" },
 }
 
 /** 页面级自定义面包屑下拉项（无需 Context，直接静态注册） */
 export const pageDropdownRegistry: Record<string, Array<{ href: string; config: RouteConfig }>> = {
   "/docs/mcp": [
-    { href: "/docs/api", config: { label: "API 文档", icon: ScrollText } },
-    { href: "https://linxueyuan.online/viben/", config: { label: "用户文档", icon: BookOpen, external: true } },
+    { href: "/docs/api", config: { label: "API 文档", titleKey: "nav.docsApi", icon: ScrollText } },
+    { href: "https://linxueyuan.online/viben/", config: { label: "用户文档", titleKey: "nav.userDocs", icon: BookOpen, external: true } },
   ],
 }
 
