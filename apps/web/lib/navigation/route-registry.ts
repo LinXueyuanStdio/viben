@@ -298,10 +298,11 @@ function getProjectMeta(): { teamSlug: string; projectSlug: string } | null {
   try { return JSON.parse(el.textContent ?? "") } catch { return null }
 }
 
-/** 获取面包屑段，支持传入动态段标签 */
+/** 获取面包屑段，支持传入动态段标签和团队元数据 */
 export function resolveBreadcrumbSegments(
   pathname: string,
-  dynamicLabels?: Record<string, DynamicSegmentLabel>
+  dynamicLabels?: Record<string, DynamicSegmentLabel>,
+  teamMeta?: { teamDisplayName?: string; projectDisplayName?: string }
 ): Array<{ href: string; config: RouteConfig; isLast: boolean }> {
   const segments: Array<{ href: string; config: RouteConfig; isLast: boolean }> = []
   const parts = pathname.split("/").filter(Boolean)
@@ -310,16 +311,14 @@ export function resolveBreadcrumbSegments(
   // 面包屑保持简洁：tablist 已提供子导航，面包屑只显示团队名（或团队名+项目名）
   if (parts[0] === "team" && parts.length >= 2) {
     const teamSlug = parts[1]
-    const teamMeta = getTeamMeta()
-    const teamLabel = teamMeta?.teamName ?? teamSlug
+    const teamLabel = teamMeta?.teamDisplayName ?? getTeamMeta()?.teamName ?? teamSlug
 
     // 检测项目上下文：/team/{slug}/projects/{projectSlug}/...（projectSlug ≠ "new"）
     const isProjectContext = parts[2] === "projects" && parts.length >= 4 && parts[3] !== "new"
 
     if (isProjectContext) {
       const projectSlug = parts[3]
-      const projectMeta = getProjectMeta()
-      const projectLabel = projectMeta?.projectSlug ?? projectSlug
+      const projectLabel = teamMeta?.projectDisplayName ?? projectSlug
 
       segments.push({
         href: `/${teamSlug}`,

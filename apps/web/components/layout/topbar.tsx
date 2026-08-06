@@ -9,7 +9,7 @@ import { trackAnalytics } from "@/lib/analytics/track"
 import { trackEngagement } from "@/lib/analytics/behavior"
 import { setUserSlug } from "@/lib/analytics/behavior"
 import { getTopbarMode } from "./topbar-mode"
-import { isPublishedPageRoute } from "@/lib/navigation/page-route"
+import type { RouteResolution } from "@/lib/navigation/route-resolver"
 import { useDrawer } from "./drawer-context"
 import { useAppShell } from "./app-shell"
 import { useTopbarSlots } from "./topbar-slots"
@@ -36,6 +36,7 @@ interface TopbarProps {
   onOpenSidebar?: () => void
   centerContent?: React.ReactNode
   rightContent?: React.ReactNode
+  resolution?: RouteResolution | null
 }
 
 // hasSidePage: 从服务端注入的 <script id="viben-page-meta"> 同步读取
@@ -55,6 +56,7 @@ export function Topbar({
   onOpenSidebar,
   centerContent,
   rightContent,
+  resolution,
 }: TopbarProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -64,21 +66,24 @@ export function Topbar({
   const { toggle: toggleDrawer, open: drawerOpen, immersive, setImmersive } = useDrawer()
   const { sidebarOpen, closeSidebar } = useAppShell()
 
-  // URL 同步判定阅读模式（0ms，不等任何异步数据）
-  const { isPage: isReadPageFromUrl, userSlug: urlUserSlug, pageId: urlPageId } =
-    isPublishedPageRoute(pathname)
-
   const topbarSlots = useTopbarSlots()
 
-  // isAuthor: session 未就绪时为 false，就绪后 React re-render 自动更新
-  // session 由 AppShellWrapper 异步 fetch，到达后 AppShell 重渲染 → Topbar 收到新 session
-  const isAuthor = isReadPageFromUrl && session?.userSlug === urlUserSlug
+  // 从 resolution 推导渲染决策
+  const rType = resolution?.type
+  const isRead = rType === "read-page" || rType === "project-page"
+  const isDashboardNav = rType === "home" || rType === "dashboard"
+  const isTeamRoute = rType === "team-overview" || rType === "team-sub"
+  const isProjectRoute = rType === "project-overview"
+  // 阅读模式和项目页面共用相同的布局（fixed header / drawer toggle / full-width）
+  const isReadLike = isRead || isProjectRoute
+
+  // 阅读模式所需的 URL 参数（从 pathname 解析）
+  const urlUserSlug = resolution?.userSlug ?? resolution?.teamSlug ?? ""
+  const urlPageId = resolution?.pageSlug ?? resolution?.projectSlug ?? ""
+  const isAuthor = isRead && session?.userSlug === urlUserSlug
 
   const [pageMeta] = React.useState(() => getPageMeta())
   const hasSidePage = pageMeta?.hasSidePage ?? false
-
-  // 阅读模式：仅通过 URL 判定
-  const isRead = isReadPageFromUrl
 
   // 本地 state 优先，UI 立即响应；URL 异步同步
   const [readActiveTab, setReadActiveTab] = React.useState(() =>
@@ -96,63 +101,20 @@ export function Topbar({
     }
   }, [router, pathname, urlPageId])
 
-  // 判断是否为首页导航页面（需要显示 HomeTabBar）
-  const isDashboardNav = React.useMemo(() => {
-    if (pathname === "/") return true
-    if (pathname.startsWith("/moment")) return true
-    if (pathname.startsWith("/leaderboard")) return true
-    if (pathname.startsWith("/category")) return true
-    return false
-  }, [pathname])
-
-  // 判断是否为团队页面（需要显示 TeamTabs）
-  // /team/{slug}/... 从 pathname 检测（SSR 可用）
-  // /{team_slug} overview 从 #viben-team-meta 检测（useLayoutEffect 补检，减少闪烁）
-  // 注意：如果存在 project meta，则不是 team route
-  const [isTeamRoute, setIsTeamRoute] = React.useState(
-    () => pathname.startsWith("/team/")
-  )
-  React.useLayoutEffect(() => {
-    // 项目页面优先：如果存在 project meta，则不是 team route
-    if (typeof window !== "undefined" && document.getElementById("viben-project-meta")) {
-      setIsTeamRoute(false)
-      return
-    }
-    if (pathname.startsWith("/team/")) {
-      setIsTeamRoute(true)
-      return
-    }
-    if (typeof window !== "undefined" && document.getElementById("viben-team-meta")) {
-      setIsTeamRoute(true)
-    } else {
-      setIsTeamRoute(false)
-    }
-  }, [pathname])
-
-  // 判断是否为项目页面（需要显示 ProjectTabs）— 通过 #viben-project-meta 检测
-  const [isProjectRoute, setIsProjectRoute] = React.useState(false)
-  React.useLayoutEffect(() => {
-    if (typeof window !== "undefined" && document.getElementById("viben-project-meta")) {
-      setIsProjectRoute(true)
-    } else {
-      setIsProjectRoute(false)
-    }
-  }, [pathname])
-
   // 同步 user_slug 到行为追踪
   React.useEffect(() => {
     setUserSlug(session?.userSlug ?? null)
   }, [session?.userSlug])
 
   // --reader-header-safe 单一数据源（参考 index.html: updateReaderHeaderSafe）
-  // 沉浸模式 → 0；非阅读模式 → 移除；阅读模式非沉浸 → 测量 header 实际高度
+  // 沉浸模式 → 0；非阅读/项目模式 → 移除；阅读/项目模式非沉浸 → 测量 header 实际高度
   React.useEffect(() => {
     const measure = () => {
       if (immersive) {
         document.documentElement.style.setProperty("--reader-header-safe", "0px")
         return
       }
-      if (!isRead) {
+      if (!isReadLike) {
         document.documentElement.style.removeProperty("--reader-header-safe")
         return
       }
@@ -162,7 +124,7 @@ export function Topbar({
     measure()
     window.addEventListener("resize", measure)
     return () => window.removeEventListener("resize", measure)
-  }, [isRead, immersive])
+  }, [isReadLike, immersive])
 
   // Escape 键退出沉浸模式
   React.useEffect(() => {
@@ -187,26 +149,26 @@ export function Topbar({
     <header
       className={cn(
         "top-0 z-50 h-[var(--nav-h)] border-b border-border transition-transform duration-[220ms] ease-out",
-        isRead
+        isReadLike
           ? "fixed left-0 right-0 bg-background/68 backdrop-blur-[18px] saturate-[1.18] border-border/52"
           : "sticky bg-background/88 backdrop-blur-[14px]",
         immersive && "-translate-y-full"
       )}
-      style={isRead && !isMobile ? { right: drawerOpen ? "var(--drawer-w, 420px)" : 0 } : undefined}
+      style={isReadLike && !isMobile ? { right: drawerOpen ? "var(--drawer-w, 420px)" : 0 } : undefined}
     >
       <div
         className={cn(
           "relative h-full mx-auto grid items-center gap-3",
           isMobile
-            ? isRead ? "w-full px-3" : "w-full px-3"
-            : isRead
+            ? isReadLike ? "w-full px-3" : "w-full px-3"
+            : isReadLike
               ? "w-full px-4"
               : "w-[min(1280px,calc(100%-28px))]"
         )}
         style={{
           gridTemplateColumns: isMobile
             ? "auto 1fr auto"
-            : isRead
+            : isReadLike
               ? "minmax(430px, 1.45fr) minmax(160px, 260px) auto"
               : "minmax(180px, 1fr) minmax(260px, 520px) minmax(180px, 1fr)",
         }}
@@ -233,23 +195,25 @@ export function Topbar({
           </button>
 
           {/* 面包屑 — 移动端隐藏 */}
-          {!isMobile && <BreadcrumbNav variant={isRead ? "read" : "global"} />}
+          {!isMobile && <BreadcrumbNav variant={isRead ? "read" : "global"} resolution={resolution} />}
         </div>
 
         {/* ===== Center ===== */}
         <div
           className={
-            isRead
+            isRead && !isProjectRoute
               ? "absolute left-1/2 -translate-x-1/2 inset-y-0 z-2 pointer-events-none w-max grid place-items-center"
-              : cn(
-                  "flex items-center justify-center min-w-0 self-stretch",
-                  isMobile && isDashboardNav ? "flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden" : "",
-                  isMobile && !isDashboardNav ? "flex-1" : ""
-                )
+              : isProjectRoute
+                ? "absolute left-1/2 -translate-x-1/2 inset-y-0 z-2 w-max grid place-items-center"
+                : cn(
+                    "flex items-center justify-center min-w-0 self-stretch",
+                    isMobile && isDashboardNav ? "flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden" : "",
+                    isMobile && !isDashboardNav ? "flex-1" : ""
+                  )
           }
         >
-          {isProjectRoute ? (
-            <ProjectTabs />
+          {isProjectRoute && resolution ? (
+            <ProjectTabs teamSlug={resolution.teamSlug!} projectSlug={resolution.projectSlug!} />
           ) : isRead ? (
             topbarSlots?.centerContent ?? centerContent ?? (
               <div className="pointer-events-auto h-full">
@@ -280,15 +244,15 @@ export function Topbar({
             )
           ) : isDashboardNav ? (
             <HomeTabBar iconOnly={isMobile} />
-          ) : isTeamRoute ? (
-            <TeamTabs />
+          ) : isTeamRoute && resolution ? (
+            <TeamTabs teamSlug={resolution.teamSlug!} />
           ) : null}
         </div>
 
         {/* ===== Right ===== */}
         <div className="flex items-center justify-end gap-1.5 min-w-0">
-          {isRead ? (
-            // 阅读模式
+          {isReadLike ? (
+            // 阅读/项目模式（含展开侧栏按钮）
             rightContent ?? topbarSlots?.rightContent ?? (
               isMobile ? (
                 // 移动端阅读模式 — 展开详情按钮
@@ -309,7 +273,7 @@ export function Topbar({
                       <MomentPopover />
                       <NotificationPopover />
                       <HistoryPopover />
-                      <UserMenu session={session} isRead={isRead} />
+                      <UserMenu session={session} isRead={isReadLike} />
                     </>
                   ) : (
                     <HeaderAuthButtons />

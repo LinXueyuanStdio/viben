@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider, useDrawer } from "./drawer-context"
-import { isPublishedPageRoute } from "@/lib/navigation/page-route"
+import { useRouteResolution } from "@/lib/navigation/route-resolver"
+import type { RouteResolution } from "@/lib/navigation/route-resolver"
 import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
@@ -42,7 +43,7 @@ export function useAppShell() {
 function Body({
   children,
   desktopSidebarVisible,
-  isRead,
+  isReadLike,
   isFullWidth,
   isMobile,
   session,
@@ -53,7 +54,7 @@ function Body({
 }: {
   children: React.ReactNode
   desktopSidebarVisible: boolean
-  isRead: boolean
+  isReadLike: boolean
   isFullWidth: boolean
   isMobile: boolean
   session: Session | null
@@ -88,7 +89,7 @@ function Body({
           "h-full",
           "transition-[margin] duration-[220ms] ease-out",
           desktopSidebarVisible && "ml-[var(--sidebar-w)]",
-          isRead && !isMobile && drawerOpen && "mr-[var(--drawer-w,420px)]",
+          isReadLike && !isMobile && drawerOpen && "mr-[var(--drawer-w,420px)]",
           isFullWidth ? "overflow-hidden" : "overflow-y-auto"
         )}
       >
@@ -119,9 +120,13 @@ export function AppShell({
   adminStats,
 }: AppShellProps) {
   const pathname = usePathname()
-  const { isPage: isRead } = isPublishedPageRoute(pathname)
+  const resolution = useRouteResolution()
+  const rType = resolution?.type
+  const isRead = rType === "read-page" || rType === "project-page"
+  const isProjectRoute = rType === "project-overview"
+  const isReadLike = isRead || isProjectRoute
   const isAssistant = pathname.startsWith("/assistant")
-  const isFullWidth = isRead || isAssistant
+  const isFullWidth = isRead || isProjectRoute || isAssistant
 
   // ---- isMobile ----
   const [isMobile, setIsMobile] = React.useState(() => {
@@ -189,11 +194,12 @@ export function AppShell({
             sidebarCollapsed={sidebarCollapsed}
             isMobile={isMobile}
             onOpenSidebar={openSidebar}
+            resolution={resolution}
           />
           <Body
             sidebarCollapsed={sidebarCollapsed}
             desktopSidebarVisible={desktopSidebarVisible}
-            isRead={isRead}
+            isReadLike={isReadLike}
             isFullWidth={isFullWidth}
             isMobile={isMobile}
             session={session}
