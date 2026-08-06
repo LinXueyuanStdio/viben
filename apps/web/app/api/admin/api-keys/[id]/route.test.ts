@@ -78,7 +78,7 @@ describe('DELETE /api/admin/api-keys/[id]', () => {
   });
 
   it('deletes an API key and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys/key-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys/key-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('key-1') });
@@ -98,7 +98,7 @@ describe('DELETE /api/admin/api-keys/[id]', () => {
   it('returns 404 when API key not found', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys/nonexistent`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('nonexistent') });
@@ -112,7 +112,7 @@ describe('DELETE /api/admin/api-keys/[id]', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys/key-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys/key-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('key-1') });
@@ -126,7 +126,7 @@ describe('DELETE /api/admin/api-keys/[id]', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: users.view', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys/key-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys/key-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('key-1') });

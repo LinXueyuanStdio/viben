@@ -57,7 +57,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
   // ======== Successful requests ========
 
   it('approves a package without note (empty body)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST', body: '',
     });
     const response = await POST(request, { params: params('pkg-1') });
@@ -69,7 +69,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
   });
 
   it('approves a package without note (no body)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
     });
     const response = await POST(request, { params: params('pkg-1') });
@@ -79,7 +79,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
   });
 
   it('approves a package with note', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
       body: JSON.stringify({ note: 'Looks good!' }),
     });
@@ -91,7 +91,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
 
   it('approves a skill package', async () => {
     mocks.getPackageType.mockResolvedValue('skill');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-2/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-2/approve`, {
       method: 'POST', body: '',
     });
     const response = await POST(request, { params: params('pkg-2') });
@@ -103,7 +103,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
   // ======== Creates moderation log ========
 
   it('creates moderation log with approve action', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
       body: JSON.stringify({ note: 'Approved after review' }),
     });
@@ -122,7 +122,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
     });
     const response = await POST(request, { params: params('pkg-1') });
@@ -133,7 +133,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
 
   it('returns 403 when missing packages.approve permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: packages.approve', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
     });
     const response = await POST(request, { params: params('pkg-1') });
@@ -146,7 +146,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
 
   it('returns 404 when package not found', async () => {
     mocks.getPackageType.mockResolvedValue(null);
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/nonexistent/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/nonexistent/approve`, {
       method: 'POST', body: '',
     });
     const response = await POST(request, { params: params('nonexistent') });
@@ -158,7 +158,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
   // ======== Validation ========
 
   it('returns 400 when note exceeds max length', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
       body: JSON.stringify({ note: 'x'.repeat(1001) }),
     });
@@ -172,7 +172,7 @@ describe('POST /api/admin/packages/[id]/approve', () => {
 
   it('returns 500 on unexpected error', async () => {
     mocks.getPackageType.mockRejectedValue(new Error('DB crash'));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/approve', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/approve`, {
       method: 'POST',
     });
     const response = await POST(request, { params: params('pkg-1') });

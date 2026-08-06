@@ -81,7 +81,7 @@ describe('GET /api/admin/categories/[id]', () => {
   it('returns a single category by ID', async () => {
     _selectResult = [{ id: 'cat-1', slug: 'tech', name: 'Technology', description: 'Desc', isActive: true, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`);
     const response = await GET(request, { params: params('cat-1') });
     const json = await response.json();
 
@@ -94,7 +94,7 @@ describe('GET /api/admin/categories/[id]', () => {
   it('returns 404 when category not found', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
 
@@ -105,7 +105,7 @@ describe('GET /api/admin/categories/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`);
     const response = await GET(request, { params: params('cat-1') });
     const json = await response.json();
 
@@ -123,7 +123,7 @@ describe('PATCH /api/admin/categories/[id]', () => {
   it('updates a category name', async () => {
     _updateResult = [{ id: 'cat-1', slug: 'tech', name: 'Updated Name', description: null, isActive: true, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Name' }),
     });
@@ -137,7 +137,7 @@ describe('PATCH /api/admin/categories/[id]', () => {
   it('toggles is_active status', async () => {
     _updateResult = [{ id: 'cat-1', slug: 'tech', name: 'Technology', isActive: false, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'PATCH',
       body: JSON.stringify({ is_active: false }),
     });
@@ -151,7 +151,7 @@ describe('PATCH /api/admin/categories/[id]', () => {
   it('returns 404 when updating non-existent category', async () => {
     _updateResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Test' }),
     });
@@ -163,7 +163,7 @@ describe('PATCH /api/admin/categories/[id]', () => {
   });
 
   it('returns 400 for invalid request body', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: '' }),
     });
@@ -177,7 +177,7 @@ describe('PATCH /api/admin/categories/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: categories.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Test' }),
     });
@@ -198,7 +198,7 @@ describe('DELETE /api/admin/categories/[id]', () => {
   it('deletes a category with no referenced pages', async () => {
     _selectResult = []; // No referenced pages
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('cat-1') });
@@ -211,7 +211,7 @@ describe('DELETE /api/admin/categories/[id]', () => {
   it('returns 409 when category has referenced pages', async () => {
     _selectResult = [{ id: 'page-1' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('cat-1') });
@@ -224,7 +224,7 @@ describe('DELETE /api/admin/categories/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories/cat-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories/cat-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('cat-1') });

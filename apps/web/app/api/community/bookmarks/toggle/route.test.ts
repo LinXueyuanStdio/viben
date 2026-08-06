@@ -33,7 +33,7 @@ describe('POST /api/community/bookmarks/toggle', () => {
   it('toggles a bookmark on a moment', async () => {
     mocks.toggleBookmark.mockResolvedValue({ has_bookmarked: true, bookmarks_count: 3 });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/bookmarks/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/bookmarks/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'moment-1' }),
     });
@@ -54,7 +54,7 @@ describe('POST /api/community/bookmarks/toggle', () => {
   it('toggles off a bookmark (un-bookmark)', async () => {
     mocks.toggleBookmark.mockResolvedValue({ has_bookmarked: false, bookmarks_count: 2 });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/bookmarks/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/bookmarks/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'moment-1' }),
     });
@@ -67,7 +67,7 @@ describe('POST /api/community/bookmarks/toggle', () => {
   it('supports bookmarks on published_page entities', async () => {
     mocks.toggleBookmark.mockResolvedValue({ has_bookmarked: true, bookmarks_count: 1 });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/bookmarks/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/bookmarks/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'published_page', entity_id: 'page-1' }),
     });
@@ -79,7 +79,7 @@ describe('POST /api/community/bookmarks/toggle', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requireAuth.mockRejectedValue(new (await import('@/lib/auth/middleware')).AuthError('Not authenticated', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/bookmarks/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/bookmarks/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1' }),
     });
@@ -89,7 +89,7 @@ describe('POST /api/community/bookmarks/toggle', () => {
   });
 
   it('returns 400 for missing entity_id', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/bookmarks/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/bookmarks/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment' }),
     });
@@ -101,7 +101,7 @@ describe('POST /api/community/bookmarks/toggle', () => {
   it('returns 404 when community entity not found', async () => {
     mocks.toggleBookmark.mockRejectedValue(new Error('community_entity_not_found'));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/bookmarks/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/bookmarks/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'no-such-moment' }),
     });

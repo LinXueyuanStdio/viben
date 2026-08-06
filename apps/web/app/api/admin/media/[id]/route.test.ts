@@ -71,7 +71,7 @@ describe('DELETE /api/admin/media/[id]', () => {
   });
 
   it('deletes a media asset and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media/asset-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media/asset-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('asset-1') });
@@ -91,7 +91,7 @@ describe('DELETE /api/admin/media/[id]', () => {
   it('returns 404 when media asset not found', async () => {
     _findFirstResult = undefined;
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media/nonexistent`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('nonexistent') });
@@ -105,7 +105,7 @@ describe('DELETE /api/admin/media/[id]', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media/asset-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media/asset-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('asset-1') });
@@ -119,7 +119,7 @@ describe('DELETE /api/admin/media/[id]', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.moderate', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media/asset-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media/asset-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('asset-1') });

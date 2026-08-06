@@ -98,7 +98,7 @@ describe('GET /api/admin/media', () => {
       },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?page=1&limit=20');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?page=1&limit=20`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -116,7 +116,7 @@ describe('GET /api/admin/media', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'asset-1', kind: 'image', source: 'generated', url: 'https://example.com/img.png', thumbnailUrl: null, mimeType: 'image/png', width: 400, height: 300, sizeBytes: 51200, altText: null, metadata: null, createdAt: new Date('2025-01-15T10:00:00Z'), ownerUserId: null, ownerUsername: null, ownerDisplayName: null, ownerAvatarUrl: null }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?kind=image');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?kind=image`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -129,7 +129,7 @@ describe('GET /api/admin/media', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'asset-1', kind: 'document', source: 'object_storage', url: 'https://example.com/doc.pdf', thumbnailUrl: null, mimeType: 'application/pdf', width: null, height: null, sizeBytes: 204800, altText: null, metadata: null, createdAt: new Date('2025-01-15T10:00:00Z'), ownerUserId: null, ownerUsername: null, ownerDisplayName: null, ownerAvatarUrl: null }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?source=object_storage');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?source=object_storage`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -142,7 +142,7 @@ describe('GET /api/admin/media', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'asset-1', kind: 'image', source: 'generated', url: 'https://example.com/img.png', thumbnailUrl: null, mimeType: 'image/svg+xml', width: 100, height: 100, sizeBytes: 2048, altText: null, metadata: null, createdAt: new Date('2025-01-15T10:00:00Z'), ownerUserId: null, ownerUsername: null, ownerDisplayName: null, ownerAvatarUrl: null }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?mime_type=image%2Fsvg%2Bxml');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?mime_type=image%2Fsvg%2Bxml`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -153,7 +153,7 @@ describe('GET /api/admin/media', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -164,7 +164,7 @@ describe('GET /api/admin/media', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.moderate', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -173,7 +173,7 @@ describe('GET /api/admin/media', () => {
   });
 
   it('returns 400 for invalid source value', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?source=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?source=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -182,7 +182,7 @@ describe('GET /api/admin/media', () => {
   });
 
   it('returns 400 when page is less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -191,7 +191,7 @@ describe('GET /api/admin/media', () => {
   });
 
   it('returns 400 when limit exceeds 100', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media?limit=101');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media?limit=101`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -203,7 +203,7 @@ describe('GET /api/admin/media', () => {
     _countResult = [{ count: 0 }];
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/media');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/media`);
     const response = await GET(request);
     const json = await response.json();
 

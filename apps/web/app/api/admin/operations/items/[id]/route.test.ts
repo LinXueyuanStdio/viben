@@ -75,7 +75,7 @@ describe('PATCH /api/admin/operations/items/[id]', () => {
   it('updates an item title', async () => {
     _updateResult = [{ id: 'item-1', uid: 'banner-1', title: 'Updated Title', visibility: 'published', isActive: true, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'PATCH',
       body: JSON.stringify({ title: 'Updated Title' }),
     });
@@ -89,7 +89,7 @@ describe('PATCH /api/admin/operations/items/[id]', () => {
   it('updates visibility to scheduled', async () => {
     _updateResult = [{ id: 'item-1', uid: 'banner-1', title: 'Banner', visibility: 'scheduled', isActive: true, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'PATCH',
       body: JSON.stringify({ visibility: 'scheduled', starts_at: '2026-07-10T00:00:00.000Z' }),
     });
@@ -103,7 +103,7 @@ describe('PATCH /api/admin/operations/items/[id]', () => {
   it('archives an item', async () => {
     _updateResult = [{ id: 'item-1', uid: 'banner-1', title: 'Banner', visibility: 'archived', isActive: false, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'PATCH',
       body: JSON.stringify({ visibility: 'archived', is_active: false }),
     });
@@ -117,7 +117,7 @@ describe('PATCH /api/admin/operations/items/[id]', () => {
   it('returns 404 when item not found', async () => {
     _updateResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ title: 'Test' }),
     });
@@ -129,7 +129,7 @@ describe('PATCH /api/admin/operations/items/[id]', () => {
   });
 
   it('returns 400 for invalid visibility', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'PATCH',
       body: JSON.stringify({ visibility: 'invalid' }),
     });
@@ -143,7 +143,7 @@ describe('PATCH /api/admin/operations/items/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'PATCH',
       body: JSON.stringify({ title: 'Test' }),
     });
@@ -162,7 +162,7 @@ describe('DELETE /api/admin/operations/items/[id]', () => {
   });
 
   it('deletes an item', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('item-1') });
@@ -175,7 +175,7 @@ describe('DELETE /api/admin/operations/items/[id]', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: operations.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/items/item-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/items/item-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('item-1') });

@@ -40,7 +40,7 @@ describe('POST /api/notifications/read', () => {
   });
 
   it('delegates batch notification read updates to the community service', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/notifications/read', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/read`, {
       method: 'POST',
       body: JSON.stringify({ notification_ids: ['notification-1', 'notification-2'] }),
       headers: { 'content-type': 'application/json' },

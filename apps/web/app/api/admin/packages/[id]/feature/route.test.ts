@@ -60,7 +60,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
   // ======== Feature ========
 
   it('features an approved package', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -72,7 +72,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
   });
 
   it('creates moderation log with feature action', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -86,7 +86,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns success when already featured', async () => {
     mocks.getPackageStatus.mockResolvedValue('featured');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -101,7 +101,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('unfeatures a featured package', async () => {
     mocks.getPackageStatus.mockResolvedValue('featured');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: false }),
     });
@@ -114,7 +114,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('creates moderation log with unfeature action', async () => {
     mocks.getPackageStatus.mockResolvedValue('featured');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: false }),
     });
@@ -127,7 +127,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns success when unfeaturing non-featured package', async () => {
     mocks.getPackageStatus.mockResolvedValue('approved');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: false }),
     });
@@ -141,7 +141,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns 400 when featuring a non-approved package', async () => {
     mocks.getPackageStatus.mockResolvedValue('pending');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -153,7 +153,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns 400 when featuring a rejected package', async () => {
     mocks.getPackageStatus.mockResolvedValue('rejected');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -166,7 +166,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
   // ======== Validation ========
 
   it('returns 400 when featured field is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -177,7 +177,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
   });
 
   it('returns 400 for non-boolean featured value', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: 'yes' }),
     });
@@ -191,7 +191,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -203,7 +203,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns 403 when missing packages.feature permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: packages.feature', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -217,7 +217,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns 404 when package not found', async () => {
     mocks.getPackageType.mockResolvedValue(null);
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/nonexistent/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/nonexistent/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });
@@ -231,7 +231,7 @@ describe('POST /api/admin/packages/[id]/feature', () => {
 
   it('returns 500 on unexpected error', async () => {
     mocks.getPackageType.mockRejectedValue(new Error('DB crash'));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/feature', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/feature`, {
       method: 'POST',
       body: JSON.stringify({ featured: true }),
     });

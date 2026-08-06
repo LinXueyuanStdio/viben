@@ -69,7 +69,7 @@ describe('GET /page/[user_slug]/[page_id]', () => {
     });
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/demo'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/demo`),
       {
         params: Promise.resolve({ user_slug: 'alice', page_id: 'demo' }),
       }
@@ -126,7 +126,7 @@ describe('GET /page/[user_slug]/[page_id]', () => {
     });
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/demo'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/demo`),
       {
         params: Promise.resolve({ user_slug: 'alice', page_id: 'demo' }),
       }
@@ -151,7 +151,7 @@ describe('GET /page/[user_slug]/[page_id]', () => {
     });
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/secret') as never,
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/secret`) as never,
       {
         params: Promise.resolve({ user_slug: 'alice', page_id: 'secret' }),
       }
@@ -166,7 +166,7 @@ describe('GET /page/[user_slug]/[page_id]', () => {
     mocks.findPublishedPage.mockResolvedValue(null);
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/missing'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/missing`),
       {
         params: Promise.resolve({ user_slug: 'alice', page_id: 'missing' }),
       }
@@ -185,7 +185,7 @@ describe('GET /page/[user_slug]/[page_id]', () => {
     });
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/missing/demo'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/missing/demo`),
       {
         params: Promise.resolve({ user_slug: 'missing', page_id: 'demo' }),
       }

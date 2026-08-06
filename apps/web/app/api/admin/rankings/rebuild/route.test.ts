@@ -98,7 +98,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
     // Second select: final snapshot lookup
     selectQueue.push([], snapshotResult());
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -115,7 +115,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
   it('rebuilds with explicit entityType and timeWindow', async () => {
     selectQueue.push([], snapshotResult());
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({ entityType: 'published_page', timeWindow: '30d' }),
     });
@@ -129,7 +129,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
   it('returns 400 for unsupported entityType', async () => {
     selectQueue.push([]); // Only need pages query (no snapshot lookup for error path)
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({ entityType: 'mcp_package' }),
     });
@@ -141,7 +141,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
   });
 
   it('returns 400 for invalid timeWindow', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({ entityType: 'published_page', timeWindow: 'invalid' }),
     });
@@ -153,7 +153,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
   });
 
   it('returns 400 for invalid entityType', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({ entityType: 'invalid' }),
     });
@@ -167,7 +167,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -181,7 +181,7 @@ describe('POST /api/admin/rankings/rebuild', () => {
   it('returns 403 when missing rankings.manage permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: rankings.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/rebuild', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/rebuild`, {
       method: 'POST',
       body: JSON.stringify({}),
     });

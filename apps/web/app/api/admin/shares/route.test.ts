@@ -113,7 +113,7 @@ describe('GET /api/admin/shares', () => {
       },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?page=1&limit=20');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?page=1&limit=20`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -134,7 +134,7 @@ describe('GET /api/admin/shares', () => {
       { id: 'share-1', uid: 'abc123', entityType: 'published_page', entityId: 'page-1', channel: 'copy_link', targetUrl: 'https://example.com/share/abc123', htmlDirectUrl: 'https://example.com/page', expiresAt: null, revokedAt: null, openCount: 10, uniqueOpenCount: 5, createdAt: new Date('2025-01-15T10:00:00Z'), createdByUserId: 'user-1', createdByUsername: 'alice', createdByDisplayName: 'Alice' },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?status=active');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?status=active`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -149,7 +149,7 @@ describe('GET /api/admin/shares', () => {
       { id: 'share-2', uid: 'def456', entityType: 'published_page', entityId: 'page-2', channel: 'copy_link', targetUrl: 'https://example.com/share/def456', htmlDirectUrl: 'https://example.com/page2', expiresAt: new Date('2025-01-01T00:00:00Z'), revokedAt: null, openCount: 3, uniqueOpenCount: 2, createdAt: new Date('2025-01-14T10:00:00Z'), createdByUserId: 'user-2', createdByUsername: 'bob', createdByDisplayName: 'Bob' },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?status=expired');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?status=expired`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -164,7 +164,7 @@ describe('GET /api/admin/shares', () => {
       { id: 'share-3', uid: 'ghi789', entityType: 'published_page', entityId: 'page-3', channel: 'copy_link', targetUrl: 'https://example.com/share/ghi789', htmlDirectUrl: 'https://example.com/page3', expiresAt: null, revokedAt: new Date('2025-01-10T00:00:00Z'), openCount: 1, uniqueOpenCount: 1, createdAt: new Date('2025-01-13T10:00:00Z'), createdByUserId: 'user-3', createdByUsername: 'charlie', createdByDisplayName: 'Charlie' },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?status=revoked');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?status=revoked`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -176,7 +176,7 @@ describe('GET /api/admin/shares', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -187,7 +187,7 @@ describe('GET /api/admin/shares', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.moderate', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -196,7 +196,7 @@ describe('GET /api/admin/shares', () => {
   });
 
   it('returns 400 for invalid status value', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?status=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?status=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -205,7 +205,7 @@ describe('GET /api/admin/shares', () => {
   });
 
   it('returns 400 when page is less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -214,7 +214,7 @@ describe('GET /api/admin/shares', () => {
   });
 
   it('returns 400 when limit exceeds 100', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares?limit=101');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares?limit=101`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -226,7 +226,7 @@ describe('GET /api/admin/shares', () => {
     _countResult = [{ count: 0 }];
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares`);
     const response = await GET(request);
     const json = await response.json();
 

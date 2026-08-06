@@ -79,7 +79,7 @@ describe('GET /api/admin/operations/revisions', () => {
       { id: 'rev-2', uid: 'rev_home_default_0_yyy', surface: 'home', locale: 'default', revisionNumber: 1, status: 'draft', publishedAt: null, publishedBy: null, createdBy: 'admin-1', createdAt: new Date() },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions?surface=home&locale=default');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions?surface=home&locale=default`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -90,7 +90,7 @@ describe('GET /api/admin/operations/revisions', () => {
   });
 
   it('returns 400 when surface param is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions?locale=default');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions?locale=default`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -99,7 +99,7 @@ describe('GET /api/admin/operations/revisions', () => {
   });
 
   it('returns 400 when locale param is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions?surface=home');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions?surface=home`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -108,7 +108,7 @@ describe('GET /api/admin/operations/revisions', () => {
   });
 
   it('returns 400 when both params are missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -119,7 +119,7 @@ describe('GET /api/admin/operations/revisions', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions?surface=home&locale=default');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions?surface=home&locale=default`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -130,7 +130,7 @@ describe('GET /api/admin/operations/revisions', () => {
   it('returns empty list when no revisions exist', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions?surface=home&locale=default');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions?surface=home&locale=default`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -158,7 +158,7 @@ describe('POST /api/admin/operations/revisions', () => {
       snapshot: { slots: [] },
     }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions`, {
       method: 'POST',
       body: JSON.stringify({ surface: 'home', locale: 'default' }),
     });
@@ -173,7 +173,7 @@ describe('POST /api/admin/operations/revisions', () => {
   });
 
   it('returns 400 for missing surface', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions`, {
       method: 'POST',
       body: JSON.stringify({ locale: 'default' }),
     });
@@ -185,7 +185,7 @@ describe('POST /api/admin/operations/revisions', () => {
   });
 
   it('returns 400 for empty surface', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions`, {
       method: 'POST',
       body: JSON.stringify({ surface: '', locale: 'default' }),
     });
@@ -199,7 +199,7 @@ describe('POST /api/admin/operations/revisions', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions`, {
       method: 'POST',
       body: JSON.stringify({ surface: 'home', locale: 'default' }),
     });
@@ -213,7 +213,7 @@ describe('POST /api/admin/operations/revisions', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: operations.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/revisions', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/revisions`, {
       method: 'POST',
       body: JSON.stringify({ surface: 'home', locale: 'default' }),
     });

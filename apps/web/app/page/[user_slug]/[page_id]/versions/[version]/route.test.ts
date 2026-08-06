@@ -81,7 +81,7 @@ describe('GET /page/[user_slug]/[page_id]/versions/[version]', () => {
 
   it('returns the stored version HTML document directly', async () => {
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/demo/versions/2'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/demo/versions/2`),
       {
         params: Promise.resolve({
           user_slug: 'alice',
@@ -109,7 +109,7 @@ describe('GET /page/[user_slug]/[page_id]/versions/[version]', () => {
     mocks.canReadPage.mockReturnValue(false);
 
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/demo/versions/2'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/demo/versions/2`),
       {
         params: Promise.resolve({
           user_slug: 'alice',
@@ -126,7 +126,7 @@ describe('GET /page/[user_slug]/[page_id]/versions/[version]', () => {
 
   it('returns 404 for invalid version parameter', async () => {
     const response = await GET(
-      new Request('https://viben-web.vercel.app/page/alice/demo/versions/latest'),
+      new Request(`${process.env.NEXT_PUBLIC_APP_URL}/page/alice/demo/versions/latest`),
       {
         params: Promise.resolve({
           user_slug: 'alice',

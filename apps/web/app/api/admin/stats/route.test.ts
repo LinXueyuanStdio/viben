@@ -57,7 +57,7 @@ describe('GET /api/admin/stats', () => {
       new (await import('@/lib/auth')).AuthError('Authentication required', 401)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/stats');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -71,7 +71,7 @@ describe('GET /api/admin/stats', () => {
       new (await import('@/lib/auth')).AuthError('Insufficient permissions', 403)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/stats');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -80,7 +80,7 @@ describe('GET /api/admin/stats', () => {
   });
 
   it('returns 200 with full AdminStats object', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/stats');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -105,7 +105,7 @@ describe('GET /api/admin/stats', () => {
       pendingQueue: [],
     });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/stats');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -118,7 +118,7 @@ describe('GET /api/admin/stats', () => {
   it('returns 500 on unexpected error', async () => {
     mocks.getAdminStats.mockRejectedValue(new Error('Database connection failed'));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/stats');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`);
     const response = await GET(request);
     const json = await response.json();
 

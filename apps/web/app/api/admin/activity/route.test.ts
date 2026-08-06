@@ -121,7 +121,7 @@ describe('GET /api/admin/activity', () => {
       new (await import('@/lib/auth')).AuthError('Authentication required', 401)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -135,7 +135,7 @@ describe('GET /api/admin/activity', () => {
       new (await import('@/lib/auth')).AuthError('Insufficient permissions', 403)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -144,7 +144,7 @@ describe('GET /api/admin/activity', () => {
   });
 
   it('returns 200 with events array and pagination', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity?page=1&limit=20');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity?page=1&limit=20`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -166,7 +166,7 @@ describe('GET /api/admin/activity', () => {
   });
 
   it('returns 400 for invalid page parameter (page=0)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -176,7 +176,7 @@ describe('GET /api/admin/activity', () => {
   });
 
   it('returns 400 for limit exceeding max (limit=100)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity?limit=100');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity?limit=100`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -186,7 +186,7 @@ describe('GET /api/admin/activity', () => {
 
   it('handles event_type filter parameter', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/admin/activity?event_type=page.create'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity?event_type=page.create`
     );
     const response = await GET(request);
     const json = await response.json();
@@ -198,7 +198,7 @@ describe('GET /api/admin/activity', () => {
 
   it('handles date filter with start_date and end_date', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/admin/activity?start_date=2026-06-01&end_date=2026-06-30'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity?start_date=2026-06-01&end_date=2026-06-30`
     );
     const response = await GET(request);
     const json = await response.json();
@@ -214,7 +214,7 @@ describe('GET /api/admin/activity', () => {
       .mockReturnValueOnce(createChainMock([{ count: 0 }]))
       .mockReturnValueOnce(createChainMock([]));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -230,7 +230,7 @@ describe('GET /api/admin/activity', () => {
       throw new Error('Database connection failed');
     });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/activity');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/activity`);
     const response = await GET(request);
     const json = await response.json();
 

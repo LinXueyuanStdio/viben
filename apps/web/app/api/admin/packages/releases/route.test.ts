@@ -59,7 +59,7 @@ describe('GET /api/admin/packages/releases', () => {
   // ======== Successful response ========
 
   it('returns 200 with releases list', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp&entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp&entityId=pkg-1`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -70,7 +70,7 @@ describe('GET /api/admin/packages/releases', () => {
 
   it('returns empty releases array when none exist', async () => {
     mocks.dbSelectResult = [];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp&entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp&entityId=pkg-1`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -80,7 +80,7 @@ describe('GET /api/admin/packages/releases', () => {
   // ======== Required params ========
 
   it('returns 400 when entityType is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityId=pkg-1`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -88,7 +88,7 @@ describe('GET /api/admin/packages/releases', () => {
   });
 
   it('returns 400 when entityId is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -96,7 +96,7 @@ describe('GET /api/admin/packages/releases', () => {
   });
 
   it('returns 400 when entityType is invalid', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=invalid&entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=invalid&entityId=pkg-1`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -104,7 +104,7 @@ describe('GET /api/admin/packages/releases', () => {
   });
 
   it('returns 400 when entityId is empty string', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp&entityId=');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp&entityId=`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -115,7 +115,7 @@ describe('GET /api/admin/packages/releases', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp&entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp&entityId=pkg-1`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -124,7 +124,7 @@ describe('GET /api/admin/packages/releases', () => {
 
   it('returns 403 when missing packages.review permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: packages.review', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp&entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp&entityId=pkg-1`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(403);
@@ -135,7 +135,7 @@ describe('GET /api/admin/packages/releases', () => {
 
   it('returns 500 on unexpected error', async () => {
     mocks.dbSelectResult = null; // Force error on then
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/releases?entityType=mcp&entityId=pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/releases?entityType=mcp&entityId=pkg-1`);
     const response = await GET(request);
     // This might be 200 with null releases or 500 depending on how the mock handles it
     // The important thing is it doesn't crash

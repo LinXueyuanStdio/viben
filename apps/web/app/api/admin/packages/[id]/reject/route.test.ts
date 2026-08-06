@@ -57,7 +57,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
   // ======== Successful requests ========
 
   it('rejects a package with a reason', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Not suitable for the marketplace' }),
     });
@@ -71,7 +71,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
 
   it('rejects a skill package', async () => {
     mocks.getPackageType.mockResolvedValue('skill');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-2/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-2/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Duplicate' }),
     });
@@ -84,7 +84,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
   // ======== Moderation log ========
 
   it('creates moderation log with reject action and reason', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Spam content' }),
     });
@@ -102,7 +102,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Test' }),
     });
@@ -114,7 +114,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
 
   it('returns 403 when missing packages.approve permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: packages.approve', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Test' }),
     });
@@ -128,7 +128,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
 
   it('returns 404 when package not found', async () => {
     mocks.getPackageType.mockResolvedValue(null);
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/nonexistent/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/nonexistent/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Test' }),
     });
@@ -141,7 +141,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
   // ======== Validation ========
 
   it('returns 400 when reason is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -152,7 +152,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
   });
 
   it('returns 400 when reason is empty string', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: '' }),
     });
@@ -163,7 +163,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
   });
 
   it('returns 400 when reason exceeds max length', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'x'.repeat(1001) }),
     });
@@ -174,7 +174,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
   });
 
   it('returns 400 for invalid JSON body', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: 'not-json',
     });
@@ -188,7 +188,7 @@ describe('POST /api/admin/packages/[id]/reject', () => {
 
   it('returns 500 on unexpected error', async () => {
     mocks.getPackageType.mockRejectedValue(new Error('DB crash'));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1/reject', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason: 'Test' }),
     });

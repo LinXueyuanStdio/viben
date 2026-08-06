@@ -42,7 +42,7 @@ describe('GET /api/feed/subscriptions', () => {
 
   it('passes cursor include_seen and source to subscription feed service', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/feed/subscriptions?limit=5&cursor=cursor-1&include_seen=false&source=subscribed_pages'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/feed/subscriptions?limit=5&cursor=cursor-1&include_seen=false&source=subscribed_pages`
     );
 
     const response = await GET(request);

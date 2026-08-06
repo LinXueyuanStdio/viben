@@ -100,7 +100,7 @@ describe('GET /api/admin/collections/[id]', () => {
   });
 
   it('returns 200 with collection, items and resolved names', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`);
     const response = await GET(request, { params: params('col-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -111,7 +111,7 @@ describe('GET /api/admin/collections/[id]', () => {
 
   it('returns 404 when collection not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -120,7 +120,7 @@ describe('GET /api/admin/collections/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`);
     const response = await GET(request, { params: params('col-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -136,7 +136,7 @@ describe('PATCH /api/admin/collections/[id]', () => {
   });
 
   it('updates collection name', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'New Name' }),
     });
@@ -151,7 +151,7 @@ describe('PATCH /api/admin/collections/[id]', () => {
   });
 
   it('updates collection description and visibility', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`, {
       method: 'PATCH',
       body: JSON.stringify({ description: 'New desc', isPublic: false }),
     });
@@ -162,7 +162,7 @@ describe('PATCH /api/admin/collections/[id]', () => {
   });
 
   it('returns success with "No changes" when no changes detected', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Best MCPs', description: 'A collection', isPublic: true }),
     });
@@ -174,7 +174,7 @@ describe('PATCH /api/admin/collections/[id]', () => {
 
   it('returns 404 when collection not found', async () => {
     mocks.queryFindFirstResult = null;
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Test' }),
     });
@@ -185,7 +185,7 @@ describe('PATCH /api/admin/collections/[id]', () => {
   });
 
   it('returns 400 for invalid request body', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: '' }),
     });
@@ -205,7 +205,7 @@ describe('DELETE /api/admin/collections/[id]', () => {
   });
 
   it('deletes a collection and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('col-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -218,7 +218,7 @@ describe('DELETE /api/admin/collections/[id]', () => {
 
   it('returns 404 when collection not found', async () => {
     mocks.queryFindFirstResult = null;
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/nonexistent', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/nonexistent`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -227,7 +227,7 @@ describe('DELETE /api/admin/collections/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections/col-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections/col-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('col-1') });
     const json = await response.json();
     expect(response.status).toBe(401);

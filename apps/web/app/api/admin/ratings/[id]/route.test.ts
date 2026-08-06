@@ -68,7 +68,7 @@ describe('DELETE /api/admin/ratings/[id]', () => {
   it('deletes a rating using composite key', async () => {
     // Composite key: userId__entityType__entityId
     const compositeId = 'u1__mcp__pkg-1';
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/ratings/u1__mcp__pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/ratings/u1__mcp__pkg-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params(compositeId) });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -82,7 +82,7 @@ describe('DELETE /api/admin/ratings/[id]', () => {
   });
 
   it('returns 400 when composite key has wrong number of parts', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/ratings/invalid__key', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/ratings/invalid__key`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('invalid__key') });
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -90,7 +90,7 @@ describe('DELETE /api/admin/ratings/[id]', () => {
   });
 
   it('returns 400 when composite key has too many parts', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/ratings/a__b__c__d', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/ratings/a__b__c__d`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('a__b__c__d') });
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -99,7 +99,7 @@ describe('DELETE /api/admin/ratings/[id]', () => {
 
   it('returns 404 when rating not found', async () => {
     mocks.queryFindFirstResult = null;
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/ratings/u1__mcp__nonexistent', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/ratings/u1__mcp__nonexistent`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('u1__mcp__nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -108,7 +108,7 @@ describe('DELETE /api/admin/ratings/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/ratings/u1__mcp__pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/ratings/u1__mcp__pkg-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('u1__mcp__pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -116,7 +116,7 @@ describe('DELETE /api/admin/ratings/[id]', () => {
 
   it('returns 403 when missing content.moderate permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.moderate', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/ratings/u1__mcp__pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/ratings/u1__mcp__pkg-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('u1__mcp__pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(403);

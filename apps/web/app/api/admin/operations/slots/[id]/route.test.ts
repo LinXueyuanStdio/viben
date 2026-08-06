@@ -75,7 +75,7 @@ describe('PATCH /api/admin/operations/slots/[id]', () => {
   it('updates a slot name', async () => {
     _updateResult = [{ id: 'slot-1', uid: 'hero-banner', name: 'Updated Banner', layoutType: 'banner', isActive: true }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Updated Banner' }),
     });
@@ -89,7 +89,7 @@ describe('PATCH /api/admin/operations/slots/[id]', () => {
   it('toggles is_active', async () => {
     _updateResult = [{ id: 'slot-1', uid: 'hero-banner', name: 'Hero Banner', layoutType: 'banner', isActive: false }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1`, {
       method: 'PATCH',
       body: JSON.stringify({ is_active: false }),
     });
@@ -103,7 +103,7 @@ describe('PATCH /api/admin/operations/slots/[id]', () => {
   it('returns 404 when slot not found', async () => {
     _updateResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Test' }),
     });
@@ -115,7 +115,7 @@ describe('PATCH /api/admin/operations/slots/[id]', () => {
   });
 
   it('returns 400 for invalid body', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: '' }),
     });
@@ -129,7 +129,7 @@ describe('PATCH /api/admin/operations/slots/[id]', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: operations.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1`, {
       method: 'PATCH',
       body: JSON.stringify({ name: 'Test' }),
     });
@@ -148,7 +148,7 @@ describe('DELETE /api/admin/operations/slots/[id]', () => {
   });
 
   it('deletes a slot', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('slot-1') });
@@ -161,7 +161,7 @@ describe('DELETE /api/admin/operations/slots/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('slot-1') });

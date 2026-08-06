@@ -49,7 +49,7 @@ describe('PATCH /api/read/[user_slug]/[page_id]/subscription', () => {
   });
 
   it('passes notify_level and last_seen_version updates to the subscription service', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/read/alice/demo/subscription', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/read/alice/demo/subscription`, {
       method: 'PATCH',
       body: JSON.stringify({
         notify_level: 'major',

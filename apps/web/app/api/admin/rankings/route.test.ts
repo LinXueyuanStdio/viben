@@ -84,7 +84,7 @@ describe('GET /api/admin/rankings', () => {
       { id: 'snap-2', rankingKey: 'published_page_30d', entityType: 'published_page', timeWindow: '30d', status: 'building', itemCount: 0, createdAt: new Date() },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings?page=1&limit=10');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings?page=1&limit=10`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -97,7 +97,7 @@ describe('GET /api/admin/rankings', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'snap-1', rankingKey: 'published_page_7d', entityType: 'published_page', timeWindow: '7d', status: 'ready', itemCount: 50, createdAt: new Date() }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings?status=ready');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings?status=ready`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -109,7 +109,7 @@ describe('GET /api/admin/rankings', () => {
     _countResult = [{ count: 0 }];
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings?status=failed');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings?status=failed`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -120,7 +120,7 @@ describe('GET /api/admin/rankings', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -131,7 +131,7 @@ describe('GET /api/admin/rankings', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: rankings.view', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -140,7 +140,7 @@ describe('GET /api/admin/rankings', () => {
   });
 
   it('returns 400 for invalid status', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings?status=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings?status=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -149,7 +149,7 @@ describe('GET /api/admin/rankings', () => {
   });
 
   it('returns 400 for page less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings?page=0`);
     const response = await GET(request);
     const json = await response.json();
 

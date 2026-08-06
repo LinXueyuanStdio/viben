@@ -92,7 +92,7 @@ describe('GET /api/admin/categories', () => {
       { id: 'cat-2', slug: 'design', name: 'Design', description: null, isActive: true, sortOrder: 1 },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?page=1&limit=10');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?page=1&limit=10`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -107,7 +107,7 @@ describe('GET /api/admin/categories', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'cat-1', slug: 'tech', name: 'Technology', isActive: true, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?status=active');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?status=active`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -120,7 +120,7 @@ describe('GET /api/admin/categories', () => {
     _countResult = [{ count: 0 }];
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?status=inactive');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?status=inactive`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -132,7 +132,7 @@ describe('GET /api/admin/categories', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'cat-1', slug: 'tech', name: 'Technology', isActive: true, sortOrder: 0 }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?search=tech');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?search=tech`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -143,7 +143,7 @@ describe('GET /api/admin/categories', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -154,7 +154,7 @@ describe('GET /api/admin/categories', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: categories.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -163,7 +163,7 @@ describe('GET /api/admin/categories', () => {
   });
 
   it('returns 400 for invalid query parameters', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?status=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?status=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -172,7 +172,7 @@ describe('GET /api/admin/categories', () => {
   });
 
   it('returns 400 for page less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -181,7 +181,7 @@ describe('GET /api/admin/categories', () => {
   });
 
   it('returns 400 for limit exceeding 50', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories?limit=100');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories?limit=100`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -200,7 +200,7 @@ describe('POST /api/admin/categories', () => {
   it('creates a new category', async () => {
     _selectResult = []; // No duplicate
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`, {
       method: 'POST',
       body: JSON.stringify({
         slug: 'new-category',
@@ -222,7 +222,7 @@ describe('POST /api/admin/categories', () => {
   it('returns 409 for duplicate slug', async () => {
     _selectResult = [{ id: 'existing' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`, {
       method: 'POST',
       body: JSON.stringify({ slug: 'existing-slug', name: 'Duplicate' }),
     });
@@ -236,7 +236,7 @@ describe('POST /api/admin/categories', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`, {
       method: 'POST',
       body: JSON.stringify({ slug: 'test', name: 'Test' }),
     });
@@ -248,7 +248,7 @@ describe('POST /api/admin/categories', () => {
   });
 
   it('returns 400 for missing required fields', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -260,7 +260,7 @@ describe('POST /api/admin/categories', () => {
   });
 
   it('returns 400 for empty slug', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/categories', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/categories`, {
       method: 'POST',
       body: JSON.stringify({ slug: '', name: 'Test' }),
     });

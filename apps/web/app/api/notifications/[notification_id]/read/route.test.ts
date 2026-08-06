@@ -41,7 +41,7 @@ describe('POST /api/notifications/[notification_id]/read', () => {
 
   it('delegates single notification read updates to the community service', async () => {
     const response = await POST(
-      new NextRequest('https://viben-web.vercel.app/api/notifications/notification-1/read', {
+      new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/notification-1/read`, {
         method: 'POST',
       }),
       {

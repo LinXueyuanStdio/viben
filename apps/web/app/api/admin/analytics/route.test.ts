@@ -137,7 +137,7 @@ describe('GET /api/admin/analytics', () => {
       new (await import('@/lib/auth')).AuthError('Authentication required', 401)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -151,7 +151,7 @@ describe('GET /api/admin/analytics', () => {
       new (await import('@/lib/auth')).AuthError('Insufficient permissions', 403)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -160,7 +160,7 @@ describe('GET /api/admin/analytics', () => {
   });
 
   it('returns 200 with full analytics data structure', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/analytics?range=7d');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics?range=7d`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -184,7 +184,7 @@ describe('GET /api/admin/analytics', () => {
   });
 
   it('returns 400 for invalid range parameter', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/analytics?range=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics?range=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -195,7 +195,7 @@ describe('GET /api/admin/analytics', () => {
 
   it('handles custom date range with start_date and end_date', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/admin/analytics?start_date=2026-06-01&end_date=2026-06-30'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics?start_date=2026-06-01&end_date=2026-06-30`
     );
     const response = await GET(request);
     const json = await response.json();
@@ -207,7 +207,7 @@ describe('GET /api/admin/analytics', () => {
 
   it('handles entity_type filter parameter', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/admin/analytics?entity_type=page'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics?entity_type=page`
     );
     const response = await GET(request);
     const json = await response.json();
@@ -223,7 +223,7 @@ describe('GET /api/admin/analytics', () => {
       .mockReturnValueOnce(createChainMock([]))
       .mockReturnValueOnce(createChainMock([]));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -241,7 +241,7 @@ describe('GET /api/admin/analytics', () => {
       throw new Error('Database connection failed');
     });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/analytics`);
     const response = await GET(request);
     const json = await response.json();
 

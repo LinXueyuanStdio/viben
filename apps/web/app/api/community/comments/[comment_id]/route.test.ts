@@ -46,7 +46,7 @@ describe('/api/community/comments/[comment_id]', () => {
 
   it('patches an existing community comment', async () => {
     const response = await PATCH(
-      new NextRequest('https://viben-web.vercel.app/api/community/comments/comment-1', {
+      new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments/comment-1`, {
         method: 'PATCH',
         body: JSON.stringify({ content: ' Updated ' }),
         headers: { 'content-type': 'application/json' },
@@ -64,7 +64,7 @@ describe('/api/community/comments/[comment_id]', () => {
 
   it('deletes an existing community comment', async () => {
     const response = await DELETE(
-      new NextRequest('https://viben-web.vercel.app/api/community/comments/comment-1', {
+      new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments/comment-1`, {
         method: 'DELETE',
       }),
       { params: Promise.resolve({ comment_id: 'comment-1' }) }

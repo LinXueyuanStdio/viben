@@ -95,7 +95,7 @@ describe('GET /api/admin/moments/[id]', () => {
   });
 
   it('returns 200 with moment, attachments and repostChain', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`);
     const response = await GET(request, { params: params('mom-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -106,7 +106,7 @@ describe('GET /api/admin/moments/[id]', () => {
 
   it('returns 404 when moment not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -115,7 +115,7 @@ describe('GET /api/admin/moments/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`);
     const response = await GET(request, { params: params('mom-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -131,7 +131,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
   });
 
   it('hides a moment', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'hide' }),
     });
@@ -146,7 +146,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
   });
 
   it('unhides a moment', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'unhide' }),
     });
@@ -160,7 +160,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
   });
 
   it('soft-deletes a moment via PATCH', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'delete' }),
     });
@@ -175,7 +175,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
 
   it('toggles pin on a moment', async () => {
     mocks.selectResults = [[{ isPinned: false }]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'toggle_pin' }),
     });
@@ -191,7 +191,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
 
   it('returns 404 when toggling pin on non-existent moment', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'toggle_pin' }),
     });
@@ -202,7 +202,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
   });
 
   it('returns 400 for invalid action', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'invalid' }),
     });
@@ -213,7 +213,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
   });
 
   it('returns 400 when action is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({}),
     });
@@ -225,7 +225,7 @@ describe('PATCH /api/admin/moments/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'hide' }),
     });
@@ -243,7 +243,7 @@ describe('DELETE /api/admin/moments/[id]', () => {
   });
 
   it('soft-deletes a moment by default', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('mom-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -255,7 +255,7 @@ describe('DELETE /api/admin/moments/[id]', () => {
   });
 
   it('hard-deletes a moment with force=true', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1?force=true', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1?force=true`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('mom-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -267,7 +267,7 @@ describe('DELETE /api/admin/moments/[id]', () => {
   });
 
   it('hard-deletes a moment with force=1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1?force=1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1?force=1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('mom-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -279,7 +279,7 @@ describe('DELETE /api/admin/moments/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments/mom-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments/mom-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('mom-1') });
     const json = await response.json();
     expect(response.status).toBe(401);

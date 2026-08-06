@@ -72,7 +72,7 @@ describe('GET /api/admin/reports', () => {
   });
 
   it('returns 200 with paginated reports', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -83,21 +83,21 @@ describe('GET /api/admin/reports', () => {
   });
 
   it('filters by status', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports?status=resolved');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports?status=resolved`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts status=all', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports?status=all');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports?status=all`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts custom pagination', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports?page=3&limit=50');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports?page=3&limit=50`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -107,7 +107,7 @@ describe('GET /api/admin/reports', () => {
 
   it('returns empty reports', async () => {
     mocks.selectResults = [[{ count: 0 }], []];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -116,7 +116,7 @@ describe('GET /api/admin/reports', () => {
   });
 
   it('returns 400 for invalid status', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports?status=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports?status=invalid`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -124,7 +124,7 @@ describe('GET /api/admin/reports', () => {
   });
 
   it('returns 400 for page less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports?page=0`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -133,7 +133,7 @@ describe('GET /api/admin/reports', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -141,7 +141,7 @@ describe('GET /api/admin/reports', () => {
 
   it('returns 403 when missing reports.view permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: reports.view', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(403);

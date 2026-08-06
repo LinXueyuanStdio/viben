@@ -76,7 +76,7 @@ describe('GET /api/admin/moments', () => {
   });
 
   it('returns 200 with paginated moments', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -86,7 +86,7 @@ describe('GET /api/admin/moments', () => {
 
   it('returns 200 for empty moments list', async () => {
     mocks.selectResults = [[{ count: 0 }], []];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -95,35 +95,35 @@ describe('GET /api/admin/moments', () => {
   });
 
   it('filters by kind', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?kind=post');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?kind=post`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('filters by visibility', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?visibility=public');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?visibility=public`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('filters by search query', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?search=hello');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?search=hello`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts include_deleted=true', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?include_deleted=true');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?include_deleted=true`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts custom pagination', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?page=2&limit=5');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?page=2&limit=5`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -132,7 +132,7 @@ describe('GET /api/admin/moments', () => {
   });
 
   it('returns 400 for invalid kind', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?kind=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?kind=invalid`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -140,7 +140,7 @@ describe('GET /api/admin/moments', () => {
   });
 
   it('returns 400 for invalid visibility', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?visibility=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?visibility=invalid`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -148,7 +148,7 @@ describe('GET /api/admin/moments', () => {
   });
 
   it('returns 400 for page less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments?page=0`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -157,7 +157,7 @@ describe('GET /api/admin/moments', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -165,7 +165,7 @@ describe('GET /api/admin/moments', () => {
 
   it('returns 403 when missing moments.moderate permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: moments.moderate', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/moments');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/moments`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(403);

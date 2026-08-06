@@ -71,7 +71,7 @@ describe('GET /api/admin/collections', () => {
   });
 
   it('returns 200 with paginated collections', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -82,28 +82,28 @@ describe('GET /api/admin/collections', () => {
   });
 
   it('filters by visibility=public', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections?visibility=public');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections?visibility=public`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('filters by visibility=private', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections?visibility=private');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections?visibility=private`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('filters by search query', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections?search=best');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections?search=best`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts custom pagination', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections?page=2&limit=10');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections?page=2&limit=10`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -113,7 +113,7 @@ describe('GET /api/admin/collections', () => {
 
   it('returns empty collections', async () => {
     mocks.selectResults = [[{ count: 0 }], []];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -122,7 +122,7 @@ describe('GET /api/admin/collections', () => {
   });
 
   it('returns 400 for invalid visibility', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections?visibility=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections?visibility=invalid`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -130,7 +130,7 @@ describe('GET /api/admin/collections', () => {
   });
 
   it('returns 400 for page less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections?page=0`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -139,7 +139,7 @@ describe('GET /api/admin/collections', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -147,7 +147,7 @@ describe('GET /api/admin/collections', () => {
 
   it('returns 403 when missing content.moderate permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.moderate', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/collections');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/collections`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(403);

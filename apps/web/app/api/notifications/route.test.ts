@@ -43,7 +43,7 @@ describe('GET /api/notifications', () => {
 
   it('passes snake_case filters and cursor to the notification service', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/notifications?limit=5&unread_only=true&cursor=cursor-1'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications?limit=5&unread_only=true&cursor=cursor-1`
     );
 
     const response = await GET(request);

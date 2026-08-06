@@ -90,7 +90,7 @@ describe('GET /api/admin/notifications', () => {
       { id: 'notif-2', type: 'like', title: 'New like', body: 'Someone liked your page', readAt: new Date('2025-01-14T10:00:00Z'), createdAt: new Date('2025-01-14T10:00:00Z'), recipientId: 'user-2', recipientName: 'Charlie', actorName: 'Alice', pageUid: null, pageAuthorSlug: null },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?page=1&limit=20');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?page=1&limit=20`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -106,7 +106,7 @@ describe('GET /api/admin/notifications', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'notif-1', type: 'comment', title: 'New comment', body: 'Someone commented', readAt: null, createdAt: new Date('2025-01-15T10:00:00Z'), recipientId: 'user-1', recipientName: 'Alice', actorName: 'Bob', pageUid: 'page-uid-1', pageAuthorSlug: 'bob' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?type=comment');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?type=comment`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -119,7 +119,7 @@ describe('GET /api/admin/notifications', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'notif-2', type: 'like', title: 'New like', body: 'Someone liked your page', readAt: new Date('2025-01-14T10:00:00Z'), createdAt: new Date('2025-01-14T10:00:00Z'), recipientId: 'user-2', recipientName: 'Charlie', actorName: 'Alice', pageUid: null, pageAuthorSlug: null }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?read_status=read');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?read_status=read`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -132,7 +132,7 @@ describe('GET /api/admin/notifications', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'notif-1', type: 'comment', title: 'New comment', body: 'Someone commented', readAt: null, createdAt: new Date('2025-01-15T10:00:00Z'), recipientId: 'user-1', recipientName: 'Alice', actorName: 'Bob', pageUid: 'page-uid-1', pageAuthorSlug: 'bob' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?read_status=unread');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?read_status=unread`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -144,7 +144,7 @@ describe('GET /api/admin/notifications', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -155,7 +155,7 @@ describe('GET /api/admin/notifications', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: users.view', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -164,7 +164,7 @@ describe('GET /api/admin/notifications', () => {
   });
 
   it('returns 400 for invalid read_status value', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?read_status=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?read_status=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -173,7 +173,7 @@ describe('GET /api/admin/notifications', () => {
   });
 
   it('returns 400 when page is less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -182,7 +182,7 @@ describe('GET /api/admin/notifications', () => {
   });
 
   it('returns 400 when limit exceeds 50', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications?limit=51');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications?limit=51`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -194,7 +194,7 @@ describe('GET /api/admin/notifications', () => {
     _countResult = [{ count: 0 }];
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/notifications');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/notifications`);
     const response = await GET(request);
     const json = await response.json();
 

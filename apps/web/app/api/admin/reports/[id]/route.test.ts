@@ -84,7 +84,7 @@ describe('GET /api/admin/reports/[id]', () => {
   });
 
   it('returns 200 with report details', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`);
     const response = await GET(request, { params: params('rep-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -94,7 +94,7 @@ describe('GET /api/admin/reports/[id]', () => {
 
   it('returns 404 when report not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -103,7 +103,7 @@ describe('GET /api/admin/reports/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`);
     const response = await GET(request, { params: params('rep-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -119,7 +119,7 @@ describe('PATCH /api/admin/reports/[id]', () => {
   });
 
   it('resolves a report', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'resolve' }),
     });
@@ -135,7 +135,7 @@ describe('PATCH /api/admin/reports/[id]', () => {
   });
 
   it('dismisses a report', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'dismiss' }),
     });
@@ -150,7 +150,7 @@ describe('PATCH /api/admin/reports/[id]', () => {
   });
 
   it('returns 400 for invalid action', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'invalid' }),
     });
@@ -161,7 +161,7 @@ describe('PATCH /api/admin/reports/[id]', () => {
   });
 
   it('returns 400 when action is missing', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`, {
       method: 'PATCH',
       body: JSON.stringify({}),
     });
@@ -173,7 +173,7 @@ describe('PATCH /api/admin/reports/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'resolve' }),
     });
@@ -184,7 +184,7 @@ describe('PATCH /api/admin/reports/[id]', () => {
 
   it('returns 403 when missing reports.resolve permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: reports.resolve', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/reports/rep-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/reports/rep-1`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'resolve' }),
     });

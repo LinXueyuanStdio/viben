@@ -44,7 +44,7 @@ describe('Comment reply flow', () => {
         parentCommentId: 'parent-1', createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({
           entity_type: 'moment',
@@ -73,7 +73,7 @@ describe('Comment reply flow', () => {
         parentCommentId: null, createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', parent_comment_id: '', content: 'hello' }),
       })
@@ -93,7 +93,7 @@ describe('Comment reply flow', () => {
         parentCommentId: null, createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', content: 'hi' }),
       })
@@ -107,7 +107,7 @@ describe('Comment reply flow', () => {
     it('returns 400 when replying to non-existent parent comment', async () => {
       mocks.createCommunityComment.mockRejectedValue(new Error('comment_not_found'))
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', parent_comment_id: 'bad-id', content: 'reply' }),
       })
@@ -120,7 +120,7 @@ describe('Comment reply flow', () => {
   describe('GET /api/community/comments — reply listing', () => {
     it('fetches top-level comments by default (parent_comment_id omitted)', async () => {
       const request = new NextRequest(
-        'https://viben-web.vercel.app/api/community/comments?entity_type=moment&entity_id=m1&limit=20'
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments?entity_type=moment&entity_id=m1&limit=20`
       )
       await GET(request)
 
@@ -141,7 +141,7 @@ describe('Comment reply flow', () => {
       })
 
       const request = new NextRequest(
-        'https://viben-web.vercel.app/api/community/comments?entity_type=moment&entity_id=m1&parent_comment_id=parent-1&limit=10'
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments?entity_type=moment&entity_id=m1&parent_comment_id=parent-1&limit=10`
       )
       const response = await GET(request)
       const json = await response.json()

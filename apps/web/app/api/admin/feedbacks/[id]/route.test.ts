@@ -88,7 +88,7 @@ describe('GET /api/admin/feedbacks/[id]', () => {
   });
 
   it('returns 200 with feedback detail', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/fb-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/fb-1`);
     const response = await GET(request, { params: params('fb-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -99,7 +99,7 @@ describe('GET /api/admin/feedbacks/[id]', () => {
 
   it('returns 404 when feedback not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -108,7 +108,7 @@ describe('GET /api/admin/feedbacks/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/fb-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/fb-1`);
     const response = await GET(request, { params: params('fb-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -124,7 +124,7 @@ describe('DELETE /api/admin/feedbacks/[id]', () => {
   });
 
   it('deletes a feedback and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/fb-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/fb-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('fb-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -138,7 +138,7 @@ describe('DELETE /api/admin/feedbacks/[id]', () => {
 
   it('returns 404 when feedback not found', async () => {
     mocks.queryFindFirstResult = null;
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/nonexistent', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/nonexistent`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -147,7 +147,7 @@ describe('DELETE /api/admin/feedbacks/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/fb-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/fb-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('fb-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -155,7 +155,7 @@ describe('DELETE /api/admin/feedbacks/[id]', () => {
 
   it('returns 403 when missing feedbacks.resolve permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: feedbacks.resolve', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks/fb-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks/fb-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('fb-1') });
     const json = await response.json();
     expect(response.status).toBe(403);

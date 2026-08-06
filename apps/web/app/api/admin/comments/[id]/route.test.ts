@@ -95,7 +95,7 @@ describe('GET /api/admin/comments/[id]', () => {
   });
 
   it('returns 200 with comment details and user info', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`);
     const response = await GET(request, { params: params('comment-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -106,7 +106,7 @@ describe('GET /api/admin/comments/[id]', () => {
 
   it('returns 404 when comment not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -115,7 +115,7 @@ describe('GET /api/admin/comments/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`);
     const response = await GET(request, { params: params('comment-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -131,7 +131,7 @@ describe('PATCH /api/admin/comments/[id]', () => {
   });
 
   it('updates comment content', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`, {
       method: 'PATCH',
       body: JSON.stringify({ content: 'Updated content' }),
     });
@@ -143,7 +143,7 @@ describe('PATCH /api/admin/comments/[id]', () => {
 
   it('returns 404 when comment not found', async () => {
     mocks.queryFindFirstResult = null;
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ content: 'Test' }),
     });
@@ -154,7 +154,7 @@ describe('PATCH /api/admin/comments/[id]', () => {
   });
 
   it('returns 400 for empty content', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`, {
       method: 'PATCH',
       body: JSON.stringify({ content: '' }),
     });
@@ -165,7 +165,7 @@ describe('PATCH /api/admin/comments/[id]', () => {
   });
 
   it('returns 400 when content exceeds max length', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`, {
       method: 'PATCH',
       body: JSON.stringify({ content: 'x'.repeat(5001) }),
     });
@@ -177,7 +177,7 @@ describe('PATCH /api/admin/comments/[id]', () => {
 
   it('returns 403 when missing content.moderate permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.moderate', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`, {
       method: 'PATCH',
       body: JSON.stringify({ content: 'Test' }),
     });
@@ -196,7 +196,7 @@ describe('DELETE /api/admin/comments/[id]', () => {
   });
 
   it('deletes a comment and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('comment-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -209,7 +209,7 @@ describe('DELETE /api/admin/comments/[id]', () => {
 
   it('returns 404 when comment not found', async () => {
     mocks.queryFindFirstResult = null;
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/nonexistent', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/nonexistent`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -218,7 +218,7 @@ describe('DELETE /api/admin/comments/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/comments/comment-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comments/comment-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('comment-1') });
     const json = await response.json();
     expect(response.status).toBe(401);

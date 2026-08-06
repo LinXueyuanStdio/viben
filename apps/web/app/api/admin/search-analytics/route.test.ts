@@ -100,7 +100,7 @@ describe('GET /api/admin/search-analytics', () => {
       new (await import('@/lib/auth')).AuthError('Authentication required', 401)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -114,7 +114,7 @@ describe('GET /api/admin/search-analytics', () => {
       new (await import('@/lib/auth')).AuthError('Insufficient permissions', 403)
     );
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -123,7 +123,7 @@ describe('GET /api/admin/search-analytics', () => {
   });
 
   it('returns 200 with topSearches, recentSearches, and pagination', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics?page=1&limit=20');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics?page=1&limit=20`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -144,7 +144,7 @@ describe('GET /api/admin/search-analytics', () => {
   });
 
   it('returns 400 for invalid page parameter (page=0)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -154,7 +154,7 @@ describe('GET /api/admin/search-analytics', () => {
   });
 
   it('returns 400 for limit exceeding max (limit=200)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics?limit=200');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics?limit=200`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -164,7 +164,7 @@ describe('GET /api/admin/search-analytics', () => {
 
   it('handles date filter with start_date and end_date', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/admin/search-analytics?start_date=2026-06-01&end_date=2026-06-30'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics?start_date=2026-06-01&end_date=2026-06-30`
     );
     const response = await GET(request);
     const json = await response.json();
@@ -181,7 +181,7 @@ describe('GET /api/admin/search-analytics', () => {
       .mockReturnValueOnce(createChainMock([]))
       .mockReturnValueOnce(createChainMock([{ count: 0 }]));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -198,7 +198,7 @@ describe('GET /api/admin/search-analytics', () => {
       throw new Error('Database connection failed');
     });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/search-analytics');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/search-analytics`);
     const response = await GET(request);
     const json = await response.json();
 

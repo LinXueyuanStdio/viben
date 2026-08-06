@@ -42,7 +42,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: 'top-level-1', createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({
           entity_type: 'moment', entity_id: 'm1',
@@ -66,7 +66,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: 'top-level-1', createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({
           entity_type: 'moment', entity_id: 'm1',
@@ -88,7 +88,7 @@ describe('Multi-round reply logic', () => {
       // The service throws 'comment_not_found' because parent.depth !== 0
       mocks.createCommunityComment.mockRejectedValue(new Error('comment_not_found'))
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({
           entity_type: 'moment', entity_id: 'm1',
@@ -109,7 +109,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: 'top-level-1', createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({
           entity_type: 'moment', entity_id: 'm1',
@@ -129,7 +129,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: null, createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', content: 'fresh comment' }),
       })
@@ -149,7 +149,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: 'top-level-1', createdAt: new Date(),
       })
 
-      await POST(new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      await POST(new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', parent_comment_id: 'top-level-1', content: '@alice hi' }),
       }))
@@ -160,7 +160,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: 'top-level-1', createdAt: new Date(),
       })
 
-      await POST(new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      await POST(new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', parent_comment_id: 'top-level-1', content: '@bob hello' }),
       }))
@@ -180,7 +180,7 @@ describe('Multi-round reply logic', () => {
         parentCommentId: null, createdAt: new Date(),
       })
 
-      const request = new NextRequest('https://viben-web.vercel.app/api/community/comments', {
+      const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/comments`, {
         method: 'POST',
         body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', parent_comment_id: '', content: 'top' }),
       })

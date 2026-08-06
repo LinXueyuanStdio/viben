@@ -72,7 +72,7 @@ describe('GET /api/admin/feedbacks', () => {
   });
 
   it('returns 200 with paginated feedbacks', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -83,21 +83,21 @@ describe('GET /api/admin/feedbacks', () => {
   });
 
   it('filters by category', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks?category=bug');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks?category=bug`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts category=all', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks?category=all');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks?category=all`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
   });
 
   it('accepts custom pagination', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks?page=2&limit=5');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks?page=2&limit=5`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -107,7 +107,7 @@ describe('GET /api/admin/feedbacks', () => {
 
   it('returns empty feedbacks', async () => {
     mocks.selectResults = [[{ count: 0 }], []];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -116,7 +116,7 @@ describe('GET /api/admin/feedbacks', () => {
   });
 
   it('returns 400 for invalid category', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks?category=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks?category=invalid`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -124,7 +124,7 @@ describe('GET /api/admin/feedbacks', () => {
   });
 
   it('returns 400 for page less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks?page=0`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(400);
@@ -133,7 +133,7 @@ describe('GET /api/admin/feedbacks', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -141,7 +141,7 @@ describe('GET /api/admin/feedbacks', () => {
 
   it('returns 403 when missing feedbacks.view permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: feedbacks.view', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/feedbacks');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/feedbacks`);
     const response = await GET(request);
     const json = await response.json();
     expect(response.status).toBe(403);

@@ -33,7 +33,7 @@ describe('POST /api/community/reactions/toggle', () => {
   it('toggles a like reaction on a moment', async () => {
     mocks.toggleReaction.mockResolvedValue({ has_reacted: true, reactions_count: 5 });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/reactions/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/reactions/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'moment-1', reaction_type: 'like' }),
     });
@@ -55,7 +55,7 @@ describe('POST /api/community/reactions/toggle', () => {
   it('toggles off a like reaction (un-like)', async () => {
     mocks.toggleReaction.mockResolvedValue({ has_reacted: false, reactions_count: 4 });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/reactions/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/reactions/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'moment-1', reaction_type: 'like' }),
     });
@@ -68,7 +68,7 @@ describe('POST /api/community/reactions/toggle', () => {
   it('supports reactions on published_page entities', async () => {
     mocks.toggleReaction.mockResolvedValue({ has_reacted: true, reactions_count: 1 });
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/reactions/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/reactions/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'published_page', entity_id: 'page-1', reaction_type: 'like' }),
     });
@@ -86,7 +86,7 @@ describe('POST /api/community/reactions/toggle', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requireAuth.mockRejectedValue(new (await import('@/lib/auth/middleware')).AuthError('Not authenticated', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/reactions/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/reactions/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'm1', reaction_type: 'like' }),
     });
@@ -96,7 +96,7 @@ describe('POST /api/community/reactions/toggle', () => {
   });
 
   it('returns 400 for missing entity_id', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/reactions/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/reactions/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment' }),
     });
@@ -108,7 +108,7 @@ describe('POST /api/community/reactions/toggle', () => {
   it('returns 404 when community entity not found', async () => {
     mocks.toggleReaction.mockRejectedValue(new Error('community_entity_not_found'));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/community/reactions/toggle', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/community/reactions/toggle`, {
       method: 'POST',
       body: JSON.stringify({ entity_type: 'moment', entity_id: 'no-such-moment', reaction_type: 'like' }),
     });

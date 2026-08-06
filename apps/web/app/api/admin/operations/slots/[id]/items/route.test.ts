@@ -81,7 +81,7 @@ describe('GET /api/admin/operations/slots/[id]/items', () => {
       { id: 'item-2', uid: 'banner-2', slotId: 'slot-1', itemType: 'banner', title: 'Promo', sortOrder: 1, visibility: 'draft', isActive: true },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`);
     const response = await GET(request, { params: params('slot-1') });
     const json = await response.json();
 
@@ -94,7 +94,7 @@ describe('GET /api/admin/operations/slots/[id]/items', () => {
   it('returns empty items for slot with no items', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`);
     const response = await GET(request, { params: params('slot-1') });
     const json = await response.json();
 
@@ -105,7 +105,7 @@ describe('GET /api/admin/operations/slots/[id]/items', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`);
     const response = await GET(request, { params: params('slot-1') });
     const json = await response.json();
 
@@ -124,7 +124,7 @@ describe('POST /api/admin/operations/slots/[id]/items', () => {
     _selectResult = [];
     _insertResult = [{ id: 'new-item', uid: 'banner-1', slotId: 'slot-1', itemType: 'banner', title: 'New Banner', sortOrder: 0, visibility: 'draft', isActive: true }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`, {
       method: 'POST',
       body: JSON.stringify({
         uid: 'banner-1',
@@ -145,7 +145,7 @@ describe('POST /api/admin/operations/slots/[id]/items', () => {
   it('returns 409 for duplicate item UID', async () => {
     _selectResult = [{ id: 'existing-item' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`, {
       method: 'POST',
       body: JSON.stringify({
         uid: 'duplicate-uid',
@@ -163,7 +163,7 @@ describe('POST /api/admin/operations/slots/[id]/items', () => {
   it('returns 400 for missing required fields', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -177,7 +177,7 @@ describe('POST /api/admin/operations/slots/[id]/items', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/operations/slots/slot-1/items', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/operations/slots/slot-1/items`, {
       method: 'POST',
       body: JSON.stringify({
         uid: 'test',

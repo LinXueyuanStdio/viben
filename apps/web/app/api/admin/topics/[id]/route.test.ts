@@ -81,7 +81,7 @@ describe('GET /api/admin/topics/[id]', () => {
   it('returns a single topic by ID', async () => {
     _selectResult = [{ id: 'topic-1', slug: 'ai', displayName: 'AI', description: null, isFeatured: true, isBlocked: false }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`);
     const response = await GET(request, { params: params('topic-1') });
     const json = await response.json();
 
@@ -94,7 +94,7 @@ describe('GET /api/admin/topics/[id]', () => {
   it('returns 404 when topic not found', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
 
@@ -105,7 +105,7 @@ describe('GET /api/admin/topics/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`);
     const response = await GET(request, { params: params('topic-1') });
     const json = await response.json();
 
@@ -123,7 +123,7 @@ describe('PATCH /api/admin/topics/[id]', () => {
   it('updates topic display name', async () => {
     _updateResult = [{ id: 'topic-1', slug: 'ai', displayName: 'Artificial Intelligence', isFeatured: false, isBlocked: false }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`, {
       method: 'PATCH',
       body: JSON.stringify({ display_name: 'Artificial Intelligence' }),
     });
@@ -137,7 +137,7 @@ describe('PATCH /api/admin/topics/[id]', () => {
   it('toggles is_featured', async () => {
     _updateResult = [{ id: 'topic-1', slug: 'ai', displayName: 'AI', isFeatured: true, isBlocked: false }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`, {
       method: 'PATCH',
       body: JSON.stringify({ is_featured: true }),
     });
@@ -151,7 +151,7 @@ describe('PATCH /api/admin/topics/[id]', () => {
   it('toggles is_blocked', async () => {
     _updateResult = [{ id: 'topic-1', slug: 'ai', displayName: 'AI', isFeatured: false, isBlocked: true }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`, {
       method: 'PATCH',
       body: JSON.stringify({ is_blocked: true }),
     });
@@ -165,7 +165,7 @@ describe('PATCH /api/admin/topics/[id]', () => {
   it('returns 404 when updating non-existent topic', async () => {
     _updateResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/nonexistent`, {
       method: 'PATCH',
       body: JSON.stringify({ display_name: 'Test' }),
     });
@@ -177,7 +177,7 @@ describe('PATCH /api/admin/topics/[id]', () => {
   });
 
   it('returns 400 for invalid body', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`, {
       method: 'PATCH',
       body: JSON.stringify({ display_name: '' }),
     });
@@ -196,7 +196,7 @@ describe('DELETE /api/admin/topics/[id]', () => {
   });
 
   it('deletes a topic', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('topic-1') });
@@ -209,7 +209,7 @@ describe('DELETE /api/admin/topics/[id]', () => {
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: topics.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/topics/topic-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/topics/topic-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('topic-1') });

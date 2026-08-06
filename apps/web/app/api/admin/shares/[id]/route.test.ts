@@ -99,7 +99,7 @@ describe('GET /api/admin/shares/[id]', () => {
       createdByUserId: 'user-1', createdByUsername: 'alice', createdByDisplayName: 'Alice',
     }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`);
     const response = await GET(request, { params: params('share-1') });
     const json = await response.json();
 
@@ -123,7 +123,7 @@ describe('GET /api/admin/shares/[id]', () => {
       createdByUserId: null, createdByUsername: null, createdByDisplayName: null,
     }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-2');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-2`);
     const response = await GET(request, { params: params('share-2') });
     const json = await response.json();
 
@@ -142,7 +142,7 @@ describe('GET /api/admin/shares/[id]', () => {
       createdByUserId: 'user-1', createdByUsername: 'alice', createdByDisplayName: 'Alice',
     }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-3');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-3`);
     const response = await GET(request, { params: params('share-3') });
     const json = await response.json();
 
@@ -153,7 +153,7 @@ describe('GET /api/admin/shares/[id]', () => {
   it('returns 404 when share not found', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
 
@@ -164,7 +164,7 @@ describe('GET /api/admin/shares/[id]', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`);
     const response = await GET(request, { params: params('share-1') });
     const json = await response.json();
 
@@ -188,7 +188,7 @@ describe('PATCH /api/admin/shares/[id]', () => {
   });
 
   it('revokes a share link and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`, {
       method: 'PATCH',
     });
     const response = await PATCH(request, { params: params('share-1') });
@@ -209,7 +209,7 @@ describe('PATCH /api/admin/shares/[id]', () => {
   it('returns 404 when share not found', async () => {
     _findFirstResult = undefined;
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/nonexistent`, {
       method: 'PATCH',
     });
     const response = await PATCH(request, { params: params('nonexistent') });
@@ -229,7 +229,7 @@ describe('PATCH /api/admin/shares/[id]', () => {
       revokedAt: new Date('2025-06-01T00:00:00Z'),
     };
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`, {
       method: 'PATCH',
     });
     const response = await PATCH(request, { params: params('share-1') });
@@ -243,7 +243,7 @@ describe('PATCH /api/admin/shares/[id]', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`, {
       method: 'PATCH',
     });
     const response = await PATCH(request, { params: params('share-1') });
@@ -269,7 +269,7 @@ describe('DELETE /api/admin/shares/[id]', () => {
   });
 
   it('hard deletes a share link and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('share-1') });
@@ -289,7 +289,7 @@ describe('DELETE /api/admin/shares/[id]', () => {
   it('returns 404 when share not found', async () => {
     _findFirstResult = undefined;
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/nonexistent`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('nonexistent') });
@@ -303,7 +303,7 @@ describe('DELETE /api/admin/shares/[id]', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('share-1') });
@@ -317,7 +317,7 @@ describe('DELETE /api/admin/shares/[id]', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: content.delete', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/shares/share-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/shares/share-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('share-1') });

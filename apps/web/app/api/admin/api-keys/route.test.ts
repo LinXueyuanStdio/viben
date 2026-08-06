@@ -100,7 +100,7 @@ describe('GET /api/admin/api-keys', () => {
       { id: 'key-2', name: 'Expired Key', keyPrefix: 'bmcp_def456', scopes: ['read', 'write'], lastUsedAt: null, expiresAt: new Date('2024-01-01T00:00:00Z'), createdAt: new Date('2024-01-01T00:00:00Z'), userId: 'user-2', username: 'bob' },
     ];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?page=1&limit=20');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?page=1&limit=20`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -116,7 +116,7 @@ describe('GET /api/admin/api-keys', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'key-1', name: 'My API Key', keyPrefix: 'bmcp_abc123', scopes: ['read'], lastUsedAt: new Date('2025-01-15T10:00:00Z'), expiresAt: new Date('2026-01-01T00:00:00Z'), createdAt: new Date('2025-01-01T10:00:00Z'), userId: 'user-1', username: 'alice' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?status=active');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?status=active`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -128,7 +128,7 @@ describe('GET /api/admin/api-keys', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'key-2', name: 'Expired Key', keyPrefix: 'bmcp_def456', scopes: ['read'], lastUsedAt: null, expiresAt: new Date('2024-01-01T00:00:00Z'), createdAt: new Date('2024-01-01T00:00:00Z'), userId: 'user-2', username: 'bob' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?status=expired');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?status=expired`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -140,7 +140,7 @@ describe('GET /api/admin/api-keys', () => {
     _countResult = [{ count: 1 }];
     _selectResult = [{ id: 'key-1', name: 'Permanent Key', keyPrefix: 'bmcp_abc123', scopes: ['read'], lastUsedAt: new Date('2025-01-15T10:00:00Z'), expiresAt: null, createdAt: new Date('2025-01-01T10:00:00Z'), userId: 'user-1', username: 'alice' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?status=permanent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?status=permanent`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -151,7 +151,7 @@ describe('GET /api/admin/api-keys', () => {
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -162,7 +162,7 @@ describe('GET /api/admin/api-keys', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: users.view', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -171,7 +171,7 @@ describe('GET /api/admin/api-keys', () => {
   });
 
   it('returns 400 for invalid status value', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?status=invalid');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?status=invalid`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -180,7 +180,7 @@ describe('GET /api/admin/api-keys', () => {
   });
 
   it('returns 400 when page is less than 1', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?page=0');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?page=0`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -189,7 +189,7 @@ describe('GET /api/admin/api-keys', () => {
   });
 
   it('returns 400 when limit exceeds 50', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys?limit=51');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys?limit=51`);
     const response = await GET(request);
     const json = await response.json();
 
@@ -201,7 +201,7 @@ describe('GET /api/admin/api-keys', () => {
     _countResult = [{ count: 0 }];
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/api-keys');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/api-keys`);
     const response = await GET(request);
     const json = await response.json();
 

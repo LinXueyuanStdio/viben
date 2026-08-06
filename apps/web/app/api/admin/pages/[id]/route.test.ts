@@ -89,7 +89,7 @@ describe('GET /api/admin/pages/[id]', () => {
   });
 
   it('returns 200 with page details and updateEvents', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`);
     const response = await GET(request, { params: params('page-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -101,7 +101,7 @@ describe('GET /api/admin/pages/[id]', () => {
 
   it('returns 404 when page not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -110,7 +110,7 @@ describe('GET /api/admin/pages/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`);
     const response = await GET(request, { params: params('page-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -118,7 +118,7 @@ describe('GET /api/admin/pages/[id]', () => {
 
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: pages.review', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`);
     const response = await GET(request, { params: params('page-1') });
     const json = await response.json();
     expect(response.status).toBe(403);
@@ -134,7 +134,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
   });
 
   it('approves a page', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'approved' }),
     });
@@ -145,7 +145,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
   });
 
   it('rejects a page with rejection_reason', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'rejected', rejection_reason: 'Inappropriate content' }),
     });
@@ -161,7 +161,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
   });
 
   it('hides a page', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'hidden' }),
     });
@@ -175,7 +175,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
   });
 
   it('reopens a page (sets to pending, no moderation log for reopen)', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'pending' }),
     });
@@ -188,7 +188,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
   });
 
   it('returns 400 for invalid moderation_status', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'invalid' }),
     });
@@ -199,7 +199,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
   });
 
   it('returns 400 when rejection_reason exceeds max length', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'rejected', rejection_reason: 'x'.repeat(501) }),
     });
@@ -211,7 +211,7 @@ describe('PATCH /api/admin/pages/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, {
       method: 'PATCH',
       body: JSON.stringify({ moderation_status: 'approved' }),
     });
@@ -231,7 +231,7 @@ describe('DELETE /api/admin/pages/[id]', () => {
   });
 
   it('deletes a page and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('page-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -244,7 +244,7 @@ describe('DELETE /api/admin/pages/[id]', () => {
 
   it('returns 404 when page not found', async () => {
     mocks.selectResults = [[]];
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/nonexistent', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/nonexistent`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -253,7 +253,7 @@ describe('DELETE /api/admin/pages/[id]', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/pages/page-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/pages/page-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('page-1') });
     const json = await response.json();
     expect(response.status).toBe(401);

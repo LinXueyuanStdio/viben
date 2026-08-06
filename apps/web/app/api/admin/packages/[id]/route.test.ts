@@ -54,7 +54,7 @@ describe('GET /api/admin/packages/[id]', () => {
   });
 
   it('returns 200 with package details', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`);
     const response = await GET(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -65,7 +65,7 @@ describe('GET /api/admin/packages/[id]', () => {
 
   it('returns 404 when package not found', async () => {
     mocks.getPackageDetails.mockResolvedValue(null);
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -74,7 +74,7 @@ describe('GET /api/admin/packages/[id]', () => {
 
   it('returns 401 when permission denied', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`);
     const response = await GET(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(401);
@@ -83,7 +83,7 @@ describe('GET /api/admin/packages/[id]', () => {
 
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: packages.review', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`);
     const response = await GET(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(403);
@@ -92,7 +92,7 @@ describe('GET /api/admin/packages/[id]', () => {
 
   it('returns 500 on unexpected error', async () => {
     mocks.getPackageDetails.mockRejectedValue(new Error('DB crash'));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`);
     const response = await GET(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(500);
@@ -111,7 +111,7 @@ describe('DELETE /api/admin/packages/[id]', () => {
   });
 
   it('hard deletes an MCP package and creates moderation log', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -123,7 +123,7 @@ describe('DELETE /api/admin/packages/[id]', () => {
 
   it('hard deletes a skill package', async () => {
     mocks.getPackageType.mockResolvedValue('skill');
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-2', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-2`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('pkg-2') });
     const json = await response.json();
     expect(response.status).toBe(200);
@@ -133,7 +133,7 @@ describe('DELETE /api/admin/packages/[id]', () => {
 
   it('returns 404 when package not found', async () => {
     mocks.getPackageType.mockResolvedValue(null);
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/nonexistent', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/nonexistent`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('nonexistent') });
     const json = await response.json();
     expect(response.status).toBe(404);
@@ -142,7 +142,7 @@ describe('DELETE /api/admin/packages/[id]', () => {
 
   it('requires packages.review permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: packages.review', 403));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(403);
@@ -150,7 +150,7 @@ describe('DELETE /api/admin/packages/[id]', () => {
   });
 
   it('creates moderation log with correct data', async () => {
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`, { method: 'DELETE' });
     await DELETE(request, { params: params('pkg-1') });
 
     // Verify moderation log insert was called
@@ -162,7 +162,7 @@ describe('DELETE /api/admin/packages/[id]', () => {
 
   it('returns 500 on unexpected error', async () => {
     mocks.getPackageType.mockRejectedValue(new Error('DB crash'));
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/packages/pkg-1', { method: 'DELETE' });
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/packages/pkg-1`, { method: 'DELETE' });
     const response = await DELETE(request, { params: params('pkg-1') });
     const json = await response.json();
     expect(response.status).toBe(500);

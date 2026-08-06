@@ -83,7 +83,7 @@ describe('GET /api/admin/rankings/[id]', () => {
   it('returns snapshot detail with items', async () => {
     _selectResult = [{ id: 'snap-1', rankingKey: 'published_page_7d', entityType: 'published_page', timeWindow: '7d', status: 'ready', itemCount: 2, createdAt: new Date() }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/snap-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/snap-1`);
     const response = await GET(request, { params: params('snap-1') });
     const json = await response.json();
 
@@ -96,7 +96,7 @@ describe('GET /api/admin/rankings/[id]', () => {
   it('returns 404 when snapshot not found', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/nonexistent');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/nonexistent`);
     const response = await GET(request, { params: params('nonexistent') });
     const json = await response.json();
 
@@ -107,7 +107,7 @@ describe('GET /api/admin/rankings/[id]', () => {
   it('returns 401 when authentication required', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Authentication required', 401));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/snap-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/snap-1`);
     const response = await GET(request, { params: params('snap-1') });
     const json = await response.json();
 
@@ -118,7 +118,7 @@ describe('GET /api/admin/rankings/[id]', () => {
   it('returns 403 when missing permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: rankings.view', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/snap-1');
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/snap-1`);
     const response = await GET(request, { params: params('snap-1') });
     const json = await response.json();
 
@@ -136,7 +136,7 @@ describe('DELETE /api/admin/rankings/[id]', () => {
   it('deletes a ranking snapshot', async () => {
     _selectResult = [{ id: 'snap-1' }];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/snap-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/snap-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('snap-1') });
@@ -150,7 +150,7 @@ describe('DELETE /api/admin/rankings/[id]', () => {
   it('returns 404 when snapshot not found for DELETE', async () => {
     _selectResult = [];
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/nonexistent', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/nonexistent`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('nonexistent') });
@@ -163,7 +163,7 @@ describe('DELETE /api/admin/rankings/[id]', () => {
   it('returns 403 when missing rankings.manage permission', async () => {
     mocks.requirePermission.mockRejectedValue(new mocks.AuthError('Missing permission: rankings.manage', 403));
 
-    const request = new NextRequest('https://viben-web.vercel.app/api/admin/rankings/snap-1', {
+    const request = new NextRequest(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/rankings/snap-1`, {
       method: 'DELETE',
     });
     const response = await DELETE(request, { params: params('snap-1') });

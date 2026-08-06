@@ -42,7 +42,7 @@ describe('GET /api/community/favorites', () => {
 
   it('passes snake_case favorite filters to the service', async () => {
     const request = new NextRequest(
-      'https://viben-web.vercel.app/api/community/favorites?entity_type=published_page&limit=5&cursor=cursor-1'
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/community/favorites?entity_type=published_page&limit=5&cursor=cursor-1`
     );
 
     const response = await GET(request);
