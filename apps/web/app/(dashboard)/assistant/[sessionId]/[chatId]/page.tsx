@@ -1,4 +1,7 @@
+"use client"
+
 import dynamic from "next/dynamic";
+import { use } from "react";
 
 const SessionChatContent = dynamic(
   () => import("@/components/assistant/session-chat-content").then((m) => ({ default: m.SessionChatContent })),
@@ -9,8 +12,8 @@ interface ChatPageProps {
   params: Promise<{ sessionId: string; chatId: string }>;
 }
 
-export default async function ChatPage({ params }: ChatPageProps) {
-  const { sessionId, chatId } = await params;
+export default function ChatPage({ params }: ChatPageProps) {
+  const { sessionId, chatId } = use(params);
   void sessionId;
   void chatId;
   return <SessionChatContent
