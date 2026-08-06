@@ -2,8 +2,8 @@
 
 import { File as DiffsFile } from "@pierre/diffs/react";
 import { Check, CodeXml, Copy, Loader2, RefreshCw } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Streamdown } from "streamdown";
 import useSWR from "swr";
 import type { WorkspaceFileContentResponse } from "@/app/api/sessions/[sessionId]/files/content/route";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,11 @@ import { defaultFileOptions } from "@/lib/diffs-config";
 import { streamdownPlugins } from "@/lib/streamdown-config";
 import { fetcherNoStore } from "@/lib/swr";
 import { cn } from "@/lib/utils";
+
+const Streamdown = dynamic(
+  () => import("streamdown").then((m) => m.Streamdown),
+  { ssr: false },
+);
 
 type WorkspaceFileViewerProps = {
   editorBusy?: boolean;
