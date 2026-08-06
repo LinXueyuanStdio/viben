@@ -3007,6 +3007,17 @@
     },
     "editor": {
       "createPageFor": "Create Page for {{projectSlug}}"
+    },
+    "details": {
+      "name": "Project Name",
+      "slug": "Slug",
+      "description": "Description",
+      "noDescription": "No description",
+      "team": "Team",
+      "createdBy": "Created by",
+      "createdAt": "Created at",
+      "pagesCount": "Pages",
+      "url": "URL"
     }
   },
   "team": {

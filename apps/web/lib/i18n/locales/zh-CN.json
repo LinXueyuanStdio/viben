@@ -3031,6 +3031,17 @@
     },
     "editor": {
       "createPageFor": "为 {{projectSlug}} 创建页面"
+    },
+    "details": {
+      "name": "项目名称",
+      "slug": "标识",
+      "description": "描述",
+      "noDescription": "暂无描述",
+      "team": "所属团队",
+      "createdBy": "创建者",
+      "createdAt": "创建时间",
+      "pagesCount": "页面数量",
+      "url": "地址"
     }
   },
   "team": {
