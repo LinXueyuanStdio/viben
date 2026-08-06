@@ -4,6 +4,7 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import dynamic from "next/dynamic"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils/index"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { useDrawer } from "@/components/layout/drawer-context"
@@ -120,6 +121,7 @@ function DrawerHeader({
   onTabChange: (v: string) => void
   isMobile?: boolean
 }) {
+  const { t } = useTranslation()
   const { setOpen } = useDrawer()
 
   return (
@@ -141,7 +143,7 @@ function DrawerHeader({
       {isMobile && (
         <button
           className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors shrink-0"
-          aria-label="Close drawer"
+          aria-label={t("community.closeDrawer")}
           onClick={() => setOpen(false)}
         >
           <X className="h-[18px] w-[18px]" />

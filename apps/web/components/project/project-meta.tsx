@@ -24,16 +24,16 @@ export interface ProjectMetaData {
   }
 }
 
-function formatDate(d: Date | string): string {
+function formatDate(d: Date | string, locale: string): string {
   const date = typeof d === "string" ? new Date(d) : d
-  return date.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
+  return date.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })
 }
 
 const metaRowClass = "flex items-center gap-2.5 py-2 text-sm"
 const metaIconClass = "size-4 shrink-0 text-muted-foreground"
 
 export function ProjectMeta({ data }: { data: ProjectMetaData }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <div className="grid gap-1">
@@ -60,7 +60,7 @@ export function ProjectMeta({ data }: { data: ProjectMetaData }) {
         <Users className={metaIconClass} />
         <span className="text-xs text-muted-foreground">{t("project.details.team")}</span>
         <Link
-          href={`/${data.team.slug}`}
+          href={`/${encodeURIComponent(data.team.slug)}`}
           className="text-sm font-medium text-primary hover:underline"
         >
           {data.team.displayName}
@@ -78,7 +78,7 @@ export function ProjectMeta({ data }: { data: ProjectMetaData }) {
           </AvatarFallback>
         </Avatar>
         <Link
-          href={`/${data.createdBy.userSlug}`}
+          href={`/${encodeURIComponent(data.createdBy.userSlug)}`}
           className="text-sm font-medium hover:underline"
         >
           {data.createdBy.displayName}
@@ -89,7 +89,7 @@ export function ProjectMeta({ data }: { data: ProjectMetaData }) {
       <div className={metaRowClass}>
         <Calendar className={metaIconClass} />
         <span className="text-xs text-muted-foreground">{t("project.details.createdAt")}</span>
-        <span className="text-sm">{formatDate(data.createdAt)}</span>
+        <span className="text-sm">{formatDate(data.createdAt, i18n.language)}</span>
       </div>
 
       {/* Pages 数量 */}
@@ -103,8 +103,8 @@ export function ProjectMeta({ data }: { data: ProjectMetaData }) {
       <div className={metaRowClass}>
         <Globe className={metaIconClass} />
         <span className="text-xs text-muted-foreground">{t("project.details.url")}</span>
-        <span className="text-sm font-mono text-xs break-all">
-          viben-web.vercel.app/{data.team.slug}/{data.projectSlug}
+        <span className="text-xs font-mono break-all">
+          {process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, "") ?? "viben-web.vercel.app"}/{encodeURIComponent(data.team.slug)}/{encodeURIComponent(data.projectSlug)}
         </span>
       </div>
     </div>

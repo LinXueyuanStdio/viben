@@ -3033,8 +3033,6 @@
       "createPageFor": "为 {{projectSlug}} 创建页面"
     },
     "details": {
-      "name": "项目名称",
-      "slug": "标识",
       "description": "描述",
       "noDescription": "暂无描述",
       "team": "所属团队",
