@@ -46,56 +46,64 @@ export async function GET() {
  * @tag Teams
  */
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session?.userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const session = await getSession();
+    if (!session?.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { name, slug } = body;
+
+    if (!name || !slug) {
+      return NextResponse.json({ error: 'name and slug are required' }, { status: 400 });
+    }
+
+    // 校验 slug 唯一性
+    const existing = await db.query.users.findFirst({
+      where: eq(users.userSlug, slug),
+      columns: { id: true },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: `The name '${slug}' is already taken.` },
+        { status: 409 }
+      );
+    }
+
+    const teamId = crypto.randomUUID();
+
+    // 创建 team user 记录
+    // email 有 UNIQUE 约束，使用合成 email 避免与创建者冲突
+    const teamEmail = `${slug}@team.viben.local`
+    console.log('[POST /api/teams] creating team:', { teamId, slug, name, teamEmail, userId: session.userId })
+    await db.insert(users).values({
+      id: teamId,
+      email: teamEmail,
+      username: slug,
+      userSlug: slug,
+      displayName: name,
+      type: 'team',
+      role: 'user',
+      emailVerified: true,
+    });
+
+    // 加创建者为 owner
+    await db.insert(teamMembers).values({
+      teamId,
+      userId: session.userId,
+      role: 'owner',
+    });
+    console.log('[POST /api/teams] team created successfully:', slug)
+
+    return NextResponse.json({
+      success: true,
+      team_slug: slug,
+      team_id: teamId,
+    });
+  } catch (error) {
+    console.error('[POST /api/teams] error:', error)
+    const message = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const body = await request.json();
-  const { name, slug } = body;
-
-  if (!name || !slug) {
-    return NextResponse.json({ error: 'name and slug are required' }, { status: 400 });
-  }
-
-  // 校验 slug 唯一性
-  const existing = await db.query.users.findFirst({
-    where: eq(users.userSlug, slug),
-    columns: { id: true },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: `The name '${slug}' is already taken.` },
-      { status: 409 }
-    );
-  }
-
-  const teamId = crypto.randomUUID();
-
-  // 创建 team user 记录
-  // email 有 UNIQUE 约束，使用合成 email 避免与创建者冲突
-  const teamEmail = `${slug}@team.viben.local`
-  await db.insert(users).values({
-    id: teamId,
-    email: teamEmail,
-    username: slug,
-    userSlug: slug,
-    displayName: name,
-    type: 'team',
-    role: 'user',
-    emailVerified: true,
-  });
-
-  // 加创建者为 owner
-  await db.insert(teamMembers).values({
-    teamId,
-    userId: session.userId,
-    role: 'owner',
-  });
-
-  return NextResponse.json({
-    success: true,
-    team_slug: slug,
-    team_id: teamId,
-  });
 }
