@@ -162,7 +162,7 @@ export function Topbar({
           isMobile
             ? isReadLike ? "w-full px-3" : "w-full px-3"
             : isReadLike
-              ? "w-full px-4"
+              ? "w-full pl-4 pr-2.5"
               : "w-[min(1280px,calc(100%-28px))]"
         )}
         style={{
