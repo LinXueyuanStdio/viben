@@ -287,6 +287,7 @@ const TEAM_SUB_LABELS: Record<string, string> = {
   settings: "设置",
   projects: "项目",
   members: "成员",
+  new: "新建项目",
 }
 
 /** 获取面包屑段，支持传入动态段标签 */

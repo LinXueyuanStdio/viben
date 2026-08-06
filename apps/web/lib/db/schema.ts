@@ -124,6 +124,7 @@ export const projects = pgTable(
     name: text('name').notNull(),
     projectSlug: text('project_slug').notNull(),
     description: text('description'),
+    visibility: text('visibility', { enum: ['public', 'private'] }).default('public').notNull(),
     defaultPageId: text('default_page_id'),
     createdBy: text('created_by')
       .notNull()

@@ -84,7 +84,7 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { name, project_slug, description } = body;
+  const { name, project_slug, description, visibility } = body;
   if (!name || !project_slug) {
     return NextResponse.json({ error: 'name and project_slug are required' }, { status: 400 });
   }
@@ -108,6 +108,7 @@ export async function POST(
     name,
     projectSlug: project_slug,
     description: description ?? null,
+    visibility: visibility === 'private' ? 'private' : 'public',
     createdBy: session.userId,
   });
 

@@ -2961,5 +2961,97 @@
     "title": "Page Not Found",
     "description": "The page you're looking for doesn't exist or has been removed.",
     "backHome": "Back to Home"
+  },
+  "team": {
+    "tabs": {
+      "overview": "Overview",
+      "projects": "Projects",
+      "members": "Members",
+      "settings": "Settings"
+    },
+    "newProject": {
+      "title": "Create New Project",
+      "basicInfo": "Basic Info",
+      "basicInfoDesc": "Name and description for your project.",
+      "nameLabel": "Project Name",
+      "namePlaceholder": "My Project",
+      "slugLabel": "Project Slug",
+      "slugPlaceholder": "my-project",
+      "urlHint": "URL: viben-web.vercel.app/{{teamSlug}}/{{slug}}",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "A short description of the project",
+      "configuration": "Configuration",
+      "configurationDesc": "Visibility settings for your project.",
+      "visibilityLabel": "Visibility",
+      "required": "* Required",
+      "public": "🌐 Public — Visible to everyone",
+      "private": "🔒 Private — Team members only",
+      "create": "Create Project",
+      "cancel": "Cancel",
+      "created": "Project created",
+      "createFailed": "Failed to create project"
+    },
+    "members": {
+      "title": "Members ({{total}})",
+      "invite": "Invite",
+      "inviteTitle": "Invite Team Member",
+      "inviteDesc": "Search by username to add members to this team.",
+      "searchPlaceholder": "Search by username...",
+      "noUsersFound": "No users found",
+      "invited": "Member invited",
+      "inviteFailed": "Failed to invite",
+      "removeFailed": "Failed to remove member",
+      "roleChangeFailed": "Failed to change role",
+      "makeOwner": "Make Owner",
+      "revokeOwner": "Revoke Owner",
+      "removeConfirm": "Remove {{name}} from the team?"
+    },
+    "roles": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "apiKeys": {
+      "title": "API Keys",
+      "description": "Manage API keys for this team",
+      "create": "New API Key",
+      "createTitle": "Create API Key",
+      "created": "API Key Created",
+      "createDesc": "Give your API key a name to identify it.",
+      "copyWarning": "Copy this key now. You won't be able to see it again.",
+      "keyName": "Key Name",
+      "keyNamePlaceholder": "e.g. CI/CD Pipeline",
+      "createKey": "Create Key",
+      "done": "Done",
+      "copy": "Copy",
+      "copied": "Copied",
+      "empty": "No API keys yet",
+      "never": "Never",
+      "table": {
+        "name": "Name",
+        "key": "Key",
+        "scopes": "Scopes",
+        "lastUsed": "Last Used",
+        "created": "Created"
+      },
+      "toast": {
+        "loadFailed": "Failed to load API keys",
+        "created": "API key created",
+        "createFailed": "Failed to create API key",
+        "copied": "Copied to clipboard",
+        "revoked": "API key revoked",
+        "revokeFailed": "Failed to revoke API key"
+      }
+    },
+    "settings": {
+      "profile": "Team Profile",
+      "name": "Team Name",
+      "slug": "Slug",
+      "description": "Description",
+      "website": "Website",
+      "websitePlaceholder": "https://",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "saved": "Saved!"
+    }
   }
 }

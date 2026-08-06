@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +34,7 @@ interface TeamMembersListProps {
 export function TeamMembersList({
   teamSlug, members, currentUserRole, total, page, pageSize,
 }: TeamMembersListProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const isOwner = currentUserRole === "owner"
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -73,25 +75,25 @@ export function TeamMembersList({
         body: JSON.stringify({ user_slug: userSlug }),
       })
       if (res.ok) {
-        toast.success("Member invited")
+        toast.success(t("team.members.invited"))
         setSearchResults((prev) => prev.filter((u) => u.userSlug !== userSlug))
         router.refresh()
       } else {
         const data = await res.json()
-        toast.error(data.error ?? "Failed to invite")
+        toast.error(data.error ?? t("team.members.inviteFailed"))
       }
     } catch {
-      toast.error("Failed to invite")
+      toast.error(t("team.members.inviteFailed"))
     } finally {
       setInviting(null)
     }
   }
 
   const handleRemove = async (userSlug: string, displayName: string) => {
-    if (!confirm(`Remove ${displayName} from the team?`)) return
+    if (!confirm(t("team.members.removeConfirm", { name: displayName }))) return
     const res = await fetch(`/api/teams/${teamSlug}/members/${userSlug}`, { method: "DELETE" })
     if (res.ok) router.refresh()
-    else toast.error("Failed to remove member")
+    else toast.error(t("team.members.removeFailed"))
   }
 
   const handleRoleChange = async (userSlug: string, newRole: string) => {
@@ -101,7 +103,7 @@ export function TeamMembersList({
       body: JSON.stringify({ role: newRole }),
     })
     if (res.ok) router.refresh()
-    else toast.error("Failed to change role")
+    else toast.error(t("team.members.roleChangeFailed"))
   }
 
   const goToPage = (p: number) => {
@@ -111,20 +113,20 @@ export function TeamMembersList({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Members ({total})</h2>
+        <h2 className="text-lg font-semibold">{t("team.members.title", { total })}</h2>
         {isOwner && (
           <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <UserPlus className="mr-1.5 h-4 w-4" />
-                Invite
+                {t("team.members.invite")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Invite Team Member</DialogTitle>
+                <DialogTitle>{t("team.members.inviteTitle")}</DialogTitle>
                 <DialogDescription>
-                  Search by username to add members to this team.
+                  {t("team.members.inviteDesc")}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -132,7 +134,7 @@ export function TeamMembersList({
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     className="pl-9"
-                    placeholder="Search by username..."
+                    placeholder={t("team.members.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -143,7 +145,7 @@ export function TeamMembersList({
                   </div>
                 )}
                 {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("team.members.noUsersFound")}</p>
                 )}
                 {searchResults.map((user) => (
                   <div key={user.userSlug} className="flex items-center gap-3 py-2">
@@ -163,7 +165,7 @@ export function TeamMembersList({
                     >
                       {inviting === user.userSlug ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : "Invite"}
+                      ) : t("team.members.invite")}
                     </Button>
                   </div>
                 ))}
@@ -190,11 +192,11 @@ export function TeamMembersList({
             <span className="text-xs px-2 py-0.5 rounded-full bg-surface-secondary font-medium">
               {member.role === "owner" ? (
                 <span className="flex items-center gap-1">
-                  <Crown className="h-3 w-3" /> Owner
+                  <Crown className="h-3 w-3" /> {t("team.roles.owner")}
                 </span>
               ) : (
                 <span className="flex items-center gap-1">
-                  <Shield className="h-3 w-3" /> Member
+                  <Shield className="h-3 w-3" /> {t("team.roles.member")}
                 </span>
               )}
             </span>
@@ -205,7 +207,7 @@ export function TeamMembersList({
                   variant="ghost" size="sm"
                   onClick={() => handleRoleChange(member.userSlug, "owner")}
                 >
-                  Make Owner
+                  {t("team.members.makeOwner")}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleRemove(member.userSlug, member.displayName)}>
                   <UserX className="h-4 w-4 text-muted-foreground" />
@@ -215,7 +217,7 @@ export function TeamMembersList({
 
             {isOwner && member.role === "owner" && members.filter((m) => m.role === "owner").length > 1 && (
               <Button variant="ghost" size="sm" onClick={() => handleRoleChange(member.userSlug, "member")}>
-                Revoke Owner
+                {t("team.members.revokeOwner")}
               </Button>
             )}
           </div>

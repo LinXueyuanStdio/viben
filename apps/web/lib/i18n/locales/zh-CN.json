@@ -2985,5 +2985,97 @@
     "title": "页面未找到",
     "description": "您访问的页面不存在或已被移除。",
     "backHome": "返回首页"
+  },
+  "team": {
+    "tabs": {
+      "overview": "概览",
+      "projects": "项目",
+      "members": "成员",
+      "settings": "设置"
+    },
+    "newProject": {
+      "title": "创建新项目",
+      "basicInfo": "基础信息",
+      "basicInfoDesc": "项目的名称和描述。",
+      "nameLabel": "项目名称",
+      "namePlaceholder": "我的项目",
+      "slugLabel": "项目标识",
+      "slugPlaceholder": "my-project",
+      "urlHint": "URL: viben-web.vercel.app/{{teamSlug}}/{{slug}}",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "项目的简短描述",
+      "configuration": "配置",
+      "configurationDesc": "项目的可见性设置。",
+      "visibilityLabel": "可见性",
+      "required": "* 必填",
+      "public": "🌐 公开 — 对所有人可见",
+      "private": "🔒 私有 — 仅团队成员可见",
+      "create": "创建项目",
+      "cancel": "取消",
+      "created": "项目已创建",
+      "createFailed": "创建项目失败"
+    },
+    "members": {
+      "title": "成员 ({{total}})",
+      "invite": "邀请",
+      "inviteTitle": "邀请团队成员",
+      "inviteDesc": "按用户名搜索以添加成员到团队。",
+      "searchPlaceholder": "按用户名搜索...",
+      "noUsersFound": "未找到用户",
+      "invited": "成员已邀请",
+      "inviteFailed": "邀请失败",
+      "removeFailed": "移除成员失败",
+      "roleChangeFailed": "角色变更失败",
+      "makeOwner": "设为 Owner",
+      "revokeOwner": "撤销 Owner",
+      "removeConfirm": "将 {{name}} 从团队中移除？"
+    },
+    "roles": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "apiKeys": {
+      "title": "API 密钥",
+      "description": "管理此团队的 API 密钥",
+      "create": "新建 API 密钥",
+      "createTitle": "创建 API 密钥",
+      "created": "API 密钥已创建",
+      "createDesc": "为 API 密钥命名以便识别。",
+      "copyWarning": "请立即复制此密钥，之后将无法再次查看。",
+      "keyName": "密钥名称",
+      "keyNamePlaceholder": "例如 CI/CD Pipeline",
+      "createKey": "创建密钥",
+      "done": "完成",
+      "copy": "复制",
+      "copied": "已复制",
+      "empty": "暂无 API 密钥",
+      "never": "从未",
+      "table": {
+        "name": "名称",
+        "key": "密钥",
+        "scopes": "权限范围",
+        "lastUsed": "上次使用",
+        "created": "创建时间"
+      },
+      "toast": {
+        "loadFailed": "加载 API 密钥失败",
+        "created": "API 密钥已创建",
+        "createFailed": "创建 API 密钥失败",
+        "copied": "已复制到剪贴板",
+        "revoked": "API 密钥已撤销",
+        "revokeFailed": "撤销 API 密钥失败"
+      }
+    },
+    "settings": {
+      "profile": "团队资料",
+      "name": "团队名称",
+      "slug": "标识",
+      "description": "描述",
+      "website": "网站",
+      "websitePlaceholder": "https://",
+      "save": "保存更改",
+      "saving": "保存中...",
+      "saved": "已保存！"
+    }
   }
 }

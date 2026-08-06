@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +31,7 @@ interface TeamApiKeysProps {
 }
 
 export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
+  const { t } = useTranslation()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -45,11 +47,11 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
       const data = await res.json()
       setKeys(data.keys || [])
     } catch {
-      toast.error('Failed to load API keys')
+      toast.error(t('team.apiKeys.toast.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [teamSlug])
+  }, [teamSlug, t])
 
   useEffect(() => { fetchKeys() }, [fetchKeys])
 
@@ -67,9 +69,9 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
       setNewKeyValue(data.key)
       if (data.apiKey?.id) setKeys((prev) => [data.apiKey, ...prev])
       setNewKeyName('')
-      toast.success('API key created')
+      toast.success(t('team.apiKeys.toast.created'))
     } catch {
-      toast.error('Failed to create API key')
+      toast.error(t('team.apiKeys.toast.createFailed'))
     } finally {
       setCreating(false)
     }
@@ -80,9 +82,9 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
       const res = await fetch(`/api/teams/${teamSlug}/api-keys/${keyId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete')
       setKeys((prev) => prev.filter((k) => k.id !== keyId))
-      toast.success('API key revoked')
+      toast.success(t('team.apiKeys.toast.revoked'))
     } catch {
-      toast.error('Failed to revoke API key')
+      toast.error(t('team.apiKeys.toast.revokeFailed'))
     }
   }
 
@@ -90,7 +92,7 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
     if (newKeyValue) {
       navigator.clipboard.writeText(newKeyValue)
       setCopied(true)
-      toast.success('Copied to clipboard')
+      toast.success(t('team.apiKeys.toast.copied'))
       setTimeout(() => setCopied(false), 2000)
     }
   }
@@ -98,7 +100,7 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
   if (loading) {
     return (
       <Card>
-        <CardHeader><CardTitle>API Keys</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('team.apiKeys.title')}</CardTitle></CardHeader>
         <CardContent className="flex justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </CardContent>
@@ -110,9 +112,9 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>API Keys</CardTitle>
+          <CardTitle>{t('team.apiKeys.title')}</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage API keys for this team
+            {t('team.apiKeys.description')}
           </p>
         </div>
         <Dialog open={showDialog} onOpenChange={(open) => {
@@ -122,18 +124,18 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
           <DialogTrigger asChild>
             <Button onClick={() => setNewKeyValue(null)} size="sm">
               <Plus className="mr-1.5 h-4 w-4" />
-              New API Key
+              {t('team.apiKeys.create')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {newKeyValue ? 'API Key Created' : 'Create API Key'}
+                {newKeyValue ? t('team.apiKeys.created') : t('team.apiKeys.createTitle')}
               </DialogTitle>
               <DialogDescription>
                 {newKeyValue
-                  ? 'Copy this key now. You won\'t be able to see it again.'
-                  : 'Give your API key a name to identify it.'}
+                  ? t('team.apiKeys.copyWarning')
+                  : t('team.apiKeys.createDesc')}
               </DialogDescription>
             </DialogHeader>
 
@@ -148,9 +150,9 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
                     className="shrink-0 min-w-[100px]"
                   >
                     {copied ? (
-                      <><Check className="mr-2 h-4 w-4" />Copied</>
+                      <><Check className="mr-2 h-4 w-4" />{t('team.apiKeys.copied')}</>
                     ) : (
-                      <><Copy className="mr-2 h-4 w-4" />Copy</>
+                      <><Copy className="mr-2 h-4 w-4" />{t('team.apiKeys.copy')}</>
                     )}
                   </Button>
                 </div>
@@ -158,10 +160,10 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
             ) : (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="keyName">Key Name</Label>
+                  <Label htmlFor="keyName">{t('team.apiKeys.keyName')}</Label>
                   <Input
                     id="keyName"
-                    placeholder="e.g. CI/CD Pipeline"
+                    placeholder={t('team.apiKeys.keyNamePlaceholder')}
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                   />
@@ -171,11 +173,11 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
 
             <DialogFooter>
               {newKeyValue ? (
-                <Button onClick={() => setShowDialog(false)}>Done</Button>
+                <Button onClick={() => setShowDialog(false)}>{t('team.apiKeys.done')}</Button>
               ) : (
                 <Button onClick={createKey} disabled={creating || !newKeyName.trim()}>
                   {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create Key
+                  {t('team.apiKeys.createKey')}
                 </Button>
               )}
             </DialogFooter>
@@ -186,17 +188,17 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
         {keys.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center">
             <Key className="mx-auto h-8 w-8 text-muted-foreground/40" />
-            <p className="mt-2 text-sm text-muted-foreground">No API keys yet</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t('team.apiKeys.empty')}</p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead>Scopes</TableHead>
-                <TableHead>Last Used</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>{t('team.apiKeys.table.name')}</TableHead>
+                <TableHead>{t('team.apiKeys.table.key')}</TableHead>
+                <TableHead>{t('team.apiKeys.table.scopes')}</TableHead>
+                <TableHead>{t('team.apiKeys.table.lastUsed')}</TableHead>
+                <TableHead>{t('team.apiKeys.table.created')}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -209,7 +211,7 @@ export function TeamApiKeys({ teamSlug }: TeamApiKeysProps) {
                   <TableCell>
                     {key.lastUsedAt
                       ? new Date(key.lastUsedAt).toLocaleDateString()
-                      : 'Never'}
+                      : t('team.apiKeys.never')}
                   </TableCell>
                   <TableCell>{new Date(key.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>

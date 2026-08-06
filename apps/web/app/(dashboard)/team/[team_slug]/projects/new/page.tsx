@@ -36,10 +36,7 @@ export default async function NewProjectPage({
       currentUserRole={currentUserRole}
       activeTab="projects"
     >
-      <div className="max-w-lg">
-        <h2 className="text-lg font-semibold mb-4">Create New Project</h2>
-        <NewProjectForm teamSlug={team_slug} />
-      </div>
+      <NewProjectForm teamSlug={team_slug} />
     </TeamPageShell>
   )
 }
