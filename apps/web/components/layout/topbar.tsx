@@ -15,6 +15,7 @@ import { useAppShell } from "./app-shell"
 import { useTopbarSlots } from "./topbar-slots"
 import { BreadcrumbNav } from "./breadcrumb"
 import { HomeTabBar } from "./home-tab-bar"
+import { TeamTabs } from "./team-tabs"
 import { SearchTrigger } from "./search-trigger"
 import { NotificationPopover } from "./notification-popover"
 import { MomentPopover } from "./moment-popover"
@@ -102,6 +103,18 @@ export function Topbar({
     if (pathname.startsWith("/category")) return true
     return false
   }, [pathname])
+
+  // 判断是否为团队页面（需要显示 TeamTabs）
+  const isTeamRoute = React.useMemo(() => {
+    return pathname.startsWith("/team/")
+  }, [pathname])
+
+  // 从 pathname 提取 team slug
+  const teamSlugFromPath = React.useMemo(() => {
+    if (!isTeamRoute) return ""
+    // /team/{slug}/... → segments[1] is "team", segments[2] is slug
+    return pathname.split("/")[2] ?? ""
+  }, [pathname, isTeamRoute])
 
   // 同步 user_slug 到行为追踪
   React.useEffect(() => {
@@ -242,6 +255,8 @@ export function Topbar({
             )
           ) : isDashboardNav ? (
             <HomeTabBar iconOnly={isMobile} />
+          ) : isTeamRoute ? (
+            <TeamTabs teamSlug={teamSlugFromPath} />
           ) : null}
         </div>
 
