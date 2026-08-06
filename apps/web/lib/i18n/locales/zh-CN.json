@@ -2986,6 +2986,18 @@
     "description": "您访问的页面不存在或已被移除。",
     "backHome": "返回首页"
   },
+  "project": {
+    "overview": {
+      "empty": "暂无页面",
+      "emptyHint": "添加页面到项目以开始使用"
+    },
+    "pages": {
+      "empty": "暂无页面",
+      "emptyHint": "已添加到项目的页面将显示在此处。",
+      "title": "页面 ({{count}})",
+      "by": "by @{{author}}"
+    }
+  },
   "team": {
     "tabs": {
       "overview": "概览",
@@ -3029,6 +3041,15 @@
       "makeOwner": "设为 Owner",
       "revokeOwner": "撤销 Owner",
       "removeConfirm": "将 {{name}} 从团队中移除？"
+    },
+    "invite": {
+      "title": "开始协作",
+      "welcome": "欢迎来到 {{name}}",
+      "subtitle": "添加团队成员",
+      "description": "团队成员将能够查看项目。",
+      "searchPlaceholder": "搜索用户名、全名或电子邮件地址",
+      "complete": "完成设置",
+      "skip": "跳过此步骤"
     },
     "roles": {
       "owner": "Owner",

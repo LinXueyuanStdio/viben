@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -19,6 +20,7 @@ export default function InviteMembersPage({
   params: Promise<{ team_slug: string }>
 }) {
   const router = useRouter()
+  const { t } = useTranslation()
   const [teamSlug, setTeamSlug] = useState("")
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<UserResult[]>([])
@@ -84,15 +86,15 @@ export default function InviteMembersPage({
   return (
     <div className="mx-auto w-full max-w-lg space-y-8 px-4 py-16">
       <div className="text-center space-y-2">
-        <h2 className="text-lg font-semibold">Start collaborating</h2>
-        <h1 className="text-3xl font-bold">Welcome to {teamSlug}</h1>
+        <h2 className="text-lg font-semibold">{t("team.invite.title")}</h2>
+        <h1 className="text-3xl font-bold">{t("team.invite.welcome", { name: teamSlug })}</h1>
       </div>
 
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold">Add team members</h3>
+          <h3 className="text-lg font-semibold">{t("team.invite.subtitle")}</h3>
           <p className="text-sm text-muted-foreground">
-            Team members will be able to view projects.
+            {t("team.invite.description")}
           </p>
         </div>
 
@@ -100,7 +102,7 @@ export default function InviteMembersPage({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search by username, full name or email address"
+            placeholder={t("team.invite.searchPlaceholder")}
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -153,10 +155,10 @@ export default function InviteMembersPage({
       <div className="flex flex-col gap-3">
         <Button onClick={handleComplete} disabled={submitting}>
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Complete Setup
+          {t("team.invite.complete")}
         </Button>
         <Button variant="ghost" onClick={() => router.push(`/${teamSlug}`)}>
-          Skip this step
+          {t("team.invite.skip")}
         </Button>
       </div>
     </div>

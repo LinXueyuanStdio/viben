@@ -16,6 +16,7 @@ import { useTopbarSlots } from "./topbar-slots"
 import { BreadcrumbNav } from "./breadcrumb"
 import { HomeTabBar } from "./home-tab-bar"
 import { TeamTabs } from "./team-tabs"
+import { ProjectTabs } from "./project-tabs"
 import { SearchTrigger } from "./search-trigger"
 import { NotificationPopover } from "./notification-popover"
 import { MomentPopover } from "./moment-popover"
@@ -104,12 +105,32 @@ export function Topbar({
     return false
   }, [pathname])
 
-  // 判断是否为团队页面（需要显示 TeamTabs）— 通过 pathname 和 #viben-team-meta 双重检测
-  const isTeamRoute = React.useMemo(() => {
-    if (pathname.startsWith("/team/")) return true
-    // overview 页面 /{team_slug}：通过 DOM 中的 viben-team-meta 判断
-    if (typeof window !== "undefined" && document.getElementById("viben-team-meta")) return true
-    return false
+  // 判断是否为团队页面（需要显示 TeamTabs）
+  // /team/{slug}/... 从 pathname 检测（SSR 可用）
+  // /{team_slug} overview 从 #viben-team-meta 检测（仅 client，useEffect 补检）
+  const [isTeamRoute, setIsTeamRoute] = React.useState(
+    () => pathname.startsWith("/team/")
+  )
+  React.useEffect(() => {
+    if (pathname.startsWith("/team/")) {
+      setIsTeamRoute(true)
+      return
+    }
+    if (typeof window !== "undefined" && document.getElementById("viben-team-meta")) {
+      setIsTeamRoute(true)
+    } else {
+      setIsTeamRoute(false)
+    }
+  }, [pathname])
+
+  // 判断是否为项目页面（需要显示 ProjectTabs）— 通过 #viben-project-meta 检测
+  const [isProjectRoute, setIsProjectRoute] = React.useState(false)
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && document.getElementById("viben-project-meta")) {
+      setIsProjectRoute(true)
+    } else {
+      setIsProjectRoute(false)
+    }
   }, [pathname])
 
   // 同步 user_slug 到行为追踪
@@ -253,6 +274,8 @@ export function Topbar({
             <HomeTabBar iconOnly={isMobile} />
           ) : isTeamRoute ? (
             <TeamTabs />
+          ) : isProjectRoute ? (
+            <ProjectTabs />
           ) : null}
         </div>
 

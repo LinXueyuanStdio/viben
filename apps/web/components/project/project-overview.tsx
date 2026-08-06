@@ -1,3 +1,7 @@
+"use client"
+
+import { useTranslation } from "react-i18next"
+
 interface PageItem {
   html: string
   title: string
@@ -10,12 +14,14 @@ interface ProjectOverviewProps {
 }
 
 export function ProjectOverview({ defaultPage, teamSlug, projectSlug }: ProjectOverviewProps) {
+  const { t } = useTranslation()
+
   if (!defaultPage) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg">
-        <h3 className="text-lg font-medium">No pages yet</h3>
+        <h3 className="text-lg font-medium">{t("project.overview.empty")}</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Add a page to this project to get started
+          {t("project.overview.emptyHint")}
         </p>
       </div>
     )

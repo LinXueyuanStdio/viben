@@ -103,7 +103,7 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   if (profileUser?.type === "team") {
     return (
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
-        <ProjectPage teamSlug={user_slug} projectSlug={page_id} session={session} />
+        <ProjectPage teamSlug={user_slug} projectSlug={page_id} session={session} tab={activeTab === "read" ? undefined : activeTab} />
       </Suspense>
     )
   }

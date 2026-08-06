@@ -2962,6 +2962,18 @@
     "description": "The page you're looking for doesn't exist or has been removed.",
     "backHome": "Back to Home"
   },
+  "project": {
+    "overview": {
+      "empty": "No pages yet",
+      "emptyHint": "Add a page to this project to get started"
+    },
+    "pages": {
+      "empty": "No pages yet",
+      "emptyHint": "Pages added to this project will appear here.",
+      "title": "Pages ({{count}})",
+      "by": "by @{{author}}"
+    }
+  },
   "team": {
     "tabs": {
       "overview": "Overview",
@@ -3005,6 +3017,15 @@
       "makeOwner": "Make Owner",
       "revokeOwner": "Revoke Owner",
       "removeConfirm": "Remove {{name}} from the team?"
+    },
+    "invite": {
+      "title": "Start collaborating",
+      "welcome": "Welcome to {{name}}",
+      "subtitle": "Add team members",
+      "description": "Team members will be able to view projects.",
+      "searchPlaceholder": "Search by username, full name or email address",
+      "complete": "Complete Setup",
+      "skip": "Skip this step"
     },
     "roles": {
       "owner": "Owner",
