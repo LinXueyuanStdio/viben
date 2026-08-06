@@ -4,8 +4,14 @@ import { getSession } from '@/lib/auth/cookies';
 import { eq, and, sql } from 'drizzle-orm';
 
 /**
- * POST /api/teams/{team_slug}/leave — 离开团队
- * @tag Teams
+ * 离开团队
+ * @summary 离开团队
+ * @description 当前用户退出指定团队。如果用户是唯一的 owner，则不能离开（需先转让所有权）。
+ * @response 200:{ success: true }:离开成功
+ * @response 400:ErrorResponse:唯一 owner 不能离开
+ * @response 401:ErrorResponse:未登录
+ * @response 404:ErrorResponse:团队未找到或非团队成员
+ * @tag Members
  */
 export async function POST(
   request: Request,

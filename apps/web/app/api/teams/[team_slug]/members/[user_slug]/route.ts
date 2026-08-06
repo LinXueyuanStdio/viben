@@ -4,8 +4,15 @@ import { getSession } from '@/lib/auth/cookies';
 import { eq, and } from 'drizzle-orm';
 
 /**
- * DELETE /api/teams/{team_slug}/members/{user_slug} — 移除成员（需 owner）
- * @tag Teams
+ * 移除团队成员
+ * @summary 移除成员
+ * @description 将指定用户移出团队。仅 owner 可操作，不能移除自己（请使用 leave 接口）。
+ * @response 200:{ success: true }:移除成功
+ * @response 400:ErrorResponse:不能移除自己
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非 owner 无权限
+ * @response 404:ErrorResponse:团队或用户未找到
+ * @tag Members
  */
 export async function DELETE(
   request: Request,

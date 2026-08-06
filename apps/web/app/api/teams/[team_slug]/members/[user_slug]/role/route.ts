@@ -4,9 +4,16 @@ import { getSession } from '@/lib/auth/cookies';
 import { eq, and } from 'drizzle-orm';
 
 /**
- * PUT /api/teams/{team_slug}/members/{user_slug}/role — 修改成员角色（需 owner）
- * Body: { role: 'owner' | 'member' }
- * @tag Teams
+ * 修改成员角色
+ * @summary 修改成员角色
+ * @description 修改指定成员在团队中的角色（owner 或 member）。仅 owner 可操作。
+ * @body { role: 'owner' | 'member' }
+ * @response 200:{ success: true }:修改成功
+ * @response 400:ErrorResponse:role 值无效
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非 owner 无权限
+ * @response 404:ErrorResponse:团队或用户未找到
+ * @tag Members
  */
 export async function PUT(
   request: Request,

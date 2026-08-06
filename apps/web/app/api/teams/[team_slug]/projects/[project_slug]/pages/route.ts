@@ -17,7 +17,11 @@ async function resolveProject(teamSlug: string, projectSlug: string) {
 }
 
 /**
- * GET /api/teams/{team_slug}/projects/{project_slug}/pages — Project 下的 pages 列表
+ * 获取项目下的页面列表
+ * @summary 获取页面列表
+ * @description 返回指定项目下所有已关联的 published pages，包含页面元信息和添加时间。
+ * @response 200:{ pages: Array<{ pageId, uid, title, description, coverUrl, authorSlug, lastPublishedAt, addedAt }> }:页面列表
+ * @response 404:ErrorResponse:项目未找到
  * @tag Projects
  */
 export async function GET(
@@ -50,8 +54,16 @@ export async function GET(
 }
 
 /**
- * POST /api/teams/{team_slug}/projects/{project_slug}/pages — 添加 page 到 Project
- * Body: { page_id: string }
+ * 添加页面到项目
+ * @summary 添加页面
+ * @description 将已发布的 page 添加到指定项目中。需要是团队成员。
+ * @body { page_id: string }
+ * @response 200:{ success: true }:添加成功
+ * @response 400:ErrorResponse:缺少 page_id
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非团队成员
+ * @response 404:ErrorResponse:项目未找到
+ * @response 409:ErrorResponse:页面已在项目中
  * @tag Projects
  */
 export async function POST(

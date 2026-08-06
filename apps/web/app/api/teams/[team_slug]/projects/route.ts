@@ -11,7 +11,11 @@ async function resolveTeam(teamSlug: string) {
 }
 
 /**
- * GET /api/teams/{team_slug}/projects — 团队下 projects 列表
+ * 获取团队下的项目列表
+ * @summary 获取项目列表
+ * @description 返回指定团队下的所有 projects，包含项目基本信息和时间戳。
+ * @response 200:{ projects: Array<{ id, name, projectSlug, description, defaultPageId, createdBy, createdAt, updatedAt }> }:项目列表
+ * @response 404:ErrorResponse:团队未找到
  * @tag Projects
  */
 export async function GET(
@@ -43,8 +47,16 @@ export async function GET(
 }
 
 /**
- * POST /api/teams/{team_slug}/projects — 创建 Project
- * Body: { name: string, project_slug: string, description?: string }
+ * 在团队下创建项目
+ * @summary 创建项目
+ * @description 在指定团队下创建新项目，需要是团队成员。project_slug 在团队内必须唯一。
+ * @body { name: string, project_slug: string, description?: string }
+ * @response 200:{ success: true, project_slug: string, project_id: string }:创建成功
+ * @response 400:ErrorResponse:缺少 name 或 project_slug
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非团队成员
+ * @response 404:ErrorResponse:团队未找到
+ * @response 409:ErrorResponse:project_slug 在该团队内已存在
  * @tag Projects
  */
 export async function POST(

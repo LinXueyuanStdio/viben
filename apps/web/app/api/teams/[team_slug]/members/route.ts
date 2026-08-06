@@ -4,8 +4,12 @@ import { getSession } from '@/lib/auth/cookies';
 import { eq, and } from 'drizzle-orm';
 
 /**
- * GET /api/teams/{team_slug}/members — 成员列表
- * @tag Teams
+ * 获取团队成员列表
+ * @summary 获取成员列表
+ * @description 返回指定团队的所有成员，包含用户信息和角色。
+ * @response 200:{ members: Array<{ userId, userSlug, displayName, avatarUrl, role, joinedAt }> }:成员列表
+ * @response 404:ErrorResponse:团队未找到
+ * @tag Members
  */
 export async function GET(
   request: Request,
@@ -39,9 +43,17 @@ export async function GET(
 }
 
 /**
- * POST /api/teams/{team_slug}/members — 邀请成员（需 owner）
- * Body: { user_slug: string }
- * @tag Teams
+ * 邀请成员加入团队
+ * @summary 邀请成员
+ * @description 邀请指定用户加入团队，仅 owner 可操作。新成员默认为 member 角色。
+ * @body { user_slug: string }
+ * @response 200:{ success: true }:邀请成功
+ * @response 400:ErrorResponse:缺少 user_slug
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非 owner 无权限
+ * @response 404:ErrorResponse:团队或用户未找到
+ * @response 409:ErrorResponse:已是团队成员
+ * @tag Members
  */
 export async function POST(
   request: Request,

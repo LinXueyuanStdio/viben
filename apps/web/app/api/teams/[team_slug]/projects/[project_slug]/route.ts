@@ -21,7 +21,11 @@ async function resolveProject(teamSlug: string, projectSlug: string) {
 }
 
 /**
- * GET /api/teams/{team_slug}/projects/{project_slug} — Project 详情
+ * 获取项目详情
+ * @summary 获取项目详情
+ * @description 返回指定项目的详细信息，包括 name、description、defaultPageId、createdBy 等。
+ * @response 200:{ project: ProjectDetail }:项目详情
+ * @response 404:ErrorResponse:项目未找到
  * @tag Projects
  */
 export async function GET(
@@ -37,8 +41,14 @@ export async function GET(
 }
 
 /**
- * PATCH /api/teams/{team_slug}/projects/{project_slug} — 更新 Project
- * Body: { name?: string, description?: string, default_page_id?: string }
+ * 更新项目
+ * @summary 更新项目
+ * @description 更新项目的名称、描述或默认页面。需要是 team owner 或项目创建者。
+ * @body { name?: string, description?: string, default_page_id?: string }
+ * @response 200:{ success: true }:更新成功
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:无权限（非 owner 且非创建者）
+ * @response 404:ErrorResponse:项目未找到
  * @tag Projects
  */
 export async function PATCH(
@@ -77,7 +87,13 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/teams/{team_slug}/projects/{project_slug} — 删除 Project
+ * 删除项目
+ * @summary 删除项目
+ * @description 删除指定项目。需要是 team owner 或项目创建者。
+ * @response 200:{ success: true }:删除成功
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:无权限（非 owner 且非创建者）
+ * @response 404:ErrorResponse:项目未找到
  * @tag Projects
  */
 export async function DELETE(

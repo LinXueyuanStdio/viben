@@ -37,7 +37,11 @@ async function requireOwner(teamSlug: string, userId: string): Promise<boolean> 
 }
 
 /**
- * GET /api/teams/{team_slug} — 团队详情
+ * 获取团队详情
+ * @summary 获取团队详情
+ * @description 返回指定团队的详细信息，包括 displayName、avatarUrl、bio、websiteUrl、createdAt 及当前用户在团队中的角色。
+ * @response 200:{ team: TeamDetail }:团队详情
+ * @response 404:ErrorResponse:团队未找到
  * @tag Teams
  */
 export async function GET(
@@ -54,8 +58,15 @@ export async function GET(
 }
 
 /**
- * PATCH /api/teams/{team_slug} — 更新团队设置
- * Body: { display_name?: string, bio?: string, avatar_url?: string, website_url?: string }
+ * 更新团队设置
+ * @summary 更新团队设置
+ * @description 更新团队的显示名称、简介、头像或网站链接。仅 owner 可操作。
+ * @body { display_name?: string, bio?: string, avatar_url?: string, website_url?: string }
+ * @response 200:{ success: true }:更新成功
+ * @response 400:ErrorResponse:无有效更新字段
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非 owner 无权限
+ * @response 404:ErrorResponse:团队未找到
  * @tag Teams
  */
 export async function PATCH(
@@ -101,7 +112,13 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/teams/{team_slug} — 删除团队
+ * 删除团队
+ * @summary 删除团队
+ * @description 删除指定团队，会级联删除团队成员关系和 projects。仅 owner 可操作。
+ * @response 200:{ success: true }:删除成功
+ * @response 401:ErrorResponse:未登录
+ * @response 403:ErrorResponse:非 owner 无权限
+ * @response 404:ErrorResponse:团队未找到
  * @tag Teams
  */
 export async function DELETE(

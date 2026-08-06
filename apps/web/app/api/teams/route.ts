@@ -4,7 +4,11 @@ import { getSession } from '@/lib/auth/cookies';
 import { eq } from 'drizzle-orm';
 
 /**
- * GET /api/teams — 获取当前用户所属的团队列表
+ * 获取当前用户所属的团队列表
+ * @summary 获取团队列表
+ * @description 返回当前登录用户所属的所有团队，包含团队基本信息及用户在各团队中的角色。
+ * @response 200:{ teams: Array<{ teamId, teamSlug, teamName, teamAvatarUrl, role, joinedAt }> }:团队列表
+ * @response 401:ErrorResponse:未登录
  * @tag Teams
  */
 export async function GET() {
@@ -31,8 +35,14 @@ export async function GET() {
 }
 
 /**
- * POST /api/teams — 创建团队
- * Body: { name: string, slug: string }
+ * 创建新团队
+ * @summary 创建团队
+ * @description 创建新团队，自动将创建者设为 owner。slug 必须全局唯一。
+ * @body { name: string, slug: string }
+ * @response 200:{ success: true, team_slug: string, team_id: string }:创建成功
+ * @response 400:ErrorResponse:缺少 name 或 slug
+ * @response 401:ErrorResponse:未登录
+ * @response 409:ErrorResponse:slug 已被占用
  * @tag Teams
  */
 export async function POST(request: Request) {

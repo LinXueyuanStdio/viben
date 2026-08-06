@@ -3,10 +3,12 @@ import { db, users } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 
 /**
- * 校验 team slug 是否可用
- * @summary 校验 team slug
- * @query slug: string — the slug to check
- * @response 200: { available: true } | { available: false, message: string }
+ * 校验团队 slug 是否可用
+ * @summary 校验团队 slug
+ * @description 检查指定的 slug 是否可用。返回 `{ available: true }` 表示可用，`{ available: false, message: string }` 表示不可用及原因。slug 格式只允许小写字母、数字和连字符。
+ * @query slug:string — 要校验的 slug
+ * @response 200:{ available: boolean, message?: string }:校验结果
+ * @response 400:ErrorResponse:缺少 slug 或格式无效
  * @tag Teams
  */
 export async function GET(request: Request) {
