@@ -2,8 +2,10 @@ import { getSession } from "@/lib/auth/cookies"
 import { notFound, redirect } from "next/navigation"
 import { db, users, projects, teamMembers } from "@/lib/db"
 import { eq, and } from "drizzle-orm"
-import { NewProjectPageForm } from "./new-project-page-form"
+import { ProjectPageEditor } from "@/components/project/project-page-editor"
 import { ProjectPageShell } from "@/components/project/project-page-shell"
+
+export const dynamic = "force-dynamic"
 
 export default async function NewProjectPagePage({
   params,
@@ -38,7 +40,7 @@ export default async function NewProjectPagePage({
       projectSlug={project_slug}
       projectName={project.name}
     >
-      <NewProjectPageForm
+      <ProjectPageEditor
         userSlug={session.userSlug}
         teamSlug={team_slug}
         projectSlug={project_slug}
