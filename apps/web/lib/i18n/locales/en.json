@@ -2963,18 +2963,38 @@
     "backHome": "Back to Home"
   },
   "project": {
+    "tabs": {
+      "overview": "Overview",
+      "pages": "Pages",
+      "settings": "Settings"
+    },
     "overview": {
       "empty": "No pages yet",
-      "emptyHint": "Add a page to this project to get started"
+      "emptyHint": "Add a page to this project to get started",
+      "createPage": "Create Page"
     },
     "pages": {
       "empty": "No pages yet",
       "emptyHint": "Pages added to this project will appear here.",
       "title": "Pages ({{count}})",
       "by": "by @{{author}}"
+    },
+    "settings": {
+      "title": "Project Settings",
+      "slug": "Project Slug",
+      "team": "Team",
+      "description": "Description",
+      "url": "URL"
     }
   },
   "team": {
+    "overview": {
+      "projects": "Projects",
+      "newProject": "New Project",
+      "empty": "No projects yet",
+      "emptyHint": "Create your first project to get started",
+      "createProject": "Create Project"
+    },
     "tabs": {
       "overview": "Overview",
       "projects": "Projects",

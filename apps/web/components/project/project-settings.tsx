@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface ProjectSettingsLoaderProps {
@@ -10,29 +13,31 @@ interface ProjectSettingsLoaderProps {
 export function ProjectSettingsLoader({
   projectSlug, teamSlug, description, createdBy,
 }: ProjectSettingsLoaderProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="max-w-2xl space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Project Settings</CardTitle>
+          <CardTitle>{t("project.settings.title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-muted-foreground">Project Slug</label>
+            <label className="text-sm font-medium text-muted-foreground">{t("project.settings.slug")}</label>
             <p className="text-sm font-mono mt-1">{projectSlug}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-muted-foreground">Team</label>
+            <label className="text-sm font-medium text-muted-foreground">{t("project.settings.team")}</label>
             <p className="text-sm mt-1">{teamSlug}</p>
           </div>
           {description && (
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Description</label>
+              <label className="text-sm font-medium text-muted-foreground">{t("project.settings.description")}</label>
               <p className="text-sm mt-1">{description}</p>
             </div>
           )}
           <div>
-            <label className="text-sm font-medium text-muted-foreground">URL</label>
+            <label className="text-sm font-medium text-muted-foreground">{t("project.settings.url")}</label>
             <p className="text-sm font-mono mt-1">viben-web.vercel.app/{teamSlug}/{projectSlug}</p>
           </div>
         </CardContent>

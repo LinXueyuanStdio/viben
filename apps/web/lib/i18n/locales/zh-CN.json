@@ -2987,18 +2987,38 @@
     "backHome": "返回首页"
   },
   "project": {
+    "tabs": {
+      "overview": "概览",
+      "pages": "页面",
+      "settings": "设置"
+    },
     "overview": {
       "empty": "暂无页面",
-      "emptyHint": "添加页面到项目以开始使用"
+      "emptyHint": "添加页面到项目以开始使用",
+      "createPage": "创建页面"
     },
     "pages": {
       "empty": "暂无页面",
       "emptyHint": "已添加到项目的页面将显示在此处。",
       "title": "页面 ({{count}})",
       "by": "by @{{author}}"
+    },
+    "settings": {
+      "title": "项目设置",
+      "slug": "项目标识",
+      "team": "团队",
+      "description": "描述",
+      "url": "地址"
     }
   },
   "team": {
+    "overview": {
+      "projects": "项目",
+      "newProject": "新建项目",
+      "empty": "暂无项目",
+      "emptyHint": "创建您的第一个项目以开始使用",
+      "createProject": "创建项目"
+    },
     "tabs": {
       "overview": "概览",
       "projects": "项目",

@@ -359,6 +359,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       page_uid: uid,
+      page_id: updatedPublishedPage.id,
       url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
       read_url: `/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}?tab=read`,
       updated: true,

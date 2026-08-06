@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useTranslation } from "react-i18next"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { cn } from "@/lib/utils/index"
 import { Eye, FileText, Settings } from "lucide-react"
@@ -18,6 +19,7 @@ interface ProjectTabsProps {
 }
 
 export const ProjectTabs = React.memo(function ProjectTabs({ className }: ProjectTabsProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -54,15 +56,15 @@ export const ProjectTabs = React.memo(function ProjectTabs({ className }: Projec
       <VibenTabsList variant="underline" className="h-full gap-1">
         <VibenTabsTrigger value="overview" variant="underline">
           <Eye className="h-4 w-4" />
-          <span className="ml-1.5">Overview</span>
+          <span className="ml-1.5">{t("project.tabs.overview")}</span>
         </VibenTabsTrigger>
         <VibenTabsTrigger value="pages" variant="underline">
           <FileText className="h-4 w-4" />
-          <span className="ml-1.5">Pages</span>
+          <span className="ml-1.5">{t("project.tabs.pages")}</span>
         </VibenTabsTrigger>
         <VibenTabsTrigger value="settings" variant="underline">
           <Settings className="h-4 w-4" />
-          <span className="ml-1.5">Settings</span>
+          <span className="ml-1.5">{t("project.tabs.settings")}</span>
         </VibenTabsTrigger>
       </VibenTabsList>
     </VibenTabs>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -19,30 +20,31 @@ interface TeamOverviewProps {
 }
 
 export function TeamOverview({ teamSlug, projects, currentUserRole }: TeamOverviewProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const canCreate = currentUserRole === "owner" || currentUserRole === "member"
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Projects</h2>
+        <h2 className="text-lg font-semibold">{t("team.overview.projects")}</h2>
         {canCreate && (
           <Button size="sm" onClick={() => router.push(`/team/${teamSlug}/projects/new`)}>
             <Plus className="mr-1 h-4 w-4" />
-            New Project
+            {t("team.overview.newProject")}
           </Button>
         )}
       </div>
 
       {projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg">
-          <h3 className="text-lg font-medium">No projects yet</h3>
+          <h3 className="text-lg font-medium">{t("team.overview.empty")}</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Create your first project to get started
+            {t("team.overview.emptyHint")}
           </p>
           {canCreate && (
             <Button onClick={() => router.push(`/team/${teamSlug}/projects/new`)}>
-              Create Project
+              {t("team.overview.createProject")}
             </Button>
           )}
         </div>
