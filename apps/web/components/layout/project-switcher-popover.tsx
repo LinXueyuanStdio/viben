@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { Check, FolderKanban } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -24,6 +25,7 @@ export function ProjectSwitcherPopover({
   currentProjectSlug,
   groupHovered = false,
 }: ProjectSwitcherPopoverProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [selfHovered, setSelfHovered] = useState(false)
   const [projects, setProjects] = useState<ProjectItem[]>([])
@@ -74,7 +76,7 @@ export function ProjectSwitcherPopover({
           selfHovered={selfHovered}
           onMouseEnter={() => setSelfHovered(true)}
           onMouseLeave={() => setSelfHovered(false)}
-          aria-label="切换项目"
+          aria-label={t("community.switchProject")}
         />
       </PopoverTrigger>
 
@@ -84,23 +86,23 @@ export function ProjectSwitcherPopover({
         sideOffset={4}
       >
         <div className="px-3 py-2.5 border-b border-border">
-          <p className="text-sm font-extrabold">切换项目</p>
+          <p className="text-sm font-extrabold">{t("community.switchProject")}</p>
         </div>
         <ScrollArea className="max-h-[260px]">
           <div className="p-1">
             {loading && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                加载中…
+                {t("common.loading")}
               </p>
             )}
             {!loading && error && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                加载失败
+                {t("common.loadFailed")}
               </p>
             )}
             {!loading && !error && projects.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                暂无其他项目
+                {t("community.noOtherProject")}
               </p>
             )}
             {!loading &&

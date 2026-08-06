@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import Link from "next/link"
+import { useTranslation } from "react-i18next"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface TeamStats {
@@ -38,6 +39,7 @@ export function TeamPageShell({
   stats, currentUserRole, activeTab = "overview", children, followButton,
   showProfileHeader = false, showHeader = true,
 }: TeamPageShellProps) {
+  const { t } = useTranslation()
   const initials = teamName.slice(0, 2).toUpperCase()
 
   return (
@@ -62,7 +64,7 @@ export function TeamPageShell({
               <p className="text-sm text-muted-foreground leading-relaxed">{teamBio}</p>
             ) : currentUserRole === "owner" ? (
               <p className="text-sm text-muted-foreground/60 italic">
-                添加团队简介，向大家介绍你的团队…
+                {t("team.overview.addBioHint")}
               </p>
             ) : null}
 
@@ -85,22 +87,22 @@ export function TeamPageShell({
               <div className="flex items-center gap-3 pt-1">
                 <Link href={`/${encodeURIComponent(teamSlug)}/followers`} className="flex items-baseline gap-1 hover:underline">
                   <span className="text-sm font-bold tabular-nums">{formatCount(stats.followersCount)}</span>
-                  <span className="text-[13px] text-muted-foreground">关注者</span>
+                  <span className="text-[13px] text-muted-foreground">{t("team.stats.followers")}</span>
                 </Link>
                 <span className="text-muted-foreground/30">·</span>
                 <Link href={`/${encodeURIComponent(teamSlug)}/following`} className="flex items-baseline gap-1 hover:underline">
                   <span className="text-sm font-bold tabular-nums">{formatCount(stats.followingCount)}</span>
-                  <span className="text-[13px] text-muted-foreground">正在关注</span>
+                  <span className="text-[13px] text-muted-foreground">{t("team.stats.following")}</span>
                 </Link>
                 <span className="text-muted-foreground/30">·</span>
                 <Link href={`/team/${encodeURIComponent(teamSlug)}/members`} className="flex items-baseline gap-1 hover:underline">
                   <span className="text-sm font-bold tabular-nums">{formatCount(stats.memberCount)}</span>
-                  <span className="text-[13px] text-muted-foreground">成员</span>
+                  <span className="text-[13px] text-muted-foreground">{t("team.stats.members")}</span>
                 </Link>
                 <span className="text-muted-foreground/30">·</span>
                 <Link href={`/team/${encodeURIComponent(teamSlug)}/projects`} className="flex items-baseline gap-1 hover:underline">
                   <span className="text-sm font-bold tabular-nums">{formatCount(stats.projectCount)}</span>
-                  <span className="text-[13px] text-muted-foreground">项目</span>
+                  <span className="text-[13px] text-muted-foreground">{t("team.stats.projects")}</span>
                 </Link>
               </div>
             )}

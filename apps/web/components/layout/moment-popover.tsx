@@ -76,7 +76,7 @@ export function MomentPopover() {
         </div>
       ) : items.length === 0 ? (
         <div className="flex items-center justify-center min-h-[58px] text-sm text-muted-foreground">
-          暂无动态
+          {t("community.noMoments")}
         </div>
       ) : (
         <div ref={scrollRef} className="max-h-[360px] overflow-y-auto">
@@ -99,7 +99,7 @@ export function MomentPopover() {
                   />
                   <div className="min-w-0 grid gap-0.5">
                     <span className="text-[13px] leading-snug line-clamp-2">
-                      {body || "(无文字)"}
+                      {body || t("common.noText")}
                     </span>
                     <span className="text-[11px] text-muted-foreground">
                       {item.author.display_name && <span>{item.author.display_name} · </span>}
@@ -111,7 +111,7 @@ export function MomentPopover() {
             })}
             {hasMore && (
               <div className="flex items-center justify-center py-2 text-xs text-muted-foreground">
-                {loading ? "加载中…" : "滚动加载更多"}
+                {loading ? t("common.loading") : t("common.scrollLoadMore")}
               </div>
             )}
           </div>

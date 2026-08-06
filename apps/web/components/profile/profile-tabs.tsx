@@ -2,15 +2,18 @@
 
 import { useCallback } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { useTranslation } from "react-i18next"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger, VibenTabsContent } from "@/components/ui/viben-tabs"
 
 const TAB_KEYS = ["pages", "likes", "mcp", "skills"] as const
+type TabKey = "overview" | (typeof TAB_KEYS)[number]
 
-const TAB_LABELS: Record<string, string> = {
-  pages: "页面",
-  likes: "喜欢",
-  mcp: "MCP",
-  skills: "技能",
+const TAB_I18N_KEYS: Record<TabKey, string> = {
+  overview: "profile.tabs.overview",
+  pages: "profile.tabs.pages",
+  likes: "profile.tabs.likes",
+  mcp: "profile.tabs.mcp",
+  skills: "profile.tabs.skills",
 }
 
 interface ProfileTabsProps {
@@ -25,8 +28,6 @@ interface ProfileTabsProps {
   skillCount?: number
 }
 
-const DEFAULT_TAB = "概览"
-
 export function ProfileTabs({
   overview,
   pages,
@@ -38,17 +39,17 @@ export function ProfileTabs({
   mcpCount,
   skillCount,
 }: ProfileTabsProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const currentTab = searchParams.get("tab")
-  const activeTab = TAB_LABELS[currentTab ?? "overview"] ?? DEFAULT_TAB
+  const currentTab = searchParams.get("tab") ?? "overview"
+  const activeTab: TabKey = (TAB_KEYS as readonly string[]).includes(currentTab) ? currentTab as TabKey : "overview"
 
   const handleTabChange = useCallback((value: string) => {
-    const key = Object.entries(TAB_LABELS).find(([, label]) => label === value)?.[0]
     const params = new URLSearchParams(searchParams.toString())
-    if (key && key !== "overview") {
-      params.set("tab", key)
+    if (value !== "overview") {
+      params.set("tab", value)
     } else {
       params.delete("tab")
     }
@@ -57,39 +58,39 @@ export function ProfileTabs({
   }, [router, pathname, searchParams])
 
   const countMap: Record<string, number | undefined> = {
-    "页面": pageCount,
-    "喜欢": likeCount,
-    "MCP": mcpCount,
-    "技能": skillCount,
+    pages: pageCount,
+    likes: likeCount,
+    mcp: mcpCount,
+    skills: skillCount,
   }
 
   const content: Record<string, React.ReactNode> = {
-    "概览": overview,
-    "页面": pages,
-    "喜欢": likes,
-    "MCP": mcp,
-    "技能": skills,
+    overview,
+    pages,
+    likes,
+    mcp,
+    skills,
   }
 
   return (
     <VibenTabs value={activeTab} onValueChange={handleTabChange}>
       <VibenTabsList>
-        <VibenTabsTrigger key="overview" value="概览">
-          概览
+        <VibenTabsTrigger key="overview" value="overview">
+          {t("profile.tabs.overview")}
         </VibenTabsTrigger>
         {TAB_KEYS.map((key) => (
-          <VibenTabsTrigger key={key} value={TAB_LABELS[key]}>
-            {TAB_LABELS[key]}
-            {countMap[TAB_LABELS[key]] != null && (
+          <VibenTabsTrigger key={key} value={key}>
+            {t(TAB_I18N_KEYS[key])}
+            {countMap[key] != null && (
               <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">
-                {countMap[TAB_LABELS[key]]}
+                {countMap[key]}
               </span>
             )}
           </VibenTabsTrigger>
         ))}
       </VibenTabsList>
-      {Object.entries(content).map(([label, node]) => (
-        <VibenTabsContent key={label} value={label} className="mt-3">
+      {Object.entries(content).map(([key, node]) => (
+        <VibenTabsContent key={key} value={key} className="mt-3">
           {node}
         </VibenTabsContent>
       ))}

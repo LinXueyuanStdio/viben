@@ -61,7 +61,7 @@ export function HistoryPopover() {
         </div>
       ) : items.length === 0 ? (
         <div className="flex items-center justify-center min-h-[58px] text-sm text-muted-foreground">
-          暂无记录
+          {t("common.noRecords")}
         </div>
       ) : (
         <div ref={scrollRef} className="max-h-[360px] overflow-y-auto">
@@ -93,7 +93,7 @@ export function HistoryPopover() {
             ))}
             {hasMore && (
               <div className="flex items-center justify-center py-2 text-xs text-muted-foreground">
-                {loading ? "加载中…" : "滚动加载更多"}
+                {loading ? t("common.loading") : t("common.scrollLoadMore")}
               </div>
             )}
           </div>

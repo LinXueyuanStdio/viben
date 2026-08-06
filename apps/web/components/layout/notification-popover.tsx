@@ -74,7 +74,7 @@ export function NotificationPopover() {
     <HoverPopover
       icon={Bell}
       label={t("community.notifications")}
-      title={`${t("community.notifications")}${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ""}`}
+      title={`${t("community.notifications")}${unreadCount > 0 ? ` · ${unreadCount} ${t("community.unreadSuffix")}` : ""}`}
       viewAllHref="/notifications"
       count={unreadCount}
       onFirstOpen={loadFirst}
@@ -85,7 +85,7 @@ export function NotificationPopover() {
         </div>
       ) : items.length === 0 ? (
         <div className="flex items-center justify-center min-h-[80px] text-sm text-muted-foreground">
-          暂无通知
+          {t("community.noNotifications")}
         </div>
       ) : (
         <div ref={scrollRef} className="max-h-[360px] overflow-y-auto">
@@ -118,7 +118,7 @@ export function NotificationPopover() {
             ))}
             {hasMore && (
               <div className="flex items-center justify-center py-2 text-xs text-muted-foreground">
-                {loading ? "加载中…" : "滚动加载更多"}
+                {loading ? t("common.loading") : t("common.scrollLoadMore")}
               </div>
             )}
           </div>

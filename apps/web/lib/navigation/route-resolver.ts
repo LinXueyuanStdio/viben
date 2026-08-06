@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { usePathname } from "next/navigation"
 import { routeRegistry } from "./route-registry"
 
@@ -70,17 +70,17 @@ export function matchKnownPatterns(pathname: string): RouteResolution | null {
 
   // 3 段：可能是 /{team}/{project}/{page} — 需要 API 查询
   if (parts.length === 3) {
-    return null // 需要服务端解析
+    return null
   }
 
   // 2 段：可能是 /{user}/{page} 或 /{team}/{project} — 需要 API 查询
   if (parts.length === 2) {
-    return null // 需要服务端解析
+    return null
   }
 
   // 1 段：可能是 /{user} 或 /{team} — 需要 API 查询
   if (parts.length === 1) {
-    return null // 需要服务端解析
+    return null
   }
 
   return null
@@ -90,8 +90,77 @@ export function matchKnownPatterns(pathname: string): RouteResolution | null {
 
 const resolutionCache = new Map<string, RouteResolution>()
 
+// ---- Level 2.5: sessionStorage 持久化（跨硬导航复用） ----
+
+const SESSION_STORAGE_KEY = "viben-route-resolutions"
+// 递增版本号可在 schema 变更时让旧缓存自然失效
+const CACHE_VERSION = 1
+
+interface SessionCacheEntry {
+  version: number
+  resolutions: Record<string, RouteResolution>
+}
+
+function readSessionCache(): Record<string, RouteResolution> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
+    if (!raw) return {}
+    const entry: SessionCacheEntry = JSON.parse(raw)
+    if (entry.version !== CACHE_VERSION) return {}
+    return entry.resolutions ?? {}
+  } catch {
+    return {}
+  }
+}
+
+function writeSessionCache(resolutions: Record<string, RouteResolution>) {
+  if (typeof window === "undefined") return
+  try {
+    const entry: SessionCacheEntry = { version: CACHE_VERSION, resolutions }
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(entry))
+  } catch {
+    // sessionStorage 满或不可用，静默忽略
+  }
+}
+
+// 初始化时从 sessionStorage 恢复到内存 Map
+let sessionCacheInitialized = false
+function initFromSessionCache() {
+  if (sessionCacheInitialized) return
+  sessionCacheInitialized = true
+  const stored = readSessionCache()
+  for (const [key, value] of Object.entries(stored)) {
+    if (!resolutionCache.has(key)) {
+      resolutionCache.set(key, value as RouteResolution)
+    }
+  }
+}
+
+function persistToSessionCache(pathname: string, resolution: RouteResolution) {
+  const stored = readSessionCache()
+  stored[pathname] = resolution
+  // 最多保留 200 条，防止无限增长
+  const keys = Object.keys(stored)
+  if (keys.length > 200) {
+    for (const k of keys.slice(0, keys.length - 200)) {
+      delete stored[k]
+    }
+  }
+  writeSessionCache(stored)
+}
+
 export function getCachedResolution(pathname: string): RouteResolution | undefined {
+  initFromSessionCache()
   return resolutionCache.get(pathname)
+}
+
+function setCachedResolution(pathname: string, resolution: RouteResolution) {
+  resolutionCache.set(pathname, resolution)
+  // 只持久化非 trivial 类型（需要服务端解析的），已知模式不需要
+  if (resolution.type !== "home" && resolution.type !== "dashboard") {
+    persistToSessionCache(pathname, resolution)
+  }
 }
 
 // ---- Level 3: 服务端 API ----
@@ -115,8 +184,9 @@ async function resolveFromServer(pathname: string): Promise<RouteResolution> {
 /**
  * 统一路由解析 hook — 多级缓存架构：
  * 1. 已知模式匹配（同步 0ms）
- * 2. 客户端内存缓存
- * 3. 服务端 API → React.cache() 去重 → DB
+ * 2. 客户端内存 Map 缓存 → sessionStorage 恢复
+ * 3. sessionStorage 持久化（跨硬导航复用）
+ * 4. 服务端 API → React.cache() 去重 → DB
  *
  * 返回 null 表示仍在加载中。
  */
@@ -126,8 +196,9 @@ export function useRouteResolution(): RouteResolution | null {
     // Level 1: 已知模式
     const known = matchKnownPatterns(pathname)
     if (known) return known
-    // Level 2: 客户端缓存
-    return getCachedResolution(pathname) ?? null
+    // Level 2 + 2.5: 客户端缓存（内存 Map + sessionStorage）
+    initFromSessionCache()
+    return resolutionCache.get(pathname) ?? null
   })
 
   useEffect(() => {
@@ -147,7 +218,7 @@ export function useRouteResolution(): RouteResolution | null {
     setResolution(null) // loading
     resolveFromServer(pathname).then((result) => {
       if (cancelled) return
-      resolutionCache.set(pathname, result)
+      setCachedResolution(pathname, result)
       setResolution(result)
     })
     return () => { cancelled = true }

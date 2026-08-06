@@ -50,7 +50,11 @@
     "clear": "清除",
     "next": "下一页",
     "previous": "上一页",
-    "disabled": "已禁用"
+    "disabled": "已禁用",
+    "loadFailed": "加载失败",
+    "scrollLoadMore": "滚动加载更多",
+    "noText": "(无文字)",
+    "noRecords": "暂无记录"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -61,6 +65,7 @@
     "mcpServices": "MCP 服务",
     "dedicatedSearchServices": "专用搜索服务",
     "skillsMarket": "技能市场",
+    "mcp": "MCP",
     "skills": "技能",
     "logs": "日志",
     "settings": "设置",
@@ -100,6 +105,7 @@
     "category": "分类",
     "leaderboard": "榜单",
     "moment": "动态",
+    "market": "市场",
     "search": "搜索",
     "notifications": "通知",
     "history": "浏览历史",
@@ -1933,6 +1939,13 @@
         "apiKeys": "API 密钥"
       }
     },
+    "tabs": {
+      "overview": "概览",
+      "pages": "页面",
+      "likes": "喜欢",
+      "mcp": "MCP",
+      "skills": "技能"
+    },
     "form": {
       "username": "用户名",
       "usernameCannotChange": "用户名无法更改",
@@ -2684,6 +2697,7 @@
     "continueReading": "继续阅读",
     "bookmarkedPages": "收藏过的页面",
     "unreadCount": "{{count}} 篇未读完",
+    "unreadSuffix": "条未读",
     "commentsLoading": "评论加载中...",
     "noComments": "暂无评论，来发表第一条评论吧",
     "writeComment": "写下你的想法",
@@ -2736,6 +2750,14 @@
     "viewAllHistory": "查看全部历史",
     "closeDrawer": "关闭抽屉",
     "breadcrumb": "面包屑导航",
+    "switchPage": "切换页面",
+    "searchPage": "搜索页面…",
+    "noMatchPage": "无匹配页面",
+    "noOtherPage": "暂无其他页面",
+    "switchProject": "切换项目",
+    "noOtherProject": "暂无其他项目",
+    "switchTeam": "切换团队",
+    "noOtherTeam": "暂无其他团队",
     "viben": "Viben",
     "searchPlaceholder": "搜索插件、页面、作者...",
     "noResultsHint": "换一个关键词，或减少限定词再试一次。",
@@ -3165,5 +3187,26 @@
     "next": "下一步",
     "createFailed": "创建团队失败",
     "networkError": "网络错误"
+  },
+  "team": {
+    "overview": {
+      "addBioHint": "添加团队简介，向大家介绍你的团队…"
+    },
+    "stats": {
+      "followers": "关注者",
+      "following": "正在关注",
+      "members": "成员",
+      "projects": "项目"
+    },
+    "settings": {
+      "avatar": "头像",
+      "avatarHint": "支持 PNG、JPEG、WebP，最大 2MB",
+      "avatarFormatError": "不支持的格式，请使用 PNG、JPEG 或 WebP",
+      "avatarSizeError": "文件过大，最大 2MB",
+      "avatarUploadFailed": "头像上传失败",
+      "avatarNoUrl": "上传成功但未返回 URL",
+      "avatarUpdated": "头像已更新",
+      "profileUpdateFailed": "更新资料失败"
+    }
   }
 }

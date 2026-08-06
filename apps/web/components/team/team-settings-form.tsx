@@ -42,11 +42,11 @@ export function TeamSettingsForm({ teamSlug, displayName, bio, websiteUrl, avata
       const validExtensions = ["png", "jpg", "jpeg", "webp"]
       const extension = file.name.split(".").pop()?.toLowerCase() || ""
       if (!validExtensions.includes(extension)) {
-        toast.error("不支持的格式，请使用 PNG、JPEG 或 WebP")
+        toast.error(t("team.settings.avatarFormatError"))
         return
       }
       if (file.size > 2 * 1024 * 1024) {
-        toast.error("文件过大，最大 2MB")
+        toast.error(t("team.settings.avatarSizeError"))
         return
       }
 
@@ -61,10 +61,10 @@ export function TeamSettingsForm({ teamSlug, displayName, bio, websiteUrl, avata
         const uploadRes = await fetch("/api/media/upload", { method: "POST", body: formData })
         if (!uploadRes.ok) {
           const errData = await uploadRes.json().catch(() => ({}))
-          throw new Error(errData.error || `上传失败 (${uploadRes.status})`)
+          throw new Error(errData.error || `${t("team.settings.avatarUploadFailed")} (${uploadRes.status})`)
         }
         const uploadData = await uploadRes.json()
-        if (!uploadData.url) throw new Error("上传成功但未返回 URL")
+        if (!uploadData.url) throw new Error(t("team.settings.avatarNoUrl"))
 
         // 更新团队头像
         const updateRes = await fetch(`/api/teams/${teamSlug}`, {
@@ -72,13 +72,13 @@ export function TeamSettingsForm({ teamSlug, displayName, bio, websiteUrl, avata
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ avatar_url: uploadData.url }),
         })
-        if (!updateRes.ok) throw new Error("更新资料失败")
+        if (!updateRes.ok) throw new Error(t("team.settings.profileUpdateFailed"))
 
         setAvatar(uploadData.url)
-        toast.success("头像已更新")
+        toast.success(t("team.settings.avatarUpdated"))
         router.refresh()
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "头像上传失败")
+        toast.error(err instanceof Error ? err.message : t("team.settings.avatarUploadFailed"))
       } finally {
         setAvatarUploading(false)
         if (fileInputRef.current) fileInputRef.current.value = ""
@@ -112,10 +112,9 @@ export function TeamSettingsForm({ teamSlug, displayName, bio, websiteUrl, avata
         <CardTitle>{t("team.settings.profile")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* 头像 */}
         {isOwner && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">头像</label>
+            <label className="text-sm font-medium">{t("team.settings.avatar")}</label>
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -138,7 +137,7 @@ export function TeamSettingsForm({ teamSlug, displayName, bio, websiteUrl, avata
                 </div>
               </button>
               <div>
-                <p className="text-sm text-muted-foreground">支持 PNG、JPEG、WebP，最大 2MB</p>
+                <p className="text-sm text-muted-foreground">{t("team.settings.avatarHint")}</p>
               </div>
               <input
                 ref={fileInputRef}

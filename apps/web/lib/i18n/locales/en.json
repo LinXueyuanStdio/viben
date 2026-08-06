@@ -50,7 +50,11 @@
     "clear": "Clear",
     "next": "Next",
     "previous": "Previous",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "loadFailed": "Load failed",
+    "scrollLoadMore": "Scroll to load more",
+    "noText": "(No text)",
+    "noRecords": "No records"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -61,6 +65,7 @@
     "mcpServices": "MCP Services",
     "dedicatedSearchServices": "Dedicated Search Services",
     "skillsMarket": "Skills Market",
+    "mcp": "MCP",
     "skills": "Skills",
     "logs": "Logs",
     "settings": "Settings",
@@ -101,6 +106,7 @@
     "category": "Category",
     "leaderboard": "Leaderboard",
     "moment": "Moments",
+    "market": "Market",
     "search": "Search",
     "notifications": "Notifications",
     "history": "History",
@@ -1934,6 +1940,13 @@
         "apiKeys": "API Keys"
       }
     },
+    "tabs": {
+      "overview": "Overview",
+      "pages": "Pages",
+      "likes": "Likes",
+      "mcp": "MCP",
+      "skills": "Skills"
+    },
     "form": {
       "username": "Username",
       "usernameCannotChange": "Username cannot be changed",
@@ -2711,7 +2724,16 @@
     "loadMoreMoments": "Load more moments",
     "viewAllHistory": "View all history",
     "closeDrawer": "Close drawer",
+    "unreadSuffix": "unread",
     "breadcrumb": "Breadcrumb",
+    "switchPage": "Switch Page",
+    "searchPage": "Search pages…",
+    "noMatchPage": "No matching pages",
+    "noOtherPage": "No other pages",
+    "switchProject": "Switch Project",
+    "noOtherProject": "No other projects",
+    "switchTeam": "Switch Team",
+    "noOtherTeam": "No other teams",
     "viben": "Viben",
     "searchPlaceholder": "Search plugins, pages, authors...",
     "noResultsHint": "Try a different keyword or fewer qualifiers.",
@@ -3141,5 +3163,26 @@
     "next": "Next",
     "createFailed": "Failed to create team",
     "networkError": "Network error"
+  },
+  "team": {
+    "overview": {
+      "addBioHint": "Add a team bio to introduce your team…"
+    },
+    "stats": {
+      "followers": "Followers",
+      "following": "Following",
+      "members": "Members",
+      "projects": "Projects"
+    },
+    "settings": {
+      "avatar": "Avatar",
+      "avatarHint": "Supports PNG, JPEG, WebP, max 2MB",
+      "avatarFormatError": "Unsupported format. Use PNG, JPEG, or WebP",
+      "avatarSizeError": "File too large. Maximum size is 2MB",
+      "avatarUploadFailed": "Avatar upload failed",
+      "avatarNoUrl": "Upload succeeded but no URL returned",
+      "avatarUpdated": "Avatar updated",
+      "profileUpdateFailed": "Failed to update profile"
+    }
   }
 }

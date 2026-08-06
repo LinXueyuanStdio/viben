@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { Search, Check, FileText } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
@@ -26,6 +27,7 @@ export function PageSwitcherPopover({
   currentPageId,
   groupHovered = false,
 }: PageSwitcherPopoverProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [selfHovered, setSelfHovered] = useState(false)
   const [pages, setPages] = useState<PageItem[]>([])
@@ -91,7 +93,7 @@ export function PageSwitcherPopover({
           selfHovered={selfHovered}
           onMouseEnter={() => setSelfHovered(true)}
           onMouseLeave={() => setSelfHovered(false)}
-          aria-label="切换页面"
+          aria-label={t("community.switchPage")}
         />
       </PopoverTrigger>
 
@@ -100,38 +102,35 @@ export function PageSwitcherPopover({
         align="start"
         sideOffset={4}
       >
-        {/* 标题 */}
         <div className="px-3 py-2.5 border-b border-border">
-          <p className="text-sm font-extrabold">切换页面</p>
+          <p className="text-sm font-extrabold">{t("community.switchPage")}</p>
         </div>
-        {/* 搜索框 */}
         <div className="px-2 py-1.5">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索页面…"
+              placeholder={t("community.searchPage")}
               className="h-8 pl-7 text-sm"
             />
           </div>
         </div>
-        {/* 页面列表 */}
         <ScrollArea className="max-h-[260px]">
           <div className="p-1">
             {loading && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                加载中…
+                {t("common.loading")}
               </p>
             )}
             {!loading && error && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                加载失败
+                {t("common.loadFailed")}
               </p>
             )}
             {!loading && !error && pages.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                {search ? "无匹配页面" : "暂无其他页面"}
+                {search ? t("community.noMatchPage") : t("community.noOtherPage")}
               </p>
             )}
             {!loading &&
