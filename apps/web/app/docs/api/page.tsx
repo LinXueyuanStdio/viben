@@ -7,7 +7,7 @@ const SCALAR_CONFIG = {
     url: '/openapi.json',
   },
   servers: [
-    { url: 'https://viben-web.vercel.app', description: '生产环境' },
+    { url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', description: '生产环境' },
     { url: 'http://localhost:3000', description: '本地开发' },
   ],
   authentication: {

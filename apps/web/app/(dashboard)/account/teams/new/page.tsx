@@ -73,7 +73,7 @@ export default function CreateTeamPage() {
     }
   }, [name, slug, slugError, acceptedTerms, router])
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://viben-web.vercel.app"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-8 px-4">

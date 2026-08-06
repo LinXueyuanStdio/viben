@@ -97,7 +97,7 @@ interface PageSettingsPanelProps {
 // Constants
 // ============================================================================
 
-const VIBEN_WEB_URL = "https://viben-web.vercel.app"
+const VIBEN_WEB_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 type PublishSettingsView = "overview" | "seo" | "embed" | "share"
 
@@ -583,6 +583,27 @@ export function PageSettingsPanel({
             "Publish this static HTML page to the cloud.",
           )}
         </p>
+
+        {/* Publish card loading skeleton */}
+        {isLoadingHistory && !isPublished && (
+          <div className="mb-4 space-y-3">
+            <div className="rounded-md border border-border bg-muted/50 p-3 animate-pulse">
+              <div className="h-4 w-24 rounded bg-muted" />
+              <div className="mt-3 h-8 rounded-md bg-muted" />
+              <div className="mt-3 space-y-2">
+                <div className="h-3 w-48 rounded bg-muted" />
+                <div className="h-3 w-36 rounded bg-muted" />
+              </div>
+            </div>
+            <div className="rounded-md border border-border bg-muted/50 p-3 animate-pulse">
+              <div className="h-4 w-20 rounded bg-muted" />
+              <div className="mt-3 space-y-2">
+                <div className="h-8 rounded-md bg-muted" />
+                <div className="h-8 rounded-md bg-muted" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Published URL card */}
         {isPublished && externalPublishedUrl && (

@@ -3117,7 +3117,7 @@
       "namePlaceholder": "我的项目",
       "slugLabel": "项目标识",
       "slugPlaceholder": "my-project",
-      "urlHint": "URL: viben-web.vercel.app/{{teamSlug}}/{{slug}}",
+      "urlHint": "URL: {{teamSlug}}/{{slug}}",
       "descriptionLabel": "描述",
       "descriptionPlaceholder": "项目的简短描述",
       "configuration": "配置",

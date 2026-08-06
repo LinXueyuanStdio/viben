@@ -38,7 +38,7 @@ export function ProjectSettingsLoader({
           )}
           <div>
             <label className="text-sm font-medium text-muted-foreground">{t("project.settings.url")}</label>
-            <p className="text-sm font-mono mt-1">viben-web.vercel.app/{teamSlug}/{projectSlug}</p>
+            <p className="text-sm font-mono mt-1">{(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/^https?:\/\//, "")}/{teamSlug}/{projectSlug}</p>
           </div>
         </CardContent>
       </Card>

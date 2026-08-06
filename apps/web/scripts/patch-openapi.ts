@@ -18,6 +18,16 @@ async function main() {
   // 清除模板配置 key，不应出现在最终 OpenAPI spec 中
   delete spec.exclude;
 
+  // 从环境变量注入生产服务器 URL
+  const prodUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://viben-web.vercel.app';
+  const servers = spec.servers as Array<Record<string, unknown>> | undefined;
+  if (servers) {
+    const prodServer = servers.find((s) => s.description === '生产环境');
+    if (prodServer) {
+      prodServer.url = prodUrl;
+    }
+  }
+
   const components = (spec.components ??= {}) as Record<string, unknown>;
   (components.securitySchemes ??= {}) as Record<string, unknown>;
 

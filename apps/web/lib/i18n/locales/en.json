@@ -3092,7 +3092,7 @@
       "namePlaceholder": "My Project",
       "slugLabel": "Project Slug",
       "slugPlaceholder": "my-project",
-      "urlHint": "URL: viben-web.vercel.app/{{teamSlug}}/{{slug}}",
+      "urlHint": "URL: {{teamSlug}}/{{slug}}",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "A short description of the project",
       "configuration": "Configuration",

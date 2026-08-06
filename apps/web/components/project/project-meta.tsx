@@ -104,7 +104,7 @@ export function ProjectMeta({ data }: { data: ProjectMetaData }) {
         <Globe className={metaIconClass} />
         <span className="text-xs text-muted-foreground">{t("project.details.url")}</span>
         <span className="text-xs font-mono break-all">
-          {process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, "") ?? "viben-web.vercel.app"}/{encodeURIComponent(data.team.slug)}/{encodeURIComponent(data.projectSlug)}
+          {(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/^https?:\/\//, "")}/{encodeURIComponent(data.team.slug)}/{encodeURIComponent(data.projectSlug)}
         </span>
       </div>
     </div>
