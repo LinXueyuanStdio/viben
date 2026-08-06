@@ -274,6 +274,21 @@ export const pageDropdownRegistry: Record<string, Array<{ href: string; config: 
   ],
 }
 
+/** 从服务端注入的 <script id="viben-team-meta"> 读取当前团队信息 */
+function getTeamMeta(): { teamSlug: string; teamName: string } | null {
+  if (typeof window === "undefined") return null
+  const el = document.getElementById("viben-team-meta")
+  if (!el) return null
+  try { return JSON.parse(el.textContent ?? "") } catch { return null }
+}
+
+/** team 子路由的末段 → 中文标签映射 */
+const TEAM_SUB_LABELS: Record<string, string> = {
+  settings: "设置",
+  projects: "项目",
+  members: "成员",
+}
+
 /** 获取面包屑段，支持传入动态段标签 */
 export function resolveBreadcrumbSegments(
   pathname: string,
@@ -281,6 +296,31 @@ export function resolveBreadcrumbSegments(
 ): Array<{ href: string; config: RouteConfig; isLast: boolean }> {
   const segments: Array<{ href: string; config: RouteConfig; isLast: boolean }> = []
   const parts = pathname.split("/").filter(Boolean)
+
+  // 处理团队子路由 /team/{slug}/...  — 跳过 /team 前缀，用 displayName 替代 slug
+  if (parts[0] === "team" && parts.length >= 2) {
+    const teamSlug = parts[1]
+    const teamMeta = getTeamMeta()
+    const teamLabel = teamMeta?.teamName ?? teamSlug
+
+    segments.push({
+      href: `/${teamSlug}`,
+      config: { label: teamLabel },
+      isLast: parts.length === 2,
+    })
+
+    for (let i = 2; i < parts.length; i++) {
+      const isLast = i === parts.length - 1
+      segments.push({
+        href: `/${parts.slice(0, i + 1).join("/")}`,
+        config: { label: TEAM_SUB_LABELS[parts[i]] ?? parts[i] },
+        isLast,
+      })
+    }
+
+    return segments
+  }
+
   let accumulated = ""
 
   for (let i = 0; i < parts.length; i++) {

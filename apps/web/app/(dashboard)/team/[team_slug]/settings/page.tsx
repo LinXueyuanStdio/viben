@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth/cookies"
 import { notFound } from "next/navigation"
 import { TeamPageShell } from "@/components/team/team-page-shell"
 import { TeamSettingsForm } from "@/components/team/team-settings-form"
+import { TeamApiKeys } from "@/components/team/team-api-keys"
 import { db, users, teamMembers } from "@/lib/db"
 import { eq, and } from "drizzle-orm"
 
@@ -31,6 +32,8 @@ export default async function TeamSettingsPage({
     currentUserRole = membership?.role ?? null
   }
 
+  const isOwner = currentUserRole === "owner"
+
   return (
     <TeamPageShell
       teamSlug={team_slug}
@@ -45,8 +48,9 @@ export default async function TeamSettingsPage({
           displayName={team.displayName}
           bio={team.bio}
           websiteUrl={team.websiteUrl}
-          isOwner={currentUserRole === "owner"}
+          isOwner={isOwner}
         />
+        {isOwner && <TeamApiKeys teamSlug={team_slug} />}
       </div>
     </TeamPageShell>
   )

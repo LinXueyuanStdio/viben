@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db, users, teamMembers } from '@/lib/db';
 import { getSession } from '@/lib/auth/cookies';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 
 /**
  * 获取团队成员列表
  * @summary 获取成员列表
- * @description 返回指定团队的所有成员，包含用户信息和角色。
- * @response 200:{ members: Array<{ userId, userSlug, displayName, avatarUrl, role, joinedAt }> }:成员列表
+ * @description 返回指定团队的所有成员，包含用户信息和角色。支持翻页参数 page 和 page_size。
+ * @queryParam {number} page — 页码，从 1 开始，默认 1
+ * @queryParam {number} page_size — 每页数量，默认 20，最大 50
+ * @response 200:{ members: Array<{ userId, userSlug, displayName, avatarUrl, role, joinedAt }>, total: number, page: number, pageSize: number }:成员列表及翻页信息
  * @response 404:ErrorResponse:团队未找到
  * @tag Members
  */
@@ -16,6 +18,9 @@ export async function GET(
   { params }: { params: Promise<{ team_slug: string }> }
 ) {
   const { team_slug } = await params;
+  const url = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+  const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page_size') ?? '20', 10) || 20));
 
   const team = await db.query.users.findFirst({
     where: and(eq(users.userSlug, team_slug), eq(users.type, 'team')),
@@ -24,6 +29,13 @@ export async function GET(
   if (!team) {
     return NextResponse.json({ error: 'Team not found' }, { status: 404 });
   }
+
+  const [{ count: totalCount }] = await db
+    .select({ count: count() })
+    .from(teamMembers)
+    .where(eq(teamMembers.teamId, team.id));
+
+  const total = totalCount ?? 0;
 
   const members = await db
     .select({
@@ -37,9 +49,11 @@ export async function GET(
     .from(teamMembers)
     .innerJoin(users, eq(teamMembers.userId, users.id))
     .where(eq(teamMembers.teamId, team.id))
-    .orderBy(teamMembers.joinedAt);
+    .orderBy(teamMembers.joinedAt)
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
 
-  return NextResponse.json({ members });
+  return NextResponse.json({ members, total, page, pageSize });
 }
 
 /**

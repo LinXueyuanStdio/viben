@@ -104,17 +104,13 @@ export function Topbar({
     return false
   }, [pathname])
 
-  // 判断是否为团队页面（需要显示 TeamTabs）
+  // 判断是否为团队页面（需要显示 TeamTabs）— 通过 pathname 和 #viben-team-meta 双重检测
   const isTeamRoute = React.useMemo(() => {
-    return pathname.startsWith("/team/")
+    if (pathname.startsWith("/team/")) return true
+    // overview 页面 /{team_slug}：通过 DOM 中的 viben-team-meta 判断
+    if (typeof window !== "undefined" && document.getElementById("viben-team-meta")) return true
+    return false
   }, [pathname])
-
-  // 从 pathname 提取 team slug
-  const teamSlugFromPath = React.useMemo(() => {
-    if (!isTeamRoute) return ""
-    // /team/{slug}/... → segments[1] is "team", segments[2] is slug
-    return pathname.split("/")[2] ?? ""
-  }, [pathname, isTeamRoute])
 
   // 同步 user_slug 到行为追踪
   React.useEffect(() => {
@@ -256,7 +252,7 @@ export function Topbar({
           ) : isDashboardNav ? (
             <HomeTabBar iconOnly={isMobile} />
           ) : isTeamRoute ? (
-            <TeamTabs teamSlug={teamSlugFromPath} />
+            <TeamTabs />
           ) : null}
         </div>
 
