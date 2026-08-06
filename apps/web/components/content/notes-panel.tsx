@@ -17,17 +17,26 @@ interface NoteData {
   updatedAt: string
 }
 
-export function NotesPanel({ pageId }: { pageId: string }) {
+interface NotesPanelProps {
+  entityType?: "published_page" | "project"
+  entityId: string
+  /** @deprecated Use entityId + entityType="published_page" */
+  pageId?: string
+}
+
+export function NotesPanel({ entityType = "published_page", entityId, pageId }: NotesPanelProps) {
   const { t } = useTranslation()
   const [notes, setNotes] = useState<NoteData[]>([])
   const [loading, setLoading] = useState(true)
   const [showComposer, setShowComposer] = useState(false)
   const [editingNote, setEditingNote] = useState<NoteData | null>(null)
 
+  const id = entityId || pageId || ""
+
   const fetchNotes = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/notes?page_id=${encodeURIComponent(pageId)}`)
+      const res = await fetch(`/api/notes?entity_type=${entityType}&entity_id=${encodeURIComponent(id)}`)
       if (res.ok) {
         const data = await res.json()
         setNotes(data.notes ?? [])
@@ -37,7 +46,7 @@ export function NotesPanel({ pageId }: { pageId: string }) {
     } finally {
       setLoading(false)
     }
-  }, [pageId])
+  }, [entityType, id])
 
   useEffect(() => { fetchNotes() }, [fetchNotes])
 
@@ -77,7 +86,8 @@ export function NotesPanel({ pageId }: { pageId: string }) {
       {/* New composer */}
       {showComposer && (
         <NoteComposer
-          pageId={pageId}
+          entityType={entityType}
+          entityId={id}
           onSave={handleSaved}
           onCancel={() => setShowComposer(false)}
         />
@@ -101,7 +111,8 @@ export function NotesPanel({ pageId }: { pageId: string }) {
             editingNote?.id === note.id ? (
               <NoteComposer
                 key={note.id}
-                pageId={pageId}
+                entityType={entityType}
+                entityId={id}
                 noteId={note.id}
                 initialContent={note.content}
                 onSave={handleSaved}

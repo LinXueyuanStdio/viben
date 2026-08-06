@@ -6,14 +6,17 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 
 interface NoteComposerProps {
-  pageId: string
+  entityType?: string
+  entityId?: string
+  /** @deprecated Use entityType + entityId */
+  pageId?: string
   initialContent?: string
-  noteId?: string   // 编辑模式时传入
+  noteId?: string
   onSave: () => void
   onCancel: () => void
 }
 
-export function NoteComposer({ pageId, initialContent = "", noteId, onSave, onCancel }: NoteComposerProps) {
+export function NoteComposer({ entityType, entityId, pageId, initialContent = "", noteId, onSave, onCancel }: NoteComposerProps) {
   const { t } = useTranslation()
   const [content, setContent] = useState(initialContent)
   const [saving, setSaving] = useState(false)
@@ -27,7 +30,12 @@ export function NoteComposer({ pageId, initialContent = "", noteId, onSave, onCa
       const method = isEdit ? "PATCH" : "POST"
       const body = isEdit
         ? JSON.stringify({ content: content.trim() })
-        : JSON.stringify({ page_id: pageId, content: content.trim() })
+        : JSON.stringify({
+            entity_type: entityType ?? "published_page",
+            entity_id: entityId || pageId,
+            page_id: pageId || entityId,
+            content: content.trim(),
+          })
 
       const res = await fetch(url, {
         method,

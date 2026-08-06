@@ -31,16 +31,18 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const pageId = searchParams.get("page_id");
-  if (!pageId) {
-    return NextResponse.json({ error: "missing_page_id" }, { status: 400 });
+  const entityType = searchParams.get("entity_type") ?? "published_page";
+  const entityId = searchParams.get("entity_id") ?? searchParams.get("page_id");
+  if (!entityId) {
+    return NextResponse.json({ error: "missing_entity_id" }, { status: 400 });
   }
 
   const results = await db
     .select()
     .from(notes)
     .where(and(
-      eq(notes.pageId, pageId),
+      eq(notes.entityType, entityType),
+      eq(notes.entityId, entityId),
       eq(notes.authorUserId, session.userId)
     ))
     .orderBy(desc(notes.isPinned), desc(notes.createdAt));
@@ -73,10 +75,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { page_id, content } = body;
+    const entityType = body.entity_type ?? "published_page";
+    const entityId = body.entity_id ?? body.page_id;
+    const { content } = body;
 
-    if (!page_id) {
-      return NextResponse.json({ error: "missing_page_id" }, { status: 400 });
+    if (!entityId) {
+      return NextResponse.json({ error: "missing_entity_id" }, { status: 400 });
     }
 
     if (typeof content !== "string" || !content.trim()) {
@@ -89,7 +93,9 @@ export async function POST(request: NextRequest) {
       .insert(notes)
       .values({
         uid,
-        pageId: page_id,
+        pageId: entityId,
+        entityType: entityType,
+        entityId: entityId,
         authorUserId: session.userId,
         content: content.trim(),
         contentFormat: "markdown",

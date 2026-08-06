@@ -1924,6 +1924,8 @@ export const notes = pgTable(
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     uid: text('uid').notNull(),
     pageId: text('page_id').notNull(),
+    entityType: text('entity_type').notNull().default('published_page'),
+    entityId: text('entity_id'),
     authorUserId: text('author_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),

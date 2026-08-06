@@ -109,7 +109,7 @@ function TabContent({ tab }: { tab: ReadDrawerTab }) {
         />
       )
     case "notes":
-      return <LazyNotesPanel pageId={tab.pageId} />
+      return <LazyNotesPanel entityType="published_page" entityId={tab.pageId} />
   }
 }
 
