@@ -3073,7 +3073,12 @@
       "emptyHint": "已添加到项目的页面将显示在此处。",
       "title": "页面 ({{count}})",
       "by": "by @{{author}}",
-      "createPage": "创建页面"
+      "createPage": "创建页面",
+      "coverTitle": "项目封面",
+      "coverHint": "封面将在项目概览中默认展示",
+      "coverPlaceholder": "选择页面...",
+      "coverSaved": "封面页已更新",
+      "coverSaveFailed": "更新封面页失败"
     },
     "settings": {
       "title": "项目设置",
@@ -3235,7 +3240,12 @@
       "empty": "暂无页面",
       "emptyHint": "添加页面到此项目",
       "by": "作者 {{author}}",
-      "createPage": "创建页面"
+      "createPage": "创建页面",
+      "coverTitle": "项目封面",
+      "coverHint": "封面将在项目概览中默认展示",
+      "coverPlaceholder": "选择页面...",
+      "coverSaved": "封面页已更新",
+      "coverSaveFailed": "更新封面页失败"
     },
     "settings": {
       "title": "项目设置",

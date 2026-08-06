@@ -3048,7 +3048,13 @@
       "empty": "No pages yet",
       "emptyHint": "Pages added to this project will appear here.",
       "title": "Pages ({{count}})",
-      "by": "by @{{author}}"
+      "by": "by @{{author}}",
+      "createPage": "Create Page",
+      "coverTitle": "Project Cover",
+      "coverHint": "The cover page will be displayed by default in the project overview",
+      "coverPlaceholder": "Select a page...",
+      "coverSaved": "Cover page updated",
+      "coverSaveFailed": "Failed to update cover page"
     },
     "settings": {
       "title": "Project Settings",
@@ -3210,7 +3216,12 @@
       "empty": "No pages yet",
       "emptyHint": "Add pages to this project",
       "by": "by {{author}}",
-      "createPage": "Create Page"
+      "createPage": "Create Page",
+      "coverTitle": "Project Cover",
+      "coverHint": "The cover page will be displayed by default in the project overview",
+      "coverPlaceholder": "Select a page...",
+      "coverSaved": "Cover page updated",
+      "coverSaveFailed": "Failed to update cover page"
     },
     "settings": {
       "title": "Project Settings",
