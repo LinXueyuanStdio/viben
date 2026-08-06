@@ -107,11 +107,11 @@ export function Topbar({
 
   // 判断是否为团队页面（需要显示 TeamTabs）
   // /team/{slug}/... 从 pathname 检测（SSR 可用）
-  // /{team_slug} overview 从 #viben-team-meta 检测（仅 client，useEffect 补检）
+  // /{team_slug} overview 从 #viben-team-meta 检测（useLayoutEffect 补检，减少闪烁）
   const [isTeamRoute, setIsTeamRoute] = React.useState(
     () => pathname.startsWith("/team/")
   )
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (pathname.startsWith("/team/")) {
       setIsTeamRoute(true)
       return
@@ -125,7 +125,7 @@ export function Topbar({
 
   // 判断是否为项目页面（需要显示 ProjectTabs）— 通过 #viben-project-meta 检测
   const [isProjectRoute, setIsProjectRoute] = React.useState(false)
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (typeof window !== "undefined" && document.getElementById("viben-project-meta")) {
       setIsProjectRoute(true)
     } else {

@@ -102,9 +102,18 @@ export default async function PagePage({ params, searchParams }: PageProps) {
   })
   if (profileUser?.type === "team") {
     return (
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
-        <ProjectPage teamSlug={user_slug} projectSlug={page_id} session={session} tab={activeTab === "read" ? undefined : activeTab} />
-      </Suspense>
+      <>
+        <script
+          id="viben-project-meta"
+          type="application/json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({ teamSlug: user_slug, projectSlug: page_id }),
+          }}
+        />
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
+          <ProjectPage teamSlug={user_slug} projectSlug={page_id} session={session} tab={activeTab === "read" ? undefined : activeTab} />
+        </Suspense>
+      </>
     )
   }
 
