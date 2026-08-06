@@ -16,7 +16,7 @@ export function ProjectSettingsLoader({
   const { t } = useTranslation()
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>{t("project.settings.title")}</CardTitle>

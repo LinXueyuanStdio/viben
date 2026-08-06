@@ -19,6 +19,9 @@ import {
 } from "@/lib/navigation/route-registry"
 import { isPublishedPageRoute } from "@/lib/navigation/page-route"
 import { PageSwitcherPopover } from "@/components/layout/page-switcher-popover"
+import { ProjectSwitcherPopover } from "@/components/layout/project-switcher-popover"
+import { TeamSwitcherPopover } from "@/components/layout/team-switcher-popover"
+import type { RouteResolution } from "@/lib/navigation/route-resolver"
 
 // --- Context ---
 
@@ -41,9 +44,10 @@ export const BreadcrumbDynamicContext = React.createContext<BreadcrumbContextVal
 interface BreadcrumbNavProps {
   variant?: "global" | "read"
   className?: string
+  resolution?: RouteResolution | null
 }
 
-export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavProps) {
+export function BreadcrumbNav({ variant = "global", className, resolution }: BreadcrumbNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
   const ctx = React.useContext(BreadcrumbDynamicContext)
@@ -53,15 +57,31 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
   const firstSegment = pathname.split("/").filter(Boolean)[0] ?? ""
   const showViben = firstSegment === "" || routeRegistry[`/${firstSegment}`] !== undefined
 
-  // 判断是否为已发布页面阅读路由
-  const readPageInfo = React.useMemo(
-    () => isPublishedPageRoute(pathname),
-    [pathname]
-  )
+  // 从 resolution 推导面包屑决策
+  const rType = resolution?.type
+  const isProjectPage = rType === "project-overview" || rType === "project-page"
+  const isTeamOrProjectPage = rType === "team-overview" || rType === "team-sub" || isProjectPage
+  const currentTeamSlug = resolution?.teamSlug
+    ?? (pathname.startsWith("/team/") ? pathname.split("/")[2] : "")
+    ?? ""
+
+  // readPageInfo 用于 PageSwitcherPopover（read-page 类型）
+  const readPageInfo = React.useMemo(() => {
+    if (rType === "read-page" && resolution?.userSlug && resolution?.pageSlug) {
+      return { isPage: true, userSlug: resolution.userSlug, pageId: resolution.pageSlug }
+    }
+    if (rType === "project-page" && resolution?.teamSlug && resolution?.pageSlug) {
+      return { isPage: true, userSlug: resolution.teamSlug, pageId: resolution.pageSlug }
+    }
+    return isPublishedPageRoute(pathname)
+  }, [pathname, rType, resolution])
 
   const segments = React.useMemo(
-    () => resolveBreadcrumbSegments(pathname, dynamicLabels),
-    [pathname, dynamicLabels]
+    () => resolveBreadcrumbSegments(pathname, dynamicLabels, {
+      teamDisplayName: resolution?.teamDisplayName,
+      projectDisplayName: resolution?.projectDisplayName,
+    }),
+    [pathname, dynamicLabels, resolution?.teamDisplayName, resolution?.projectDisplayName]
   )
 
   // 过滤：read 模式只显示 mode="read" 的路由
@@ -87,10 +107,21 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
           <span className="font-extrabold text-foreground">Viben</span>
         )}
       </Link>
-      {filteredSegments.map((seg, idx) => {
+      {filteredSegments.map((seg) => {
         const label = seg.config.titleKey ? t(seg.config.titleKey) : seg.config.label
-        const isPageSwitcher =
-          readPageInfo.isPage && seg.isLast && readPageInfo.userSlug && readPageInfo.pageId
+        // href 匹配：用 segment href 与 resolution 中的 team/project/page URL 精确匹配
+        const teamSegHref = resolution?.teamSlug ? `/${resolution.teamSlug}` : ""
+        const projectSegHref = resolution?.teamSlug && resolution?.projectSlug
+          ? `/${resolution.teamSlug}/${resolution.projectSlug}` : ""
+        const pageSegHref = (resolution?.userSlug || resolution?.teamSlug) && resolution?.pageSlug
+          ? `/${resolution?.userSlug ?? resolution?.teamSlug}/${resolution.pageSlug}` : ""
+
+        const isTeamSwitcher = isTeamOrProjectPage && teamSegHref && seg.href === teamSegHref
+        const isProjectSwitcher = rType === "project-overview" && projectSegHref && seg.href === projectSegHref
+        const isPageSwitcher = readPageInfo.userSlug && readPageInfo.pageId && seg.href === pageSegHref && (
+          rType === "read-page" || rType === "project-page" || rType === null
+        )
+
         return (
           <React.Fragment key={seg.href}>
             <span className="text-[#93b4bf] dark:text-muted-foreground shrink-0">/</span>
@@ -104,6 +135,16 @@ export function BreadcrumbNav({ variant = "global", className }: BreadcrumbNavPr
               pageSwitcher={
                 isPageSwitcher
                   ? { userSlug: readPageInfo.userSlug!, currentPageId: readPageInfo.pageId! }
+                  : undefined
+              }
+              projectSwitcher={
+                isProjectSwitcher && resolution
+                  ? { teamSlug: resolution.teamSlug!, currentProjectSlug: resolution.projectSlug! }
+                  : undefined
+              }
+              teamSwitcher={
+                isTeamSwitcher
+                  ? { currentTeamSlug }
                   : undefined
               }
             />
@@ -122,13 +163,16 @@ interface BreadcrumbSegmentProps {
   variant: "global" | "read"
   customSiblings?: Array<{ href: string; config: RouteConfig }>
   pageSwitcher?: { userSlug: string; currentPageId: string }
+  projectSwitcher?: { teamSlug: string; currentProjectSlug: string }
+  teamSwitcher?: { currentTeamSlug: string }
 }
 
-function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSiblings, pageSwitcher }: BreadcrumbSegmentProps) {
+function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSiblings, pageSwitcher, projectSwitcher, teamSwitcher }: BreadcrumbSegmentProps) {
   const { t } = useTranslation()
   const parentPath = href === "/" ? "/" : href
   const siblings = getSiblingRoutes(parentPath, customSiblings)
   const hasDropdown = siblings.length > 1
+  const hasAnySwitcher = !!(pageSwitcher || projectSwitcher || teamSwitcher)
   const [open, setOpen] = React.useState(false)
   const [groupHovered, setGroupHovered] = React.useState(false)
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -166,10 +210,10 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
         "h-8 max-w-[220px] gap-1.5 rounded-lg px-2 font-extrabold",
         variant === "read" && "max-w-[170px]",
         isLast && variant === "read" && "max-w-[210px]",
-        pageSwitcher && isLast && "rounded-r-none pr-1.5 max-w-[170px]",
-        pageSwitcher && isLast && groupHovered && "bg-accent text-accent-foreground"
+        hasAnySwitcher && "rounded-r-none pr-1.5 max-w-[170px]",
+        hasAnySwitcher && groupHovered && "bg-accent text-accent-foreground"
       )}
-      asChild={hasDropdown ? false : isLast && !pageSwitcher ? false : true}
+      asChild={hasDropdown ? false : isLast && !hasAnySwitcher ? false : true}
     >
       {hasDropdown ? (
         <span className="flex items-center gap-1.5 min-w-0">{segmentContent}</span>
@@ -182,7 +226,7 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
   )
 
   // 页面切换下拉：popover 挂在按钮外部，hover 状态联动
-  if (pageSwitcher && isLast) {
+  if (pageSwitcher) {
     return (
       <span
         className="inline-flex items-center"
@@ -193,6 +237,41 @@ function BreadcrumbSegment({ href, label, icon: Icon, isLast, variant, customSib
         <PageSwitcherPopover
           userSlug={pageSwitcher.userSlug}
           currentPageId={pageSwitcher.currentPageId}
+          groupHovered={groupHovered}
+        />
+      </span>
+    )
+  }
+
+  // 项目切换下拉：popover 挂在按钮外部，hover 时异步加载项目列表
+  if (projectSwitcher) {
+    return (
+      <span
+        className="inline-flex items-center"
+        onMouseEnter={() => setGroupHovered(true)}
+        onMouseLeave={() => setGroupHovered(false)}
+      >
+        {segment}
+        <ProjectSwitcherPopover
+          teamSlug={projectSwitcher.teamSlug}
+          currentProjectSlug={projectSwitcher.currentProjectSlug}
+          groupHovered={groupHovered}
+        />
+      </span>
+    )
+  }
+
+  // 团队切换下拉：hover 时异步加载用户所属团队列表
+  if (teamSwitcher) {
+    return (
+      <span
+        className="inline-flex items-center"
+        onMouseEnter={() => setGroupHovered(true)}
+        onMouseLeave={() => setGroupHovered(false)}
+      >
+        {segment}
+        <TeamSwitcherPopover
+          currentTeamSlug={teamSwitcher.currentTeamSlug}
           groupHovered={groupHovered}
         />
       </span>

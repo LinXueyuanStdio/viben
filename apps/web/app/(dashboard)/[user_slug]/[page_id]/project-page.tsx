@@ -65,20 +65,24 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
     switch (tab) {
       case "pages":
         return (
-          <Suspense fallback={<ProjectListSkeleton />}>
-            <PagesLoader projectId={project.id} teamSlug={teamSlug} projectSlug={projectSlug} />
-          </Suspense>
+          <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
+            <Suspense fallback={<ProjectListSkeleton />}>
+              <PagesLoader projectId={project.id} teamSlug={teamSlug} projectSlug={projectSlug} />
+            </Suspense>
+          </div>
         )
       case "settings":
         return (
-          <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
-            <ProjectSettingsLoader
-              projectSlug={projectSlug}
-              teamSlug={teamSlug}
-              description={project.description}
-              createdBy={project.createdBy}
-            />
-          </Suspense>
+          <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
+            <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
+              <ProjectSettingsLoader
+                projectSlug={projectSlug}
+                teamSlug={teamSlug}
+                description={project.description}
+                createdBy={project.createdBy}
+              />
+            </Suspense>
+          </div>
         )
       default:
         return (

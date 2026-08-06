@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Search, ChevronsUpDown, Check, FileText } from "lucide-react"
+import { Search, Check, FileText } from "lucide-react"
 import { cn } from "@/lib/utils/index"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { SwitcherChevron } from "./switcher-chevron"
 
 interface PageItem {
   uid: string
@@ -85,22 +86,13 @@ export function PageSwitcherPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "inline-flex items-center justify-center w-6 h-8 rounded-r-lg transition-colors",
-            // 仅 sibling hover（鼠标在 page slug 上）→ 淡色
-            groupHovered && !selfHovered && "bg-surface-secondary text-foreground",
-            // 自己 hover → 深色
-            selfHovered && "bg-accent text-accent-foreground",
-            "[&_svg]:pointer-events-none [&_svg]:shrink-0"
-          )}
+        <SwitcherChevron
+          groupHovered={groupHovered}
+          selfHovered={selfHovered}
           onMouseEnter={() => setSelfHovered(true)}
           onMouseLeave={() => setSelfHovered(false)}
           aria-label="切换页面"
-        >
-          <ChevronsUpDown className="h-3.5 w-3.5" />
-        </button>
+        />
       </PopoverTrigger>
 
       <PopoverContent

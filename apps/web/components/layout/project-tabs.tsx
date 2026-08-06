@@ -1,47 +1,35 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { VibenTabs, VibenTabsList, VibenTabsTrigger } from "@/components/ui/viben-tabs"
 import { cn } from "@/lib/utils/index"
 import { Eye, FileText, Settings } from "lucide-react"
 
-function getProjectMeta(): { teamSlug: string; projectSlug: string } | null {
-  if (typeof window === "undefined") return null
-  const el = document.getElementById("viben-project-meta")
-  if (!el) return null
-  try { return JSON.parse(el.textContent ?? "") } catch { return null }
-}
-
 interface ProjectTabsProps {
+  teamSlug: string
+  projectSlug: string
   className?: string
 }
 
-export const ProjectTabs = React.memo(function ProjectTabs({ className }: ProjectTabsProps) {
+export const ProjectTabs = React.memo(function ProjectTabs({ teamSlug, projectSlug, className }: ProjectTabsProps) {
   const { t } = useTranslation()
   const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
-  const meta = getProjectMeta()
-  const teamSlug = meta?.teamSlug
-  const projectSlug = meta?.projectSlug
-  const base = teamSlug && projectSlug ? `/${teamSlug}/${projectSlug}` : ""
+  const base = `/${teamSlug}/${projectSlug}`
 
   const activeTab = React.useMemo(() => {
-    if (!base) return "overview"
     const tab = searchParams.get("tab")
     if (tab === "pages" || tab === "settings") return tab
     return "overview"
-  }, [pathname, searchParams, base])
+  }, [searchParams])
 
   // Optimistic tab switch
   const [optimisticTab, setOptimisticTab] = React.useState<string | null>(null)
-  React.useEffect(() => { setOptimisticTab(null) }, [pathname, searchParams])
+  React.useEffect(() => { setOptimisticTab(null) }, [searchParams])
 
   const value = optimisticTab ?? activeTab
-
-  if (!base) return null
 
   return (
     <VibenTabs
