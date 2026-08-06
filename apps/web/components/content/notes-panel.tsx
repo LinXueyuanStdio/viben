@@ -9,7 +9,8 @@ import { NoteComposer } from "@/components/content/note-composer"
 interface NoteData {
   id: string
   uid: string
-  pageId: string
+  entityType: string
+  entityId: string
   content: string
   contentFormat: string
   isPinned: boolean
@@ -20,23 +21,19 @@ interface NoteData {
 interface NotesPanelProps {
   entityType?: "published_page" | "project"
   entityId: string
-  /** @deprecated Use entityId + entityType="published_page" */
-  pageId?: string
 }
 
-export function NotesPanel({ entityType = "published_page", entityId, pageId }: NotesPanelProps) {
+export function NotesPanel({ entityType = "published_page", entityId }: NotesPanelProps) {
   const { t } = useTranslation()
   const [notes, setNotes] = useState<NoteData[]>([])
   const [loading, setLoading] = useState(true)
   const [showComposer, setShowComposer] = useState(false)
   const [editingNote, setEditingNote] = useState<NoteData | null>(null)
 
-  const id = entityId || pageId || ""
-
   const fetchNotes = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/notes?entity_type=${entityType}&entity_id=${encodeURIComponent(id)}`)
+      const res = await fetch(`/api/notes?entity_type=${entityType}&entity_id=${encodeURIComponent(entityId)}`)
       if (res.ok) {
         const data = await res.json()
         setNotes(data.notes ?? [])
@@ -46,7 +43,7 @@ export function NotesPanel({ entityType = "published_page", entityId, pageId }: 
     } finally {
       setLoading(false)
     }
-  }, [entityType, id])
+  }, [entityType, entityId])
 
   useEffect(() => { fetchNotes() }, [fetchNotes])
 
@@ -87,7 +84,7 @@ export function NotesPanel({ entityType = "published_page", entityId, pageId }: 
       {showComposer && (
         <NoteComposer
           entityType={entityType}
-          entityId={id}
+          entityId={entityId}
           onSave={handleSaved}
           onCancel={() => setShowComposer(false)}
         />
@@ -112,7 +109,7 @@ export function NotesPanel({ entityType = "published_page", entityId, pageId }: 
               <NoteComposer
                 key={note.id}
                 entityType={entityType}
-                entityId={id}
+                entityId={entityId}
                 noteId={note.id}
                 initialContent={note.content}
                 onSave={handleSaved}

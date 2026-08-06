@@ -5,7 +5,8 @@ import { z } from 'zod';
 // ============================================
 
 export const NotesListQuery = z.object({
-  page_id: z.string().min(1).describe('页面 ID'),
+  entity_type: z.string().default('published_page').describe('实体类型'),
+  entity_id: z.string().min(1).describe('实体 ID'),
 });
 
 export const NoteParams = z.object({
@@ -17,7 +18,8 @@ export const NoteParams = z.object({
 // ============================================
 
 export const NoteCreateBody = z.object({
-  page_id: z.string().min(1).describe('页面 ID'),
+  entity_type: z.string().default('published_page').describe('实体类型'),
+  entity_id: z.string().min(1).describe('实体 ID'),
   content: z.string().min(1).describe('笔记内容（markdown 格式）'),
 });
 
@@ -31,7 +33,8 @@ export const NoteUpdateBody = z.object({
 
 export const NoteResponse = z.object({
   uid: z.string().describe('笔记唯一 ID（note_ 前缀）'),
-  pageId: z.string().describe('所属页面 ID'),
+  entityType: z.string().describe('实体类型'),
+  entityId: z.string().describe('实体 ID'),
   authorUserId: z.string().describe('作者用户 ID'),
   content: z.string().describe('笔记内容'),
   contentFormat: z.string().describe('内容格式（markdown）'),

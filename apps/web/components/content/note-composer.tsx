@@ -8,15 +8,13 @@ import { Button } from "@/components/ui/button"
 interface NoteComposerProps {
   entityType?: string
   entityId?: string
-  /** @deprecated Use entityType + entityId */
-  pageId?: string
   initialContent?: string
   noteId?: string
   onSave: () => void
   onCancel: () => void
 }
 
-export function NoteComposer({ entityType, entityId, pageId, initialContent = "", noteId, onSave, onCancel }: NoteComposerProps) {
+export function NoteComposer({ entityType, entityId, initialContent = "", noteId, onSave, onCancel }: NoteComposerProps) {
   const { t } = useTranslation()
   const [content, setContent] = useState(initialContent)
   const [saving, setSaving] = useState(false)
@@ -32,8 +30,7 @@ export function NoteComposer({ entityType, entityId, pageId, initialContent = ""
         ? JSON.stringify({ content: content.trim() })
         : JSON.stringify({
             entity_type: entityType ?? "published_page",
-            entity_id: entityId || pageId,
-            page_id: pageId || entityId,
+            entity_id: entityId,
             content: content.trim(),
           })
 

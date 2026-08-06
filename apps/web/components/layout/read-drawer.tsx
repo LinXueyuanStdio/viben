@@ -84,7 +84,8 @@ interface ReadDrawerNotesTab {
   label: string
   badge?: number
   type: "notes"
-  pageId: string
+  entityType: "published_page"
+  entityId: string
 }
 
 type ReadDrawerTab = ReadDrawerMetaTab | ReadDrawerCommentsTab | ReadDrawerNotesTab
@@ -109,7 +110,7 @@ function TabContent({ tab }: { tab: ReadDrawerTab }) {
         />
       )
     case "notes":
-      return <LazyNotesPanel entityType="published_page" entityId={tab.pageId} />
+      return <LazyNotesPanel entityType={tab.entityType} entityId={tab.entityId} />
   }
 }
 

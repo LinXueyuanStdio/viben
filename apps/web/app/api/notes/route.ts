@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const entityType = searchParams.get("entity_type") ?? "published_page";
-  const entityId = searchParams.get("entity_id") ?? searchParams.get("page_id");
+  const entityId = searchParams.get("entity_id");
   if (!entityId) {
     return NextResponse.json({ error: "missing_entity_id" }, { status: 400 });
   }
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const entityType = body.entity_type ?? "published_page";
-    const entityId = body.entity_id ?? body.page_id;
+    const entityId = body.entity_id;
     const { content } = body;
 
     if (!entityId) {
@@ -93,7 +93,6 @@ export async function POST(request: NextRequest) {
       .insert(notes)
       .values({
         uid,
-        pageId: entityId,
         entityType: entityType,
         entityId: entityId,
         authorUserId: session.userId,

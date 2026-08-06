@@ -1923,9 +1923,8 @@ export const notes = pgTable(
   {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     uid: text('uid').notNull(),
-    pageId: text('page_id').notNull(),
     entityType: text('entity_type').notNull().default('published_page'),
-    entityId: text('entity_id'),
+    entityId: text('entity_id').notNull(),
     authorUserId: text('author_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
@@ -1940,7 +1939,7 @@ export const notes = pgTable(
   },
   (table) => [
     uniqueIndex('notes_uid_idx').on(table.uid),
-    index('notes_page_author_idx').on(table.pageId, table.authorUserId, table.createdAt.desc()),
+    index('notes_entity_author_idx').on(table.entityType, table.entityId, table.authorUserId, table.createdAt.desc()),
   ]
 );
 

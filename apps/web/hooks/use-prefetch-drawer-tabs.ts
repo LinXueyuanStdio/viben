@@ -26,7 +26,7 @@ export function usePrefetchDrawerTabs({ communityEntityId, pageDbId, pageUid }: 
       queryClient.prefetchQuery({
         queryKey: ["page-notes", pageUid],
         queryFn: () =>
-          fetch(`/api/notes?page_id=${pageUid}`).then((r) => r.json()),
+          fetch(`/api/notes?entity_type=published_page&entity_id=${pageUid}`).then((r) => r.json()),
         staleTime: 120_000,
       })
     })

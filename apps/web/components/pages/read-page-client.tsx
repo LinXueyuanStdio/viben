@@ -342,7 +342,7 @@ export function ReadPageClient({
           tabs={[
             { value: "details", label: t("community.read"), type: "meta" as const, pageMeta, currentUserSlug: sessionUserSlug },
             { value: "comments", label: t("community.comments"), badge: pageCommentCount, type: "comments" as const, communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialNextCursor: initialCommentsNextCursor },
-            { value: "notes", label: t("community.notes"), type: "notes" as const, pageId: pageUid },
+            { value: "notes", label: t("community.notes"), type: "notes" as const, entityType: "published_page" as const, entityId: pageUid },
           ]}
           defaultTab={activeTab === "settings" && isAuthor ? "details" : "comments"}
           pageId={pageId}
