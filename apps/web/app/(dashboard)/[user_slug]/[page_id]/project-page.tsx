@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { db, users, projects, projectPages, publishedPages } from "@/lib/db"
+import { db, users, projects, projectPages, publishedPages, teamMembers } from "@/lib/db"
 import { eq, and, count } from "drizzle-orm"
 import { notFound } from "next/navigation"
 import type { Session } from "@/lib/auth/types"
@@ -18,8 +18,9 @@ interface Props {
   tab?: string
 }
 
-async function PagesLoader({ projectId, teamSlug, projectSlug }: {
+async function PagesLoader({ projectId, teamSlug, projectSlug, defaultPageId, isPageManager }: {
   projectId: string; teamSlug: string; projectSlug: string
+  defaultPageId: string | null; isPageManager: boolean
 }) {
   const pages = await db
     .select({
@@ -36,7 +37,7 @@ async function PagesLoader({ projectId, teamSlug, projectSlug }: {
     .where(eq(projectPages.projectId, projectId))
     .orderBy(projectPages.addedAt)
 
-  return <ProjectPagesList teamSlug={teamSlug} projectSlug={projectSlug} pages={pages} />
+  return <ProjectPagesList teamSlug={teamSlug} projectSlug={projectSlug} pages={pages} defaultPageId={defaultPageId} isPageManager={isPageManager} />
 }
 
 export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props) {
@@ -55,6 +56,16 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
     },
   })
   if (!project) notFound()
+
+  // 权限：team owner 或 project 创建者可以管理页面（如设置封面）
+  let isPageManager = project.createdBy === session?.userId
+  if (!isPageManager && session?.userId) {
+    const membership = await db.query.teamMembers.findFirst({
+      where: and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, session.userId)),
+      columns: { role: true },
+    })
+    isPageManager = membership?.role === "owner"
+  }
 
   // ProjectDrawer: pages count
   const pagesCountResult = await db
@@ -89,13 +100,28 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
     stats: { pagesCount },
   }
 
-  const defaultPage = await db.query.projectPages.findFirst({
-    where: eq(projectPages.projectId, project.id),
-    orderBy: (projectPages, { asc }) => [asc(projectPages.addedAt)],
-    with: {
-      page: { columns: { id: true, html: true, title: true } },
-    },
-  })
+  // 优先使用 project.defaultPageId，未设置或页面已移除时回退到第一个 page
+  let defaultPage = null
+  if (project.defaultPageId) {
+    defaultPage = await db.query.projectPages.findFirst({
+      where: and(
+        eq(projectPages.projectId, project.id),
+        eq(projectPages.pageId, project.defaultPageId),
+      ),
+      with: {
+        page: { columns: { id: true, html: true, title: true } },
+      },
+    })
+  }
+  if (!defaultPage) {
+    defaultPage = await db.query.projectPages.findFirst({
+      where: eq(projectPages.projectId, project.id),
+      orderBy: (projectPages, { asc }) => [asc(projectPages.addedAt)],
+      with: {
+        page: { columns: { id: true, html: true, title: true } },
+      },
+    })
+  }
 
   const content = (() => {
     switch (tab) {
@@ -107,7 +133,7 @@ export async function ProjectPage({ teamSlug, projectSlug, session, tab }: Props
           >
             <div className="w-[min(1280px,100%)] mx-auto px-4 py-4">
               <Suspense fallback={<ProjectListSkeleton />}>
-                <PagesLoader projectId={project.id} teamSlug={teamSlug} projectSlug={projectSlug} />
+                <PagesLoader projectId={project.id} teamSlug={teamSlug} projectSlug={projectSlug} defaultPageId={project.defaultPageId ?? null} isPageManager={isPageManager} />
               </Suspense>
             </div>
           </div>
