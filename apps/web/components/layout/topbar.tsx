@@ -39,15 +39,6 @@ interface TopbarProps {
   resolution?: RouteResolution | null
 }
 
-// hasSidePage: 从服务端注入的 <script id="viben-page-meta"> 同步读取
-// 首次渲染时可用（服务端已在 HTML 中输出），0ms
-function getPageMeta(): { hasSidePage?: boolean } | null {
-  if (typeof window === "undefined") return null
-  const el = document.getElementById("viben-page-meta")
-  if (!el) return null
-  try { return JSON.parse(el.textContent ?? "") } catch { return null }
-}
-
 export function Topbar({
   session,
   onToggleSidebar,
@@ -64,7 +55,7 @@ export function Topbar({
   const router = useRouter()
   const mode = getTopbarMode(pathname)
   const { toggle: toggleDrawer, open: drawerOpen, immersive, setImmersive } = useDrawer()
-  const { sidebarOpen, closeSidebar } = useAppShell()
+  const { readPageMeta, sidebarOpen, closeSidebar } = useAppShell()
 
   const topbarSlots = useTopbarSlots()
 
@@ -80,10 +71,11 @@ export function Topbar({
   // 阅读模式所需的 URL 参数（从 pathname 解析）
   const urlUserSlug = resolution?.userSlug ?? resolution?.teamSlug ?? ""
   const urlPageId = resolution?.pageSlug ?? resolution?.projectSlug ?? ""
-  const isAuthor = isRead && session?.userSlug === urlUserSlug
-
-  const [pageMeta] = React.useState(() => getPageMeta())
-  const hasSidePage = pageMeta?.hasSidePage ?? false
+  const hasSidePage = readPageMeta?.hasSidePage ?? false
+  // isAuthor：用户是页面直接作者 OR readPageMeta 标记的 page manager（team member）
+  const isAuthor = isRead && (
+    session?.userSlug === urlUserSlug || readPageMeta?.isPageManager === true
+  )
 
   // 本地 state 优先，UI 立即响应；URL 异步同步
   const [readActiveTab, setReadActiveTab] = React.useState(() =>

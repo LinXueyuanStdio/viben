@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useScriptData } from "@/hooks/use-script-data"
 import { usePrefetchDrawerTabs } from "@/hooks/use-prefetch-drawer-tabs"
+import { useAppShell } from "@/components/layout/app-shell"
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ interface ReadPageShellProps {
   userSlug: string
   pageId: string
   hasSidePage: boolean
+  isPageManager: boolean
   activeTab: string
   children: React.ReactNode
 }
@@ -33,14 +35,22 @@ export function ReadPageShell({
   userSlug,
   pageId,
   hasSidePage,
+  isPageManager,
   activeTab: initialTab,
   children,
 }: ReadPageShellProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [activeTab, setActiveTab] = React.useState(initialTab)
+  const { setReadPageMeta } = useAppShell()
 
-  // Provide page meta to Topbar via window.__viben_page_meta
+  // Provide page meta to Topbar via AppShellContext
+  React.useEffect(() => {
+    setReadPageMeta({ hasSidePage, isPageManager })
+    return () => setReadPageMeta(null)
+  }, [hasSidePage, isPageManager, setReadPageMeta])
+
+  // Provide page meta to legacy consumers via window.__viben_page_meta
   React.useEffect(() => {
     window.__viben_page_meta = {
       hasSidePage,

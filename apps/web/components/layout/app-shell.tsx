@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils/index"
 import type { Session } from "@/lib/auth/types"
 
 // ===== AppShell Context =====
+
+export interface ReadPageMeta {
+  hasSidePage: boolean
+  isPageManager: boolean
+}
+
 interface AppShellContextType {
   session: Session | null
   // desktop
@@ -22,6 +28,9 @@ interface AppShellContextType {
   sidebarOpen: boolean
   openSidebar: () => void
   closeSidebar: () => void
+  // read page meta（由 ReadPageShell 写入，Topbar 读取）
+  readPageMeta: ReadPageMeta | null
+  setReadPageMeta: (meta: ReadPageMeta | null) => void
 }
 
 const AppShellContext = createContext<AppShellContextType>({
@@ -32,6 +41,8 @@ const AppShellContext = createContext<AppShellContextType>({
   sidebarOpen: false,
   openSidebar: () => {},
   closeSidebar: () => {},
+  readPageMeta: null,
+  setReadPageMeta: () => {},
 })
 
 export function useAppShell() {
@@ -171,6 +182,9 @@ export function AppShell({
   // The margin transitions in sync with the sidebar's transform (both 200ms ease-out).
   const desktopSidebarVisible = !isMobile && !sidebarCollapsed
 
+  // ---- read page meta（由 ReadPageShell 写入，Topbar 读取） ----
+  const [readPageMeta, setReadPageMeta] = React.useState<ReadPageMeta | null>(null)
+
   const contextValue = React.useMemo<AppShellContextType>(
     () => ({
       session,
@@ -180,8 +194,10 @@ export function AppShell({
       sidebarOpen,
       openSidebar,
       closeSidebar,
+      readPageMeta,
+      setReadPageMeta,
     }),
-    [session, sidebarCollapsed, toggleSidebar, isMobile, sidebarOpen, openSidebar, closeSidebar]
+    [session, sidebarCollapsed, toggleSidebar, isMobile, sidebarOpen, openSidebar, closeSidebar, readPageMeta]
   )
 
   return (
