@@ -2907,6 +2907,25 @@
     "publishing": "发布中...",
     "publishSuccess": "页面发布成功！",
     "publishFailed": "发布失败",
+    "scheduledSuccess": "页面已定时发布！",
+    "scheduledTimeInvalid": "请选择未来的日期和时间。",
+    "publishNow": "立即发布",
+    "scheduledPublish": "定时发布",
+    "schedule": "定时发布",
+    "draftFoundTitle": "未保存的草稿",
+    "draftFoundDescription": "检测到之前未完成的编辑内容。是否恢复草稿？",
+    "discardDraft": "丢弃草稿",
+    "restoreDraft": "恢复草稿",
+    "draftRestored": "草稿已恢复",
+    "saving": "保存中...",
+    "saved": "已保存",
+    "uploadCooldown": "请等待 {{seconds}} 秒后再上传",
+    "uploadFailedRetry": "上传失败，请 {{seconds}} 秒后重试",
+    "requiredField": "* 必填",
+    "basicInfoDesc": "页面的标题和描述。",
+    "configurationDesc": "可见性、标签、合集和封面图片。",
+    "editContentDesc": "编写 HTML 并预览。",
+    "coverPreview": "封面预览",
     "titleRequired": "请输入标题",
     "uidRequired": "请输入页面 ID",
     "contentRequired": "请输入页面内容",
@@ -3009,6 +3028,9 @@
       "team": "团队",
       "description": "描述",
       "url": "地址"
+    },
+    "editor": {
+      "createPageFor": "为 {{projectSlug}} 创建页面"
     }
   },
   "team": {
@@ -3118,5 +3140,21 @@
       "saving": "保存中...",
       "saved": "已保存！"
     }
+  },
+  "createTeam": {
+    "title": "设置你的团队",
+    "subtitle": "告诉我们你的团队信息",
+    "nameLabel": "团队名称",
+    "namePlaceholder": "my-awesome-team",
+    "checking": "检查可用性...",
+    "urlHint": "这将是你在 Viben 上的账号名称。",
+    "urlPreview": "你的 URL 将为：{{url}}。",
+    "agreeToTerms": "我在此接受",
+    "termsOfService": "服务条款",
+    "privacySuffix": "有关 Viben 隐私实践的更多信息，请参阅",
+    "privacyStatement": "Viben 隐私声明",
+    "next": "下一步",
+    "createFailed": "创建团队失败",
+    "networkError": "网络错误"
   }
 }

@@ -64,10 +64,10 @@ export default function CreateTeamPage() {
         router.push(`/team/${data.team_slug}/invite`)
       } else {
         const data = await res.json()
-        setSlugError(data.error || "Failed to create team")
+        setSlugError(data.error || t("createTeam.createFailed"))
       }
     } catch {
-      setSlugError("Network error")
+      setSlugError(t("createTeam.networkError"))
     } finally {
       setSubmitting(false)
     }
@@ -78,24 +78,24 @@ export default function CreateTeamPage() {
   return (
     <div className="mx-auto w-full max-w-lg space-y-8 px-4">
       <div className="text-center">
-        <h2 className="text-lg font-semibold">Tell us about your team</h2>
+        <h2 className="text-lg font-semibold">{t("createTeam.subtitle")}</h2>
       </div>
 
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Set up your team</h1>
+          <h1 className="text-2xl font-bold">{t("createTeam.title")}</h1>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Team name</label>
+          <label className="text-sm font-medium">{t("createTeam.nameLabel")}</label>
           <Input
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="my-awesome-team"
+            placeholder={t("createTeam.namePlaceholder")}
             autoFocus
           />
           {slugChecking && (
-            <p className="text-sm text-muted-foreground">Checking availability...</p>
+            <p className="text-sm text-muted-foreground">{t("createTeam.checking")}</p>
           )}
           {slugError && (
             <p className="text-sm text-destructive">{slugError}</p>
@@ -104,13 +104,9 @@ export default function CreateTeamPage() {
 
         {slug && !slugError && (
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>This will be the name of your account on Viben.</p>
+            <p>{t("createTeam.urlHint")}</p>
             <p>
-              Your URL will be:{" "}
-              <span className="text-foreground font-medium">
-                {appUrl}/{slug}
-              </span>
-              .
+              {t("createTeam.urlPreview", { url: `${appUrl}/${slug}` })}
             </p>
           </div>
         )}
@@ -122,13 +118,13 @@ export default function CreateTeamPage() {
             onChange={(e) => setAcceptedTerms(e.target.checked)}
           />
           <label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed">
-            I hereby accept the{" "}
+            {t("createTeam.agreeToTerms")}{" "}
             <a href="/terms" className="text-primary underline" target="_blank">
-              Terms of Service
+              {t("createTeam.termsOfService")}
             </a>
-            . For more information about Viben&apos;s privacy practices, see the{" "}
+            . {t("createTeam.privacySuffix")}{" "}
             <a href="/privacy" className="text-primary underline" target="_blank">
-              Viben Privacy Statement
+              {t("createTeam.privacyStatement")}
             </a>
             .
           </label>
@@ -140,7 +136,7 @@ export default function CreateTeamPage() {
           className="w-full"
         >
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Next
+          {t("createTeam.next")}
         </Button>
       </div>
     </div>

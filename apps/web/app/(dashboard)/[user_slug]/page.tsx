@@ -142,9 +142,18 @@ export default async function UserSlugPage({
   // Team account → render team homepage
   if ((user as Record<string, unknown>).type === "team") {
     return (
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
-        <TeamPage teamSlug={slug} session={session} />
-      </Suspense>
+      <>
+        <script
+          id="viben-team-meta"
+          type="application/json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({ teamSlug: slug, teamName: user.displayName }),
+          }}
+        />
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
+          <TeamPage teamSlug={slug} session={session} />
+        </Suspense>
+      </>
     )
   }
 

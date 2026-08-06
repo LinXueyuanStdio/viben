@@ -2883,6 +2883,25 @@
     "publishing": "Publishing...",
     "publishSuccess": "Page published successfully!",
     "publishFailed": "Publish failed",
+    "scheduledSuccess": "Page scheduled successfully!",
+    "scheduledTimeInvalid": "Please select a future date and time.",
+    "publishNow": "Publish Now",
+    "scheduledPublish": "Scheduled Publish",
+    "schedule": "Schedule",
+    "draftFoundTitle": "Unsaved Draft",
+    "draftFoundDescription": "You have an unsaved draft. Would you like to restore it?",
+    "discardDraft": "Discard Draft",
+    "restoreDraft": "Restore Draft",
+    "draftRestored": "Draft restored",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "uploadCooldown": "Please wait {{seconds}} seconds before uploading again",
+    "uploadFailedRetry": "Upload failed, please retry in {{seconds}} seconds",
+    "requiredField": "* Required",
+    "basicInfoDesc": "Title and description for your page.",
+    "configurationDesc": "Visibility, tags, collection, and cover image.",
+    "editContentDesc": "Write HTML and preview.",
+    "coverPreview": "Cover preview",
     "titleRequired": "Title is required",
     "uidRequired": "Page ID is required",
     "contentRequired": "Page content is required",
@@ -2985,6 +3004,9 @@
       "team": "Team",
       "description": "Description",
       "url": "URL"
+    },
+    "editor": {
+      "createPageFor": "Create Page for {{projectSlug}}"
     }
   },
   "team": {
@@ -3094,5 +3116,21 @@
       "saving": "Saving...",
       "saved": "Saved!"
     }
+  },
+  "createTeam": {
+    "title": "Set up your team",
+    "subtitle": "Tell us about your team",
+    "nameLabel": "Team name",
+    "namePlaceholder": "my-awesome-team",
+    "checking": "Checking availability...",
+    "urlHint": "This will be the name of your account on Viben.",
+    "urlPreview": "Your URL will be: {{url}}.",
+    "agreeToTerms": "I hereby accept the",
+    "termsOfService": "Terms of Service",
+    "privacySuffix": "For more information about Viben's privacy practices, see the",
+    "privacyStatement": "Viben Privacy Statement",
+    "next": "Next",
+    "createFailed": "Failed to create team",
+    "networkError": "Network error"
   }
 }

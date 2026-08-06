@@ -219,7 +219,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
 
     if (now < backoff.cooldownUntil) {
       const wait = Math.ceil((backoff.cooldownUntil - now) / 1000)
-      toast.error(`请等待 ${wait} 秒后再上传`)
+      toast.error(t("pageEditor.uploadCooldown", { seconds: wait }))
       return
     }
 
@@ -251,7 +251,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
       const attempts = backoff.attempts + 1
       const delay = Math.pow(2, attempts) * 1000
       uploadBackoffRef.current = { attempts, cooldownUntil: Date.now() + delay }
-      toast.error(`上传失败，请 ${Math.ceil(delay / 1000)} 秒后重试`)
+      toast.error(t("pageEditor.uploadFailedRetry", { seconds: Math.ceil(delay / 1000) }))
     } finally {
       setIsUploading(false)
     }
@@ -359,7 +359,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-8 pb-24">
       <h1 className="text-2xl font-semibold tracking-tight">
-        {isEditMode ? t("pageEditor.editTitle") : `Create Page for ${projectSlug}`}
+        {isEditMode ? t("pageEditor.editTitle") : t("project.editor.createPageFor", { projectSlug })}
       </h1>
 
       {/* Draft restoration dialog */}
@@ -368,18 +368,18 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-5 text-amber-500" />
-              {t("pageEditor.draftFoundTitle", "未保存的草稿")}
+              {t("pageEditor.draftFoundTitle")}
             </DialogTitle>
             <DialogDescription>
-              {t("pageEditor.draftFoundDescription", "检测到之前未完成的编辑内容。是否恢复草稿？")}
+              {t("pageEditor.draftFoundDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={handleDiscardDraft}>
-              {t("pageEditor.discardDraft", "丢弃草稿")}
+              {t("pageEditor.discardDraft")}
             </Button>
             <Button onClick={handleRestoreDraft}>
-              {t("pageEditor.restoreDraft", "恢复草稿")}
+              {t("pageEditor.restoreDraft")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -391,7 +391,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <FileText className="size-4 mr-2 inline" />
           {t("pageEditor.basicInfo")}
         </h2>
-        <p className="text-[13px] text-muted-foreground -mt-2">Title and description for your page.</p>
+        <p className="text-[13px] text-muted-foreground -mt-2">{t("pageEditor.basicInfoDesc")}</p>
 
         <div className="space-y-2">
           <Label htmlFor="title">
@@ -458,14 +458,14 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <Globe className="size-4 mr-2 inline" />
           {t("pageEditor.configuration")}
         </h2>
-        <p className="text-[13px] text-muted-foreground -mt-2">Visibility, tags, collection, and cover image.</p>
+        <p className="text-[13px] text-muted-foreground -mt-2">{t("pageEditor.configurationDesc")}</p>
 
         <div className="space-y-3">
           {/* Visibility */}
           <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 items-center">
             <div>
               <Label className="text-sm font-semibold">{t("pageEditor.visibilityLabel")}</Label>
-              <span className="text-red-500 ml-0.5 text-xs">* 必填</span>
+              <span className="text-red-500 ml-0.5 text-xs">{t("pageEditor.requiredField")}</span>
             </div>
             <Select value={visibility} onValueChange={(v: "public" | "private") => setVisibility(v)}>
               <SelectTrigger className="w-[200px]">
@@ -482,7 +482,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
             <div>
               <Label className="text-sm font-semibold">{t("pageEditor.tagsLabel")}</Label>
-              <p className="text-[12px] text-muted-foreground">可选</p>
+              <p className="text-[12px] text-muted-foreground">{t("common.optional")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-input bg-transparent px-3 py-2 focus-within:ring-1 focus-within:ring-ring">
               {tags.map((tag) => (
@@ -501,7 +501,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
             <div>
               <Label className="text-sm font-semibold">{t("pageEditor.collectionLabel")}</Label>
-              <p className="text-[12px] text-muted-foreground">可选</p>
+              <p className="text-[12px] text-muted-foreground">{t("common.optional")}</p>
             </div>
             <CollectionSelector value={collection} onChange={setCollection} />
           </div>
@@ -510,7 +510,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <div className="rounded-lg border border-border p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4">
             <div>
               <Label className="text-sm font-semibold">{t("pageEditor.coverLabel")}</Label>
-              <p className="text-[12px] text-muted-foreground">可选</p>
+              <p className="text-[12px] text-muted-foreground">{t("common.optional")}</p>
             </div>
             <div
               className={cn(
@@ -530,7 +530,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
                 <Loader2 className="size-6 animate-spin text-muted-foreground" />
               ) : coverUrl ? (
                 <div className="relative w-full">
-                  <img src={coverUrl} alt="Cover preview" className="h-48 w-full rounded-lg object-cover" />
+                  <img src={coverUrl} alt={t("pageEditor.coverPreview")} className="h-48 w-full rounded-lg object-cover" />
                   <button type="button" className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-foreground hover:bg-background" onClick={(e) => { e.stopPropagation(); setCoverUrl(null) }}>
                     <X className="size-4" />
                   </button>
@@ -552,7 +552,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           <Eye className="size-4 mr-2 inline" />
           {t("pageEditor.editContent")} <span className="text-red-500">*</span>
         </h2>
-        <p className="text-[13px] text-muted-foreground -mt-2">Write HTML and preview.</p>
+        <p className="text-[13px] text-muted-foreground -mt-2">{t("pageEditor.editContentDesc")}</p>
 
         <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
@@ -595,7 +595,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
           {/* Auto-save status */}
           {hasChanges && (
             <span className={cn("text-[11px]", saving ? "text-amber-500" : saved ? "text-emerald-500" : "text-muted-foreground")}>
-              {saving ? t("pageEditor.saving", "保存中...") : saved ? t("pageEditor.saved", "已保存") : ""}
+              {saving ? t("pageEditor.saving") : saved ? t("pageEditor.saved") : ""}
             </span>
           )}
         </div>
@@ -610,11 +610,11 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
               <SelectContent>
                 <SelectItem value="now">
                   <Send className="size-3 mr-1 inline" />
-                  {t("pageEditor.publishNow", "立即发布")}
+                  {t("pageEditor.publishNow")}
                 </SelectItem>
                 <SelectItem value="scheduled">
                   <Clock className="size-3 mr-1 inline" />
-                  {t("pageEditor.scheduledPublish", "定时发布")}
+                  {t("pageEditor.scheduledPublish")}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -638,7 +638,7 @@ export function ProjectPageEditor({ userSlug, teamSlug, projectSlug, initialData
             {isSubmitting
               ? t("pageEditor.publishing")
               : publishMode === "scheduled"
-                ? t("pageEditor.schedule", "定时发布")
+                ? t("pageEditor.schedule")
                 : isEditMode
                   ? t("pageEditor.updatePublish")
                   : t("pageEditor.publish")}
