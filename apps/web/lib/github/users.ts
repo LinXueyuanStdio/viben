@@ -1,18 +1,29 @@
 import "server-only";
-import { getUserGitHubToken } from "./token";
+import { db, githubConnections, oauthConnections } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { getGithubOAuthToken } from "./token";
 
 export interface GitHubUserProfile {
   username: string;
   externalUserId: string;
 }
 
-// Stub: requires Better Auth accounts table — not available in viben
-export async function hasGitHubAccount(_userId: string): Promise<boolean> {
-  return false;
+export async function hasGitHubAccount(userId: string): Promise<boolean> {
+  const [ghConn, oauthConn] = await Promise.all([
+    db.query.githubConnections.findFirst({
+      where: eq(githubConnections.userId, userId),
+      columns: { id: true },
+    }),
+    db.query.oauthConnections.findFirst({
+      where: eq(oauthConnections.userId, userId),
+      columns: { id: true },
+    }),
+  ]);
+  return ghConn !== undefined || oauthConn !== undefined;
 }
 
 export async function getGitHubUsername(userId: string): Promise<string | null> {
-  const token = await getUserGitHubToken(userId);
+  const token = await getGithubOAuthToken(userId);
   if (!token) return null;
 
   try {
@@ -26,7 +37,7 @@ export async function getGitHubUsername(userId: string): Promise<string | null> 
 }
 
 export async function getGitHubUserProfile(userId: string): Promise<GitHubUserProfile | null> {
-  const token = await getUserGitHubToken(userId);
+  const token = await getGithubOAuthToken(userId);
   if (!token) return null;
 
   try {
@@ -40,11 +51,26 @@ export async function getGitHubUserProfile(userId: string): Promise<GitHubUserPr
   } catch { return null; }
 }
 
-export async function getGitHubAccountId(_userId: string): Promise<string | null> {
-  return null;
+export async function getGitHubAccountId(userId: string): Promise<string | null> {
+  const [ghConn, oauthConn] = await Promise.all([
+    db.query.githubConnections.findFirst({
+      where: eq(githubConnections.userId, userId),
+      columns: { githubUserId: true },
+    }),
+    db.query.oauthConnections.findFirst({
+      where: eq(oauthConnections.userId, userId),
+      columns: { providerId: true },
+    }),
+  ]);
+  return ghConn?.githubUserId ?? oauthConn?.providerId ?? null;
 }
 
-export async function deleteGitHubAccountLink(_userId: string): Promise<void> {}
+export async function deleteGitHubAccountLink(userId: string): Promise<void> {
+  await Promise.all([
+    db.delete(githubConnections).where(eq(githubConnections.userId, userId)),
+    db.delete(oauthConnections).where(eq(oauthConnections.userId, userId)),
+  ]);
+}
 
 interface GitHubUser { login: string; name: string | null; avatar_url: string; }
 interface GitHubOrg { login: string; avatar_url: string; }

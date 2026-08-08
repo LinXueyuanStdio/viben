@@ -1,3 +1,4 @@
+import { createAppAuth } from "@octokit/auth-app";
 import { z } from "zod";
 
 // ---- installation repos listing ----
@@ -12,9 +13,7 @@ const installationRepoSchema = z.object({
   clone_url: z.string().url(),
   updated_at: z.string(),
   language: z.string().nullable(),
-  owner: z.object({
-    login: z.string(),
-  }),
+  owner: z.object({ login: z.string() }),
 });
 
 const installationReposResponseSchema = z.object({
@@ -31,119 +30,115 @@ export interface InstallationRepository {
   language: string | null;
 }
 
-interface ListUserInstallationRepositoriesOptions {
+// ---- helpers ----
+
+function normalizeLimit(limit?: number): number {
+  if (typeof limit !== "number" || !Number.isFinite(limit)) return 50;
+  return Math.max(1, Math.min(limit, 100));
+}
+
+function compareByActivity(
+  a: Pick<InstallationRepository, "name" | "updated_at">,
+  b: Pick<InstallationRepository, "name" | "updated_at">,
+): number {
+  const aTime = Date.parse(a.updated_at);
+  const bTime = Date.parse(b.updated_at);
+  if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) {
+    return bTime - aTime;
+  }
+  if (Number.isFinite(aTime) !== Number.isFinite(bTime)) {
+    return Number.isFinite(aTime) ? -1 : 1;
+  }
+  return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+}
+
+async function getAppJwt(): Promise<string> {
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+  if (!appId || !privateKey) throw new Error("GitHub App is not configured");
+
+  const auth = createAppAuth({
+    appId: Number.parseInt(appId, 10),
+    privateKey: privateKey.replace(/\\n/g, "\n"),
+  });
+  const result = await auth({ type: "app" });
+  return result.token;
+}
+
+// ---- public API ----
+
+interface ListReposOptions {
   installationId: number;
-  userToken: string;
   owner?: string;
   query?: string;
   limit?: number;
 }
 
-function normalizeLimit(limit?: number): number {
-  if (typeof limit !== "number" || !Number.isFinite(limit)) {
-    return 50;
-  }
-
-  return Math.max(1, Math.min(limit, 100));
-}
-
-function compareRepositoriesByRecentActivity(
-  a: Pick<InstallationRepository, "name" | "updated_at">,
-  b: Pick<InstallationRepository, "name" | "updated_at">,
-): number {
-  const updatedAtA = Date.parse(a.updated_at);
-  const updatedAtB = Date.parse(b.updated_at);
-  const hasValidUpdatedAtA = Number.isFinite(updatedAtA);
-  const hasValidUpdatedAtB = Number.isFinite(updatedAtB);
-
-  if (hasValidUpdatedAtA && hasValidUpdatedAtB && updatedAtA !== updatedAtB) {
-    return updatedAtB - updatedAtA;
-  }
-
-  if (hasValidUpdatedAtA !== hasValidUpdatedAtB) {
-    return hasValidUpdatedAtA ? -1 : 1;
-  }
-
-  return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-}
-
-/**
- * List repositories accessible to the user through a specific GitHub App
- * installation. Uses the user's OAuth token so GitHub computes the
- * intersection of repos the app can see and repos the user can see.
- */
-export async function listUserInstallationRepositories({
-  installationId,
-  userToken,
-  owner,
-  query,
-  limit,
-}: ListUserInstallationRepositoriesOptions): Promise<InstallationRepository[]> {
+/** List repos for an installation via App JWT (mints an installation token). */
+export async function listInstallationRepositories(
+  options: ListReposOptions,
+): Promise<InstallationRepository[]> {
+  const { installationId, owner, query, limit } = options;
   const ownerFilter = owner?.trim().toLowerCase();
   const queryFilter = query?.trim().toLowerCase();
   const normalizedLimit = normalizeLimit(limit);
 
-  const perPage = 50;
-  const maxPages = INSTALLATION_REPOS_MAX_PAGES;
-  const matchedRepos: z.infer<typeof installationRepoSchema>[] = [];
+  const appJwt = await getAppJwt();
 
-  for (let page = 1; page <= maxPages; page++) {
-    const endpoint = new URL(
-      `https://api.github.com/user/installations/${installationId}/repositories`,
-    );
-    endpoint.searchParams.set("per_page", `${perPage}`);
-    endpoint.searchParams.set("page", `${page}`);
-
-    const response = await fetch(endpoint, {
+  // Mint an installation access token
+  const tokenRes = await fetch(
+    `https://api.github.com/app/installations/${installationId}/access_tokens`,
+    {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${userToken}`,
+        Authorization: `Bearer ${appJwt}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    },
+  );
+  if (!tokenRes.ok) {
+    throw new Error(
+      `Failed to mint installation token: ${tokenRes.status}`,
+    );
+  }
+  const { token: installationToken } = (await tokenRes.json()) as { token: string };
+
+  // List repos with installation token
+  const perPage = 50;
+  const matched: z.infer<typeof installationRepoSchema>[] = [];
+
+  for (let page = 1; page <= INSTALLATION_REPOS_MAX_PAGES; page++) {
+    const url = new URL("https://api.github.com/installation/repositories");
+    url.searchParams.set("per_page", `${perPage}`);
+    url.searchParams.set("page", `${page}`);
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${installationToken}`,
         Accept: "application/vnd.github.v3+json",
       },
     });
-
-    if (!response.ok) {
-      const body = await response.text();
+    if (!res.ok) {
       throw new Error(
-        `Failed to fetch user installation repositories: ${response.status} ${body}`,
+        `Failed to fetch repos: ${res.status}`,
       );
     }
 
-    const json = await response.json();
-    const parsed = installationReposResponseSchema.safeParse(json);
-    if (!parsed.success) {
-      throw new Error("Invalid GitHub user installation repositories response");
-    }
-
-    if (parsed.data.repositories.length === 0) {
-      break;
-    }
+    const parsed = installationReposResponseSchema.safeParse(await res.json());
+    if (!parsed.success || parsed.data.repositories.length === 0) break;
 
     const pageMatches = parsed.data.repositories.filter((repo) => {
-      const matchesOwner = ownerFilter
-        ? repo.owner.login.toLowerCase() === ownerFilter
-        : true;
-
-      const matchesQuery = queryFilter
-        ? repo.name.toLowerCase().includes(queryFilter)
-        : true;
-
-      return matchesOwner && matchesQuery;
+      if (ownerFilter && repo.owner.login.toLowerCase() !== ownerFilter) return false;
+      if (queryFilter && !repo.name.toLowerCase().includes(queryFilter)) return false;
+      return true;
     });
-
-    matchedRepos.push(...pageMatches);
-
-    if (matchedRepos.length >= normalizedLimit) {
-      break;
-    }
-
-    if (parsed.data.repositories.length < perPage) {
-      break;
-    }
+    matched.push(...pageMatches);
+    if (matched.length >= normalizedLimit) break;
+    if (parsed.data.repositories.length < perPage) break;
   }
 
-  matchedRepos.sort(compareRepositoriesByRecentActivity);
-
-  return matchedRepos.slice(0, normalizedLimit).map((repo) => ({
+  matched.sort(compareByActivity);
+  return matched.slice(0, normalizedLimit).map((repo) => ({
     name: repo.name,
     full_name: repo.full_name,
     description: repo.description,
@@ -180,11 +175,7 @@ async function fetchGitHubAPI<T>(
       Accept: "application/vnd.github.v3+json",
     },
   });
-
-  if (!response.ok) {
-    return null;
-  }
-
+  if (!response.ok) return null;
   return response.json() as Promise<T>;
 }
 
@@ -202,7 +193,6 @@ export async function fetchGitHubBranches(
 
   const defaultBranch = repoInfo.default_branch;
   const normalizedLimit = normalizeGitHubLimit(limit);
-
   const allBranches: string[] = [];
   let page = 1;
   const perPage = normalizedLimit ?? 100;
@@ -213,17 +203,13 @@ export async function fetchGitHubBranches(
       `/repos/${owner}/${repo}/branches?per_page=${perPage}&page=${page}`,
       token,
     );
-
     if (!branches) {
       if (page === 1) return null;
       break;
     }
     if (branches.length === 0) break;
-
     allBranches.push(...branches.map((b) => b.name));
-    if (normalizedLimit && allBranches.length >= normalizedLimit) {
-      break;
-    }
+    if (normalizedLimit && allBranches.length >= normalizedLimit) break;
     if (branches.length < perPage) break;
     page++;
   }

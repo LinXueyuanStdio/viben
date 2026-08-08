@@ -30,8 +30,8 @@ export async function getOctokit(token?: string): Promise<OctokitResult> {
  */
 export async function getUserOctokit(userId: string): Promise<Octokit | null> {
   // dynamic import to avoid pulling in "server-only" at module load
-  const { getUserGitHubToken } = await import("./token");
-  const token = await getUserGitHubToken(userId);
+  const { getGithubOAuthToken } = await import("./token");
+  const token = await getGithubOAuthToken(userId);
   if (!token) return null;
   return new Octokit({ auth: token });
 }

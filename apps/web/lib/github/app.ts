@@ -76,6 +76,62 @@ export function isGitHubAppConfigured(): boolean {
   );
 }
 
+const installationDetailSchema = z.object({
+  id: z.number(),
+  account: z.object({
+    login: z.string(),
+    type: z.string(),
+  }),
+  repository_selection: z.enum(["all", "selected"]),
+  html_url: z.string().url().nullable().optional(),
+});
+
+export interface InstallationDetail {
+  id: number;
+  accountLogin: string;
+  accountType: "User" | "Organization";
+  repositorySelection: "all" | "selected";
+  htmlUrl: string | null;
+}
+
+export async function fetchInstallationDetail(
+  installationId: number,
+): Promise<InstallationDetail> {
+  const appJwt = await getAppJwt();
+  const response = await fetch(
+    `https://api.github.com/app/installations/${installationId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${appJwt}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(
+      `Failed to fetch installation detail: ${response.status} ${body}`,
+    );
+  }
+
+  const payload = await response.json();
+  const parsed = installationDetailSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Invalid installation detail response");
+  }
+
+  const { id, account, repository_selection, html_url } = parsed.data;
+  return {
+    id,
+    accountLogin: account.login,
+    accountType: account.type === "Organization" ? "Organization" : "User",
+    repositorySelection: repository_selection,
+    htmlUrl: html_url ?? null,
+  };
+}
+
 async function getAppJwt(): Promise<string> {
   const { appId, privateKey } = getGitHubAppConfig();
 
