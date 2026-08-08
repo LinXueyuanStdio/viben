@@ -396,7 +396,7 @@ export function SessionStarter({
           Using {sandboxName} sandbox{" "}
           <span className="text-muted-foreground/60">&middot;</span>{" "}
           <Link
-            href="/settings/preferences"
+            href="/settings/sandbox"
             className="text-muted-foreground underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/40"
           >
             Change

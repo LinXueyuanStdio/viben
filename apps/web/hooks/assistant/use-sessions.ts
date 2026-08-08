@@ -20,6 +20,7 @@ export type SessionWithUnread = Pick<
   | "prNumber"
   | "prStatus"
   | "createdAt"
+  | "lifecycleState"
 > & {
   hasUnread: boolean;
   hasStreaming: boolean;

@@ -3,6 +3,7 @@
 import {
   Archive,
   ChevronDown,
+  CircleAlert,
   CircleDashed,
   FolderGit2,
   MessageSquare,
@@ -176,19 +177,29 @@ function getSessionStatusIcon(session: SessionWithUnread) {
   // No repository — plain chat session
   const isChat = !session.repoName?.trim();
   if (isChat) {
-    return (
-      <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-    );
+    if (session.lifecycleState === "provisioning") {
+      return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />;
+    }
+    if (session.lifecycleState === "failed") {
+      return <CircleAlert className="h-3.5 w-3.5 shrink-0 text-destructive/70" />;
+    }
+    return <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />;
   }
 
-  // Creating / instantiating sandbox (no branch yet)
+  // Repo session — show sandbox provisioning state
+  if (session.lifecycleState === "provisioning") {
+    return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />;
+  }
+  if (session.lifecycleState === "ready") {
+    return <Monitor className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />;
+  }
+  if (session.lifecycleState === "failed") {
+    return <CircleAlert className="h-3.5 w-3.5 shrink-0 text-destructive/70" />;
+  }
   if (session.status === "running") {
-    return (
-      <Monitor className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-    );
+    return <Monitor className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />;
   }
 
-  // Default: sandbox icon
   return <Monitor className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />;
 }
 
@@ -207,8 +218,13 @@ function getSessionStatusLabel(session: SessionWithUnread): {
   if (session.branch && hasDiff)
     return { text: "Needs attention", prNumber: null };
   if (session.branch) return { text: "New session", prNumber: null };
-  if (session.status === "running")
+  // No branch: sandbox is ready (empty chat) or provisioning
+  if (session.lifecycleState === "ready")
+    return { text: "Sandbox ready", prNumber: null };
+  if (session.lifecycleState === "provisioning")
     return { text: "Setting up", prNumber: null };
+  if (session.status === "running")
+    return { text: "Sandbox running", prNumber: null };
   if (session.status === "completed")
     return { text: "Completed", prNumber: null };
   if (session.status === "failed") return { text: "Failed", prNumber: null };

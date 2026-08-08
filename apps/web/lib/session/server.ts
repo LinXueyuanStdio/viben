@@ -13,7 +13,7 @@ export async function getSessionFromReq(
 
   return {
     created: Date.now(),
-    authProvider: "vercel",
+    authProvider: "github",
     user: {
       id: vibenSession.userId,
       username: vibenSession.username,

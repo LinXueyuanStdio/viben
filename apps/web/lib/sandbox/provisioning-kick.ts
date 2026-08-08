@@ -38,18 +38,22 @@ export async function kickSandboxProvisioningWorkflow(
 ): Promise<KickSandboxProvisioningResult> {
   const session = await getSessionById(sessionId);
   if (!session) {
+    console.log("[sandbox:kick] session not found", { sessionId });
     return { status: "skipped" };
   }
   if (session.status === "archived") {
+    console.log("[sandbox:kick] session archived", { sessionId });
     return { status: "skipped" };
   }
   if (isSandboxActive(session.sandboxState)) {
+    console.log("[sandbox:kick] sandbox already active", { sessionId });
     return { status: "active" };
   }
 
   if (session.sandboxProvisioningRunId) {
     const live = await isRunStillLive(session.sandboxProvisioningRunId);
     if (live) {
+      console.log("[sandbox:kick] existing run still live", { sessionId, runId: session.sandboxProvisioningRunId });
       return {
         status: "existing",
         runId: session.sandboxProvisioningRunId,
@@ -62,23 +66,28 @@ export async function kickSandboxProvisioningWorkflow(
     if (!cleared) {
       const latest = await getSessionById(sessionId);
       if (!latest || latest.status === "archived") {
+        console.log("[sandbox:kick] session gone/archived after clear", { sessionId });
         return { status: "skipped" };
       }
       if (isSandboxActive(latest.sandboxState)) {
+        console.log("[sandbox:kick] sandbox active after clear", { sessionId });
         return { status: "active" };
       }
       if (latest.sandboxProvisioningRunId) {
+        console.log("[sandbox:kick] different run claimed", { sessionId, runId: latest.sandboxProvisioningRunId });
         return { status: "existing", runId: latest.sandboxProvisioningRunId };
       }
     }
   }
 
+  console.log("[sandbox:kick] starting provisioning workflow", { sessionId });
   const run = await start(sandboxProvisioningWorkflow, [sessionId]);
   const claimed = await claimSessionSandboxProvisioningRunId(
     sessionId,
     run.runId,
   );
   if (claimed) {
+    console.log("[sandbox:kick] workflow started", { sessionId, runId: run.runId });
     await updateSession(sessionId, {
       lifecycleState: "provisioning",
       lifecycleError: null,
@@ -86,6 +95,7 @@ export async function kickSandboxProvisioningWorkflow(
     return { status: "started", runId: run.runId };
   }
 
+  console.log("[sandbox:kick] run claim race, checking latest", { sessionId, runId: run.runId });
   const latest = await getSessionById(sessionId);
   if (latest?.sandboxProvisioningRunId === run.runId) {
     await updateSession(sessionId, {
@@ -95,6 +105,7 @@ export async function kickSandboxProvisioningWorkflow(
     return { status: "started", runId: run.runId };
   }
   if (latest?.sandboxProvisioningRunId) {
+    console.log("[sandbox:kick] latest has different run", { sessionId, runId: latest.sandboxProvisioningRunId });
     return { status: "existing", runId: latest.sandboxProvisioningRunId };
   }
 
@@ -104,6 +115,7 @@ export async function kickSandboxProvisioningWorkflow(
     // Best-effort cleanup for a duplicate run.
   }
 
+  console.log("[sandbox:kick] skipped", { sessionId });
   return { status: "skipped" };
 }
 

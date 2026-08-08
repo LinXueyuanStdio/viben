@@ -11,7 +11,7 @@ import {
   useTransition,
 } from "react";
 import { InboxSidebar } from "@/components/assistant/inbox-sidebar";
-import { NewSessionDialog } from "@/components/assistant/new-session-dialog";
+
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { useBackgroundChatNotifications } from "@/hooks/assistant/use-background-chat-notifications";
 import { useSessions, type SessionWithUnread } from "@/hooks/assistant/use-sessions";
@@ -111,7 +111,6 @@ export function SessionsRouteShell({
   const params = useParams<{ sessionId?: string }>();
   const routeSessionId =
     typeof params.sessionId === "string" ? params.sessionId : null;
-  const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] = useState<
     string | null
   >(null);
@@ -143,8 +142,10 @@ export function SessionsRouteShell({
   const { preferences } = useUserPreferences();
 
   const openNewSessionDialog = useCallback(() => {
-    setNewSessionOpen(true);
-  }, []);
+    if (routeSessionId) {
+      router.push("/assistant", { scroll: false });
+    }
+  }, [routeSessionId, router]);
 
   const handleSessionClick = useCallback(
     (targetSession: SessionWithUnread) => {
@@ -295,15 +296,16 @@ export function SessionsRouteShell({
 
   const shellContextValue = useMemo(
     () => ({
-      openNewSessionDialog,
+      createSession,
+      lastRepo,
     }),
-    [openNewSessionDialog],
+    [createSession, lastRepo],
   );
 
   return (
     <SessionsShellProvider value={shellContextValue}>
       <SidebarProvider
-        className="h-full overflow-hidden min-h-0"
+        className="h-full overflow-hidden"
         style={
           {
             "--sidebar-width": "18rem",
@@ -329,12 +331,6 @@ export function SessionsRouteShell({
         />
       </SidebarProvider>
 
-      <NewSessionDialog
-        open={newSessionOpen}
-        onOpenChange={setNewSessionOpen}
-        lastRepo={lastRepo}
-        createSession={createSession}
-      />
     </SessionsShellProvider>
   );
 }

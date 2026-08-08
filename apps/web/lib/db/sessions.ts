@@ -234,6 +234,7 @@ export async function getSessionsWithUnreadByUserId(
       linesRemoved: sessions.linesRemoved,
       prNumber: sessions.prNumber,
       prStatus: sessions.prStatus,
+      lifecycleState: sessions.lifecycleState,
       createdAt: sessions.createdAt,
       lastActivityAt: sql<Date>`COALESCE(MAX(${chats.updatedAt}), ${sessions.createdAt})`,
       hasUnread: sql<boolean>`COALESCE(BOOL_OR(

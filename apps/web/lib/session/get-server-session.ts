@@ -13,7 +13,7 @@ export const getServerSession = cache(
     // Map viben session → open-agents compatible Session format
     return {
       created: Date.now(),
-      authProvider: "vercel",
+      authProvider: "github",
       user: {
         id: vibenSession.userId,
         username: vibenSession.username,

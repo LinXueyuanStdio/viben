@@ -1,39 +1,34 @@
 "use client";
 
-import { MessageSquare, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { SessionStarter } from "@/components/assistant/session-starter";
 import { useSessionsShell } from "./sessions-shell-context";
 
 export function SessionsIndexShell() {
-  const { openNewSessionDialog } = useSessionsShell();
+  const { createSession, lastRepo } = useSessionsShell();
+  const router = useRouter();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateSession = async (input: Parameters<typeof createSession>[0]) => {
+    setIsCreating(true);
+    try {
+      const { session: createdSession, chat } = await createSession(input);
+      router.push(`/assistant/${createdSession.id}/${chat.id}`);
+    } catch (error) {
+      console.error("Failed to create session:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-4">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <MessageSquare />
-            </EmptyMedia>
-            <EmptyTitle>选择会话</EmptyTitle>
-            <EmptyDescription>
-              从左侧选择一个会话继续，或者创建一个新的。
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button onClick={openNewSessionDialog}>
-              <Plus className="h-4 w-4" />
-              新建会话
-            </Button>
-          </EmptyContent>
-        </Empty>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-4">
+      <SessionStarter
+        onSubmit={handleCreateSession}
+        isLoading={isCreating}
+        lastRepo={lastRepo}
+      />
+    </div>
   );
 }

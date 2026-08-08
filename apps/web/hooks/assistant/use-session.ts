@@ -13,6 +13,7 @@ interface VibenUserResponse {
     email: string;
     avatarUrl?: string;
     role: string;
+    githubUsername?: string;
   };
 }
 
@@ -37,18 +38,20 @@ export function useSession() {
           avatar: vibenUser.avatarUrl ?? "",
           name: vibenUser.displayName,
         },
-        authProvider: "vercel",
+        authProvider: "github",
         isAdmin: vibenUser.role === "admin" || vibenUser.role === "super_admin",
       }
     : undefined;
+
+  const hasGitHub = Boolean(vibenUser?.githubUsername);
 
   return {
     session: data ? sessionInfo ?? null : null,
     loading: isLoading,
     isAuthenticated: !!sessionInfo?.user,
     isAdmin: sessionInfo?.isAdmin ?? false,
-    hasGitHub: false,
-    hasGitHubAccount: false,
+    hasGitHub,
+    hasGitHubAccount: hasGitHub,
     hasGitHubInstallations: false,
   };
 }
