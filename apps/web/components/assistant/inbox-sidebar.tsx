@@ -12,8 +12,12 @@ import {
   Loader2,
   Monitor,
   Pencil,
+  Pin,
   Plus,
   Settings,
+  Share2,
+  Trash2,
+  MoreHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +37,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -48,6 +58,7 @@ import { useLeaderboardRank } from "@/hooks/assistant/use-leaderboard-rank";
 import { useSession } from "@/hooks/assistant/use-session";
 import type { SessionWithUnread } from "@/hooks/assistant/use-sessions";
 import type { Session as AuthSession } from "@/lib/session/types";
+import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { getUsageLeaderboardDomain } from "@/lib/usage/leaderboard-domain";
 
@@ -358,22 +369,26 @@ type SessionRowProps = {
   session: SessionWithUnread;
   isActive: boolean;
   isPending: boolean;
+  isPinned: boolean;
   onSessionClick: (session: SessionWithUnread) => void;
   onSessionPrefetch: (session: SessionWithUnread) => void;
   onRenameSession?: (sessionId: string, title: string) => Promise<void>;
   onArchiveSession: (session: SessionWithUnread) => void;
   onUnarchiveSession: (session: SessionWithUnread) => void;
+  onTogglePin: (sessionId: string) => void;
 };
 
 const SessionRow = memo(function SessionRow({
   session,
   isActive,
   isPending,
+  isPinned,
   onSessionClick,
   onSessionPrefetch,
   onRenameSession,
   onArchiveSession,
   onUnarchiveSession,
+  onTogglePin,
 }: SessionRowProps) {
   const isMobile = useIsMobile();
   const [isHovered, setIsHovered] = useState(false);
@@ -381,6 +396,7 @@ const SessionRow = memo(function SessionRow({
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(session.title);
   const [renamePending, setRenamePending] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -401,7 +417,6 @@ const SessionRow = memo(function SessionRow({
   }, [isRenaming]);
 
   const hasDiff = session.linesAdded !== null || session.linesRemoved !== null;
-  const showActionButtons = isHovered;
 
   const handleMouseEnter = useCallback(() => {
     if (leaveTimeoutRef.current) {
@@ -472,15 +487,47 @@ const SessionRow = memo(function SessionRow({
     };
   }, []);
 
-  const actionButtons = showActionButtons ? (
-    <>
-      {onRenameSession ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-              aria-label="Rename session"
+  const actionButtons = (
+    <span className="flex shrink-0 items-center">
+      {/* More menu — always visible on hover or when menu is open */}
+      <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 transition-all hover:text-muted-foreground",
+              !isHovered && !moreMenuOpen ? "hidden" : "",
+            )}
+            aria-label="More actions"
+            onClick={(event) => { event.stopPropagation(); }}
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem
+            onClick={(event) => {
+              event.stopPropagation();
+              onTogglePin(session.id);
+              setMoreMenuOpen(false);
+            }}
+          >
+            <Pin className="mr-2 h-4 w-4" />
+            {isPinned ? "取消置顶" : "置顶"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(event) => {
+              event.stopPropagation();
+              const url = `${window.location.origin}/assistant/${session.id}`;
+              navigator.clipboard.writeText(url).catch(() => {});
+              setMoreMenuOpen(false);
+            }}
+          >
+            <Share2 className="mr-2 h-4 w-4" />
+            分享
+          </DropdownMenuItem>
+          {onRenameSession ? (
+            <DropdownMenuItem
               onClick={(event) => {
                 event.stopPropagation();
                 if (hoverTimeoutRef.current) {
@@ -488,67 +535,51 @@ const SessionRow = memo(function SessionRow({
                   hoverTimeoutRef.current = null;
                 }
                 setPopoverOpen(false);
+                setMoreMenuOpen(false);
                 setRenameValue(session.title);
                 setIsRenaming(true);
               }}
             >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={4}>
-            Rename session
-          </TooltipContent>
-        </Tooltip>
-      ) : null}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-            aria-label={
-              session.status === "archived"
-                ? "Unarchive session"
-                : "Archive session"
-            }
+              <Pencil className="mr-2 h-4 w-4" />
+              重命名
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
             onClick={(event) => {
               event.stopPropagation();
+              setMoreMenuOpen(false);
               if (session.status === "archived") {
                 onUnarchiveSession(session);
-                return;
+              } else {
+                onArchiveSession(session);
               }
-              onArchiveSession(session);
             }}
           >
-            <Archive className="h-3.5 w-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          {session.status === "archived"
-            ? "Unarchive session"
-            : "Archive session"}
-        </TooltipContent>
-      </Tooltip>
-    </>
-  ) : null;
-
-  const actionButtonsContainer = actionButtons ? (
-    <span className="absolute top-1/2 right-2 flex shrink-0 -translate-y-1/2 items-center justify-end gap-0.5">
-      {actionButtons}
+            <Trash2 className="mr-2 h-4 w-4" />
+            {session.status === "archived" ? "取消归档" : "删除"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {/* Pin icon — shown when not hovering and item is pinned */}
+      {isPinned && !isHovered && !moreMenuOpen && (
+        <Pin className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+      )}
     </span>
-  ) : null;
+  );
 
   const sessionButton = (
     <button
       type="button"
       className={`group relative flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left outline-none transition-[background-color,opacity] cursor-pointer ${
         isActive ? "bg-sidebar-active" : "hover:bg-muted/50"
-      } ${isPending ? "opacity-80" : "opacity-100"} ${actionButtons ? "pr-12" : ""}`}
+      } ${isPending ? "opacity-80" : "opacity-100"}`}
       onClick={() => onSessionClick(session)}
       onFocus={() => onSessionPrefetch(session)}
       aria-busy={isPending}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        {getSessionStatusIcon(session)}
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground/70">
+        <MessageSquare className="h-3.5 w-3.5" />
       </span>
       <span className="min-w-0 flex-1 text-left">
         <p
@@ -615,7 +646,9 @@ const SessionRow = memo(function SessionRow({
       onMouseLeave={handleMouseLeave}
     >
       {sessionButton}
-      {actionButtonsContainer}
+      <span className="absolute top-1/2 right-2 flex shrink-0 -translate-y-1/2 items-center justify-end gap-0.5">
+        {actionButtons}
+      </span>
     </div>
   );
 
@@ -632,7 +665,9 @@ const SessionRow = memo(function SessionRow({
         onMouseLeave={handleMouseLeave}
       >
         <PopoverTrigger asChild>{sessionButton}</PopoverTrigger>
-        {actionButtonsContainer}
+        <span className="absolute top-1/2 right-2 flex shrink-0 -translate-y-1/2 items-center justify-end gap-0.5">
+          {actionButtons}
+        </span>
       </div>
       <PopoverContent
         side="right"
@@ -658,7 +693,7 @@ function areSessionRowsEqual(
   prev: SessionRowProps,
   next: SessionRowProps,
 ): boolean {
-  if (prev.isActive !== next.isActive || prev.isPending !== next.isPending) {
+  if (prev.isActive !== next.isActive || prev.isPending !== next.isPending || prev.isPinned !== next.isPinned) {
     return false;
   }
 
@@ -676,6 +711,42 @@ function areSessionRowsEqual(
     prev.session.linesRemoved === next.session.linesRemoved &&
     String(prev.session.lastActivityAt) === String(next.session.lastActivityAt)
   );
+}
+
+const PINNED_SESSIONS_STORAGE_KEY = "viben-pinned-sessions";
+
+function usePinnedSessions(): [Set<string>, (sessionId: string) => void] {
+  const [pinned, setPinned] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = localStorage.getItem(PINNED_SESSIONS_STORAGE_KEY);
+      if (raw) {
+        const ids: string[] = JSON.parse(raw);
+        if (Array.isArray(ids)) return new Set(ids);
+      }
+    } catch { /* ignore */ }
+    return new Set();
+  });
+
+  const togglePin = useCallback((sessionId: string) => {
+    setPinned((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) {
+        next.delete(sessionId);
+      } else {
+        next.add(sessionId);
+      }
+      try {
+        localStorage.setItem(
+          PINNED_SESSIONS_STORAGE_KEY,
+          JSON.stringify([...next]),
+        );
+      } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  return [pinned, togglePin];
 }
 
 export function InboxSidebar({
@@ -699,6 +770,7 @@ export function InboxSidebar({
   const { rank: leaderboardRank, loading: leaderboardLoading } =
     useLeaderboardRank();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [pinned, togglePin] = usePinnedSessions();
   const [showArchived, setShowArchived] = useState(false);
   const [archivedSessions, setArchivedSessions] = useState<SessionWithUnread[]>(
     [],
@@ -796,8 +868,18 @@ export function InboxSidebar({
     (showArchived && archivedSessionsLoading && archivedSessions.length === 0);
   const sidebarUser = session?.user ?? initialUser;
   const groupedSessions = useMemo(
-    () => groupSessionsByRepo(displayedSessions),
-    [displayedSessions],
+    () => groupSessionsByRepo(displayedSessions).map((group) => ({
+      ...group,
+      sessions: [...group.sessions].sort((a, b) => {
+        // Pinned sessions first
+        const aPinned = pinned.has(a.id);
+        const bPinned = pinned.has(b.id);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return 0;
+      }),
+    })),
+    [displayedSessions, pinned],
   );
   const activeGroupId = useMemo(
     () =>
@@ -965,25 +1047,20 @@ export function InboxSidebar({
   return (
     <>
       <div className="border-b border-border p-3">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center px-2 py-1.5 text-sm text-primary">
-            <span>Sessions</span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              if (isMobile) {
-                setOpenMobile(false);
-              }
-              onOpenNewSession();
-            }}
-            className="h-7 w-7"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            if (isMobile) {
+              setOpenMobile(false);
+            }
+            onOpenNewSession();
+          }}
+          className="mb-3 w-full justify-start gap-2 text-sm font-medium"
+        >
+          <MessageSquare className="h-4 w-4" />
+          新对话
+        </Button>
 
         <div className="flex gap-1">
           <button
@@ -1155,18 +1232,20 @@ export function InboxSidebar({
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <div className="ml-4 space-y-1 border-l border-border/40 pl-1.5">
+                        <div className="space-y-1">
                           {group.sessions.map((session) => (
                             <SessionRow
                               key={session.id}
                               session={session}
                               isActive={session.id === activeSessionId}
                               isPending={session.id === pendingSessionId}
+                              isPinned={pinned.has(session.id)}
                               onSessionClick={handleSessionClick}
                               onSessionPrefetch={handleSessionPrefetch}
                               onRenameSession={onRenameSession}
                               onArchiveSession={handleArchiveSession}
                               onUnarchiveSession={handleUnarchiveSession}
+                              onTogglePin={togglePin}
                             />
                           ))}
                         </div>
