@@ -79,6 +79,7 @@ function mergeSessionWithSummary(
     linesRemoved: updatedSession.linesRemoved,
     prNumber: updatedSession.prNumber,
     prStatus: updatedSession.prStatus,
+    lifecycleState: updatedSession.lifecycleState,
     createdAt: updatedSession.createdAt,
     hasUnread: session.hasUnread,
     hasStreaming: session.hasStreaming,

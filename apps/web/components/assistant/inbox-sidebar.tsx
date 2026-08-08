@@ -190,7 +190,7 @@ function getSessionStatusIcon(session: SessionWithUnread) {
   if (session.lifecycleState === "provisioning") {
     return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />;
   }
-  if (session.lifecycleState === "ready") {
+  if (session.lifecycleState === "active") {
     return <Monitor className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />;
   }
   if (session.lifecycleState === "failed") {
@@ -219,7 +219,7 @@ function getSessionStatusLabel(session: SessionWithUnread): {
     return { text: "Needs attention", prNumber: null };
   if (session.branch) return { text: "New session", prNumber: null };
   // No branch: sandbox is ready (empty chat) or provisioning
-  if (session.lifecycleState === "ready")
+  if (session.lifecycleState === "active")
     return { text: "Sandbox ready", prNumber: null };
   if (session.lifecycleState === "provisioning")
     return { text: "Setting up", prNumber: null };
@@ -594,9 +594,6 @@ const SessionRow = memo(function SessionRow({
       onFocus={() => onSessionPrefetch(session)}
       aria-busy={isPending}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground/70">
-        <MessageSquare className="h-3.5 w-3.5" />
-      </span>
       <span className="min-w-0 flex-1 text-left">
         <p
           className={`truncate text-[13px] leading-5 ${
@@ -608,14 +605,11 @@ const SessionRow = memo(function SessionRow({
           {session.title}
         </p>
       </span>
-      {actionButtons ? null : hasDiff ? (
-        <span className="flex shrink-0 items-center justify-end gap-0.5">
-          <DiffStats
-            added={session.linesAdded}
-            removed={session.linesRemoved}
-          />
+      {!isHovered && !moreMenuOpen && (
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+          {getSessionStatusIcon(session)}
         </span>
-      ) : null}
+      )}
     </button>
   );
 
@@ -1172,18 +1166,11 @@ export function InboxSidebar({
                         aria-expanded={!isCollapsed}
                         className="flex min-w-0 flex-1 items-center gap-1.5"
                       >
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground/80">
-                          {group.id === "repo:unscoped" ? (
-                            <MessageSquare className="h-3.5 w-3.5 group-hover/repo:hidden" />
-                          ) : (
-                            <FolderGit2 className="h-3.5 w-3.5 group-hover/repo:hidden" />
-                          )}
-                          <ChevronDown
-                            className={`hidden h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-200 group-hover/repo:block ${
-                              isCollapsed ? "-rotate-90" : "rotate-0"
-                            }`}
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-200 ${
+                            isCollapsed ? "-rotate-90" : "rotate-0"
+                          }`}
                           />
-                        </span>
                         <span className="min-w-0 truncate text-[12px] font-medium">
                           {group.label}
                         </span>
