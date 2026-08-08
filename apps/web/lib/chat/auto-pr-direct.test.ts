@@ -71,10 +71,7 @@ const openPullRequestSpy = mock(async () => openPullRequestResult);
 const generatePullRequestContentFromSandboxSpy = mock(
   async () => prContentResult,
 );
-const getUserGitHubTokenSpy = mock(async (_userId?: string) => userTokenResult);
-const getGitHubAppUserTokenSpy = mock(async (_userId?: string) =>
-  getUserGitHubTokenSpy(_userId),
-);
+const getGithubOAuthTokenSpy = mock(async (_userId?: string) => userTokenResult);
 const withTemporaryGitHubAuthSpy = mock(
   async (
     _sandbox: unknown,
@@ -121,8 +118,8 @@ mock.module("@/lib/github/repos", () => ({
 }));
 
 mock.module("@/lib/github/token", () => ({
-  getUserGitHubToken: getUserGitHubTokenSpy,
-  getGitHubAppUserToken: getGitHubAppUserTokenSpy,
+  getGithubAppToken: getGithubOAuthTokenSpy,
+  getGithubAppToken: getGithubAppTokenSpy,
 }));
 
 mock.module("@/lib/github/access", () => ({
@@ -187,8 +184,8 @@ beforeEach(() => {
   findPullRequestSpy.mockClear();
   openPullRequestSpy.mockClear();
   generatePullRequestContentFromSandboxSpy.mockClear();
-  getUserGitHubTokenSpy.mockClear();
-  getGitHubAppUserTokenSpy.mockClear();
+  getGithubOAuthTokenSpy.mockClear();
+  getGithubAppTokenSpy.mockClear();
   withTemporaryGitHubAuthSpy.mockClear();
   mintInstallationTokenSpy.mockClear();
   revokeInstallationTokenSpy.mockClear();
@@ -337,8 +334,9 @@ describe("performAutoCreatePr", () => {
       prNumber: 42,
       prUrl: "https://github.com/acme/repo/pull/42",
     } satisfies AutoCreatePrResult);
-    expect(getGitHubAppUserTokenSpy).toHaveBeenCalledWith("user-1");
-    expect(getUserGitHubTokenSpy).toHaveBeenCalledWith("user-1");
+    expect(getGithubAppTokenSpy).toHaveBeenCalledWith("user-1");
+    expect(getGithubOAuthTokenSpy).toHaveBeenCalledWith("user-1");
+    // getGithubAppToken is used instead of getGithubOAuthToken for repo operations
     expect(verifyRepoAccessSpy).toHaveBeenCalledWith({
       userId: "user-1",
       owner: "acme",

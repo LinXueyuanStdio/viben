@@ -104,7 +104,7 @@ const spies = {
 
     return sandbox;
   }),
-  getUserGitHubToken: mock(async () => "repo-token"),
+  getGithubOAuthToken: mock(async () => "repo-token"),
   getPullRequestStatus: mock(
     async (): Promise<MockPullRequestStatusResult> => ({
       success: false,
@@ -128,7 +128,7 @@ mock.module("@viben/sandbox", () => ({
 }));
 
 mock.module("@/lib/github/token", () => ({
-  getUserGitHubToken: spies.getUserGitHubToken,
+  getGithubOAuthToken: spies.getGithubOAuthToken,
 }));
 
 mock.module("@/lib/github/pulls", () => ({
@@ -179,7 +179,7 @@ beforeEach(() => {
   sandboxQueue = [];
   Object.values(spies).forEach((spy) => spy.mockClear());
 
-  spies.getUserGitHubToken.mockImplementation(async () => "repo-token");
+  spies.getGithubOAuthToken.mockImplementation(async () => "repo-token");
   spies.getPullRequestStatus.mockImplementation(async () => ({
     success: false,
     error: "Failed to get PR status",

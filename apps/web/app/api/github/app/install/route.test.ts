@@ -19,7 +19,7 @@ mock.module("@/lib/session/get-server-session", () => ({
 }));
 
 mock.module("@/lib/github/token", () => ({
-  getUserGitHubToken: async () => (hasLinkedGitHub ? "ghu_test" : null),
+  getGithubOAuthToken: async () => (hasLinkedGitHub ? "ghu_test" : null),
 }));
 
 mock.module("@/lib/github/users", () => ({

@@ -148,7 +148,7 @@ mock.module("@octokit/rest", () => ({
 }));
 
 mock.module("./user-token", () => ({
-  getUserGitHubToken: async () => "token-from-mock",
+  getGithubOAuthToken: async () => "token-from-mock",
 }));
 
 let moduleVersion = 0;

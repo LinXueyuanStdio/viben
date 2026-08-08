@@ -22,7 +22,7 @@ mock.module("@/lib/session/get-server-session", () => ({
 }));
 
 mock.module("@/lib/github/token", () => ({
-  getUserGitHubToken: async () => userToken,
+  getGithubOAuthToken: async () => userToken,
 }));
 
 mock.module("@/lib/github/users", () => ({

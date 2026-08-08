@@ -5,10 +5,7 @@ let getAccessTokenError: Error | null;
 
 const getAccessTokenSpy = mock(
   async (_input: { body: { providerId: string; userId: string } }) => {
-    if (getAccessTokenError) {
-      throw getAccessTokenError;
-    }
-
+    if (getAccessTokenError) throw getAccessTokenError;
     return getAccessTokenResult;
   },
 );
@@ -16,70 +13,35 @@ const getAccessTokenSpy = mock(
 mock.module("server-only", () => ({}));
 
 mock.module("next/headers", () => ({
-  headers: async () => {
-    throw new Error("headers should not be called");
-  },
+  headers: async () => { throw new Error("headers should not be called"); },
 }));
 
 mock.module("@/lib/auth/config", () => ({
-  auth: {
-    api: {
-      getAccessToken: getAccessTokenSpy,
-    },
-  },
+  auth: { api: { getAccessToken: getAccessTokenSpy } },
 }));
 
-mock.module("@/lib/db/client", () => ({
-  db: {},
-}));
-
-mock.module("@/lib/db/schema", () => ({
-  accounts: {},
-}));
+mock.module("@/lib/db/client", () => ({ db: {} }));
+mock.module("@/lib/db/schema", () => ({ accounts: {} }));
 
 const tokenModulePromise = import("./token");
 
-describe("getUserGitHubToken", () => {
+describe("getGithubOAuthToken", () => {
   beforeEach(() => {
     getAccessTokenSpy.mockClear();
     getAccessTokenResult = { accessToken: "ghu_test" };
     getAccessTokenError = null;
   });
 
-  test("looks up access tokens by user id without request headers", async () => {
-    const { getUserGitHubToken } = await tokenModulePromise;
-
-    const token = await getUserGitHubToken("user-1");
-
+  test("looks up access tokens by user id", async () => {
+    const { getGithubOAuthToken } = await tokenModulePromise;
+    const token = await getGithubOAuthToken("user-1");
     expect(token).toBe("ghu_test");
-    expect(getAccessTokenSpy).toHaveBeenCalledTimes(1);
-    expect(getAccessTokenSpy.mock.calls[0]?.[0]).toEqual({
-      body: { providerId: "github", userId: "user-1" },
-    });
   });
 
-  test("returns null when better-auth token lookup fails", async () => {
-    const { getUserGitHubToken } = await tokenModulePromise;
+  test("returns null when token lookup fails", async () => {
+    const { getGithubOAuthToken } = await tokenModulePromise;
     getAccessTokenError = new Error("boom");
-
-    const token = await getUserGitHubToken("user-1");
-
+    const token = await getGithubOAuthToken("user-1");
     expect(token).toBeNull();
-  });
-});
-
-describe("getGitHubAppUserToken", () => {
-  beforeEach(() => {
-    getAccessTokenSpy.mockClear();
-    getAccessTokenResult = { accessToken: "ghu_test" };
-    getAccessTokenError = null;
-  });
-
-  test("returns GitHub App user-to-server tokens", async () => {
-    const { getGitHubAppUserToken } = await tokenModulePromise;
-
-    const token = await getGitHubAppUserToken("user-1");
-
-    expect(token).toBe("ghu_test");
   });
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { listUserInstallationRepositories } from "./repos";
+import { listInstallationRepositories } from "./repos";
 
 const originalFetch = globalThis.fetch;
 
@@ -70,7 +70,7 @@ describe("installation-repos", () => {
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const repos = await listUserInstallationRepositories({
+    const repos = await listInstallationRepositories({
       installationId: 123,
       userToken: "token",
       owner: "acme",
@@ -119,7 +119,7 @@ describe("installation-repos", () => {
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const repos = await listUserInstallationRepositories({
+    const repos = await listInstallationRepositories({
       installationId: 123,
       userToken: "token",
       owner: "acme",
