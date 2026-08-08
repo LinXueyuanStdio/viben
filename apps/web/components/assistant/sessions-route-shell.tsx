@@ -303,7 +303,7 @@ export function SessionsRouteShell({
   return (
     <SessionsShellProvider value={shellContextValue}>
       <SidebarProvider
-        className="h-full overflow-hidden"
+        className="h-full overflow-hidden min-h-0"
         style={
           {
             "--sidebar-width": "18rem",
