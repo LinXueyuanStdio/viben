@@ -12,12 +12,13 @@ import {
 } from "react";
 import { InboxSidebar } from "@/components/assistant/inbox-sidebar";
 import { NewSessionDialog } from "@/components/assistant/new-session-dialog";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { useBackgroundChatNotifications } from "@/hooks/assistant/use-background-chat-notifications";
 import { useSessions, type SessionWithUnread } from "@/hooks/assistant/use-sessions";
 import { useUserPreferences } from "@/hooks/assistant/use-user-preferences";
 import { DEFAULT_SANDBOX_TYPE } from "@/components/assistant/sandbox-selector-compact";
 import type { Session as AuthSession } from "@/lib/session/types";
+import { cn } from "@/lib/utils";
 import { SessionsShellProvider } from "./sessions-shell-context";
 
 type SessionsRouteShellProps = {
@@ -29,6 +30,76 @@ type SessionsRouteShellProps = {
   };
   lastRepo?: { owner: string; repo: string } | null;
 };
+
+type SessionsRouteInnerProps = {
+  sessions: SessionWithUnread[];
+  archivedCount: number;
+  sessionsLoading: boolean;
+  activeSessionId: string;
+  pendingSessionId: string | null;
+  onSessionClick: (session: SessionWithUnread) => void;
+  onSessionPrefetch: (session: SessionWithUnread) => void;
+  onRenameSession: (sessionId: string, title: string) => Promise<void>;
+  onArchiveSession: (sessionId: string) => Promise<void>;
+  onUnarchiveSession: (sessionId: string) => Promise<void>;
+  onOpenNewSession: () => void;
+  onCreateSessionForRepo: (repoOwner: string, repoName: string) => Promise<void>;
+  onCreateSessionFromBranch: (repoOwner: string, repoName: string, branch: string) => Promise<void>;
+  currentUser: AuthSession["user"];
+  children: ReactNode;
+};
+
+function SessionsRouteInner({
+  sessions,
+  archivedCount,
+  sessionsLoading,
+  activeSessionId,
+  pendingSessionId,
+  onSessionClick,
+  onSessionPrefetch,
+  onRenameSession,
+  onArchiveSession,
+  onUnarchiveSession,
+  onOpenNewSession,
+  onCreateSessionForRepo,
+  onCreateSessionFromBranch,
+  currentUser,
+  children,
+}: SessionsRouteInnerProps) {
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+
+  return (
+    <>
+      <aside
+        className={cn(
+          "shrink-0 border-r border-border overflow-y-auto bg-muted/20 transition-[width] duration-200 ease-linear",
+          collapsed ? "w-0 border-r-0 overflow-hidden" : "w-[var(--sidebar-width)]",
+        )}
+      >
+        <InboxSidebar
+          sessions={sessions}
+          archivedCount={archivedCount}
+          sessionsLoading={sessionsLoading}
+          activeSessionId={activeSessionId}
+          pendingSessionId={pendingSessionId}
+          onSessionClick={onSessionClick}
+          onSessionPrefetch={onSessionPrefetch}
+          onRenameSession={onRenameSession}
+          onArchiveSession={onArchiveSession}
+          onUnarchiveSession={onUnarchiveSession}
+          onOpenNewSession={onOpenNewSession}
+          onCreateSessionForRepo={onCreateSessionForRepo}
+          onCreateSessionFromBranch={onCreateSessionFromBranch}
+          initialUser={currentUser}
+        />
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </div>
+    </>
+  );
+}
 
 export function SessionsRouteShell({
   children,
@@ -239,27 +310,23 @@ export function SessionsRouteShell({
           } as CSSProperties
         }
       >
-        <aside className="w-[var(--sidebar-width)] shrink-0 border-r border-border overflow-y-auto bg-muted/20">
-          <InboxSidebar
-            sessions={sessions}
-            archivedCount={archivedCount}
-            sessionsLoading={sessionsLoading}
-            activeSessionId={activeSessionId}
-            pendingSessionId={pendingSessionId}
-            onSessionClick={handleSessionClick}
-            onSessionPrefetch={handleSessionPrefetch}
-            onRenameSession={handleRenameSession}
-            onArchiveSession={handleArchiveSession}
-            onUnarchiveSession={handleUnarchiveSession}
-            onOpenNewSession={openNewSessionDialog}
-            onCreateSessionForRepo={handleCreateSessionForRepo}
-            onCreateSessionFromBranch={handleCreateSessionFromBranch}
-            initialUser={currentUser}
-          />
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {children}
-        </div>
+        <SessionsRouteInner
+          sessions={sessions}
+          archivedCount={archivedCount}
+          sessionsLoading={sessionsLoading}
+          activeSessionId={activeSessionId}
+          pendingSessionId={pendingSessionId}
+          onSessionClick={handleSessionClick}
+          onSessionPrefetch={handleSessionPrefetch}
+          onRenameSession={handleRenameSession}
+          onArchiveSession={handleArchiveSession}
+          onUnarchiveSession={handleUnarchiveSession}
+          onOpenNewSession={openNewSessionDialog}
+          onCreateSessionForRepo={handleCreateSessionForRepo}
+          onCreateSessionFromBranch={handleCreateSessionFromBranch}
+          currentUser={currentUser}
+          children={children}
+        />
       </SidebarProvider>
 
       <NewSessionDialog
