@@ -3762,7 +3762,7 @@ export function SessionChatContent({
               </div>
 
               {/* Input */}
-              <div className="p-4 pb-2 sm:pb-8">
+              <div className="p-4 pb-6 sm:pb-8">
                 <div className="mx-auto max-w-4xl space-y-2">
                   {sandboxCreateError && (
                     <SandboxCreateErrorBanner
