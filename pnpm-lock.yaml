@@ -9,6 +9,7 @@ overrides:
   lucide-react: ^1.16.0
   react: 19.2.7
   react-dom: 19.2.7
+  '@vercel/oidc': 3.2.0
   '@types/react': 19.2.15
   '@types/react-dom': 19.2.3
 
@@ -681,8 +682,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0
       '@vercel/oidc':
-        specifier: ^2.0.0
-        version: 2.0.2
+        specifier: 3.2.0
+        version: 3.2.0
       '@vercel/sandbox':
         specifier: 2.0.0-beta.11
         version: 2.0.0-beta.11
@@ -698,6 +699,12 @@ importers:
       '@workflow/ai':
         specifier: 5.0.0-beta.13
         version: 5.0.0-beta.13(@opentelemetry/api@1.9.1)(ai@6.0.205(zod@4.3.6))(workflow@5.0.0-beta.27(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3(@swc/helpers@0.5.21))(chokidar@5.0.0))(@swc/core@1.15.3(@swc/helpers@0.5.21))(@swc/helpers@0.5.21)(magicast@0.5.2)(next@15.5.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.99.0))(typescript@5.8.3)(ws@8.20.1))
+      '@workflow/world-local':
+        specifier: ^4.2.4
+        version: 4.2.4(@opentelemetry/api@1.9.1)
+      '@workflow/world-vercel':
+        specifier: ^4.6.1
+        version: 4.6.1(@opentelemetry/api@1.9.1)
       ai:
         specifier: ^6.0.165
         version: 6.0.205(zod@4.3.6)
@@ -10026,20 +10033,6 @@ packages:
   '@vercel/cli-auth@0.0.1':
     resolution: {integrity: sha512-CnqiuMlZ4pjs2LCPYiR6aLKPPd3Xb8SBI1Y7eotXKgpx6qgrGNY+E7EIyUt5ErGHJGIrCZyGG5WEo4bHtVmz2Q==}
 
-  '@vercel/cli-config@0.2.0':
-    resolution: {integrity: sha512-fJRRRB7734BDuXZ89yBEaA2ncYhH7bWX30mk04W80J6VAfQc+4iB8lyzAdaGpFV3/vNlkt9VZt+/uoQoWX6UsQ==}
-
-  '@vercel/cli-config@0.2.2':
-    resolution: {integrity: sha512-kAy35eymNzRBfmcqEViVQge0KJ59FYEKsPqGNCSJQ7M9HTuFGWd3qPcZos1A5cZpAWRBdiYe82Bcz9P7pIZvUQ==}
-
-  '@vercel/cli-exec@1.0.0':
-    resolution: {integrity: sha512-kQF8LGie/Hbdq9/psJxLE7owRTcqMQMhgybU04gCeR7cbQAr5t8OrjefDNColJv1QSSucFt4pLwRiARVmlOnug==}
-    engines: {node: '>= 18'}
-
-  '@vercel/cli-exec@1.0.1':
-    resolution: {integrity: sha512-g9XerViJ/paZujufXYcu5XYI2vU2rtB4sgdpjUHde5RnOkdmpu0ngH46LCFGHoPXO/C+qDPSczIHIRN+8Q2YKQ==}
-    engines: {node: '>= 18'}
-
   '@vercel/functions@3.7.7':
     resolution: {integrity: sha512-oy0FzkuXmUIzyRR2pYastP4xH0m9VTK3yP2Vj77eRcxcbX+f4o6x3RMx4RuwJ4j4pjx9USd/h79R/pKbSZV80Q==}
     engines: {node: '>= 20'}
@@ -10052,24 +10045,8 @@ packages:
       ws:
         optional: true
 
-  '@vercel/oidc@2.0.2':
-    resolution: {integrity: sha512-59PBFx3T+k5hLTEWa3ggiMpGRz1OVvl9eN8SUai+A43IsqiOuAe7qPBf+cray/Fj6mkgnxm/D7IAtjc8zSHi7g==}
-    engines: {node: '>= 18'}
-
-  '@vercel/oidc@3.1.0':
-    resolution: {integrity: sha512-Fw28YZpRnA3cAHHDlkt7xQHiJ0fcL+NRcIqsocZQUSmbzeIKRpwttJjik5ZGanXP+vlA4SbTg+AbA3bP363l+w==}
-    engines: {node: '>= 20'}
-
   '@vercel/oidc@3.2.0':
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
-    engines: {node: '>= 20'}
-
-  '@vercel/oidc@3.7.1':
-    resolution: {integrity: sha512-RrSsVWbq3KLK5lJobyTPp3tSthNfUp+zWkXno5Wkko0oEW05rA4ngOrnVypP4+L8/Av89uPo2rWFmzL8iwnsmA==}
-    engines: {node: '>= 20'}
-
-  '@vercel/oidc@3.8.2':
-    resolution: {integrity: sha512-nmVSeQ7tewCkqYBNB/MNL8aPB9sTvtjvqIE6+U17U4IuTyehuWVERDlWrSn0DVfiFAstRlRkGLHBlKHB2FyzbQ==}
     engines: {node: '>= 20'}
 
   '@vercel/queue@0.3.1':
@@ -10472,6 +10449,9 @@ packages:
       '@opentelemetry/api':
         optional: true
 
+  '@workflow/errors@4.2.1':
+    resolution: {integrity: sha512-gIe3vf2POUw2DV4Mi6BGiYGQdUZ4YMcWhDahVT9xI1W1NSsqifX73Hvk/68x/haPnDOr7/VnWN8/YAgeEVYE4A==}
+
   '@workflow/errors@5.0.0-beta.9':
     resolution: {integrity: sha512-oPnvF+hL6gFaX1wz8g62wjDY1J+JRmF8MIpzMheXjMExKUCyu453w0crn1Qpq5Yd9A61Tc0LbNYVeLZIQy+U1A==}
 
@@ -10520,6 +10500,9 @@ packages:
       typescript:
         optional: true
 
+  '@workflow/utils@4.1.4':
+    resolution: {integrity: sha512-2zGTa0vCJJczErE8oI7JPKpGmXNbhgnGW7JWcz3qTTs5TKibtaAxha5DLq3WTTbwsgvuuxcnvtWqQ5hFxhWATg==}
+
   '@workflow/utils@5.0.0-beta.5':
     resolution: {integrity: sha512-fDJ8OFW/KxMJF6s/Ju+baw5J9vJYTKY+8h7xVkbjJX3yTpn7NW1W4DfzU9jb5JfWWaGvJ13Xi/qHJaZUjIJ3fQ==}
 
@@ -10529,8 +10512,24 @@ packages:
   '@workflow/web@5.0.0-beta.27':
     resolution: {integrity: sha512-+Yuiyks8cIkug5+c89yKX2f/euz9zD90U+hS88C606gKQQYIYJYqLf2U7qeZ0ILXBr3Xgv0humRo7C5d1iodFA==}
 
+  '@workflow/world-local@4.2.4':
+    resolution: {integrity: sha512-MCsoTTNyPp6cTV8z3wqniTaJUdwlcggMjKRMadU4jHjX5UOhEFrUE9EeOBnJY2eFUyEGW//Z/WpRFm2b982lcg==}
+    peerDependencies:
+      '@opentelemetry/api': '1'
+    peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
+
   '@workflow/world-local@5.0.0-beta.23':
     resolution: {integrity: sha512-7mDUeI7ek8NCgAsj4wAfvPTWJ+1Gngr7LqS4d44Nxi8SvWdQ9RcHniWlggqoW0i74DBOiBIVzl2GQh+d3dukxg==}
+    peerDependencies:
+      '@opentelemetry/api': '1'
+    peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
+
+  '@workflow/world-vercel@4.6.1':
+    resolution: {integrity: sha512-xBV/bdAlT6XL+ufzhjZM5e75Q+i/li7BoIFnZe1ARyS/8XPZ68ILjxEavyQp8j3vrxKklo2l6R4gUykMVnxECw==}
     peerDependencies:
       '@opentelemetry/api': '1'
     peerDependenciesMeta:
@@ -10544,6 +10543,9 @@ packages:
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
+
+  '@workflow/world@4.3.1':
+    resolution: {integrity: sha512-gT67yCzMsm6SS5+2ho+b6dSd8qknTlDkfHvKnuWWt9fwkvpRr0WLWFOPvzILj3IY/mptDj3pFNDS9a6RWxEqQQ==}
 
   '@workflow/world@5.0.0-beta.15':
     resolution: {integrity: sha512-jiAPlJjYDp0phxvCbH/AzS2iLCQ/UU7HzXJsK8hhyRAcRqBCPFt3SBFLP5J+gKAEaupKsP0h3cBkYDszbT9a1Q==}
@@ -20898,7 +20900,7 @@ snapshots:
     dependencies:
       '@ai-sdk/provider': 3.0.2
       '@ai-sdk/provider-utils': 4.0.5(zod@4.3.6)
-      '@vercel/oidc': 3.1.0
+      '@vercel/oidc': 3.2.0
       zod: 4.3.6
 
   '@ai-sdk/gateway@3.0.131(zod@4.3.6)':
@@ -30497,7 +30499,7 @@ snapshots:
 
   '@vercel/blob@2.5.0':
     dependencies:
-      '@vercel/oidc': 3.7.1
+      '@vercel/oidc': 3.2.0
       async-retry: 1.3.3
       is-buffer: 2.0.5
       is-node-process: 1.2.0
@@ -30511,56 +30513,19 @@ snapshots:
       xdg-app-paths: 5.5.1
       zod: 4.1.11
 
-  '@vercel/cli-config@0.2.0':
-    dependencies:
-      xdg-app-paths: 5.5.1
-      zod: 4.1.11
-
-  '@vercel/cli-config@0.2.2':
-    dependencies:
-      xdg-app-paths: 5.5.1
-      zod: 4.1.11
-
-  '@vercel/cli-exec@1.0.0':
-    dependencies:
-      execa: 5.1.1
-
-  '@vercel/cli-exec@1.0.1':
-    dependencies:
-      execa: 5.1.1
-
   '@vercel/functions@3.7.7(@aws-sdk/credential-provider-web-identity@3.972.49)(ws@8.20.1)':
     dependencies:
-      '@vercel/oidc': 3.8.2
+      '@vercel/oidc': 3.2.0
     optionalDependencies:
       '@aws-sdk/credential-provider-web-identity': 3.972.49
       ws: 8.20.1
 
-  '@vercel/oidc@2.0.2':
-    dependencies:
-      '@types/ms': 2.1.0
-      ms: 2.1.3
-
-  '@vercel/oidc@3.1.0': {}
-
   '@vercel/oidc@3.2.0': {}
-
-  '@vercel/oidc@3.7.1':
-    dependencies:
-      '@vercel/cli-config': 0.2.0
-      '@vercel/cli-exec': 1.0.0
-      jose: 5.10.0
-
-  '@vercel/oidc@3.8.2':
-    dependencies:
-      '@vercel/cli-config': 0.2.2
-      '@vercel/cli-exec': 1.0.1
-      jose: 5.10.0
 
   '@vercel/queue@0.3.1':
     dependencies:
-      '@vercel/oidc': 3.7.1
-      minimatch: 10.2.4
+      '@vercel/oidc': 3.2.0
+      minimatch: 10.2.6
       mixpart: 0.0.6
       picocolors: 1.1.1
 
@@ -31332,6 +31297,11 @@ snapshots:
       - supports-color
       - ws
 
+  '@workflow/errors@4.2.1':
+    dependencies:
+      '@workflow/utils': 4.1.4
+      ms: 2.1.3
+
   '@workflow/errors@5.0.0-beta.9':
     dependencies:
       '@workflow/utils': 5.0.0-beta.5
@@ -31434,6 +31404,10 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
+  '@workflow/utils@4.1.4':
+    dependencies:
+      ms: 2.1.3
+
   '@workflow/utils@5.0.0-beta.5':
     dependencies:
       ms: 2.1.3
@@ -31453,6 +31427,19 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@workflow/world-local@4.2.4(@opentelemetry/api@1.9.1)':
+    dependencies:
+      '@vercel/queue': 0.3.1
+      '@workflow/errors': 4.2.1
+      '@workflow/utils': 4.1.4
+      '@workflow/world': 4.3.1
+      async-sema: 3.1.1
+      ulid: 3.0.2
+      undici: 7.28.0
+      zod: 4.3.6
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.1
+
   '@workflow/world-local@5.0.0-beta.23(@opentelemetry/api@1.9.1)':
     dependencies:
       '@vercel/queue': 0.3.1
@@ -31461,6 +31448,18 @@ snapshots:
       '@workflow/world': 5.0.0-beta.15
       async-sema: 3.1.1
       ulid: 3.0.2
+      undici: 7.28.0
+      zod: 4.3.6
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.1
+
+  '@workflow/world-vercel@4.6.1(@opentelemetry/api@1.9.1)':
+    dependencies:
+      '@vercel/oidc': 3.2.0
+      '@vercel/queue': 0.3.1
+      '@workflow/errors': 4.2.1
+      '@workflow/world': 4.3.1
+      cbor-x: 1.6.0
       undici: 7.28.0
       zod: 4.3.6
     optionalDependencies:
@@ -31477,6 +31476,11 @@ snapshots:
       zod: 4.3.6
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
+
+  '@workflow/world@4.3.1':
+    dependencies:
+      ulid: 3.0.2
+      zod: 4.3.6
 
   '@workflow/world@5.0.0-beta.15':
     dependencies:
@@ -36575,7 +36579,8 @@ snapshots:
       '@sideway/formula': 3.0.1
       '@sideway/pinpoint': 2.0.0
 
-  jose@5.10.0: {}
+  jose@5.10.0:
+    optional: true
 
   jose@6.2.3: {}
 

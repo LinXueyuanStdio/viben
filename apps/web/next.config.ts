@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import path from 'path';
+import { withWorkflow } from 'workflow/next';
 
 const nextConfig: NextConfig = {
   // Skip ESLint during build - run separately due to ESLint 9.x + eslint-config-next compatibility issue
@@ -52,4 +53,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withWorkflow(nextConfig);
