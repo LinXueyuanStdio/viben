@@ -2,8 +2,16 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Viben Web API",
-    "description": "面向 C 端创作者的 Viben 平台公开 API",
-    "version": "1.0.0"
+    "description": "面向 C 端创作者的 Viben 平台公开 API。支持页面发布、合集管理、社区互动、订阅通知等功能。",
+    "version": "0.1.0",
+    "contact": {
+      "name": "LinXueyuanStdio",
+      "url": "https://github.com/LinXueyuanStdio"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
   },
   "servers": [
     {
@@ -80,118 +88,6 @@
         "required": [
           "success",
           "item"
-        ]
-      },
-      "AdminLogsQuery": {
-        "type": "object",
-        "properties": {
-          "entityType": {
-            "type": "string",
-            "enum": [
-              "mcp",
-              "skill",
-              "comment",
-              "collection",
-              "user",
-              "report"
-            ],
-            "nullable": true,
-            "description": "实体类型"
-          },
-          "entityId": {
-            "type": "string",
-            "nullable": true,
-            "description": "实体 ID"
-          },
-          "adminId": {
-            "type": "string",
-            "nullable": true,
-            "description": "管理员 ID"
-          },
-          "action": {
-            "type": "string",
-            "enum": [
-              "approve",
-              "reject",
-              "feature",
-              "unfeature",
-              "delete",
-              "warn",
-              "ban",
-              "unban"
-            ],
-            "nullable": true,
-            "description": "操作类型"
-          },
-          "page": {
-            "default": 1,
-            "description": "页码",
-            "type": "number",
-            "minimum": 1
-          },
-          "limit": {
-            "default": 20,
-            "description": "每页数量",
-            "type": "number",
-            "minimum": 1,
-            "maximum": 100
-          }
-        },
-        "required": [
-          "page",
-          "limit"
-        ]
-      },
-      "AdminPackagesQuery": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "mcp",
-              "skill"
-            ],
-            "nullable": true,
-            "description": "包类型"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "approved",
-              "rejected",
-              "featured"
-            ],
-            "nullable": true,
-            "description": "审核状态"
-          },
-          "page": {
-            "default": 1,
-            "description": "页码",
-            "type": "number",
-            "minimum": 1
-          },
-          "limit": {
-            "default": 20,
-            "description": "每页数量",
-            "type": "number",
-            "minimum": 1,
-            "maximum": 100
-          },
-          "sort": {
-            "type": "string",
-            "enum": [
-              "newest",
-              "oldest"
-            ],
-            "default": "oldest",
-            "description": "排序方式"
-          }
-        },
-        "required": [
-          "page",
-          "limit",
-          "sort"
         ]
       },
       "ApiKeyCreateResponse": {
@@ -2278,10 +2174,15 @@
       "NoteCreateBody": {
         "type": "object",
         "properties": {
-          "page_id": {
+          "entity_type": {
+            "type": "string",
+            "default": "published_page",
+            "description": "实体类型"
+          },
+          "entity_id": {
             "type": "string",
             "minLength": 1,
-            "description": "页面 ID"
+            "description": "实体 ID"
           },
           "content": {
             "type": "string",
@@ -2290,7 +2191,8 @@
           }
         },
         "required": [
-          "page_id",
+          "entity_type",
+          "entity_id",
           "content"
         ]
       },
@@ -2328,9 +2230,13 @@
             "type": "string",
             "description": "笔记唯一 ID（note_ 前缀）"
           },
-          "pageId": {
+          "entityType": {
             "type": "string",
-            "description": "所属页面 ID"
+            "description": "实体类型"
+          },
+          "entityId": {
+            "type": "string",
+            "description": "实体 ID"
           },
           "authorUserId": {
             "type": "string",
@@ -2359,7 +2265,8 @@
         },
         "required": [
           "uid",
-          "pageId",
+          "entityType",
+          "entityId",
           "authorUserId",
           "content",
           "contentFormat",
@@ -2371,14 +2278,20 @@
       "NotesListQuery": {
         "type": "object",
         "properties": {
-          "page_id": {
+          "entity_type": {
+            "type": "string",
+            "default": "published_page",
+            "description": "实体类型"
+          },
+          "entity_id": {
             "type": "string",
             "minLength": 1,
-            "description": "页面 ID"
+            "description": "实体 ID"
           }
         },
         "required": [
-          "page_id"
+          "entity_type",
+          "entity_id"
         ]
       },
       "NoteUpdateBody": {
@@ -4624,6 +4537,42 @@
     "responses": {}
   },
   "paths": {
+    "/account/oauth-connections": {
+      "get": {
+        "operationId": "get-account-oauth-connections",
+        "summary": "获取当前用户的 OAuth 连接状态（Google / GitHub 社交登录）",
+        "description": "",
+        "tags": [
+          "Account"
+        ],
+        "parameters": [],
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "delete-account-oauth-connections",
+        "summary": "断开指定 OAuth provider",
+        "description": "",
+        "tags": [
+          "Account"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/users/me/api-keys": {
       "get": {
         "operationId": "get-users-me-api-keys",
@@ -4906,6 +4855,29 @@
         }
       }
     },
+    "/auth/info": {
+      "get": {
+        "operationId": "get-auth-info",
+        "summary": "轻量级会话检查 — 直接读取 cookie 解密，不依赖 React cache()",
+        "description": "",
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "post-auth-login",
@@ -5112,6 +5084,18 @@
             }
           }
         }
+      }
+    },
+    "/chat": {
+      "post": {
+        "operationId": "post-chat",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Chat"
+        ],
+        "parameters": [],
+        "responses": {}
       }
     },
     "/collections": {
@@ -6844,6 +6828,335 @@
         }
       }
     },
+    "/generate-pr": {
+      "post": {
+        "operationId": "post-generate-pr",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Generate-pr"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/generate-title": {
+      "post": {
+        "operationId": "post-generate-title",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Generate-title"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/branches": {
+      "get": {
+        "operationId": "get-github-branches",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "owner",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/github/connection-status": {
+      "get": {
+        "operationId": "get-github-connection-status",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/create-repo": {
+      "post": {
+        "operationId": "post-github-create-repo",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/installations": {
+      "get": {
+        "operationId": "get-github-installations",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/orgs": {
+      "get": {
+        "operationId": "get-github-orgs",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/post-link": {
+      "get": {
+        "operationId": "get-github-post-link",
+        "summary": "After better-auth completes the GitHub OAuth link, it redirects here.",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "next",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Redirect response",
+            "headers": {
+              "Location": {
+                "description": "Redirect target URL",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/github/user": {
+      "get": {
+        "operationId": "get-github-user",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/webhook": {
+      "post": {
+        "operationId": "post-github-webhook",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/github/app/callback": {
+      "get": {
+        "operationId": "get-github-app-callback",
+        "summary": "GitHub App Setup URL callback — handles installation sync only.",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "installation_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123"
+          },
+          {
+            "in": "query",
+            "name": "setup_action",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Redirect response",
+            "headers": {
+              "Location": {
+                "description": "Redirect target URL",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/github/app/install": {
+      "get": {
+        "operationId": "get-github-app-install",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "next",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "target_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123"
+          },
+          {
+            "in": "query",
+            "name": "reconnect",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Redirect response",
+            "headers": {
+              "Location": {
+                "description": "Redirect target URL",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/github/installations/repos": {
+      "get": {
+        "operationId": "get-github-installations-repos",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "installation_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123"
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/github/orgs/install-status": {
+      "get": {
+        "operationId": "get-github-orgs-install-status",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Github"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
     "/health": {
       "get": {
         "operationId": "get-health",
@@ -6981,6 +7294,394 @@
             }
           }
         }
+      }
+    },
+    "/teams/{team_slug}/leave": {
+      "post": {
+        "operationId": "post-teams-{team_slug}-leave",
+        "summary": "离开团队",
+        "description": "当前用户退出指定团队。如果用户是唯一的 owner，则不能离开（需先转让所有权）。",
+        "tags": [
+          "Members"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "唯一 owner 不能离开",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到或非团队成员",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/members": {
+      "get": {
+        "operationId": "get-teams-{team_slug}-members",
+        "summary": "获取成员列表",
+        "description": "返回指定团队的所有成员，包含用户信息和角色。支持翻页参数 page 和 page_size。",
+        "tags": [
+          "Members"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": 1
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post-teams-{team_slug}-members",
+        "summary": "邀请成员",
+        "description": "邀请指定用户加入团队，仅 owner 可操作。新成员默认为 member 角色。",
+        "tags": [
+          "Members"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "缺少 user_slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非 owner 无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队或用户未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "已是团队成员",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/members/{user_slug}": {
+      "delete": {
+        "operationId": "delete-teams-{team_slug}-members-{user_slug}",
+        "summary": "移除成员",
+        "description": "将指定用户移出团队。仅 owner 可操作，不能移除自己（请使用 leave 接口）。",
+        "tags": [
+          "Members"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "user_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: user_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "不能移除自己",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非 owner 无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队或用户未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/members/{user_slug}/role": {
+      "put": {
+        "operationId": "put-teams-{team_slug}-members-{user_slug}-role",
+        "summary": "修改成员角色",
+        "description": "修改指定成员在团队中的角色（owner 或 member）。仅 owner 可操作。",
+        "tags": [
+          "Members"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "user_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: user_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "role 值无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非 owner 无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队或用户未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "operationId": "get-models",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Models"
+        ],
+        "parameters": [],
+        "responses": {}
       }
     },
     "/moments": {
@@ -7267,14 +7968,26 @@
         "parameters": [
           {
             "in": "query",
-            "name": "page_id",
+            "name": "entity_type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "published_page",
+              "description": "实体类型"
+            },
+            "description": "实体类型",
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "entity_id",
             "required": true,
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "页面 ID"
+              "description": "实体 ID"
             },
-            "description": "页面 ID",
+            "description": "实体 ID",
             "example": "123"
           }
         ],
@@ -8439,6 +9152,476 @@
         }
       }
     },
+    "/teams/{team_slug}/projects": {
+      "get": {
+        "operationId": "get-teams-{team_slug}-projects",
+        "summary": "获取项目列表",
+        "description": "返回指定团队下的所有 projects，包含项目基本信息和时间戳。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post-teams-{team_slug}-projects",
+        "summary": "创建项目",
+        "description": "在指定团队下创建新项目，需要是团队成员。project_slug 在团队内必须唯一。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "缺少 name 或 project_slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非团队成员",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "project_slug 在该团队内已存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/projects/{project_slug}": {
+      "get": {
+        "operationId": "get-teams-{team_slug}-projects-{project_slug}",
+        "summary": "获取项目详情",
+        "description": "返回指定项目的详细信息，包括 name、description、defaultPageId、createdBy 等。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "project_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: project_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "项目未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch-teams-{team_slug}-projects-{project_slug}",
+        "summary": "更新项目",
+        "description": "更新项目的名称、描述或默认页面。需要是 team owner 或项目创建者。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "project_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: project_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限（非 owner 且非创建者）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "项目未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete-teams-{team_slug}-projects-{project_slug}",
+        "summary": "删除项目",
+        "description": "删除指定项目。需要是 team owner 或项目创建者。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "project_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: project_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限（非 owner 且非创建者）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "项目未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/projects/{project_slug}/pages": {
+      "get": {
+        "operationId": "get-teams-{team_slug}-projects-{project_slug}-pages",
+        "summary": "获取页面列表",
+        "description": "返回指定项目下所有已关联的 published pages，包含页面元信息和添加时间。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "project_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: project_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "项目未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post-teams-{team_slug}-projects-{project_slug}-pages",
+        "summary": "添加页面",
+        "description": "将已发布的 page 添加到指定项目中。需要是团队成员。",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "project_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: project_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "缺少 page_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非团队成员",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "项目未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "页面已在项目中",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/leaderboard": {
       "get": {
         "operationId": "get-leaderboard",
@@ -8992,6 +10175,144 @@
         }
       }
     },
+    "/rpc/resolve-route": {
+      "get": {
+        "operationId": "get-rpc-resolve-route",
+        "summary": "---- 路由解析 ----",
+        "description": "",
+        "tags": [
+          "Rpc"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "slugs",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sandbox": {
+      "post": {
+        "operationId": "post-sandbox",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [],
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "delete-sandbox",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/sandbox/activity": {
+      "post": {
+        "operationId": "post-sandbox-activity",
+        "summary": "Lightweight endpoint to refresh the inactivity timer (`lastActivityAt` and",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/sandbox/extend": {
+      "post": {
+        "operationId": "post-sandbox-extend",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/sandbox/reconnect": {
+      "get": {
+        "operationId": "get-sandbox-reconnect",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sessionId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sandbox/snapshot": {
+      "post": {
+        "operationId": "post-sandbox-snapshot",
+        "summary": "POST - Compatibility pause endpoint.",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [],
+        "responses": {}
+      },
+      "put": {
+        "operationId": "put-sandbox-snapshot",
+        "summary": "PUT - Compatibility resume endpoint.",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/sandbox/status": {
+      "get": {
+        "operationId": "get-sandbox-status",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sandbox"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sessionId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123"
+          }
+        ],
+        "responses": {}
+      }
+    },
     "/search/hot": {
       "get": {
         "operationId": "get-search-hot",
@@ -9071,6 +10392,1109 @@
             }
           }
         }
+      }
+    },
+    "/sessions": {
+      "get": {
+        "operationId": "get-sessions",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {}
+      },
+      "post": {
+        "operationId": "post-sessions",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/sessions/{sessionId}/code-editor": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-code-editor",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      },
+      "post": {
+        "operationId": "post-sessions-{sessionId}-code-editor",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "delete-sessions-{sessionId}-code-editor",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/dev-server": {
+      "post": {
+        "operationId": "post-sessions-{sessionId}-dev-server",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "delete-sessions-{sessionId}-dev-server",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/diff": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-diff",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sessions/{sessionId}/files": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-files",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sessions/{sessionId}/share": {
+      "post": {
+        "operationId": "post-sessions-{sessionId}-share",
+        "summary": "Deprecated endpoint.",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "delete-sessions-{sessionId}-share",
+        "summary": "Deprecated endpoint.",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/skills": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-skills",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sessions/{sessionId}/chats/{chatId}": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-chats-{chatId}",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          },
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: chatId"
+          }
+        ],
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "patch-sessions-{sessionId}-chats-{chatId}",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          },
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: chatId"
+          }
+        ],
+        "responses": {}
+      },
+      "delete": {
+        "operationId": "delete-sessions-{sessionId}-chats-{chatId}",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          },
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: chatId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/diff/cached": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-diff-cached",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sessions/{sessionId}/diff/patch": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-diff-patch",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/sessions/{sessionId}/files/content": {
+      "get": {
+        "operationId": "get-sessions-{sessionId}-files-content",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Sessions"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: sessionId"
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/settings/model-variants": {
+      "get": {
+        "operationId": "get-settings-model-variants",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post-settings-model-variants",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch-settings-model-variants",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete-settings-model-variants",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/preferences": {
+      "get": {
+        "operationId": "get-settings-preferences",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {}
+      },
+      "patch": {
+        "operationId": "patch-settings-preferences",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/teams": {
+      "get": {
+        "operationId": "get-teams",
+        "summary": "获取团队列表",
+        "description": "返回当前登录用户所属的所有团队，包含团队基本信息及用户在各团队中的角色。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post-teams",
+        "summary": "创建团队",
+        "description": "创建新团队，自动将创建者设为 owner。slug 必须全局唯一。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "缺少 name 或 slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "slug 已被占用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}": {
+      "get": {
+        "operationId": "get-teams-{team_slug}",
+        "summary": "获取团队详情",
+        "description": "返回指定团队的详细信息，包括 displayName、avatarUrl、bio、websiteUrl、createdAt 及当前用户在团队中的角色。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch-teams-{team_slug}",
+        "summary": "更新团队设置",
+        "description": "更新团队的显示名称、简介、头像或网站链接。仅 owner 可操作。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无有效更新字段",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非 owner 无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete-teams-{team_slug}",
+        "summary": "删除团队",
+        "description": "删除指定团队，会级联删除团队成员关系和 projects。仅 owner 可操作。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非 owner 无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "团队未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/check-slug": {
+      "get": {
+        "operationId": "get-teams-check-slug",
+        "summary": "校验团队 slug",
+        "description": "检查指定的 slug 是否可用。返回 `{ available: true }` 表示可用，`{ available: false, message: string }` 表示不可用及原因。slug 格式只允许小写字母、数字和连字符。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "slug",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "slug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "缺少 slug 或格式无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/api-keys": {
+      "get": {
+        "operationId": "get-teams-{team_slug}-api-keys",
+        "summary": "列出团队的 API Keys",
+        "description": "返回团队的所有 API Key 元信息（不含完整密钥）。需团队 Owner 权限。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API Key 元信息列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeysListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非团队 Owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post-teams-{team_slug}-api-keys",
+        "summary": "创建团队 API Key",
+        "description": "为团队生成一个新的 API Key（格式 bmcp_XXXXXXXX_YYYYYYYYYYYYYYYYYYYYYYYY）。完整密钥仅在创建时返回一次。需团队 Owner 权限。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API Key 创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_slug}/api-keys/{id}": {
+      "delete": {
+        "operationId": "delete-teams-{team_slug}-api-keys-{id}",
+        "summary": "删除团队 API Key",
+        "description": "撤销（删除）指定的团队 API Key。需团队 Owner 权限。",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example",
+            "description": "Path parameter: team_slug"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "123",
+            "description": "Path parameter: id"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "非团队 Owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API Key 不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transcribe": {
+      "post": {
+        "operationId": "post-transcribe",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Transcribe"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/usage": {
+      "get": {
+        "operationId": "get-usage",
+        "summary": "GET /api/usage — Retrieve aggregated usage history + derived insights (cookie auth)",
+        "description": "",
+        "tags": [
+          "Usage"
+        ],
+        "parameters": [],
+        "responses": {}
+      }
+    },
+    "/usage/rank": {
+      "get": {
+        "operationId": "get-usage-rank",
+        "summary": "GET /api/usage/rank — Return the current user's daily rank in their domain leaderboard.",
+        "description": "",
+        "tags": [
+          "Usage"
+        ],
+        "parameters": [],
+        "responses": {}
       }
     },
     "/users/{user_slug}": {
@@ -9234,6 +11658,39 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/search": {
+      "get": {
+        "operationId": "get-users-search",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
                 }
               }
             }
@@ -9588,6 +12045,37 @@
         }
       }
     },
+    "/vercel/repo-projects": {
+      "get": {
+        "operationId": "get-vercel-repo-projects",
+        "summary": "",
+        "description": "",
+        "tags": [
+          "Vercel"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repoOwner",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          },
+          {
+            "in": "query",
+            "name": "repoName",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "example"
+          }
+        ],
+        "responses": {}
+      }
+    },
     "/voice-token": {
       "post": {
         "operationId": "post-voice-token",
@@ -9687,6 +12175,9 @@
   },
   "tags": [
     {
+      "name": "Account"
+    },
+    {
       "name": "ApiKeys"
     },
     {
@@ -9694,6 +12185,9 @@
     },
     {
       "name": "Authors"
+    },
+    {
+      "name": "Chat"
     },
     {
       "name": "Collections"
@@ -9708,10 +12202,25 @@
       "name": "Feedbacks"
     },
     {
+      "name": "Generate-pr"
+    },
+    {
+      "name": "Generate-title"
+    },
+    {
+      "name": "Github"
+    },
+    {
       "name": "Health"
     },
     {
       "name": "Media"
+    },
+    {
+      "name": "Members"
+    },
+    {
+      "name": "Models"
     },
     {
       "name": "Moments"
@@ -9729,6 +12238,9 @@
       "name": "Profile"
     },
     {
+      "name": "Projects"
+    },
+    {
       "name": "Rankings"
     },
     {
@@ -9738,10 +12250,34 @@
       "name": "Reports"
     },
     {
+      "name": "Rpc"
+    },
+    {
+      "name": "Sandbox"
+    },
+    {
       "name": "Search"
     },
     {
+      "name": "Sessions"
+    },
+    {
+      "name": "Settings"
+    },
+    {
+      "name": "Teams"
+    },
+    {
+      "name": "Transcribe"
+    },
+    {
+      "name": "Usage"
+    },
+    {
       "name": "Users"
+    },
+    {
+      "name": "Vercel"
     },
     {
       "name": "Voice"
