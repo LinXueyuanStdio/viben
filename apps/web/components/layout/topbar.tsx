@@ -62,7 +62,8 @@ export function Topbar({
   // 从 resolution 推导渲染决策
   const rType = resolution?.type
   const isRead = rType === "read-page" || rType === "project-page"
-  const isDashboardNav = rType === "home" || rType === "dashboard"
+  const isAssistantRoute = pathname.startsWith("/assistant")
+  const isDashboardNav = (rType === "home" || rType === "dashboard") && !isAssistantRoute
   const isTeamRoute = rType === "team-overview" || rType === "team-sub"
   const isProjectRoute = rType === "project-overview"
   // 阅读模式和项目页面共用相同的布局（fixed header / drawer toggle / full-width）

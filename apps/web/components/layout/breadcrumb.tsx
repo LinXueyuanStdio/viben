@@ -88,9 +88,17 @@ export function BreadcrumbNav({ variant = "global", className, resolution }: Bre
 
   // 过滤：read 模式只显示 mode="read" 的路由
   const filteredSegments = React.useMemo(() => {
-    if (variant !== "read") return segments
-    return segments.filter((s) => !s.config.mode || s.config.mode === "read")
-  }, [segments, variant])
+    let result = segments
+    if (variant === "read") {
+      result = segments.filter((s) => !s.config.mode || s.config.mode === "read")
+    }
+    // /assistant 下的页面面包屑止步于 "Viben / 助手"，不展示 sessionId/chatId
+    if (pathname.startsWith("/assistant/")) {
+      const idx = result.findIndex((s) => s.href === "/assistant")
+      if (idx >= 0) result = result.slice(0, idx + 1)
+    }
+    return result
+  }, [segments, variant, pathname])
 
   if (filteredSegments.length === 0) {
     return <div />
