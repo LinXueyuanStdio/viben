@@ -123,6 +123,14 @@ export async function GET(request: NextRequest) {
         .set({ accessToken })
         .where(eq(oauthConnections.id, existingConnection.id));
 
+      // Ensure githubUsername is set on the user record
+      if (!existingConnection.user.githubUsername) {
+        await db
+          .update(users)
+          .set({ githubUsername: githubUser.login })
+          .where(eq(users.id, existingConnection.user.id));
+      }
+
       user = existingConnection.user;
     } else {
       // Check if user with this email exists
@@ -139,6 +147,14 @@ export async function GET(request: NextRequest) {
           providerId: String(githubUser.id),
           accessToken,
         });
+
+        // Update githubUsername if not already set
+        if (!existingUser.githubUsername) {
+          await db
+            .update(users)
+            .set({ githubUsername: githubUser.login })
+            .where(eq(users.id, existingUser.id));
+        }
         user = existingUser;
       } else {
         // Create new user

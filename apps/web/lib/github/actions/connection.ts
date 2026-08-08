@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { deleteInstallationsByUserId } from "@/lib/db/installations";
 import { deleteGitHubAccountLink, hasGitHubAccount } from "@/lib/github/users";
-import { getUserGitHubToken } from "@/lib/github/token";
+import { getGithubOAuthToken } from "@/lib/github/token";
 import { getServerSession } from "@/lib/session/get-server-session";
 
 export async function unlinkGitHub(): Promise<{
@@ -24,7 +24,7 @@ export async function unlinkGitHub(): Promise<{
 
     // revoke the github token before unlinking
     try {
-      const token = await getUserGitHubToken(session.user.id);
+      const token = await getGithubOAuthToken(session.user.id);
       if (token) {
         const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
         const clientSecret = process.env.GITHUB_CLIENT_SECRET;

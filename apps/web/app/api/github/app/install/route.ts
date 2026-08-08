@@ -2,7 +2,7 @@ import { generateState } from "arctic";
 import { NextResponse, type NextRequest } from "next/server";
 import { getInstallationsByUserId } from "@/lib/db/installations";
 import { syncUserInstallations } from "@/lib/github/sync";
-import { getUserGitHubToken } from "@/lib/github/token";
+import { getGithubOAuthToken } from "@/lib/github/token";
 import {
   getGitHubAccountId,
   getGitHubUsername,
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const session = await getServerSession();
   const redirectTo = sanitizeInternalRedirect(
     req.nextUrl.searchParams.get("next"),
-    "/get-started",
+    "/assistant",
     req.url,
   );
 
@@ -66,29 +66,20 @@ export async function GET(req: NextRequest): Promise<Response> {
   const targetId = req.nextUrl.searchParams.get("target_id");
   if (targetId && /^\d+$/.test(targetId)) {
     const installUrl = new URL(
-      `https://github.com/apps/${appSlug}/installations/new/permissions`,
+      `https://github.com/apps/${appSlug}/installations/new`,
     );
     installUrl.searchParams.set("state", state);
     installUrl.searchParams.set("target_id", targetId);
     return redirectWithInstallCookies(installUrl, redirectTo, state);
   }
 
-  // no linked github account â€” redirect to get-started to connect first
-  const linked = await hasGitHubAccount(session.user.id);
-  if (!linked) {
-    const connectUrl = new URL("/get-started", req.url);
-    connectUrl.searchParams.set("github", "not_linked");
-    connectUrl.searchParams.set("next", redirectTo);
-    return NextResponse.redirect(connectUrl);
-  }
-
-  // reconnect mode â€” skip account picker, target the user's personal account
+  // reconnect mode â€?skip account picker, target the user's personal account
   const reconnect = req.nextUrl.searchParams.get("reconnect");
   if (reconnect === "1") {
     const accountId = await getGitHubAccountId(session.user.id);
     if (accountId) {
       const installUrl = new URL(
-        `https://github.com/apps/${appSlug}/installations/new/permissions`,
+        `https://github.com/apps/${appSlug}/installations/new`,
       );
       installUrl.searchParams.set("state", state);
       installUrl.searchParams.set("target_id", accountId);
@@ -96,35 +87,40 @@ export async function GET(req: NextRequest): Promise<Response> {
     }
   }
 
-  // try to sync installations
+  // check existing installations first â€?if user has any, skip to account picker
   let installations = await getInstallationsByUserId(session.user.id);
 
   if (installations.length === 0) {
-    try {
-      const token = await getUserGitHubToken(session.user.id);
-      const username = await getGitHubUsername(session.user.id);
-      if (token && username) {
-        await syncUserInstallations(session.user.id, token, username);
-        installations = await getInstallationsByUserId(session.user.id);
+    // try to sync via OAuth token if user has linked GitHub account
+    const linked = await hasGitHubAccount(session.user.id);
+    if (linked) {
+      try {
+        const token = await getGithubOAuthToken(session.user.id);
+        const username = await getGitHubUsername(session.user.id);
+        if (token && username) {
+          await syncUserInstallations(session.user.id, token, username);
+          installations = await getInstallationsByUserId(session.user.id);
+        }
+      } catch (error) {
+        console.error("Failed to sync GitHub installations in install flow:", {
+          userId: session.user.id,
+          error,
+        });
       }
-    } catch (error) {
-      console.error("Failed to sync GitHub installations in install flow:", {
-        userId: session.user.id,
-        error,
-      });
     }
   }
 
   if (installations.length === 0) {
-    // no installations â€” route to install page
+    // no installations â€?route to GitHub App install page directly
+    // (the callback will use App JWT to register the installation, no OAuth needed)
     const installUrl = new URL(
-      `https://github.com/apps/${appSlug}/installations/new/permissions`,
+      `https://github.com/apps/${appSlug}/installations/new`,
     );
     installUrl.searchParams.set("state", state);
     return redirectWithInstallCookies(installUrl, redirectTo, state);
   }
 
-  // already has installations â€” show account/org picker for additional installs
+  // already has installations â€?show account/org picker for additional installs
   const installUrl = new URL(
     `https://github.com/apps/${appSlug}/installations/select_target`,
   );

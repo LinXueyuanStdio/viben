@@ -5,83 +5,45 @@ import {
   isGitHubInstallationsAuthError,
   syncUserInstallations,
 } from "@/lib/github/sync";
-import { getUserGitHubToken } from "@/lib/github/token";
-import { getGitHubUsername, hasGitHubAccount } from "@/lib/github/users";
+import { getGithubOAuthToken } from "@/lib/github/token";
+import { getGitHubUsername } from "@/lib/github/users";
 import { getServerSession } from "@/lib/session/get-server-session";
 
 export async function GET() {
   const session = await getServerSession();
-
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const [linked, installations] = await Promise.all([
-    hasGitHubAccount(session.user.id),
-    getInstallationsByUserId(session.user.id),
-  ]);
+  const installations = await getInstallationsByUserId(session.user.id);
+  const token = await getGithubOAuthToken(session.user.id);
 
-  if (!linked) {
-    return NextResponse.json({
-      status: "not_connected",
-      reason: null,
-      hasInstallations: installations.length > 0,
-      syncedInstallationsCount: installations.length,
-    } satisfies GitHubConnectionStatusResponse);
-  }
-
-  const token = await getUserGitHubToken(session.user.id);
-  if (!token) {
-    return NextResponse.json({
-      status: "reconnect_required",
-      reason: "token_unavailable",
-      hasInstallations: installations.length > 0,
-      syncedInstallationsCount: null,
-    } satisfies GitHubConnectionStatusResponse);
-  }
-
-  try {
-    const username = await getGitHubUsername(session.user.id);
-    if (!username) {
-      return NextResponse.json({
-        status: "reconnect_required",
-        reason: "sync_auth_failed",
-        hasInstallations: installations.length > 0,
-        syncedInstallationsCount: null,
-      } satisfies GitHubConnectionStatusResponse);
+  // Try sync via OAuth token (only works with repo-scoped tokens)
+  if (token) {
+    try {
+      const username = await getGitHubUsername(session.user.id);
+      if (username) {
+        const count = await syncUserInstallations(session.user.id, token, username);
+        return NextResponse.json({
+          status: "connected",
+          reason: null,
+          hasInstallations: count > 0,
+          syncedInstallationsCount: count,
+        } satisfies GitHubConnectionStatusResponse);
+      }
+    } catch (error) {
+      if (!isGitHubInstallationsAuthError(error)) {
+        console.error("Failed to validate GitHub connection status:", error);
+      }
+      // fall through â€?login token lacks App scope, rely on DB
     }
-
-    const syncedInstallationsCount = await syncUserInstallations(
-      session.user.id,
-      token,
-      username,
-    );
-    const reconnectRequired =
-      installations.length > 0 && syncedInstallationsCount === 0;
-
-    return NextResponse.json({
-      status: reconnectRequired ? "reconnect_required" : "connected",
-      reason: reconnectRequired ? "installations_missing" : null,
-      hasInstallations: syncedInstallationsCount > 0,
-      syncedInstallationsCount,
-    } satisfies GitHubConnectionStatusResponse);
-  } catch (error) {
-    if (isGitHubInstallationsAuthError(error)) {
-      return NextResponse.json({
-        status: "reconnect_required",
-        reason: "sync_auth_failed",
-        hasInstallations: installations.length > 0,
-        syncedInstallationsCount: null,
-      } satisfies GitHubConnectionStatusResponse);
-    }
-
-    console.error("Failed to validate GitHub connection status:", error);
-
-    return NextResponse.json({
-      status: "connected",
-      reason: null,
-      hasInstallations: installations.length > 0,
-      syncedInstallationsCount: installations.length,
-    } satisfies GitHubConnectionStatusResponse);
   }
+
+  // Rely on DB installations (populated by GitHub App callback)
+  return NextResponse.json({
+    status: installations.length > 0 ? "connected" : "not_connected",
+    reason: null,
+    hasInstallations: installations.length > 0,
+    syncedInstallationsCount: installations.length,
+  } satisfies GitHubConnectionStatusResponse);
 }

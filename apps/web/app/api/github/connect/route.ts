@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 import { cookies } from 'next/headers';
@@ -11,7 +12,7 @@ import { cookies } from 'next/headers';
  * @tag GitHub
  * @ignore
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session?.userId) {
@@ -31,14 +32,27 @@ export async function GET() {
 
     const state = generateId();
 
-    // Store state in cookie for CSRF protection
+    // Read redirect param for post-auth redirect
+    const redirectParam = request.nextUrl.searchParams.get('redirect');
+
     const cookieStore = await cookies();
+    // Store state in cookie for CSRF protection
     cookieStore.set('github_repo_oauth_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 600, // 10 minutes
     });
+
+    // Store redirect destination for callback
+    if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
+      cookieStore.set('github_repo_oauth_redirect', redirectParam, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600,
+      });
+    }
 
     const params = new URLSearchParams({
       client_id: clientId,

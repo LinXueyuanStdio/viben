@@ -24,10 +24,14 @@ export async function GET(request: NextRequest) {
   // Verify state
   const cookieStore = await cookies();
   const storedState = cookieStore.get('github_repo_oauth_state')?.value;
+  const redirectAfterConnect = cookieStore.get('github_repo_oauth_redirect')?.value || '/assistant';
   cookieStore.delete('github_repo_oauth_state');
+  cookieStore.delete('github_repo_oauth_redirect');
 
   if (!code || !state || state !== storedState) {
-    return NextResponse.redirect(`${appUrl}/publish?error=invalid_state`);
+    const errorUrl = new URL(redirectAfterConnect, appUrl);
+    errorUrl.searchParams.set('github', 'oauth_failed');
+    return NextResponse.redirect(errorUrl);
   }
 
   try {
@@ -60,7 +64,9 @@ export async function GET(request: NextRequest) {
 
     if (!accessToken) {
       console.error('No access token received:', tokenData);
-      return NextResponse.redirect(`${appUrl}/publish?error=no_token`);
+      const errorUrl = new URL(redirectAfterConnect, appUrl);
+      errorUrl.searchParams.set('github', 'oauth_failed');
+      return NextResponse.redirect(errorUrl);
     }
 
     // Get GitHub user info
@@ -101,9 +107,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.redirect(`${appUrl}/publish?github_connected=true`);
+    const successUrl = new URL(redirectAfterConnect, appUrl);
+    successUrl.searchParams.set('github', 'connected');
+    return NextResponse.redirect(successUrl);
   } catch (error) {
     console.error('GitHub OAuth callback error:', error);
-    return NextResponse.redirect(`${appUrl}/publish?error=oauth_failed`);
+    const errorUrl = new URL(redirectAfterConnect, appUrl);
+    errorUrl.searchParams.set('github', 'oauth_failed');
+    return NextResponse.redirect(errorUrl);
   }
 }

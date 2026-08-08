@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { syncUserInstallations } from "@/lib/github/sync";
-import { getUserGitHubToken } from "@/lib/github/token";
-import { getGitHubUsername } from "@/lib/github/users";
+import {
+  fetchInstallationDetail,
+  isGitHubAppConfigured,
+} from "@/lib/github/app";
+import { upsertInstallation } from "@/lib/db/installations";
 import { isManagedTemplateTrialUser } from "@/lib/managed-template-trial";
 import { sanitizeInternalRedirect } from "@/lib/redirect-safety";
 import { getServerSession } from "@/lib/session/get-server-session";
@@ -29,14 +31,13 @@ function redirectAndClearCookies(url: string | URL): NextResponse {
 }
 
 /**
- * GitHub App Setup URL callback — handles installation sync only.
- * OAuth token exchange is handled by better-auth at /api/auth/callback/github.
+ * GitHub App Setup URL callback — handles installation via App JWT.
  */
 export async function GET(req: Request): Promise<Response> {
   const cookieStore = await cookies();
   const redirectTo = sanitizeInternalRedirect(
     cookieStore.get("github_app_install_redirect_to")?.value,
-    "/get-started",
+    "/assistant",
     req.url,
   );
 
@@ -52,45 +53,41 @@ export async function GET(req: Request): Promise<Response> {
     return redirectAndClearCookies(redirectUrl);
   }
 
+  if (!isGitHubAppConfigured()) {
+    redirectUrl.searchParams.set("github", "app_not_configured");
+    return redirectAndClearCookies(redirectUrl);
+  }
+
   const requestUrl = new URL(req.url);
   const installationId = parseInstallationId(
     requestUrl.searchParams.get("installation_id"),
   );
   const setupAction = requestUrl.searchParams.get("setup_action");
 
-  // get the user's github token from better-auth
-  const token = await getUserGitHubToken(session.user.id);
-  if (!token) {
-    redirectUrl.searchParams.set("github", "not_linked");
-    return redirectAndClearCookies(redirectUrl);
-  }
-
-  // sync installations
-  let syncedInstallationsCount: number | null = null;
-  const username = await getGitHubUsername(session.user.id);
-
-  if (username) {
+  if (installationId) {
     try {
-      syncedInstallationsCount = await syncUserInstallations(
-        session.user.id,
-        token,
-        username,
-      );
+      const detail = await fetchInstallationDetail(installationId);
+      await upsertInstallation({
+        userId: session.user.id,
+        installationId: detail.id,
+        accountLogin: detail.accountLogin,
+        accountType: detail.accountType,
+        repositorySelection: detail.repositorySelection,
+        installationUrl: detail.htmlUrl,
+      });
     } catch (error) {
-      console.error("Failed syncing installations:", error);
+      console.error("Failed to fetch installation detail:", error);
     }
   }
 
   let githubStatus: string;
   if (setupAction === "request") {
     githubStatus = "request_sent";
-  } else if ((syncedInstallationsCount ?? 0) > 0) {
+  } else if (installationId) {
     githubStatus = "app_installed";
-  } else if (!installationId) {
+  } else {
     githubStatus = "no_action";
     redirectUrl.searchParams.set("missing_installation_id", "1");
-  } else {
-    githubStatus = "pending_sync";
   }
 
   redirectUrl.searchParams.set("github", githubStatus);

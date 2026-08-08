@@ -80,6 +80,6 @@ export function getInstallationManageUrl(
 }
 
 export function buildGitHubReconnectUrl(next: string): string {
-  const params = new URLSearchParams({ step: "github", next });
-  return `/get-started?${params.toString()}`;
+  const params = new URLSearchParams({ redirect: next });
+  return `/api/github/connect?${params.toString()}`;
 }

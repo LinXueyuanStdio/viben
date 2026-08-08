@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session/get-server-session";
-import { getUserGitHubToken } from "@/lib/github/token";
+import { getGithubOAuthToken } from "@/lib/github/token";
 import { fetchGitHubOrgs } from "@/lib/github/users";
 
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
     );
   }
 
-  const token = await getUserGitHubToken(session.user.id);
+  const token = await getGithubOAuthToken(session.user.id);
 
   if (!token) {
     return NextResponse.json(

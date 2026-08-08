@@ -16,7 +16,7 @@ import {
   getRepoAccessErrorMessage,
 } from "@/lib/github/access";
 import { withScopedInstallationOctokit } from "@/lib/github/app";
-import { getGitHubAppUserToken, getUserGitHubToken } from "@/lib/github/token";
+import { getGithubAppToken } from "@/lib/github/token";
 import { generatePullRequestContentFromSandbox } from "@/lib/github/pr-content";
 import { getSessionById, updateSession } from "@/lib/db/sessions";
 import { isSandboxActive } from "@/lib/sandbox/utils";
@@ -180,7 +180,7 @@ export async function generatePrContent(params: {
   const statusResult = await sandbox.exec("git status --porcelain", cwd, 10000);
   if (statusResult.stdout.trim().length > 0) {
     throw new Error(
-      "Uncommitted changes â€” commit first before generating PR content",
+      "Uncommitted changes â€?commit first before generating PR content",
     );
   }
 
@@ -371,7 +371,7 @@ export async function openPullRequest(params: {
     }
   }
 
-  const userToken = await getGitHubAppUserToken(session.user.id);
+  const userToken = await getGithubAppToken(session.user.id);
   if (!userToken) {
     throw new Error("No GitHub token available for pull request creation");
   }
@@ -527,7 +527,7 @@ export async function mergePr(params: {
     throw new Error("Invalid merge method");
   }
 
-  const token = await getUserGitHubToken(session.user.id);
+  const token = await getGithubAppToken(session.user.id);
   if (!token) {
     throw new Error("No GitHub token available for this repository");
   }

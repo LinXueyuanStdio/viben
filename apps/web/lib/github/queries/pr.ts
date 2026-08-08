@@ -8,7 +8,7 @@ import {
   type CheckRun,
   type MergeMethod,
 } from "@/lib/github/pulls";
-import { getUserGitHubToken } from "@/lib/github/token";
+import { getGithubOAuthToken } from "@/lib/github/token";
 import { isSandboxActive } from "@/lib/sandbox/utils";
 import { getServerSession } from "@/lib/session/get-server-session";
 
@@ -170,7 +170,7 @@ export async function checkPullRequest(params: { sessionId: string }): Promise<{
   const currentPrStatus = branchChanged ? null : sessionRecord.prStatus;
 
   // check GitHub for an existing PR on this branch
-  const token = await getUserGitHubToken(session.user.id);
+  const token = await getGithubOAuthToken(session.user.id);
   if (!token) {
     return {
       branch,
@@ -253,7 +253,7 @@ export async function getMergeReadiness(params: {
     );
   }
 
-  const token = await getUserGitHubToken(session.user.id);
+  const token = await getGithubOAuthToken(session.user.id);
   if (!token) {
     return buildUnavailableResponse(
       "No GitHub token available for this repository",

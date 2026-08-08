@@ -3,7 +3,7 @@ import { getInstallationsByUserId } from "@/lib/db/installations";
 import { isGitHubAppConfigured } from "@/lib/github/app";
 import { getInstallationManageUrl } from "@/lib/github/urls";
 import { syncUserInstallations } from "@/lib/github/sync";
-import { getUserGitHubToken } from "@/lib/github/token";
+import { getGithubOAuthToken } from "@/lib/github/token";
 import { hasGitHubAccount } from "@/lib/github/users";
 import { getServerSession } from "@/lib/session/get-server-session";
 
@@ -59,7 +59,7 @@ export async function GET() {
     );
   }
 
-  const token = await getUserGitHubToken(session.user.id);
+  const token = await getGithubOAuthToken(session.user.id);
 
   // when the token is unavailable, fall back to DB-cached installations
   if (!token) {
@@ -120,7 +120,7 @@ export async function GET() {
     ]);
 
     if (!userResponse.ok || !orgsResponse.ok) {
-      // token revoked/expired â€” fall back to DB-cached installations
+      // token revoked/expired â€?fall back to DB-cached installations
       const isAuthError =
         userResponse.status === 401 ||
         userResponse.status === 403 ||
