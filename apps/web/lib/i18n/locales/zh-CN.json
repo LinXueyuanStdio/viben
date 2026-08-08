@@ -1954,7 +1954,10 @@
       "pages": "页面",
       "likes": "喜欢",
       "mcp": "MCP",
-      "skills": "技能"
+      "skills": "技能",
+      "myPackages": "我的包",
+      "favorites": "收藏",
+      "apiKeys": "API 密钥"
     },
     "form": {
       "username": "用户名",
@@ -2042,11 +2045,6 @@
       "memberSince": "注册于 {{date}}",
       "roleAdmin": "管理员",
       "roleDeveloper": "开发者"
-    },
-    "tabs": {
-      "myPackages": "我的包",
-      "favorites": "收藏",
-      "apiKeys": "API 密钥"
     },
     "packages": {
       "noPackagesYet": "您还没有发布任何包",

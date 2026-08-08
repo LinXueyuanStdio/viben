@@ -1955,7 +1955,10 @@
       "pages": "Pages",
       "likes": "Likes",
       "mcp": "MCP",
-      "skills": "Skills"
+      "skills": "Skills",
+      "myPackages": "My Packages",
+      "favorites": "Favorites",
+      "apiKeys": "API Keys"
     },
     "form": {
       "username": "Username",
@@ -2043,11 +2046,6 @@
       "memberSince": "Member since {{date}}",
       "roleAdmin": "Admin",
       "roleDeveloper": "Developer"
-    },
-    "tabs": {
-      "myPackages": "My Packages",
-      "favorites": "Favorites",
-      "apiKeys": "API Keys"
     },
     "packages": {
       "noPackagesYet": "You haven't published any packages yet",
