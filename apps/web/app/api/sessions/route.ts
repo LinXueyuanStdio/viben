@@ -19,28 +19,6 @@ import {
 } from "@/lib/github/urls";
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { kickSandboxProvisioningWorkflow } from "@/lib/sandbox/provisioning-kick";
-const DEFAULT_SESSION_TITLES: Record<string, string> = {
-  en: "New Session",
-  "zh-CN": "新建会话",
-  ja: "新規セッション",
-  ko: "새 세션",
-  de: "Neue Sitzung",
-  fr: "Nouvelle session",
-  es: "Nueva sesión",
-  pt: "Nova sessão",
-  it: "Nuova sessione",
-  nl: "Nieuwe sessie",
-  pl: "Nowa sesja",
-  ru: "Новая сессия",
-  tr: "Yeni Oturum",
-  vi: "Phiên mới",
-  th: "เซสชันใหม่",
-  id: "Sesi Baru",
-  ms: "Sesi Baharu",
-  hi: "नई सत्र",
-  uk: "Нова сесія",
-  sv: "Ny session",
-};
 import { getServerSession } from "@/lib/session/get-server-session";
 import {
   isManagedTemplateTrialUser,
@@ -60,7 +38,6 @@ import {
 
 interface CreateSessionRequest {
   title?: string;
-  language?: string;
   repoOwner?: string;
   repoName?: string;
   branch?: string;
@@ -88,14 +65,8 @@ function generateBranchName(username: string, name?: string | null): string {
   return `${initials}/${randomSuffix}`;
 }
 
-async function resolveSessionTitle(
-  input: CreateSessionRequest,
-): Promise<string> {
-  if (input.title && input.title.trim()) {
-    return input.title.trim();
-  }
-  const lang = input.language ?? "en";
-  return DEFAULT_SESSION_TITLES[lang] ?? DEFAULT_SESSION_TITLES.en!;
+function resolveSessionTitle(input: CreateSessionRequest): string {
+  return input.title?.trim() || "New Session";
 }
 
 const DEFAULT_ARCHIVED_SESSIONS_LIMIT = 50;
@@ -332,8 +303,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const titlePromise = resolveSessionTitle(body);
-    const preferencesPromise = getUserPreferences(session.user.id);
+    const title = resolveSessionTitle(body);
+    const rawPreferences = await getUserPreferences(session.user.id);
 
     let resolvedVercelProject: VercelProjectSelection | null = null;
     const hasRepo = Boolean(repoOwner && repoName);
@@ -382,10 +353,6 @@ export async function POST(req: Request) {
       }
     }
 
-    const [title, rawPreferences] = await Promise.all([
-      titlePromise,
-      preferencesPromise,
-    ]);
     const preferences = sanitizeUserPreferencesForSession(
       rawPreferences,
       session,

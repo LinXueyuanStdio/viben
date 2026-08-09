@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import type { Chat, Session } from "@/lib/db/schema";
@@ -30,7 +31,6 @@ export type SessionWithUnread = Pick<
 
 interface CreateSessionInput {
   title?: string;
-  language?: string;
   repoOwner?: string;
   repoName?: string;
   branch?: string;
@@ -94,6 +94,7 @@ export function useSessions(options?: {
   includeArchived?: boolean;
   initialData?: SessionsResponse;
 }) {
+  const { t } = useTranslation();
   const enabled = options?.enabled ?? true;
   const includeArchived = options?.includeArchived ?? true;
   const sessionsEndpoint = includeArchived
@@ -136,11 +137,16 @@ export function useSessions(options?: {
   const createSession = useCallback(
     async (input: CreateSessionInput) => {
       const previousData = cloneSessionsResponse(data);
+      // Default title based on user's language
+      const resolvedInput = {
+        ...input,
+        title: input.title?.trim() || t("assistant.newSession"),
+      };
 
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify(resolvedInput),
       });
 
       const responseData = (await res.json()) as {

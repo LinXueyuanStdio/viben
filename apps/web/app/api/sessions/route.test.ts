@@ -31,10 +31,6 @@ mock.module("@/lib/session/get-server-session", () => ({
   getServerSession: async () => currentSession,
 }));
 
-mock.module("@/lib/random-city", () => ({
-  getRandomCityName: () => "Oslo",
-}));
-
 mock.module("@/lib/db/user-preferences", () => ({
   getUserPreferences: async () => ({
     defaultModelId: "anthropic/claude-haiku-4.5",
@@ -99,7 +95,6 @@ mock.module("@/lib/db/sessions", () => ({
   },
   getArchivedSessionCountByUserId: async () => 0,
   getSessionsWithUnreadByUserId: async () => [],
-  getUsedSessionTitles: async () => new Set<string>(),
 }));
 
 mock.module("@/lib/sandbox/provisioning-kick", () => ({
