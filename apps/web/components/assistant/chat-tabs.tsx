@@ -21,19 +21,224 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/format-relative-time";
 import { useIsMobile } from "@/hooks/assistant/use-mobile";
 import { useGitPanel } from "./git-panel-context";
 
-type ChatTabsProps = {
-  activeChatId: string;
+type ChatTabItemProps = {
+  chat: SessionChatListItem;
+  isActive: boolean;
+  isRenaming: boolean;
+  renameValue: string;
+  canDelete: boolean;
+  isMobile: boolean;
+  tabRef?: React.Ref<HTMLDivElement>;
+  onRenameChange: (value: string) => void;
+  onFinishRename: () => void;
+  onCancelRename: () => void;
+  onStartRename: () => void;
+  onDelete: () => void;
+  onClick: () => void;
+  onPrefetch: () => void;
 };
 
-export function ChatTabs({ activeChatId }: ChatTabsProps) {
+import type { SessionChatListItem } from "@/hooks/assistant/use-session-chats";
+
+function ChatTabItem({
+  chat,
+  isActive,
+  isRenaming,
+  renameValue,
+  canDelete,
+  isMobile,
+  tabRef,
+  onRenameChange,
+  onFinishRename,
+  onCancelRename,
+  onStartRename,
+  onDelete,
+  onClick,
+  onPrefetch,
+}: ChatTabItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
+    };
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+    if (!isMobile && !isRenaming) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setPopoverOpen(true);
+      }, 500);
+    }
+  }, [isMobile, isRenaming]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(false);
+    leaveTimeoutRef.current = setTimeout(() => {
+      setPopoverOpen(false);
+    }, 200);
+  }, []);
+
+  const lastActivityLabel = formatRelativeTime(
+    chat.updatedAt ?? chat.createdAt,
+  );
+
+  const tabButton = isRenaming ? (
+    <div className="flex items-center px-2 py-[7px]">
+      <input
+        value={renameValue}
+        onChange={(e) => onRenameChange(e.target.value)}
+        onBlur={() => void onFinishRename()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            void onFinishRename();
+          }
+          if (e.key === "Escape") {
+            onCancelRename();
+          }
+        }}
+        className="max-w-[130px] rounded border border-border bg-background px-1.5 py-0 text-sm font-medium outline-none focus:ring-1 focus:ring-ring"
+        autoFocus
+      />
+    </div>
+  ) : (
+    <button
+      type="button"
+      onMouseEnter={() => onPrefetch()}
+      onFocus={() => onPrefetch()}
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium"
+    >
+      <span className="max-w-[120px] truncate">
+        {chat.title || "New Chat"}
+      </span>
+      {chat.hasUnread && (
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+      )}
+    </button>
+  );
+
+  const actionButtons = !isRenaming ? (
+    <div
+      className={cn(
+        "flex items-center gap-0.5 pr-1 transition-opacity",
+        isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+      )}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onStartRename();
+        }}
+        className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        aria-label="Rename chat"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+      {canDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="Close chat"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  const tab = (
+    <div
+      ref={tabRef}
+      className={cn(
+        "group relative flex shrink-0 items-center border-b-2 transition-colors",
+        isActive
+          ? "border-foreground text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {tabButton}
+      {actionButtons}
+    </div>
+  );
+
+  if (isMobile || isRenaming) {
+    return tab;
+  }
+
+  return (
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <PopoverTrigger asChild>{tab}</PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        sideOffset={8}
+        className="w-56 p-3"
+        onMouseEnter={() => {
+          if (leaveTimeoutRef.current) {
+            clearTimeout(leaveTimeoutRef.current);
+            leaveTimeoutRef.current = null;
+          }
+        }}
+        onMouseLeave={handleMouseLeave}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground leading-snug">
+            {chat.title || "New Chat"}
+          </p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="truncate">{chat.modelId}</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {lastActivityLabel}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+type ChatTabsProps = {
+  activeChatId: string;
+  variant?: "standalone" | "inline";
+};
+
+export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps) {
   const router = useRouter();
   const params = useParams<{ sessionId?: string }>();
   const sessionId = params.sessionId ?? "";
@@ -292,91 +497,28 @@ export function ChatTabs({ activeChatId }: ChatTabsProps) {
       const isRenaming = renamingChatId === chat.id;
 
       elements.push(
-        <div
+        <ChatTabItem
           key={chat.id}
-          ref={isActive ? activeChatTabRef : undefined}
-          className={cn(
-            "group relative flex shrink-0 items-center border-b-2 transition-colors",
-            isActive
-              ? "border-foreground text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {isRenaming ? (
-            <div className="flex items-center px-2 py-[7px]">
-              <input
-                ref={renameInputRef}
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onBlur={() => void handleFinishRename()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    void handleFinishRename();
-                  }
-                  if (e.key === "Escape") {
-                    setRenamingChatId(null);
-                  }
-                }}
-                className="max-w-[130px] rounded border border-border bg-background px-1.5 py-0 text-sm font-medium outline-none focus:ring-1 focus:ring-ring"
-                autoFocus
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onMouseEnter={() => prefetchChat(chat.id)}
-              onFocus={() => prefetchChat(chat.id)}
-              onClick={() => {
-                if (chat.id !== activeChatId) {
-                  switchChat(chat.id);
-                }
-                setActiveView("chat");
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium"
-            >
-              <span className="max-w-[120px] truncate">
-                {chat.title || "New Chat"}
-              </span>
-              {chat.hasUnread && (
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-              )}
-            </button>
-          )}
-
-          {!isRenaming && (
-            <div
-              className={cn(
-                "flex items-center gap-0.5 pr-1 transition-opacity",
-                isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-              )}
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStartRename(chat.id, chat.title || "");
-                }}
-                className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Rename chat"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeletingChatId(chat.id);
-                  }}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  aria-label="Close chat"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>,
+          chat={chat}
+          isActive={isActive}
+          isRenaming={isRenaming}
+          tabRef={isActive ? activeChatTabRef : undefined}
+          renameValue={renameValue}
+          canDelete={canDelete}
+          isMobile={isMobile}
+          onRenameChange={setRenameValue}
+          onFinishRename={handleFinishRename}
+          onCancelRename={() => setRenamingChatId(null)}
+          onStartRename={() => handleStartRename(chat.id, chat.title || "")}
+          onDelete={() => setDeletingChatId(chat.id)}
+          onClick={() => {
+            if (chat.id !== activeChatId) {
+              switchChat(chat.id);
+            }
+            setActiveView("chat");
+          }}
+          onPrefetch={() => prefetchChat(chat.id)}
+        />,
       );
     });
 
@@ -411,29 +553,37 @@ export function ChatTabs({ activeChatId }: ChatTabsProps) {
     switchChat,
   ]);
 
+  const scrollContent = (
+    <div
+      ref={scrollContainerRef}
+      className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {tabElements}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="ml-1 flex shrink-0 items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">New chat</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+
   return (
     <>
-      <div className="flex items-center gap-0 border-b border-border bg-muted/30 px-1">
-        <div
-          ref={scrollContainerRef}
-          className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {tabElements}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={handleNewChat}
-                className="ml-1 flex shrink-0 items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">New chat</TooltipContent>
-          </Tooltip>
+      {variant === "inline" ? (
+        scrollContent
+      ) : (
+        <div className="flex items-center gap-0 border-b border-border bg-muted/30 px-1">
+          {scrollContent}
         </div>
-      </div>
+      )}
 
       <Dialog
         open={deletingChatId !== null}
