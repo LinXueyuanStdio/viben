@@ -35,7 +35,7 @@ export async function GET() {
       if (!isGitHubInstallationsAuthError(error)) {
         console.error("Failed to validate GitHub connection status:", error);
       }
-      // fall through â€?login token lacks App scope, rely on DB
+      // fall through â€” login token lacks App scope, rely on DB
     }
   }
 

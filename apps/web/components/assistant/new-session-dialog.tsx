@@ -51,7 +51,7 @@ export function NewSessionDialog({
     try {
       const { session: createdSession, chat } = await createSession(input);
       onOpenChange(false);
-      router.push(`/assistant/${createdSession.id}/${chat.id}`);
+      router.push(`/assistant/${createdSession.id}/chats/${chat.id}`);
     } catch (error) {
       console.error("Failed to create session:", error);
     } finally {

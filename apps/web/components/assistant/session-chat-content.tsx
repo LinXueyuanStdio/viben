@@ -1290,7 +1290,7 @@ export function SessionChatContent({
       try {
         const { persisted } = forkChat(chatInfo.id, messageId);
         const forkedChat = await persisted;
-        router.push(`/assistant/${session.id}/${forkedChat.id}`, {
+        router.push(`/assistant/${session.id}/chats/${forkedChat.id}`, {
           scroll: false,
         });
       } catch (forkError) {

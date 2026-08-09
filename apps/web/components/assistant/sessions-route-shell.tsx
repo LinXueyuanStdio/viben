@@ -137,7 +137,7 @@ export function SessionsRouteShell({
 
   const getSessionHref = useCallback((targetSession: SessionWithUnread) => {
     if (targetSession.latestChatId) {
-      return `/assistant/${targetSession.id}/${targetSession.latestChatId}`;
+      return `/assistant/${targetSession.id}/chats/${targetSession.latestChatId}`;
     }
 
     return `/assistant/${targetSession.id}`;
@@ -262,7 +262,7 @@ export function SessionsRouteShell({
           autoCommitPush: preferences?.autoCommitPush ?? false,
           autoCreatePr: preferences?.autoCreatePr ?? false,
         });
-        router.push(`/assistant/${created.id}/${chat.id}`, {
+        router.push(`/assistant/${created.id}/chats/${chat.id}`, {
           scroll: false,
         });
       } catch (error) {
@@ -285,7 +285,7 @@ export function SessionsRouteShell({
           autoCommitPush: preferences?.autoCommitPush ?? false,
           autoCreatePr: preferences?.autoCreatePr ?? false,
         });
-        router.push(`/assistant/${created.id}/${chat.id}`, {
+        router.push(`/assistant/${created.id}/chats/${chat.id}`, {
           scroll: false,
         });
       } catch (error) {

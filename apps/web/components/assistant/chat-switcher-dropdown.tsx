@@ -30,7 +30,7 @@ export function ChatSwitcherDropdown() {
         console.error("Failed to create chat:", err);
         if (previousChatId && params.sessionId) {
           router.replace(
-            `/assistant/${params.sessionId}/${previousChatId}`,
+            `/assistant/${params.sessionId}/chats/${previousChatId}`,
           );
         }
       });

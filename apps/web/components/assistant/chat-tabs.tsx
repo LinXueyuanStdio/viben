@@ -314,7 +314,7 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
         return;
       }
 
-      const href = `/assistant/${sessionId}/${chatId}`;
+      const href = `/assistant/${sessionId}/chats/${chatId}`;
       if (prefetchedChatHrefsRef.current.has(href)) {
         return;
       }
