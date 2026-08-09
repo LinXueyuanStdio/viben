@@ -16,13 +16,17 @@ import { mapRichMomentToFeedCard } from "@/lib/services/moment-mapper"
 export const metadata: Metadata = {
   title: "动态 - Viben",
   description: "发现来自 Viben 社区的创作、动态与分享。",
+  alternates: {
+    canonical: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/moment`,
+  },
   openGraph: {
     title: "动态 - Viben",
     description: "发现来自 Viben 社区的创作、动态与分享。",
+    url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/moment`,
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "动态 - Viben",
     description: "发现来自 Viben 社区的创作、动态与分享。",
   },

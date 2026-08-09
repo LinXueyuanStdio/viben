@@ -80,12 +80,23 @@ async function getChatByIdWithRetry(
 export async function generateMetadata({
   params,
 }: SessionChatPageProps): Promise<Metadata> {
-  const { sessionId } = await params;
+  const { sessionId, chatId } = await params;
   const sessionRecord = await getSessionByIdCached(sessionId);
+
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
   return {
     title: sessionRecord?.title ?? `Session ${sessionId}`,
     description: "Review session progress, chats, and outputs.",
+    alternates: {
+      canonical: `${APP_URL}/assistant/${sessionId}/chats/${chatId}`,
+    },
+    openGraph: {
+      title: sessionRecord?.title ?? `Session ${sessionId}`,
+      description: "Review session progress, chats, and outputs.",
+      url: `${APP_URL}/assistant/${sessionId}/chats/${chatId}`,
+      type: "website",
+    },
   };
 }
 

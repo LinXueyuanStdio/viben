@@ -16,9 +16,20 @@ export async function generateMetadata({ params }: CollectionDetailPageProps) {
     return { title: 'Collection Not Found' };
   }
 
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   return {
     title: collection.name,
     description: collection.description || 'A curated collection',
+    alternates: {
+      canonical: `${APP_URL}/collections/${id}`,
+    },
+    openGraph: {
+      title: collection.name,
+      description: collection.description || 'A curated collection',
+      url: `${APP_URL}/collections/${id}`,
+      type: "website",
+    },
   };
 }
 

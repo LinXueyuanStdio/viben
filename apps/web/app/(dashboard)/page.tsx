@@ -29,10 +29,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Viben - 创作 · 分享 · 连接",
     description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
+    url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Viben - 创作 · 分享 · 连接",
     description: "Viben 是一个面向创作者的社区平台，支持富文本页面创作、动态分享、合集管理。",
   },

@@ -50,6 +50,7 @@ export async function generateReadPageMetadata(
     },
     openGraph: {
       title,
+      url: `${APP_URL}/${encodedSlug}/${encodedPage}`,
       description: seoDescription,
       type: "article" as const,
       ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),

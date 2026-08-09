@@ -19,7 +19,20 @@ export async function generateMetadata({
     columns: { body: true },
   })
   const title = moment?.body?.slice(0, 60) ?? "动态详情"
-  return { title: `${title} - Viben`, description: title }
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  return {
+    title: `${title} - Viben`,
+    description: title,
+    alternates: {
+      canonical: `${APP_URL}/moment/${id}`,
+    },
+    openGraph: {
+      title: `${title} - Viben`,
+      description: title,
+      url: `${APP_URL}/moment/${id}`,
+      type: "article",
+    },
+  }
 }
 
 export default async function MomentDetailPage({

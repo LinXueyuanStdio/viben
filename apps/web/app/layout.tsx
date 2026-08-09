@@ -29,10 +29,25 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  alternates: {
+    canonical: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  },
   openGraph: {
     siteName: 'Viben',
     type: 'website',
     locale: 'zh_CN',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/opengraph-image'],
   },
 };
 

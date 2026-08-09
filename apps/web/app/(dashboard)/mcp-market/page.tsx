@@ -8,8 +8,20 @@ import { getSession } from '@/lib/auth/cookies';
 import { SourceTabs, type McpSource } from '@/components/mcp/source-tabs';
 import { OfficialServerGrid } from '@/components/mcp/official-server-grid';
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
 export const metadata = {
   title: 'MCP 市场',
+  description: '浏览和安装 Viben 社区的 MCP 服务包',
+  alternates: {
+    canonical: `${APP_URL}/mcp-market`,
+  },
+  openGraph: {
+    title: 'MCP 市场',
+    description: '浏览和安装 Viben 社区的 MCP 服务包',
+    url: `${APP_URL}/mcp-market`,
+    type: "website",
+  },
 };
 
 interface McpPageProps {

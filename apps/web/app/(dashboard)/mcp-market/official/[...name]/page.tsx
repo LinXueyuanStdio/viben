@@ -22,9 +22,20 @@ export async function generateMetadata({
     };
   }
 
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
   return {
     title: `${server.name} - MCP Marketplace`,
     description: server.description || undefined,
+    alternates: {
+      canonical: `${APP_URL}/mcp-market/official/${name.map(encodeURIComponent).join("/")}`,
+    },
+    openGraph: {
+      title: `${server.name} - MCP Marketplace`,
+      description: server.description || undefined,
+      url: `${APP_URL}/mcp-market/official/${name.map(encodeURIComponent).join("/")}`,
+      type: "website",
+    },
   };
 }
 

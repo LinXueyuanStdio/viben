@@ -24,9 +24,20 @@ export async function generateMetadata({
     };
   }
 
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
   return {
     title: `${skill.name} - Skills Marketplace`,
     description: skill.description || undefined,
+    alternates: {
+      canonical: `${APP_URL}/skill-market/official/${slug}`,
+    },
+    openGraph: {
+      title: `${skill.name} - Skills Marketplace`,
+      description: skill.description || undefined,
+      url: `${APP_URL}/skill-market/official/${slug}`,
+      type: "website",
+    },
   };
 }
 

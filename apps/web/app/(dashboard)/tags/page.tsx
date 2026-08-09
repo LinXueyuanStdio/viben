@@ -3,8 +3,20 @@ import { db, publishedPages } from '@/lib/db';
 import { and, eq, sql } from 'drizzle-orm';
 import { SectionHead } from '@/components/content/section-head';
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
 export const metadata = {
   title: '标签',
+  description: '浏览 Viben 上的所有标签',
+  alternates: {
+    canonical: `${APP_URL}/tags`,
+  },
+  openGraph: {
+    title: '标签',
+    description: '浏览 Viben 上的所有标签',
+    url: `${APP_URL}/tags`,
+    type: "website",
+  },
 };
 
 export default async function TagsPage() {

@@ -94,14 +94,20 @@ export async function generateMetadata({
 
   if (!user) return { title: "未找到" }
 
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
   const displayName = user.displayName ?? user.userSlug
   const description = user.bio ?? `${displayName} 在 Viben 上的个人主页`
+  const profileUrl = `${APP_URL}/${encodeURIComponent(user.userSlug)}`
 
   return {
     title: `${displayName} (@${user.userSlug})`,
     description,
+    alternates: {
+      canonical: profileUrl,
+    },
     openGraph: {
       title: `${displayName} (@${user.userSlug})`,
+      url: profileUrl,
       description,
       type: "profile" as const,
       ...(user.avatarUrl
