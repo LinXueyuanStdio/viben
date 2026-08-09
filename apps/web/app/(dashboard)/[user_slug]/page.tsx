@@ -16,6 +16,7 @@ import Link from "next/link"
 import { Settings } from "lucide-react"
 import type { PageCardData } from "@/components/content/page-card"
 import type { Metadata } from "next"
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata"
 import { timeAgo } from "@/lib/services/moment-mapper"
 import { ProfilePagesList } from "@/components/profile/profile-pages-list"
 import { ProfileMcpList } from "@/components/profile/profile-mcp-list"
@@ -94,7 +95,6 @@ export async function generateMetadata({
 
   if (!user) return { title: "未找到" }
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
   const displayName = user.displayName ?? user.userSlug
   const description = user.bio ?? `${displayName} 在 Viben 上的个人主页`
   const profileUrl = `${APP_URL}/${encodeURIComponent(user.userSlug)}`
@@ -105,7 +105,7 @@ export async function generateMetadata({
     alternates: {
       canonical: profileUrl,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: `${displayName} (@${user.userSlug})`,
       url: profileUrl,
       description,
@@ -113,13 +113,13 @@ export async function generateMetadata({
       ...(user.avatarUrl
         ? { images: [{ url: user.avatarUrl, width: 256, height: 256 }] }
         : {}),
-    },
-    twitter: {
+    }),
+    twitter: makeTwitter({
       card: "summary" as const,
       title: `${displayName} (@${user.userSlug})`,
       description,
       ...(user.avatarUrl ? { images: [user.avatarUrl] } : {}),
-    },
+    }),
   }
 }
 

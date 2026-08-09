@@ -7,8 +7,7 @@ import { McpSearchInput } from '@/components/mcp/mcp-search-input';
 import { getSession } from '@/lib/auth/cookies';
 import { SourceTabs, type McpSource } from '@/components/mcp/source-tabs';
 import { OfficialServerGrid } from '@/components/mcp/official-server-grid';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+import { makeOG, makeTwitter, APP_URL } from '@/lib/metadata';
 
 export const metadata = {
   title: 'MCP 市场',
@@ -16,12 +15,16 @@ export const metadata = {
   alternates: {
     canonical: `${APP_URL}/mcp-market`,
   },
-  openGraph: {
+  openGraph: makeOG({
     title: 'MCP 市场',
     description: '浏览和安装 Viben 社区的 MCP 服务包',
     url: `${APP_URL}/mcp-market`,
     type: "website",
-  },
+  }),
+  twitter: makeTwitter({
+    title: 'MCP 市场',
+    description: '浏览和安装 Viben 社区的 MCP 服务包',
+  }),
 };
 
 interface McpPageProps {

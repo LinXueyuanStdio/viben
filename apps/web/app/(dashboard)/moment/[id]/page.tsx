@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import { ensureCommunityEntity, listCommunityComments, getCommunitySummary } from "@/lib/services/community"
 import { MomentDetailClient } from "./client"
 import type { Metadata } from "next"
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata"
 import { mapRichMomentToFeedCard } from "@/lib/services/moment-mapper"
 import type { MomentFeedItem } from "@/lib/services/community"
 
@@ -19,19 +20,19 @@ export async function generateMetadata({
     columns: { body: true },
   })
   const title = moment?.body?.slice(0, 60) ?? "动态详情"
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
   return {
     title: `${title} - Viben`,
     description: title,
     alternates: {
       canonical: `${APP_URL}/moment/${id}`,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: `${title} - Viben`,
       description: title,
       url: `${APP_URL}/moment/${id}`,
       type: "article",
-    },
+    }),
+    twitter: makeTwitter({ title: `${title} - Viben`, description: title }),
   }
 }
 

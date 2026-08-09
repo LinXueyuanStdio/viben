@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import type { WebAgentUIMessage } from "@/app/types";
@@ -48,7 +49,6 @@ export async function generateMetadata({
   const share = await getShareByIdCached(shareId);
   const sharedChat = share ? await getChatById(share.chatId) : null;
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const shareUrl = `${APP_URL}/shared/${shareId}`;
   const ogImageUrl = `${APP_URL}/shared/${shareId}/opengraph-image`;
 
@@ -58,19 +58,18 @@ export async function generateMetadata({
     alternates: {
       canonical: shareUrl,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: sharedChat?.title ?? "Shared Chat",
       description: "A shared Open Agents chat.",
       url: shareUrl,
       type: "website",
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],
-    },
-    twitter: {
-      card: "summary_large_image",
+    }),
+    twitter: makeTwitter({
       title: sharedChat?.title ?? "Shared Chat",
       description: "A shared Open Agents chat.",
       images: [ogImageUrl],
-    },
+    }),
   };
 }
 

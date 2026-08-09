@@ -6,6 +6,7 @@ import { QueryProvider } from '@/components/providers/query-provider';
 import { Toaster } from 'sonner';
 import { Analytics } from "@vercel/analytics/react"
 import { WebVitalsReporter } from "@/components/analytics/web-vitals"
+import { APP_URL, DEFAULT_OG_IMAGE } from '@/lib/metadata';
 import './globals.css';
 
 const inter = Inter({
@@ -30,16 +31,16 @@ export const metadata: Metadata = {
     follow: true,
   },
   alternates: {
-    canonical: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    canonical: APP_URL,
   },
   openGraph: {
     siteName: 'Viben',
     type: 'website',
     locale: 'zh_CN',
-    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    url: APP_URL,
     images: [
       {
-        url: '/opengraph-image',
+        url: DEFAULT_OG_IMAGE,
         width: 1200,
         height: 630,
       },
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/opengraph-image'],
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

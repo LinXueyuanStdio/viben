@@ -7,10 +7,9 @@ import { eq, and } from "drizzle-orm"
 import { ReadPageClient } from "@/components/pages/read-page-client"
 import { ReadPageShell } from "@/components/pages/read-page-shell"
 import type { Metadata } from "next"
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
 import type { Session } from "@/lib/auth/types"
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 /** JSON 序列化安全 */
 function iso(d: Date | string | null | undefined): string | undefined {
@@ -48,19 +47,19 @@ export async function generateReadPageMetadata(
     other: {
       "link:alternate": `<${APP_URL}/api/pages/raw/${encodedSlug}/${encodeURIComponent(pageId)}>; rel="alternate"; type="text/markdown"`,
     },
-    openGraph: {
+    openGraph: makeOG({
       title,
       url: `${APP_URL}/${encodedSlug}/${encodedPage}`,
       description: seoDescription,
       type: "article" as const,
       ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),
-    },
-    twitter: {
-      card: ctx.page.coverUrl ? "summary_large_image" as const : "summary" as const,
+    }),
+    twitter: makeTwitter({
       title,
       description: seoDescription,
+      card: ctx.page.coverUrl ? "summary_large_image" as const : "summary" as const,
       ...(ogImage ? { images: [ogImage] } : {}),
-    },
+    }),
   }
 }
 

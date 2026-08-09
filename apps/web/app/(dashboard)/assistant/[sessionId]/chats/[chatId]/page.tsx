@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { WebAgentUIMessage } from "@/app/types";
@@ -83,20 +84,22 @@ export async function generateMetadata({
   const { sessionId, chatId } = await params;
   const sessionRecord = await getSessionByIdCached(sessionId);
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-
   return {
     title: sessionRecord?.title ?? `Session ${sessionId}`,
     description: "Review session progress, chats, and outputs.",
     alternates: {
       canonical: `${APP_URL}/assistant/${sessionId}/chats/${chatId}`,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: sessionRecord?.title ?? `Session ${sessionId}`,
       description: "Review session progress, chats, and outputs.",
       url: `${APP_URL}/assistant/${sessionId}/chats/${chatId}`,
       type: "website",
-    },
+    }),
+    twitter: makeTwitter({
+      title: sessionRecord?.title ?? `Session ${sessionId}`,
+      description: "Review session progress, chats, and outputs.",
+    }),
   };
 }
 

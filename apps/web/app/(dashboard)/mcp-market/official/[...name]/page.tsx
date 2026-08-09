@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata";
 import { fetchOfficialServer } from '@/lib/services/official-registry';
 import { OfficialServerHeader } from '@/components/mcp/official-server-header';
 import { OfficialServerSidebar } from '@/components/mcp/official-server-sidebar';
@@ -22,20 +23,22 @@ export async function generateMetadata({
     };
   }
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-
   return {
     title: `${server.name} - MCP Marketplace`,
     description: server.description || undefined,
     alternates: {
       canonical: `${APP_URL}/mcp-market/official/${name.map(encodeURIComponent).join("/")}`,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: `${server.name} - MCP Marketplace`,
       description: server.description || undefined,
       url: `${APP_URL}/mcp-market/official/${name.map(encodeURIComponent).join("/")}`,
       type: "website",
-    },
+    }),
+    twitter: makeTwitter({
+      title: `${server.name} - MCP Marketplace`,
+      description: server.description || undefined,
+    }),
   };
 }
 

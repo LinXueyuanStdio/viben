@@ -11,8 +11,7 @@ import { T } from '@/components/content/i18n-text';
 import { getSession } from '@/lib/auth/cookies';
 import { SkillSourceTabs, type SkillSource } from '@/components/skills/skill-source-tabs';
 import { OfficialSkillGrid } from '@/components/skills/official-skill-grid';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+import { makeOG, makeTwitter, APP_URL } from '@/lib/metadata';
 
 export const metadata = {
   title: '技能市场',
@@ -20,12 +19,16 @@ export const metadata = {
   alternates: {
     canonical: `${APP_URL}/skill-market`,
   },
-  openGraph: {
+  openGraph: makeOG({
     title: '技能市场',
     description: '浏览和安装 Viben 社区的技能包',
     url: `${APP_URL}/skill-market`,
     type: "website",
-  },
+  }),
+  twitter: makeTwitter({
+    title: '技能市场',
+    description: '浏览和安装 Viben 社区的技能包',
+  }),
 };
 
 interface SkillsPageProps {

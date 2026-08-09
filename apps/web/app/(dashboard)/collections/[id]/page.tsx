@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/cookies';
 import { getCollection, listCollectionItems } from '@/lib/services/collections';
 import { CollectionHeader } from '@/components/collections/collection-header';
 import { CollectionItems } from '@/components/collections/collection-items';
+import { makeOG, makeTwitter, APP_URL } from '@/lib/metadata';
 
 interface CollectionDetailPageProps {
   params: Promise<{ id: string }>;
@@ -16,20 +17,22 @@ export async function generateMetadata({ params }: CollectionDetailPageProps) {
     return { title: 'Collection Not Found' };
   }
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
   return {
     title: collection.name,
     description: collection.description || 'A curated collection',
     alternates: {
       canonical: `${APP_URL}/collections/${id}`,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: collection.name,
       description: collection.description || 'A curated collection',
       url: `${APP_URL}/collections/${id}`,
       type: "website",
-    },
+    }),
+    twitter: makeTwitter({
+      title: collection.name,
+      description: collection.description || 'A curated collection',
+    }),
   };
 }
 

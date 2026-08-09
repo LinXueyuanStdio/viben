@@ -12,24 +12,24 @@ import type { FeedCardData } from "@/components/content/feed-card"
 import type { AuthorCardData } from "@/components/content/author-card"
 import type { Metadata } from "next"
 import { mapRichMomentToFeedCard } from "@/lib/services/moment-mapper"
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata"
 
 export const metadata: Metadata = {
   title: "动态 - Viben",
   description: "发现来自 Viben 社区的创作、动态与分享。",
   alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/moment`,
+    canonical: `${APP_URL}/moment`,
   },
-  openGraph: {
+  openGraph: makeOG({
     title: "动态 - Viben",
     description: "发现来自 Viben 社区的创作、动态与分享。",
-    url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/moment`,
+    url: `${APP_URL}/moment`,
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
+  }),
+  twitter: makeTwitter({
     title: "动态 - Viben",
     description: "发现来自 Viben 社区的创作、动态与分享。",
-  },
+  }),
 }
 
 const MOMENT_TABS = [

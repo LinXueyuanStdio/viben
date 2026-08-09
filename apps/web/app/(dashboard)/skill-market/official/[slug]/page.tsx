@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { makeOG, makeTwitter, APP_URL } from "@/lib/metadata";
 import { fetchClawhubSkill, fetchClawhubSkillReadme } from '@/lib/services/clawhub-registry';
 import { OfficialSkillHeader } from '@/components/skills/official-skill-header';
 import { OfficialSkillSidebar } from '@/components/skills/official-skill-sidebar';
@@ -24,20 +25,22 @@ export async function generateMetadata({
     };
   }
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-
   return {
     title: `${skill.name} - Skills Marketplace`,
     description: skill.description || undefined,
     alternates: {
       canonical: `${APP_URL}/skill-market/official/${slug}`,
     },
-    openGraph: {
+    openGraph: makeOG({
       title: `${skill.name} - Skills Marketplace`,
       description: skill.description || undefined,
       url: `${APP_URL}/skill-market/official/${slug}`,
       type: "website",
-    },
+    }),
+    twitter: makeTwitter({
+      title: `${skill.name} - Skills Marketplace`,
+      description: skill.description || undefined,
+    }),
   };
 }
 
