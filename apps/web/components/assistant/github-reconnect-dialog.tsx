@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import type { GitHubConnectionReason } from "@/lib/github/status";
 import { Button } from "@/components/ui/button";
@@ -12,18 +13,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-function getReconnectDescription(
+function getReconnectDescriptionKey(
   reason: GitHubConnectionReason | null,
 ): string {
   switch (reason) {
     case "installations_missing":
-      return "GitHub no longer reports your app installation. This usually happens after app permission changes or an installation being invalidated.";
+      return "assistant.githubReconnect.descriptionInstallationsMissing";
     case "sync_auth_failed":
-      return "GitHub rejected the saved connection while we refreshed your installation access.";
+      return "assistant.githubReconnect.descriptionSyncAuthFailed";
     case "token_unavailable":
-      return "Your saved GitHub token is no longer usable.";
+      return "assistant.githubReconnect.descriptionTokenUnavailable";
     default:
-      return "Your GitHub connection needs to be refreshed before you continue.";
+      return "assistant.githubReconnect.descriptionDefault";
   }
 }
 
@@ -34,19 +35,22 @@ export function GitHubReconnectDialog({
   open: boolean;
   reason: GitHubConnectionReason | null;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Reconnect GitHub</DialogTitle>
+          <DialogTitle>{t("assistant.githubReconnect.title")}</DialogTitle>
           <DialogDescription>
-            {getReconnectDescription(reason)} Reconnect now to restore
-            repository access and keep using the app.
+            {t(getReconnectDescriptionKey(reason))}{" "}
+            {t("assistant.githubReconnect.restoreAccess")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button asChild>
-            <Link href="/settings/connections">Reconnect GitHub</Link>
+            <Link href="/settings/connections">
+              {t("assistant.githubReconnect.action")}
+            </Link>
           </Button>
         </DialogFooter>
       </DialogContent>

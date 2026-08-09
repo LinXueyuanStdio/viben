@@ -2,6 +2,8 @@
 
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { cn } from "@/lib/utils";
 
 type StatusWordPair = {
@@ -10,13 +12,13 @@ type StatusWordPair = {
 };
 
 const STATUS_WORD_PAIRS: StatusWordPair[] = [
-  { present: "Pondering", past: "Pondered" },
-  { present: "Crafting", past: "Crafted" },
-  { present: "Vibing", past: "Vibed" },
-  { present: "Simmering", past: "Simmered" },
-  { present: "Marinating", past: "Marinated" },
-  { present: "Philosophising", past: "Philosophised" },
-  { present: "Ruminating", past: "Ruminated" },
+  { present: "statusPonderingPresent", past: "statusPonderingPast" },
+  { present: "statusCraftingPresent", past: "statusCraftingPast" },
+  { present: "statusVibingPresent", past: "statusVibingPast" },
+  { present: "statusSimmeringPresent", past: "statusSimmeringPast" },
+  { present: "statusMarinatingPresent", past: "statusMarinatingPast" },
+  { present: "statusPhilosophisingPresent", past: "statusPhilosophisingPast" },
+  { present: "statusRuminatingPresent", past: "statusRuminatingPast" },
 ];
 
 function hashString(value: string): number {
@@ -37,12 +39,19 @@ function getStatusWordPair(seed: string | null): StatusWordPair {
   return STATUS_WORD_PAIRS[hashString(seed) % STATUS_WORD_PAIRS.length];
 }
 
-function formatElapsedTime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
+function formatElapsedTime(seconds: number, t: TFunction): string {
+  if (seconds < 60) {
+    return t("assistant.toolSummary.timeSeconds", { seconds });
+  }
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  if (secs === 0) return `${mins}m`;
-  return `${mins}m ${secs}s`;
+  if (secs === 0) {
+    return t("assistant.toolSummary.timeMinutes", { minutes: mins });
+  }
+  return t("assistant.toolSummary.timeMinutesSeconds", {
+    minutes: mins,
+    seconds: secs,
+  });
 }
 
 function renderSegments(segments: string[]) {
@@ -78,6 +87,8 @@ export function ToolCallsSummaryBar({
   /** Stable per-message seed used to choose a status word pair. */
   statusWordSeed: string | null;
 }) {
+  const { t } = useTranslation();
+
   // ---------------------------------------------------------------------------
   // Elapsed time logic
   //
@@ -119,18 +130,18 @@ export function ToolCallsSummaryBar({
 
   const statusWordPair = getStatusWordPair(statusWordSeed);
   const statusLabel = isStreaming
-    ? `${statusWordPair.present}…`
-    : statusWordPair.past;
+    ? `${t(`assistant.toolSummary.${statusWordPair.present}`)}…`
+    : t(`assistant.toolSummary.${statusWordPair.past}`);
   const toolCallLabel =
     toolCallCount > 0
-      ? `${toolCallCount} tool call${toolCallCount !== 1 ? "s" : ""}`
+      ? t("assistant.toolSummary.toolCallCount", { count: toolCallCount })
       : null;
 
   const desktopSegments: string[] = [];
   const mobileSegments: string[] = [];
 
   if (elapsedSeconds > 0) {
-    const elapsedLabel = formatElapsedTime(elapsedSeconds);
+    const elapsedLabel = formatElapsedTime(elapsedSeconds, t);
     desktopSegments.push(elapsedLabel);
     mobileSegments.push(elapsedLabel);
   }
@@ -140,7 +151,9 @@ export function ToolCallsSummaryBar({
   }
 
   if (changedFiles.length > 0) {
-    const filesLabel = `${changedFiles.length} file${changedFiles.length !== 1 ? "s" : ""} changed`;
+    const filesLabel = t("assistant.toolSummary.filesChanged", {
+      count: changedFiles.length,
+    });
     desktopSegments.push(filesLabel);
   }
 

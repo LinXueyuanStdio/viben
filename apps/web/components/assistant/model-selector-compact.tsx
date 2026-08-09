@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, ChevronDown } from "lucide-react";
 import { type ModelOption, groupByProvider } from "@/lib/model-options";
@@ -38,6 +39,7 @@ export function ModelSelectorCompact({
   disabled = false,
   onCloseAutoFocus,
 }: ModelSelectorCompactProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -112,9 +114,9 @@ export function ModelSelectorCompact({
         <button
           type="button"
           disabled={disabled}
-          aria-label="Change model"
+          aria-label={t("assistant.model.changeModel")}
           aria-keyshortcuts="Meta+Alt+/"
-          title="Change model (⌘⌥/)"
+          title={t("assistant.model.changeModelShortcut")}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-neutral-500 transition-colors hover:bg-white/5 hover:text-neutral-300 disabled:pointer-events-none disabled:opacity-60"
         >
           {selectedOption && (
@@ -144,14 +146,14 @@ export function ModelSelectorCompact({
             ref={searchInputRef}
             value={search}
             onValueChange={setSearch}
-            placeholder="Search models..."
+            placeholder={t("assistant.model.searchModels")}
           />
           <CommandList>
-            <CommandEmpty>No models found.</CommandEmpty>
+            <CommandEmpty>{t("assistant.model.noModelsFound")}</CommandEmpty>
             {groups.map((group) => (
               <CommandGroup
                 key={group.provider}
-                heading={getProviderDisplayName(group.provider)}
+                heading={getProviderDisplayName(group.provider, t)}
               >
                 {group.options.map((option) => (
                   <CommandItem
@@ -169,12 +171,12 @@ export function ModelSelectorCompact({
                     </span>
                     {option.isVariant && (
                       <span className="ml-1.5 shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                        variant
+                        {t("assistant.model.variantBadge")}
                       </span>
                     )}
                     {option.id === APP_DEFAULT_MODEL_ID && (
                       <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                        default
+                        {t("assistant.model.defaultBadge")}
                       </span>
                     )}
                     <CheckIcon

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { GitMerge } from "lucide-react";
 import type { SessionWithUnread } from "@/hooks/assistant/use-sessions";
 
@@ -69,13 +70,14 @@ function DiffStats({
 }
 
 function PrStatus({ status }: { status: "open" | "merged" | "closed" | null }) {
+  const { t } = useTranslation();
   if (!status || status === "open") return null;
 
   if (status === "merged") {
     return (
       <div className="flex items-center gap-1 rounded-md bg-purple-500/20 px-2 py-0.5 text-xs text-purple-400">
         <GitMerge className="h-3 w-3" />
-        <span>Merged</span>
+        <span>{t("assistant.drawer.prStatusMerged")}</span>
       </div>
     );
   }
@@ -86,14 +88,17 @@ function PrStatus({ status }: { status: "open" | "merged" | "closed" | null }) {
 export function SessionList({
   sessions,
   onSessionClick,
-  emptyMessage = "No sessions yet. Create one above!",
+  emptyMessage,
 }: SessionListProps) {
+  const { t } = useTranslation();
+  const resolvedEmptyMessage =
+    emptyMessage ?? t("assistant.drawer.noSessionsYetCreateOne");
   const groupedSessions = groupSessionsByDate(sessions);
 
   if (sessions.length === 0) {
     return (
       <div className="py-8 text-center text-muted-foreground">
-        {emptyMessage}
+        {resolvedEmptyMessage}
       </div>
     );
   }
@@ -104,7 +109,11 @@ export function SessionList({
         ([dateGroup, groupSessions]) => (
           <div key={dateGroup}>
             <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {dateGroup}
+              {dateGroup === "TODAY"
+                ? t("assistant.drawer.today")
+                : dateGroup === "YESTERDAY"
+                  ? t("assistant.drawer.yesterday")
+                  : dateGroup}
             </h3>
             <div className="space-y-1">
               {groupSessions.map((session) => (

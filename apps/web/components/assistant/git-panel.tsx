@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+
 import {
   AlertTriangle,
   Check,
@@ -82,26 +85,25 @@ import { useSessionChatWorkspaceContext } from "./session-chat-context";
 /* Merge method labels / descriptions                                  */
 /* ------------------------------------------------------------------ */
 
-const mergeMethodLabels: Record<MergeMethod, string> = {
-  squash: "Squash and merge",
-  merge: "Create a merge commit",
-  rebase: "Rebase and merge",
-};
+const mergeMethodLabels = (t: TFunction): Record<MergeMethod, string> => ({
+  squash: t("assistant.git.mergeMethodSquash"),
+  merge: t("assistant.git.mergeMethodMerge"),
+  rebase: t("assistant.git.mergeMethodRebase"),
+});
 
-const mergeMethodButtonLabels: Record<MergeMethod, string> = {
-  squash: "Squash & Archive",
-  merge: "Merge & Archive",
-  rebase: "Rebase & Archive",
-};
+const mergeMethodButtonLabels = (t: TFunction): Record<MergeMethod, string> => ({
+  squash: t("assistant.git.mergeMethodButtonSquash"),
+  merge: t("assistant.git.mergeMethodButtonMerge"),
+  rebase: t("assistant.git.mergeMethodButtonRebase"),
+});
 
-const mergeMethodDescriptions: Record<MergeMethod, string> = {
-  squash: "Combine all commits into one commit in the base branch.",
-  merge: "All commits will be added to the base branch via a merge commit.",
-  rebase: "All commits will be rebased and added to the base branch.",
-};
-
-const createRepoDisabledReason =
-  "Creating repositories from Open Agents is temporarily disabled. Create the repository on GitHub first, then connect it to a session.";
+const mergeMethodDescriptions = (
+  t: TFunction,
+): Record<MergeMethod, string> => ({
+  squash: t("assistant.git.mergeMethodDescriptionSquash"),
+  merge: t("assistant.git.mergeMethodDescriptionMerge"),
+  rebase: t("assistant.git.mergeMethodDescriptionRebase"),
+});
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -195,6 +197,7 @@ function DiffFileList({
   discardDisabled: boolean;
 }) {
   const { openDiffToFile, diffScope } = useGitPanel();
+  const { t } = useTranslation();
 
   const filteredFiles =
     diffScope === "branch" ? files : files.filter(isUncommittedFile);
@@ -204,8 +207,8 @@ function DiffFileList({
       <div className="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/25 py-8 text-center">
         <p className="text-xs text-muted-foreground">
           {diffScope === "uncommitted"
-            ? "No uncommitted changes"
-            : "No file changes yet"}
+            ? t("assistant.git.noUncommittedChanges")
+            : t("assistant.git.noFileChangesYet")}
         </p>
       </div>
     );
@@ -260,7 +263,9 @@ function DiffFileList({
                   type="button"
                   onClick={() => onDiscardFile(file)}
                   disabled={discardDisabled || discardingFilePath === file.path}
-                  aria-label={`Discard changes in ${file.path}`}
+                  aria-label={t("assistant.git.discardChangesInFile", {
+                    filePath: file.path,
+                  })}
                   className="rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-100"
                 >
                   {discardingFilePath === file.path ? (
@@ -289,13 +294,15 @@ function GitHubConnectionWarning({
   status: string | null;
   reconnectRequired: boolean;
 }) {
+  const { t } = useTranslation();
+
   if (reconnectRequired) {
     return (
       <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
-        Your GitHub connection needs to be refreshed.{" "}
+        {t("assistant.git.reconnectRequired")}{" "}
         {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
         <a href="/settings/connections" className="underline">
-          Reconnect
+          {t("assistant.git.reconnect")}
         </a>
       </div>
     );
@@ -303,10 +310,10 @@ function GitHubConnectionWarning({
   if (status === "not_connected") {
     return (
       <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
-        Connect GitHub to push changes.{" "}
+        {t("assistant.git.connectGitHubToPush")}{" "}
         {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
         <a href="/settings/connections" className="underline">
-          Go to settings
+          {t("assistant.git.goToSettings")}
         </a>
       </div>
     );
@@ -341,6 +348,7 @@ function InlineCommitPanel({
   connectionStatus: string | null;
   reconnectRequired: boolean;
 }) {
+  const { t } = useTranslation();
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
@@ -394,7 +402,9 @@ function InlineCommitPanel({
       await refreshGitStatus();
     } catch (err) {
       setCommitError(
-        err instanceof Error ? err.message : "Failed to create branch",
+        err instanceof Error
+          ? err.message
+          : t("assistant.git.failedToCreateBranch"),
       );
     } finally {
       setIsCreatingBranch(false);
@@ -469,7 +479,8 @@ function InlineCommitPanel({
 
       setCommitSuccess({
         commitSha: result.commitSha,
-        commitMessage: result.commitMessage ?? "Changes committed & pushed",
+        commitMessage:
+          result.commitMessage ?? t("assistant.git.changesCommittedAndPushed"),
       });
       setCommitMessage("");
 
@@ -507,7 +518,9 @@ function InlineCommitPanel({
       }, 3000);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to commit and push";
+        err instanceof Error
+          ? err.message
+          : t("assistant.git.failedToCommitAndPush");
       await onGitMessage?.({
         id: gitMessageId,
         role: "assistant",
@@ -539,8 +552,8 @@ function InlineCommitPanel({
         />
         <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
           {isDetachedHead
-            ? "Detached HEAD — create a branch first."
-            : "On base branch — create a new branch first."}
+            ? t("assistant.git.detachedHeadCreateBranch")
+            : t("assistant.git.onBaseBranchCreateBranch")}
         </div>
         <Button
           size="sm"
@@ -551,18 +564,18 @@ function InlineCommitPanel({
           {isCreatingBranch ? (
             <>
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              Creating branch...
+              {t("assistant.git.creatingBranch")}
             </>
           ) : (
             <>
               <GitBranch className="mr-1.5 h-3.5 w-3.5" />
-              Create branch
+              {t("assistant.git.createBranch")}
             </>
           )}
         </Button>
         {isAgentWorking && (
           <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
-            Wait for the agent to finish before creating a branch.
+            {t("assistant.git.waitForAgentBeforeBranch")}
           </div>
         )}
         {commitError && (
@@ -587,7 +600,7 @@ function InlineCommitPanel({
       {isExpanded && (
         <div className="relative">
           <Textarea
-            placeholder="Commit message"
+            placeholder={t("assistant.git.commitMessagePlaceholder")}
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             disabled={isAgentWorking || isCommitting || !hasPendingGitWork}
@@ -611,7 +624,7 @@ function InlineCommitPanel({
       {commitSuccess ? (
         <div className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-green-500/30 bg-green-500/10 text-xs font-medium text-green-700 dark:text-green-300">
           <Check className="h-3.5 w-3.5" />
-          Committed
+          {t("assistant.git.committed")}
         </div>
       ) : (
         <>
@@ -624,7 +637,7 @@ function InlineCommitPanel({
             {isCommitting ? (
               <>
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Committing...
+                {t("assistant.git.committing")}
               </>
             ) : (
               <>
@@ -633,7 +646,7 @@ function InlineCommitPanel({
                 ) : (
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                Commit & Push
+                {t("assistant.git.commitAndPush")}
               </>
             )}
           </Button>
@@ -644,7 +657,7 @@ function InlineCommitPanel({
               onClick={handleExpandCommit}
               disabled={!hasPendingGitWork}
             >
-              Edit message
+              {t("assistant.git.editMessage")}
             </button>
           )}
         </>
@@ -658,9 +671,9 @@ function InlineCommitPanel({
   );
 
   const disabledTooltip = isAgentWorking
-    ? "Wait for the agent to finish"
+    ? t("assistant.git.waitForAgentToFinish")
     : !hasSandbox
-      ? "Waiting for sandbox to start"
+      ? t("assistant.git.waitingForSandboxToStart")
       : null;
 
   if (disabledTooltip) {
@@ -709,6 +722,7 @@ function InlinePrCreatePanel({
   connectionStatus: string | null;
   reconnectRequired: boolean;
 }) {
+  const { t } = useTranslation();
   const [prTitle, setPrTitle] = useState("");
   const [prBody, setPrBody] = useState("");
   const [isCreatingPr, setIsCreatingPr] = useState(false);
@@ -753,7 +767,9 @@ function InlinePrCreatePanel({
       await refreshGitStatus();
     } catch (err) {
       setPrError(
-        err instanceof Error ? err.message : "Failed to create branch",
+        err instanceof Error
+          ? err.message
+          : t("assistant.git.failedToCreateBranch"),
       );
     } finally {
       setIsCreatingBranch(false);
@@ -786,7 +802,7 @@ function InlinePrCreatePanel({
       setPrError(
         err instanceof Error
           ? err.message
-          : "Failed to generate pull request content",
+          : t("assistant.git.failedToGeneratePrContent"),
       );
     } finally {
       setIsGenerating(false);
@@ -897,7 +913,7 @@ function InlinePrCreatePanel({
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to create PR";
+        err instanceof Error ? err.message : t("assistant.git.failedToCreatePr");
       await onGitMessage?.({
         id: gitMessageId,
         role: "assistant",
@@ -927,12 +943,12 @@ function InlinePrCreatePanel({
           <Check className="h-3.5 w-3.5 shrink-0" />
           <span>
             {prSuccess.requiresManualCreation
-              ? "Compare page opened"
+              ? t("assistant.git.comparePageOpened")
               : prSuccess.autoMergeEnabled
-                ? "PR created — auto-merge enabled!"
+                ? t("assistant.git.prCreatedAutoMergeEnabled")
                 : prSuccess.isDraft
-                  ? "Draft pull request created!"
-                  : "Pull request created!"}
+                  ? t("assistant.git.draftPrCreated")
+                  : t("assistant.git.prCreated")}
           </span>
         </div>
         {prSuccess.autoMergeError && (
@@ -948,8 +964,8 @@ function InlinePrCreatePanel({
           className="flex items-center gap-1 text-xs text-blue-500 hover:underline"
         >
           {prSuccess.requiresManualCreation
-            ? "Open compare page"
-            : "View on GitHub"}
+            ? t("assistant.git.openComparePage")
+            : t("assistant.git.viewOnGitHub")}
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
@@ -959,9 +975,9 @@ function InlinePrCreatePanel({
   // Needs branch creation
   if (needsNewBranch) {
     const branchDisabledTooltip = isAgentWorking
-      ? "Wait for the agent to finish"
+      ? t("assistant.git.waitForAgentToFinish")
       : !hasSandbox
-        ? "Waiting for sandbox to start"
+        ? t("assistant.git.waitingForSandboxToStart")
         : null;
 
     const branchContent = (
@@ -972,8 +988,8 @@ function InlinePrCreatePanel({
         />
         <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
           {isDetachedHead
-            ? "Detached HEAD — create a branch first."
-            : "On base branch — create a new branch first."}
+            ? t("assistant.git.detachedHeadCreateBranch")
+            : t("assistant.git.onBaseBranchCreateBranch")}
         </div>
         <Button
           size="sm"
@@ -984,12 +1000,12 @@ function InlinePrCreatePanel({
           {isCreatingBranch ? (
             <>
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              Creating branch...
+              {t("assistant.git.creatingBranch")}
             </>
           ) : (
             <>
               <GitBranch className="mr-1.5 h-3.5 w-3.5" />
-              Create branch
+              {t("assistant.git.createBranch")}
             </>
           )}
         </Button>
@@ -1019,7 +1035,7 @@ function InlinePrCreatePanel({
   if (hasUncommittedGitChanges) {
     return (
       <div className="px-2 py-3 text-center text-xs text-muted-foreground">
-        Commit your changes before creating a pull request.
+        {t("assistant.git.commitBeforePr")}
       </div>
     );
   }
@@ -1027,9 +1043,9 @@ function InlinePrCreatePanel({
   const prDisabled = isAgentWorking || isCreatingPr || !hasSandbox;
 
   const prDisabledTooltip = isAgentWorking
-    ? "Wait for the agent to finish"
+    ? t("assistant.git.waitForAgentToFinish")
     : !hasSandbox
-      ? "Waiting for sandbox to start"
+      ? t("assistant.git.waitingForSandboxToStart")
       : null;
 
   // PR creation form
@@ -1043,7 +1059,7 @@ function InlinePrCreatePanel({
         <>
           <div className="relative">
             <Input
-              placeholder="PR title"
+              placeholder={t("assistant.git.prTitlePlaceholder")}
               value={prTitle}
               onChange={(e) => setPrTitle(e.target.value)}
               disabled={isAgentWorking || isCreatingPr}
@@ -1063,7 +1079,7 @@ function InlinePrCreatePanel({
             </button>
           </div>
           <Textarea
-            placeholder="Description"
+            placeholder={t("assistant.git.descriptionPlaceholder")}
             value={prBody}
             onChange={(e) => setPrBody(e.target.value)}
             disabled={isAgentWorking || isCreatingPr}
@@ -1072,9 +1088,11 @@ function InlinePrCreatePanel({
           />
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-2">
             <div className="space-y-0.5 pr-3">
-              <p className="text-xs font-medium">Auto-merge</p>
+              <p className="text-xs font-medium">
+                {t("assistant.git.autoMerge")}
+              </p>
               <p className="text-[10px] text-muted-foreground">
-                Merge automatically once checks pass.
+                {t("assistant.git.autoMergeDescription")}
               </p>
             </div>
             <Switch
@@ -1095,7 +1113,9 @@ function InlinePrCreatePanel({
           {isCreatingPr ? (
             <>
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              {isGenerating ? "Generating..." : "Creating..."}
+              {isGenerating
+                ? t("assistant.git.generating")
+                : t("assistant.git.creating")}
             </>
           ) : (
             <>
@@ -1104,7 +1124,7 @@ function InlinePrCreatePanel({
               ) : (
                 <Sparkles className="mr-1.5 h-3.5 w-3.5" />
               )}
-              Create Pull Request
+              {t("assistant.git.createPullRequest")}
             </>
           )}
         </Button>
@@ -1115,7 +1135,7 @@ function InlinePrCreatePanel({
               size="icon"
               className="h-8 w-8 rounded-l-none border-l border-l-primary-foreground/25"
               disabled={prDisabled}
-              aria-label="PR options"
+              aria-label={t("assistant.git.prOptions")}
             >
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>
@@ -1125,7 +1145,7 @@ function InlinePrCreatePanel({
               onSelect={() => void handleCreatePr(true)}
               className="gap-2 text-xs"
             >
-              Create Draft PR
+              {t("assistant.git.createDraftPr")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -1136,7 +1156,7 @@ function InlinePrCreatePanel({
           className="w-full text-center text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground"
           onClick={handleExpand}
         >
-          Edit title & description
+          {t("assistant.git.editTitleAndDescription")}
         </button>
       )}
       {prError && (
@@ -1182,6 +1202,7 @@ function InlineMergePanel({
   onFixConflicts?: (baseBranchRef: string) => Promise<void> | void;
   isAgentWorking: boolean;
 }) {
+  const { t } = useTranslation();
   const [readiness, setReadiness] = useState<MergeReadinessResponse | null>(
     null,
   );
@@ -1229,7 +1250,7 @@ function InlineMergePanel({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Failed to load merge readiness",
+          : t("assistant.git.failedToLoadMergeReadiness"),
       );
     } finally {
       if (readinessRequestIdRef.current === requestId) {
@@ -1289,7 +1310,7 @@ function InlineMergePanel({
 
   const handleMerge = async (force = false) => {
     if (!readiness?.pr) {
-      setError("No pull request found for this session.");
+      setError(t("assistant.git.noPullRequestFound"));
       return;
     }
 
@@ -1306,7 +1327,7 @@ function InlineMergePanel({
       });
 
       if (mergeResult.merged !== true) {
-        throw new Error("Failed to merge pull request");
+        throw new Error(t("assistant.git.failedToMergePullRequest"));
       }
 
       await onMerged(mergeResult);
@@ -1314,7 +1335,7 @@ function InlineMergePanel({
       setError(
         mergeError instanceof Error
           ? mergeError.message
-          : "Failed to merge pull request",
+          : t("assistant.git.failedToMergePullRequest"),
       );
     } finally {
       setIsSubmitting(false);
@@ -1323,6 +1344,9 @@ function InlineMergePanel({
 
   const isInitialReadinessLoading = isLoadingReadiness && !readiness;
 
+  // NOTE: These strings must stay in English — they are matched against the
+  // canonical English reason strings returned by the merge-readiness backend
+  // (lib/github/pulls.ts). They are not user-facing display strings.
   const forceBypassableReasons = new Set([
     "Required checks are failing",
     "Required checks are still pending",
@@ -1392,10 +1416,10 @@ function InlineMergePanel({
             <GitMerge className="h-4 w-4 shrink-0 text-purple-500" />
             <div className="space-y-0.5">
               <p className="text-xs font-medium text-foreground">
-                Pull request merged
+                {t("assistant.git.prMerged")}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                The branch has been merged and can be safely deleted.
+                {t("assistant.git.prMergedDescription")}
               </p>
             </div>
           </div>
@@ -1427,8 +1451,9 @@ function InlineMergePanel({
           readiness.pr.deletions > 0) && (
           <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground">
             <span>
-              {readiness.pr.changedFiles} file
-              {readiness.pr.changedFiles !== 1 ? "s" : ""} changed
+              {t("assistant.git.filesChanged", {
+                count: readiness.pr.changedFiles,
+              })}
             </span>
             {readiness.pr.additions > 0 && (
               <span className="text-green-600 dark:text-green-500">
@@ -1477,7 +1502,7 @@ function InlineMergePanel({
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <p className="text-xs font-medium text-foreground">
-                Merge blocked
+                {t("assistant.git.mergeBlocked")}
               </p>
             </div>
             <div className="space-y-1 pl-[22px]">
@@ -1491,11 +1516,9 @@ function InlineMergePanel({
               ))}
               {hasMergeConflicts && (
                 <p className="text-[10px] leading-relaxed text-muted-foreground/80">
-                  Fetch{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-foreground/70">
-                    {baseBranchRef}
-                  </code>
-                  , resolve the conflicts, and avoid rebasing.
+                  {t("assistant.git.fetchResolveConflicts", {
+                    branchRef: baseBranchRef,
+                  })}
                 </p>
               )}
             </div>
@@ -1512,7 +1535,7 @@ function InlineMergePanel({
                   }}
                 >
                   <Sparkles className="mr-1.5 h-3 w-3" />
-                  Fix conflicts
+                  {t("assistant.git.fixConflicts")}
                 </Button>
               </div>
             )}
@@ -1523,9 +1546,11 @@ function InlineMergePanel({
       {/* Delete branch toggle */}
       <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-2.5">
         <div className="space-y-0.5">
-          <p className="text-xs font-medium">Delete source branch</p>
+          <p className="text-xs font-medium">
+            {t("assistant.git.deleteSourceBranch")}
+          </p>
           <p className="text-[10px] text-muted-foreground">
-            Deletes the PR branch after merge.
+            {t("assistant.git.deleteSourceBranchDescription")}
           </p>
         </div>
         <Switch
@@ -1558,12 +1583,12 @@ function InlineMergePanel({
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Merging...
+                  {t("assistant.git.merging")}
                 </>
               ) : (
                 <>
                   <Check className="mr-2 h-4 w-4" />
-                  {mergeMethodButtonLabels[mergeMethod]}
+                  {mergeMethodButtonLabels(t)[mergeMethod]}
                 </>
               )}
             </Button>
@@ -1575,7 +1600,7 @@ function InlineMergePanel({
                     size="icon"
                     className="h-8 w-8 rounded-l-none border-l border-l-primary-foreground/25"
                     disabled={mergeDisabled}
-                    aria-label="Choose merge method"
+                    aria-label={t("assistant.git.chooseMergeMethod")}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -1596,10 +1621,10 @@ function InlineMergePanel({
                       />
                       <div className="flex flex-col">
                         <span className="text-xs font-medium">
-                          {mergeMethodLabels[method]}
+                          {mergeMethodLabels(t)[method]}
                         </span>
                         <span className="text-muted-foreground text-[10px]">
-                          {mergeMethodDescriptions[method]}
+                          {mergeMethodDescriptions(t)[method]}
                         </span>
                       </div>
                     </DropdownMenuItem>
@@ -1619,17 +1644,17 @@ function InlineMergePanel({
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Merging...
+                {t("assistant.git.merging")}
               </>
             ) : forceConfirming ? (
               <>
                 <AlertTriangle className="mr-2 h-4 w-4" />
-                Click again to confirm
+                {t("assistant.git.clickAgainToConfirm")}
               </>
             ) : (
               <>
                 <AlertTriangle className="mr-2 h-4 w-4" />
-                Merge without passing checks
+                {t("assistant.git.mergeWithoutChecks")}
               </>
             )}
           </Button>
@@ -1644,7 +1669,7 @@ function InlineMergePanel({
             disabled={isSubmitting}
           >
             <GitPullRequestClosed className="mr-2 h-4 w-4" />
-            Close & Archive
+            {t("assistant.git.closeAndArchive")}
           </Button>
         ) : null}
       </div>
@@ -1657,6 +1682,7 @@ function InlineMergePanel({
 /* ------------------------------------------------------------------ */
 
 export function GitPanel(props: GitPanelProps) {
+  const { t } = useTranslation();
   const {
     gitPanelOpen,
     gitPanelTab,
@@ -1724,7 +1750,7 @@ export function GitPanel(props: GitPanelProps) {
       setDiscardError(
         error instanceof Error
           ? error.message
-          : "Failed to discard uncommitted changes",
+          : t("assistant.git.failedToDiscardChanges"),
       );
       setIsDiscardingChanges(false);
       return;
@@ -1783,12 +1809,12 @@ export function GitPanel(props: GitPanelProps) {
   const prTabDisabledReason = canOpenPrTab
     ? null
     : !hasRepo
-      ? "Create a repo first"
+      ? t("assistant.git.createRepoFirst")
       : gitStatus === null
-        ? "Loading git status..."
+        ? t("assistant.git.loadingGitStatus")
         : hasUncommittedGitChanges
-          ? "Commit your changes before creating a pull request."
-          : "Commit changes to your branch before creating a pull request.";
+          ? t("assistant.git.commitBeforePr")
+          : t("assistant.git.commitBeforePrOnBranch");
   const showCreatePrShortcut = hasRepo && !hasExistingPr && canOpenPrTab;
   const isRefreshingChanges = diffRefreshing || gitStatusLoading;
   const diffScopeManuallySetRef = useRef(false);
@@ -1811,11 +1837,13 @@ export function GitPanel(props: GitPanelProps) {
   }, [gitPanelTab, prTabDisabledReason, setGitPanelTab]);
 
   const discardTitle = discardTarget
-    ? "Discard file changes?"
-    : "Discard uncommitted changes?";
+    ? t("assistant.git.discardFileChangesTitle")
+    : t("assistant.git.discardUncommittedChangesTitle");
   const discardDescription = discardTarget
-    ? `This permanently removes local changes for ${discardTarget.filePath}. Committed changes stay intact.`
-    : "This permanently removes local uncommitted changes from the sandbox. Committed changes stay intact.";
+    ? t("assistant.git.discardFileDescription", {
+        filePath: discardTarget.filePath,
+      })
+    : t("assistant.git.discardUncommittedDescription");
   const discardingFilePath = discardTarget?.filePath ?? null;
   const gitPanelTabs = [
     "files" as const,
@@ -1854,7 +1882,7 @@ export function GitPanel(props: GitPanelProps) {
               className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               <GitPullRequest className="h-3.5 w-3.5" />
-              Create PR
+              {t("assistant.git.createPr")}
             </button>
           ) : null}
         </div>
@@ -1878,7 +1906,7 @@ export function GitPanel(props: GitPanelProps) {
                     "text-amber-500 animate-pulse",
                 )}
               />
-              Preview
+              {t("assistant.git.preview")}
               <ExternalLink className="h-3 w-3 text-muted-foreground" />
             </a>
           )}
@@ -1890,10 +1918,10 @@ export function GitPanel(props: GitPanelProps) {
               className="h-7 text-xs"
               disabled
               onClick={onCreateRepoClick}
-              title={createRepoDisabledReason}
+              title={t("assistant.git.createRepoDisabled")}
             >
               <FolderGit2 className="mr-1.5 h-3.5 w-3.5" />
-              Create Repo
+              {t("assistant.git.createRepo")}
             </Button>
           )}
         </div>
@@ -1913,7 +1941,11 @@ export function GitPanel(props: GitPanelProps) {
                 : "text-muted-foreground hover:bg-muted/50",
             )}
           >
-            {tab === "files" ? "Files" : tab === "diff" ? "Changes" : "PR"}
+            {tab === "files"
+              ? t("assistant.git.tabFiles")
+              : tab === "diff"
+                ? t("assistant.git.tabChanges")
+                : t("assistant.git.tabPr")}
             {tab === "diff" && hasDiffChanges && (
               <span className="ml-1 text-[10px] text-muted-foreground font-mono">
                 {diffFiles?.length ?? 0}
@@ -1929,7 +1961,7 @@ export function GitPanel(props: GitPanelProps) {
                 aria-disabled="true"
                 className="cursor-not-allowed rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground opacity-50"
               >
-                PR
+                {t("assistant.git.tabPr")}
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">{prTabDisabledReason}</TooltipContent>
@@ -1952,7 +1984,7 @@ export function GitPanel(props: GitPanelProps) {
               <div className="p-3">
                 <div className="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/25 py-8 text-center">
                   <p className="text-xs text-muted-foreground">
-                    Loading files…
+                    {t("assistant.git.loadingFiles")}
                   </p>
                 </div>
               </div>
@@ -1966,7 +1998,9 @@ export function GitPanel(props: GitPanelProps) {
               <div className="p-3">
                 <div className="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/25 py-8 text-center">
                   <p className="text-xs text-muted-foreground">
-                    {!hasSandbox ? "Waiting for sandbox…" : "No files found"}
+                    {!hasSandbox
+                      ? t("assistant.git.waitingForSandboxEllipsis")
+                      : t("assistant.git.noFilesFound")}
                   </p>
                 </div>
               </div>
@@ -2017,7 +2051,7 @@ export function GitPanel(props: GitPanelProps) {
                           : "text-muted-foreground hover:bg-muted/50",
                       )}
                     >
-                      All Changes
+                      {t("assistant.git.allChanges")}
                     </button>
                     <button
                       type="button"
@@ -2032,7 +2066,7 @@ export function GitPanel(props: GitPanelProps) {
                           : "text-muted-foreground hover:bg-muted/50",
                       )}
                     >
-                      Uncommitted
+                      {t("assistant.git.uncommitted")}
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
@@ -2050,8 +2084,8 @@ export function GitPanel(props: GitPanelProps) {
                           !hasSandbox || isDiscardingChanges || isAgentWorking
                         }
                         className="h-6 w-6 shrink-0 px-0 text-muted-foreground hover:text-destructive"
-                        title="Discard uncommitted changes"
-                        aria-label="Discard uncommitted changes"
+                        title={t("assistant.git.discardUncommittedChanges")}
+                        aria-label={t("assistant.git.discardUncommittedChanges")}
                       >
                         {isDiscardingChanges ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2073,8 +2107,8 @@ export function GitPanel(props: GitPanelProps) {
                       }}
                       disabled={!hasSandbox || isRefreshingChanges}
                       className="h-6 w-6 shrink-0 px-0"
-                      title="Refresh changes"
-                      aria-label="Refresh changes"
+                      title={t("assistant.git.refreshChanges")}
+                      aria-label={t("assistant.git.refreshChanges")}
                     >
                       <RefreshCw
                         className={cn(
@@ -2108,8 +2142,9 @@ export function GitPanel(props: GitPanelProps) {
                     <div className="mb-2 flex items-center justify-between gap-2 px-2">
                       <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                         <span>
-                          {visibleFiles.length} file
-                          {visibleFiles.length !== 1 ? "s" : ""} changed
+                          {t("assistant.git.filesChanged", {
+                            count: visibleFiles.length,
+                          })}
                         </span>
                         {adds > 0 && (
                           <span className="text-green-600 dark:text-green-500">
@@ -2151,10 +2186,10 @@ export function GitPanel(props: GitPanelProps) {
                 <div className="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/25 py-8 text-center">
                   <p className="text-xs text-muted-foreground">
                     {!hasSandbox
-                      ? "Waiting for sandbox..."
+                      ? t("assistant.git.waitingForSandbox")
                       : diffFiles === null
-                        ? "Loading..."
-                        : "No file changes yet"}
+                        ? t("assistant.git.loading")
+                        : t("assistant.git.noFileChangesYet")}
                   </p>
                 </div>
               )}
@@ -2190,7 +2225,7 @@ export function GitPanel(props: GitPanelProps) {
               />
             ) : (
               <div className="text-center text-xs text-muted-foreground py-6">
-                Create a repo first
+                {t("assistant.git.createRepoFirst")}
               </div>
             )}
           </div>
@@ -2222,7 +2257,7 @@ export function GitPanel(props: GitPanelProps) {
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" disabled={isDiscardingChanges}>
-                Cancel
+                {t("assistant.git.cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -2233,12 +2268,14 @@ export function GitPanel(props: GitPanelProps) {
               {isDiscardingChanges ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Discarding...
+                  {t("assistant.git.discarding")}
                 </>
               ) : (
                 <>
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {discardTarget ? "Discard file" : "Discard changes"}
+                  {discardTarget
+                    ? t("assistant.git.discardFile")
+                    : t("assistant.git.discardChanges")}
                 </>
               )}
             </Button>

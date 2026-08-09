@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Hammer, Loader2, Paintbrush, Telescope } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { TaskPendingToolCall, TaskToolUIPart } from "@viben/agent";
 import { formatTokens, toRelativePath } from "@viben/shared";
 import { cn } from "@/lib/utils";
@@ -64,13 +66,16 @@ function getToolSummary(toolCall: TaskPendingToolCall): string {
   }
 }
 
-function formatTime(seconds: number): string {
+function formatTime(seconds: number, t: TFunction): string {
   if (seconds < 60) {
-    return `${seconds}s`;
+    return t("assistant.toolSummary.timeSeconds", { seconds });
   }
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${mins}m ${secs}s`;
+  return t("assistant.toolSummary.timeMinutesSeconds", {
+    minutes: mins,
+    seconds: secs,
+  });
 }
 
 function useTaskTiming(isRunning: boolean, startedAtMs?: number) {
@@ -116,14 +121,14 @@ function getSubagentIcon(
   }
 }
 
-function getSubagentLabel(subagentType: string | undefined): string {
+function getSubagentLabelKey(subagentType: string | undefined): string {
   switch (subagentType) {
     case "executor":
-      return "Executor";
+      return "assistant.taskGroup.subagentExecutor";
     case "design":
-      return "Design";
+      return "assistant.taskGroup.subagentDesign";
     default:
-      return "Explorer";
+      return "assistant.taskGroup.subagentExplorer";
   }
 }
 
@@ -142,6 +147,7 @@ function TaskItem({
   onApprove?: (id: string) => void;
   onDeny?: (id: string, reason?: string) => void;
 }) {
+  const { t } = useTranslation();
   const status = getTaskStatus(part, isStreaming);
   const isRunning = status === "running" || status === "pending";
 
@@ -157,7 +163,7 @@ function TaskItem({
     output?.toolCallCount ?? (isComplete ? countToolCalls(output?.final) : 0);
   const tokenCount = output?.usage?.inputTokens ?? null;
 
-  const desc = part.input?.task ?? "Task";
+  const desc = part.input?.task ?? t("assistant.taskGroup.task");
   const subagentType = part.input?.subagentType;
 
   // Handle approval state
@@ -175,13 +181,17 @@ function TaskItem({
   // Build mono stats
   const statParts: string[] = [];
   if (toolCount > 0) {
-    statParts.push(`${toolCount} tool${toolCount !== 1 ? "s" : ""}`);
+    statParts.push(t("assistant.taskGroup.toolCount", { count: toolCount }));
   }
   if (tokenCount !== null) {
-    statParts.push(`${formatTokens(tokenCount)} tokens`);
+    statParts.push(
+      t("assistant.taskGroup.tokenCount", {
+        count: formatTokens(tokenCount),
+      }),
+    );
   }
   if (isRunning && elapsedSeconds > 0) {
-    statParts.push(formatTime(elapsedSeconds));
+    statParts.push(formatTime(elapsedSeconds, t));
   }
 
   // Determine nested status line
@@ -189,16 +199,18 @@ function TaskItem({
   if (status === "complete") {
     // No nested status for completed tasks — the header already indicates completion
   } else if (status === "interrupted") {
-    nestedStatus = "Interrupted";
+    nestedStatus = t("assistant.taskGroup.statusInterrupted");
   } else if (denied) {
-    nestedStatus = denialReason ? `Denied: ${denialReason}` : "Denied";
+    nestedStatus = denialReason
+      ? t("assistant.taskGroup.statusDeniedReason", { reason: denialReason })
+      : t("assistant.taskGroup.statusDenied");
   } else if (approvalRequested) {
-    nestedStatus = "Awaiting approval...";
+    nestedStatus = t("assistant.taskGroup.statusAwaitingApproval");
   } else if (
     status === "pending" ||
     (status === "running" && !pendingToolCall)
   ) {
-    nestedStatus = "Initializing...";
+    nestedStatus = t("assistant.taskGroup.statusInitializing");
   } else if (pendingToolCall) {
     const displayName =
       pendingToolCall.name.charAt(0).toUpperCase() +
@@ -224,7 +236,7 @@ function TaskItem({
             )}
           </span>
           <span className="shrink-0 text-sm font-medium text-foreground">
-            {getSubagentLabel(subagentType)}
+            {t(getSubagentLabelKey(subagentType))}
           </span>
           <span
             className={cn(
@@ -243,7 +255,7 @@ function TaskItem({
           )}
           {approvalRequested && (
             <span className="shrink-0 text-xs text-yellow-500">
-              [NEEDS APPROVAL]
+              {t("assistant.taskGroup.badgeNeedsApproval")}
             </span>
           )}
         </div>
@@ -251,8 +263,7 @@ function TaskItem({
         {/* Executor approval warning */}
         {approvalRequested && subagentType === "executor" && (
           <div className="mt-1 pl-5 text-xs text-yellow-500">
-            This executor has full write access and can create, modify, and
-            delete files.
+            {t("assistant.taskGroup.executorWriteAccessWarning")}
           </div>
         )}
 
@@ -305,6 +316,8 @@ export function TaskGroupView({
   onApprove,
   onDeny,
 }: TaskGroupViewProps) {
+  const { t } = useTranslation();
+
   if (taskParts.length === 0) return null;
 
   const hasApprovalPending = taskParts.some(
@@ -323,13 +336,21 @@ export function TaskGroupView({
 
   let headerText: string;
   if (allComplete) {
-    headerText = `${taskParts.length} subagent${taskParts.length > 1 ? "s" : ""} completed`;
+    headerText = t("assistant.taskGroup.headerCompleted", {
+      count: taskParts.length,
+    });
   } else if (hasInterrupted && runningCount === 0) {
-    headerText = `${taskParts.length} subagent${taskParts.length > 1 ? "s" : ""} interrupted`;
+    headerText = t("assistant.taskGroup.headerInterrupted", {
+      count: taskParts.length,
+    });
   } else if (hasApprovalPending && runningCount === 0) {
-    headerText = `${taskParts.length} subagent${taskParts.length > 1 ? "s" : ""} (approval needed)`;
+    headerText = t("assistant.taskGroup.headerApprovalNeeded", {
+      count: taskParts.length,
+    });
   } else {
-    headerText = `Running ${taskParts.length} subagent${taskParts.length > 1 ? "s" : ""}...`;
+    headerText = t("assistant.taskGroup.headerRunning", {
+      count: taskParts.length,
+    });
   }
 
   return (

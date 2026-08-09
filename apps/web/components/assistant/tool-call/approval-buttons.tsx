@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 export type ApprovalButtonsProps = {
@@ -13,6 +14,8 @@ export function ApprovalButtons({
   onApprove,
   onDeny,
 }: ApprovalButtonsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="mt-3 flex items-center gap-2 pl-5">
       <Button
@@ -21,7 +24,7 @@ export function ApprovalButtons({
         className="h-7 border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
         onClick={() => onApprove?.(approvalId)}
       >
-        Approve
+        {t("assistant.toolCall.approve")}
       </Button>
       <Button
         size="sm"
@@ -29,7 +32,7 @@ export function ApprovalButtons({
         className="h-7 border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
         onClick={() => onDeny?.(approvalId)}
       >
-        Deny
+        {t("assistant.toolCall.deny")}
       </Button>
     </div>
   );

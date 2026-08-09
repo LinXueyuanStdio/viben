@@ -185,7 +185,7 @@ function ChatTabItem({
           onStartRename();
         }}
         className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        aria-label="Rename chat"
+        aria-label={t("assistant.chat.renameChat")}
       >
         <Pencil className="h-3 w-3" />
       </button>
@@ -197,7 +197,7 @@ function ChatTabItem({
             onDelete();
           }}
           className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Close chat"
+          aria-label={t("assistant.chat.closeChat")}
         >
           <X className="h-3 w-3" />
         </button>
@@ -471,7 +471,7 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
           className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium"
         >
           <GitCompare className="h-3.5 w-3.5" />
-          <span>Changes</span>
+          <span>{t("assistant.chat.changes")}</span>
         </button>
         <button
           type="button"
@@ -627,21 +627,20 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
       >
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Close chat?</DialogTitle>
+            <DialogTitle>{t("assistant.chat.closeChatConfirm")}</DialogTitle>
             <DialogDescription>
-              This will permanently delete this chat and its messages. This
-              action cannot be undone.
+              {t("assistant.chat.closeChatDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletingChatId(null)}>
-              Cancel
+              {t("assistant.chat.cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleConfirmDelete()}
             >
-              Delete
+              {t("assistant.chat.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

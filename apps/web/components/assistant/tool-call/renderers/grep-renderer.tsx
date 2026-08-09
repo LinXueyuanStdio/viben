@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
 import type { ToolRendererProps } from "@/lib/render-tool";
 import { ToolLayout } from "../tool-layout";
@@ -47,8 +48,9 @@ export function GrepRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-grep">) {
+  const { t } = useTranslation();
   const input = part.input;
-  const pattern = input?.pattern ?? "...";
+  const pattern = input?.pattern ?? t("assistant.toolCall.placeholder");
   const path = input?.path;
 
   const output = part.state === "output-available" ? part.output : undefined;
@@ -56,7 +58,9 @@ export function GrepRenderer({
   const uniqueFiles = getUniqueFiles(matches);
 
   // Natural summary: "grep for 'pattern' in path" (truncated to last 2 segments)
-  const summary = path ? `in ${truncatePath(path)}` : "";
+  const summary = path
+    ? t("assistant.toolCall.inPath", { path: truncatePath(path) })
+    : "";
 
   const hasExpandedContent = output !== undefined;
 
@@ -64,19 +68,19 @@ export function GrepRenderer({
     <pre className="max-h-64 overflow-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-xs leading-relaxed text-muted-foreground">
       {matches.length > 0 ? (
         <>
-          Found {uniqueFiles.length} file{uniqueFiles.length !== 1 ? "s" : ""}
+          {t("assistant.toolCall.foundFiles", { count: uniqueFiles.length })}
           {"\n"}
           {uniqueFiles.map((f) => f).join("\n")}
         </>
       ) : (
-        "No matches"
+        t("assistant.toolCall.noMatches")
       )}
     </pre>
   ) : undefined;
 
   return (
     <ToolLayout
-      name="Grep"
+      name={t("assistant.toolCall.toolGrep")}
       icon={<Search className="h-3.5 w-3.5" />}
       summary={
         <>
@@ -86,7 +90,11 @@ export function GrepRenderer({
           )}
         </>
       }
-      meta={output ? `${matches.length} matches` : undefined}
+      meta={
+        output
+          ? t("assistant.toolCall.matchCount", { count: matches.length })
+          : undefined
+      }
       state={state}
       expandedContent={expandedContent}
       onApprove={onApprove}

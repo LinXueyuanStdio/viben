@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,7 +47,7 @@ interface ModelComboboxProps {
 /** Providers pinned to the top. */
 const PRIORITY_PROVIDERS = ["anthropic", "openai"];
 
-function groupByProvider(items: ModelComboboxItem[]) {
+function groupByProvider(items: ModelComboboxItem[], t: TFunction) {
   const groups: Record<string, ModelComboboxItem[]> = {};
   const providers: string[] = [];
   for (const item of items) {
@@ -68,7 +70,7 @@ function groupByProvider(items: ModelComboboxItem[]) {
 
   return providers.map((provider) => ({
     provider,
-    label: getProviderDisplayName(provider),
+    label: getProviderDisplayName(provider, t),
     options: groups[provider],
   }));
 }
@@ -76,24 +78,31 @@ function groupByProvider(items: ModelComboboxItem[]) {
 export function ModelCombobox({
   value,
   items,
-  placeholder = "Select...",
-  searchPlaceholder = "Search...",
-  emptyText = "No results found.",
+  placeholder,
+  searchPlaceholder,
+  emptyText,
   disabled = false,
   className,
   onChange,
 }: ModelComboboxProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+
+  const resolvedPlaceholder =
+    placeholder ?? t("assistant.model.selectPlaceholder");
+  const resolvedSearchPlaceholder =
+    searchPlaceholder ?? t("assistant.model.searchPlaceholder");
+  const resolvedEmptyText = emptyText ?? t("assistant.model.noResults");
 
   const selectedItem = items.find((item) => item.id === value);
   const selectedProvider =
     selectedItem?.provider ??
     (selectedItem ? getProviderFromModelId(selectedItem.id) : undefined);
   const displayText = selectedItem
-    ? stripProviderPrefix(selectedItem.label, selectedProvider ?? "")
-    : placeholder;
+    ? stripProviderPrefix(selectedItem.label, selectedProvider ?? "", t)
+    : resolvedPlaceholder;
 
-  const groups = useMemo(() => groupByProvider(items), [items]);
+  const groups = useMemo(() => groupByProvider(items, t), [items, t]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -116,7 +125,7 @@ export function ModelCombobox({
             <span className="truncate text-left">{displayText}</span>
             {selectedItem?.isVariant && (
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                variant
+                {t("assistant.model.variantBadge")}
               </span>
             )}
           </span>
@@ -128,15 +137,19 @@ export function ModelCombobox({
         align="start"
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput placeholder={resolvedSearchPlaceholder} />
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandEmpty>{resolvedEmptyText}</CommandEmpty>
             {groups.map((group) => (
               <CommandGroup key={group.provider} heading={group.label}>
                 {group.options.map((item) => {
                   const provider =
                     item.provider ?? getProviderFromModelId(item.id);
-                  const shortLabel = stripProviderPrefix(item.label, provider);
+                  const shortLabel = stripProviderPrefix(
+                    item.label,
+                    provider,
+                    t,
+                  );
                   return (
                     <CommandItem
                       key={item.id}
@@ -154,7 +167,7 @@ export function ModelCombobox({
                       <span className="min-w-0 truncate">{shortLabel}</span>
                       {item.isVariant && (
                         <span className="ml-1.5 shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                          variant
+                          {t("assistant.model.variantBadge")}
                         </span>
                       )}
                       <CheckIcon

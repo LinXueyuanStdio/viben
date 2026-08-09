@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { File as DiffsFile } from "@pierre/diffs/react";
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
@@ -27,6 +28,7 @@ function shouldWrapFileContent(filePath: string) {
 }
 
 export function FileTabView() {
+  const { t } = useTranslation();
   const { focusedFilePath } = useGitPanel();
   const { session } = useSessionChatMetadataContext();
 
@@ -47,13 +49,13 @@ export function FileTabView() {
       <div className="flex h-full flex-col">
         <div className="flex shrink-0 items-center border-b border-border px-4 py-2">
           <span className="text-sm font-medium text-muted-foreground font-mono">
-            No file selected
+            {t("assistant.workspace.noFileSelectedHeader")}
           </span>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground/50">
           <FileText className="h-8 w-8" />
           <p className="text-sm">
-            Select a file from the Files panel to view its contents
+            {t("assistant.workspace.selectFileFromFilesPanel")}
           </p>
         </div>
       </div>
@@ -96,7 +98,9 @@ export function FileTabView() {
                 />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Refresh</TooltipContent>
+            <TooltipContent side="bottom">
+              {t("assistant.workspace.refresh")}
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -127,7 +131,7 @@ export function FileTabView() {
               />
             ) : (
               <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                This file is empty.
+                {t("assistant.workspace.fileEmpty")}
               </div>
             )}
           </div>

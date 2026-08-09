@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { Check, ExternalLink, FolderGit2, Loader2 } from "lucide-react";
 import {
@@ -82,6 +83,7 @@ export function CreateRepoDialog({
   hasSandbox,
   onRepoCreated,
 }: CreateRepoDialogProps) {
+  const { t } = useTranslation();
   const [repoName, setRepoName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -129,24 +131,22 @@ export function CreateRepoDialog({
 
   const handleCreate = async () => {
     if (!repoName.trim()) {
-      setError("Repository name is required");
+      setError(t("assistant.commit.repositoryNameRequired"));
       return;
     }
 
     if (!hasSandbox) {
-      setError("Sandbox not active. Please wait for sandbox to start.");
+      setError(t("assistant.commit.sandboxNotActive"));
       return;
     }
 
     if (reconnectRequired) {
-      setError("Reconnect GitHub before creating a repository.");
+      setError(t("assistant.commit.reconnectBeforeCreate"));
       return;
     }
 
     if (!selectedOwner) {
-      setError(
-        "Select an account to create the repository under. Install the GitHub App on an account first.",
-      );
+      setError(t("assistant.commit.selectAccountError"));
       return;
     }
 
@@ -170,7 +170,9 @@ export function CreateRepoDialog({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create repository");
+        throw new Error(
+          data.error || t("assistant.commit.createRepositoryError"),
+        );
       }
 
       const createResult = {
@@ -184,7 +186,9 @@ export function CreateRepoDialog({
       onRepoCreated?.(createResult);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create repository",
+        err instanceof Error
+          ? err.message
+          : t("assistant.commit.createRepositoryError"),
       );
     } finally {
       setIsCreating(false);
@@ -201,10 +205,10 @@ export function CreateRepoDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderGit2 className="h-5 w-5" />
-            Create Repository
+            {t("assistant.commit.createRepositoryTitle")}
           </DialogTitle>
           <DialogDescription>
-            Create a new GitHub repository from your work in this sandbox.
+            {t("assistant.commit.createRepositoryDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -215,7 +219,9 @@ export function CreateRepoDialog({
               <Check className="h-6 w-6 text-green-500" />
             </div>
             <div className="text-center">
-              <p className="font-medium">Repository created successfully!</p>
+              <p className="font-medium">
+                {t("assistant.commit.repositoryCreatedSuccess")}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {result.owner}/{result.repoName}
               </p>
@@ -227,12 +233,12 @@ export function CreateRepoDialog({
                 rel="noopener noreferrer"
                 className="mt-2 inline-flex items-center gap-1 text-sm text-blue-500 hover:underline"
               >
-                View on GitHub
+                {t("assistant.commit.viewOnGitHub")}
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
             <Button variant="outline" onClick={handleClose}>
-              Close
+              {t("assistant.commit.close")}
             </Button>
           </div>
         ) : (
@@ -241,12 +247,13 @@ export function CreateRepoDialog({
             <div className="grid gap-4 py-4">
               {/* Owner / Account Picker */}
               <div className="grid gap-2">
-                <Label htmlFor="repo-owner">Owner</Label>
+                <Label htmlFor="repo-owner">
+                  {t("assistant.commit.ownerLabel")}
+                </Label>
                 {reconnectRequired ? (
                   <div className="space-y-3 rounded-md border border-amber-500/20 bg-amber-500/5 p-3">
                     <p className="text-sm text-muted-foreground">
-                      Your saved GitHub connection is no longer valid. Reconnect
-                      before creating a repository.
+                      {t("assistant.commit.connectionInvalid")}
                     </p>
                     <Button
                       type="button"
@@ -254,13 +261,13 @@ export function CreateRepoDialog({
                       size="sm"
                       onClick={handleReconnect}
                     >
-                      Reconnect GitHub
+                      {t("assistant.commit.reconnectGitHub")}
                     </Button>
                   </div>
                 ) : loadingInstallations ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading accounts...
+                    {t("assistant.commit.loadingAccounts")}
                   </div>
                 ) : installations.length > 0 ? (
                   <Select
@@ -269,7 +276,9 @@ export function CreateRepoDialog({
                     disabled={isCreating}
                   >
                     <SelectTrigger id="repo-owner" className="w-full">
-                      <SelectValue placeholder="Select an account" />
+                      <SelectValue
+                        placeholder={t("assistant.commit.selectAccountPlaceholder")}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {installations.map((inst) => (
@@ -278,22 +287,25 @@ export function CreateRepoDialog({
                           value={inst.accountLogin}
                         >
                           {inst.accountLogin}
-                          {inst.accountType === "Organization" ? " (org)" : ""}
+                          {inst.accountType === "Organization"
+                            ? t("assistant.commit.organizationSuffix")
+                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No GitHub App installations found. Install the GitHub App on
-                    an account first.
+                    {t("assistant.commit.noInstallationsFound")}
                   </p>
                 )}
               </div>
 
               {/* Repository Name */}
               <div className="grid gap-2">
-                <Label htmlFor="repo-name">Repository name</Label>
+                <Label htmlFor="repo-name">
+                  {t("assistant.commit.repositoryNameLabel")}
+                </Label>
                 {selectedOwner && (
                   <p className="text-xs text-muted-foreground">
                     {selectedOwner}/{repoName || "..."}
@@ -301,22 +313,24 @@ export function CreateRepoDialog({
                 )}
                 <Input
                   id="repo-name"
-                  placeholder="my-awesome-project"
+                  placeholder={t("assistant.commit.repositoryNamePlaceholder")}
                   value={repoName}
                   onChange={(e) => setRepoName(e.target.value)}
                   disabled={isCreating}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Use letters, numbers, hyphens, underscores, and periods only.
+                  {t("assistant.commit.repositoryNameHint")}
                 </p>
               </div>
 
               {/* Description */}
               <div className="grid gap-2">
-                <Label htmlFor="repo-description">Description (optional)</Label>
+                <Label htmlFor="repo-description">
+                  {t("assistant.commit.descriptionLabel")}
+                </Label>
                 <Textarea
                   id="repo-description"
-                  placeholder="A short description of your project"
+                  placeholder={t("assistant.commit.descriptionPlaceholder")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={isCreating}
@@ -328,9 +342,11 @@ export function CreateRepoDialog({
               {/* Private Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="repo-private">Private repository</Label>
+                  <Label htmlFor="repo-private">
+                    {t("assistant.commit.privateRepositoryLabel")}
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Only you can see this repository
+                    {t("assistant.commit.privateRepositoryHint")}
                   </p>
                 </div>
                 <Switch
@@ -355,7 +371,7 @@ export function CreateRepoDialog({
                 onClick={() => onOpenChange(false)}
                 disabled={isCreating}
               >
-                Cancel
+                {t("assistant.commit.cancel")}
               </Button>
               <Button
                 onClick={handleCreate}
@@ -370,10 +386,10 @@ export function CreateRepoDialog({
                 {isCreating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {t("assistant.commit.creating")}
                   </>
                 ) : (
-                  "Create Repository"
+                  t("assistant.commit.createRepositoryButton")
                 )}
               </Button>
             </DialogFooter>

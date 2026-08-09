@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { ArrowRight, MessageSquarePlus, X } from "lucide-react";
 import {
   useCallback,
@@ -31,6 +32,7 @@ export function SelectionPopover({
   containerRef,
   onAddToPrompt,
 }: SelectionPopoverProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<PopoverState>({ type: "hidden" });
   const [comment, setComment] = useState("");
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -249,7 +251,7 @@ export function SelectionPopover({
           )}
         >
           <MessageSquarePlus className="h-4 w-4" />
-          <span>Comment</span>
+          <span>{t("assistant.selection.comment")}</span>
         </button>
       ) : (
         <div className="flex w-80 flex-col gap-2 p-3">
@@ -265,7 +267,7 @@ export function SelectionPopover({
             ref={textareaRef}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Add a note or instruction..."
+            placeholder={t("assistant.selection.addNotePlaceholder")}
             rows={2}
             className={cn(
               "w-full resize-none rounded-md border border-border bg-background px-2.5 py-2",
@@ -292,7 +294,7 @@ export function SelectionPopover({
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="h-3 w-3" />
-              Cancel
+              {t("assistant.selection.cancel")}
             </button>
             <Button
               type="button"
@@ -300,7 +302,7 @@ export function SelectionPopover({
               onClick={handleSubmit}
               className="h-7 gap-1.5 rounded-lg px-3 text-xs font-medium"
             >
-              Add to Prompt
+              {t("assistant.selection.addToPrompt")}
               <ArrowRight className="h-3 w-3" />
             </Button>
           </div>

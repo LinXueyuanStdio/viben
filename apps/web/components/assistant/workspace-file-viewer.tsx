@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { File as DiffsFile } from "@pierre/diffs/react";
 import { Check, CodeXml, Copy, Loader2, RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -184,6 +185,8 @@ function ViewModeToggle({
   mode: ViewerMode;
   onModeChange: (mode: ViewerMode) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center rounded-md border border-border bg-muted p-0.5">
       <Button
@@ -197,7 +200,7 @@ function ViewModeToggle({
           mode === "raw" && "bg-background shadow-xs hover:bg-background",
         )}
       >
-        Raw
+        {t("assistant.workspace.raw")}
       </Button>
       <Button
         type="button"
@@ -210,7 +213,7 @@ function ViewModeToggle({
           mode === "pretty" && "bg-background shadow-xs hover:bg-background",
         )}
       >
-        Pretty
+        {t("assistant.workspace.pretty")}
       </Button>
     </div>
   );
@@ -239,6 +242,7 @@ function ViewerBody({
   onAddToPrompt?: (selectedText: string, comment: string) => void;
   response: WorkspaceFileContentResponse | undefined;
 }) {
+  const { t } = useTranslation();
   const [viewerMode, setViewerMode] = useState<ViewerMode>(() =>
     getDefaultViewerMode(filePath),
   );
@@ -250,8 +254,8 @@ function ViewerBody({
     : defaultFileOptions;
   const contentRef = useRef<HTMLDivElement>(null);
   const openInEditorTitle = editorBusy
-    ? "Starting editor…"
-    : (editorDisabledReason ?? "Open in code editor");
+    ? t("assistant.workspace.startingEditor")
+    : (editorDisabledReason ?? t("assistant.workspace.openInCodeEditor"));
 
   return (
     <>
@@ -260,7 +264,10 @@ function ViewerBody({
           <p className="min-w-0 break-all font-mono text-sm text-foreground">
             {filePath}
           </p>
-          <CopyButton text={filePath} title="Copy file path" />
+          <CopyButton
+            text={filePath}
+            title={t("assistant.workspace.copyFilePath")}
+          />
         </div>
         <div className="flex items-center gap-1">
           {supportsPrettyView && (
@@ -282,7 +289,9 @@ function ViewerBody({
                 <CodeXml className="h-3.5 w-3.5" />
               )}
               <span className="hidden sm:inline">
-                {editorBusy ? "Starting Editor…" : "Open in Editor"}
+                {editorBusy
+                  ? t("assistant.workspace.startingEditorButton")
+                  : t("assistant.workspace.openInEditor")}
               </span>
             </Button>
           )}
@@ -293,7 +302,7 @@ function ViewerBody({
             onClick={onRefresh}
             disabled={isLoading || isRefreshing}
             className="h-7 shrink-0 px-2"
-            title="Refresh file contents"
+            title={t("assistant.workspace.refreshFileContents")}
           >
             <RefreshCw
               className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
@@ -306,14 +315,14 @@ function ViewerBody({
         {hasContent && (
           <CopyButton
             text={response.content}
-            title="Copy file contents"
+            title={t("assistant.workspace.copyFileContents")}
             className="absolute top-2 right-4 z-10 border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-muted"
           />
         )}
         {isLoading ? (
           <div className="flex h-full min-h-48 items-center justify-center px-4 py-8 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading file contents…
+            {t("assistant.workspace.loadingFileContents")}
           </div>
         ) : errorMessage ? (
           <div className="px-4 py-6 text-sm text-destructive">
@@ -322,7 +331,7 @@ function ViewerBody({
         ) : response ? (
           response.content.length === 0 ? (
             <div className="px-4 py-6 text-sm text-muted-foreground">
-              This file is empty.
+              {t("assistant.workspace.fileEmpty")}
             </div>
           ) : viewerMode === "pretty" && prettyViewKind ? (
             <PrettyFileContent
@@ -337,7 +346,7 @@ function ViewerBody({
           )
         ) : (
           <div className="px-4 py-6 text-sm text-muted-foreground">
-            No file selected.
+            {t("assistant.workspace.noFileSelectedBody")}
           </div>
         )}
         {onAddToPrompt && hasContent && (
@@ -361,6 +370,7 @@ export function WorkspaceFileViewer({
   onAddToPrompt,
   sessionId,
 }: WorkspaceFileViewerProps) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const requestUrl = useMemo(() => {
     if (!open || !filePath) {
@@ -416,7 +426,7 @@ export function WorkspaceFileViewer({
         <DrawerContent className="h-[90vh] max-h-[90vh] gap-0">
           <DrawerTitle className="sr-only">{filePath}</DrawerTitle>
           <DrawerDescription className="sr-only">
-            Viewing workspace file
+            {t("assistant.workspace.viewingWorkspaceFile")}
           </DrawerDescription>
           {body}
         </DrawerContent>
@@ -433,7 +443,7 @@ export function WorkspaceFileViewer({
       >
         <DialogTitle className="sr-only">{filePath}</DialogTitle>
         <DialogDescription className="sr-only">
-          Viewing workspace file
+          {t("assistant.workspace.viewingWorkspaceFile")}
         </DialogDescription>
         {body}
       </DialogContent>

@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { DiffFile } from "@/app/api/sessions/[sessionId]/diff/route";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,15 +67,18 @@ function formatTimestamp(date: Date) {
 }
 
 function StaleBanner({ cachedAt }: { cachedAt: Date | null }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 border-b border-border bg-amber-100 px-4 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
       <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
       <span>
-        Viewing cached changes - sandbox is offline
+        {t("assistant.diff.viewingCachedChanges")}
         {cachedAt && (
           <span className="text-amber-700/70 dark:text-amber-400/70">
             {" "}
-            (saved {formatTimestamp(cachedAt)})
+            {t("assistant.diff.cachedSavedAt", {
+              timestamp: formatTimestamp(cachedAt),
+            })}
           </span>
         )}
       </span>
@@ -83,6 +87,7 @@ function StaleBanner({ cachedAt }: { cachedAt: Date | null }) {
 }
 
 function StatusBadge({ status }: { status: DiffFile["status"] }) {
+  const { t } = useTranslation();
   const styles = {
     added: "bg-green-500/20 text-green-700 dark:text-green-400",
     modified: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
@@ -91,10 +96,10 @@ function StatusBadge({ status }: { status: DiffFile["status"] }) {
   };
 
   const labels = {
-    added: "New",
-    modified: "Modified",
-    deleted: "Deleted",
-    renamed: "Renamed",
+    added: t("assistant.diff.statusNew"),
+    modified: t("assistant.diff.statusModified"),
+    deleted: t("assistant.diff.statusDeleted"),
+    renamed: t("assistant.diff.statusRenamed"),
   };
 
   return (
@@ -114,6 +119,7 @@ function StagingBadge({
 }: {
   stagingStatus: DiffFile["stagingStatus"];
 }) {
+  const { t } = useTranslation();
   if (!stagingStatus || stagingStatus === "staged") return null;
 
   const styles = {
@@ -122,8 +128,8 @@ function StagingBadge({
   };
 
   const labels = {
-    unstaged: "Unstaged",
-    partial: "Partial",
+    unstaged: t("assistant.diff.stagingUnstaged"),
+    partial: t("assistant.diff.stagingPartial"),
   };
 
   return (
@@ -149,6 +155,7 @@ function FileEntry({
   onToggle: () => void;
   diffStyle: DiffStyle;
 }) {
+  const { t } = useTranslation();
   const fileName = file.path.split("/").pop() ?? file.path;
   const dirPath = file.path.slice(0, -fileName.length);
   const baseOptions =
@@ -187,7 +194,7 @@ function FileEntry({
           <StagingBadge stagingStatus={file.stagingStatus} />
           {isGenerated && (
             <span className="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground bg-muted">
-              Generated
+              {t("assistant.diff.generated")}
             </span>
           )}
         </div>
@@ -211,7 +218,7 @@ function FileEntry({
             <PatchDiff key={diffStyle} patch={file.diff} options={options} />
           ) : (
             <div className="px-4 py-3 text-xs text-muted-foreground">
-              No diff content available
+              {t("assistant.diff.noDiffContent")}
             </div>
           )}
         </div>
@@ -229,7 +236,11 @@ function ScopeDropdown({
   onScopeChange: (scope: DiffScope) => void;
   uncommittedFileCount: number;
 }) {
-  const label = scope === "all" ? "All changes" : "Uncommitted changes";
+  const { t } = useTranslation();
+  const label =
+    scope === "all"
+      ? t("assistant.diff.allChanges")
+      : t("assistant.diff.uncommittedChanges");
 
   return (
     <DropdownMenu>
@@ -251,14 +262,17 @@ function ScopeDropdown({
           value={scope}
           onValueChange={(v) => onScopeChange(v as DiffScope)}
         >
-          <DropdownMenuRadioItem value="all">All changes</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="all">
+            {t("assistant.diff.allChanges")}
+          </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="uncommitted">
             <div className="flex flex-col">
-              <span>Uncommitted changes</span>
+              <span>{t("assistant.diff.uncommittedChanges")}</span>
               {uncommittedFileCount > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  {uncommittedFileCount} file
-                  {uncommittedFileCount !== 1 && "s"} changed
+                  {t("assistant.diff.filesChanged", {
+                    count: uncommittedFileCount,
+                  })}
                 </span>
               )}
             </div>
@@ -270,6 +284,7 @@ function ScopeDropdown({
 }
 
 export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
+  const { t } = useTranslation();
   const {
     diff,
     diffLoading,
@@ -359,7 +374,7 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
           <div className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-3">
               <DialogTitle className="text-base font-medium">
-                Changes
+                {t("assistant.diff.changesTitle")}
               </DialogTitle>
               <ScopeDropdown
                 scope={scope}
@@ -384,7 +399,7 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
                 onClick={() => refreshDiff()}
                 disabled={diffRefreshing || !sandboxInfo}
                 className="h-7 px-2 text-xs"
-                title="Refresh diff"
+                title={t("assistant.diff.refreshDiff")}
               >
                 <RefreshCw
                   className={cn("h-3 w-3", diffRefreshing && "animate-spin")}
@@ -402,7 +417,7 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Unified
+                  {t("assistant.diff.unified")}
                 </button>
                 <button
                   type="button"
@@ -414,7 +429,7 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Split
+                  {t("assistant.diff.split")}
                 </button>
               </div>
               {filteredFiles.length > 0 && (
@@ -425,7 +440,7 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
                     onClick={expandAll}
                     className="hidden h-7 px-2 text-xs sm:inline-flex"
                   >
-                    Expand all
+                    {t("assistant.diff.expandAll")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -433,14 +448,14 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
                     onClick={collapseAll}
                     className="hidden h-7 px-2 text-xs sm:inline-flex"
                   >
-                    Collapse
+                    {t("assistant.diff.collapse")}
                   </Button>
                 </>
               )}
             </div>
           </div>
           <DialogDescription className="sr-only">
-            File changes diff viewer
+            {t("assistant.diff.srDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -472,8 +487,8 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
             <div className="px-4 py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 {scope === "uncommitted"
-                  ? "No uncommitted changes"
-                  : "No changes detected"}
+                  ? t("assistant.diff.noUncommitted")
+                  : t("assistant.diff.noChangesDetected")}
               </p>
             </div>
           )}
@@ -497,12 +512,13 @@ export function DiffViewer({ open, onOpenChange }: DiffViewerProps) {
         {filteredFiles.length > 0 && (
           <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
             <span>
-              {filteredSummary.totalFiles} file
-              {filteredSummary.totalFiles !== 1 && "s"} changed
+              {t("assistant.diff.filesChanged", {
+                count: filteredSummary.totalFiles,
+              })}
             </span>
             {diff?.baseRef && (
               <span>
-                vs{" "}
+                {t("assistant.diff.vs")}{" "}
                 <span className="font-mono text-foreground/70">
                   {diff.baseRef}
                 </span>

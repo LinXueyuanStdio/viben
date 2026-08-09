@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { mergePr, type MergePullRequestResult } from "@/lib/github/actions/pr";
 import {
   getMergeReadiness,
@@ -54,24 +55,6 @@ interface MergePrDialogProps {
   onFixConflicts?: (baseBranchRef: string) => Promise<void> | void;
 }
 
-const mergeMethodLabels: Record<MergeMethod, string> = {
-  squash: "Squash and merge",
-  merge: "Create a merge commit",
-  rebase: "Rebase and merge",
-};
-
-const mergeMethodButtonLabels: Record<MergeMethod, string> = {
-  squash: "Squash & Archive",
-  merge: "Merge & Archive",
-  rebase: "Rebase & Archive",
-};
-
-const mergeMethodDescriptions: Record<MergeMethod, string> = {
-  squash: "Combine all commits into one commit in the base branch.",
-  merge: "All commits will be added to the base branch via a merge commit.",
-  rebase: "All commits will be rebased and added to the base branch.",
-};
-
 export function MergePrDialog({
   open,
   onOpenChange,
@@ -83,6 +66,26 @@ export function MergePrDialog({
   onFixChecks,
   onFixConflicts,
 }: MergePrDialogProps) {
+  const { t } = useTranslation();
+
+  const mergeMethodLabels: Record<MergeMethod, string> = {
+    squash: t("assistant.git.mergeMethodSquash"),
+    merge: t("assistant.git.mergeMethodMerge"),
+    rebase: t("assistant.git.mergeMethodRebase"),
+  };
+
+  const mergeMethodButtonLabels: Record<MergeMethod, string> = {
+    squash: t("assistant.git.mergeMethodButtonSquash"),
+    merge: t("assistant.git.mergeMethodButtonMerge"),
+    rebase: t("assistant.git.mergeMethodButtonRebase"),
+  };
+
+  const mergeMethodDescriptions: Record<MergeMethod, string> = {
+    squash: t("assistant.git.mergeMethodDescriptionSquash"),
+    merge: t("assistant.git.mergeMethodDescriptionMerge"),
+    rebase: t("assistant.git.mergeMethodDescriptionRebase"),
+  };
+
   const [readiness, setReadiness] = useState<MergeReadinessResponse | null>(
     null,
   );
@@ -128,14 +131,14 @@ export function MergePrDialog({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Failed to load merge readiness",
+          : t("assistant.git.failedToLoadMergeReadiness"),
       );
     } finally {
       if (readinessRequestIdRef.current === requestId) {
         setIsLoadingReadiness(false);
       }
     }
-  }, [session.id]);
+  }, [session.id, t]);
 
   useEffect(() => {
     if (!open) {
@@ -199,7 +202,7 @@ export function MergePrDialog({
 
   const handleMerge = async (force = false) => {
     if (!readiness?.pr) {
-      setError("No pull request found for this session.");
+      setError(t("assistant.git.noPullRequestFound"));
       return;
     }
 
@@ -215,7 +218,7 @@ export function MergePrDialog({
         ...(force ? { force: true } : {}),
       });
       if (mergeResult.merged !== true) {
-        throw new Error("Failed to merge pull request");
+        throw new Error(t("assistant.git.failedToMergePullRequest"));
       }
 
       await onMerged?.(mergeResult);
@@ -225,7 +228,7 @@ export function MergePrDialog({
       setError(
         mergeError instanceof Error
           ? mergeError.message
-          : "Failed to merge pull request",
+          : t("assistant.git.failedToMergePullRequest"),
       );
     } finally {
       setIsSubmitting(false);
@@ -288,10 +291,12 @@ export function MergePrDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitMerge className="h-5 w-5" />
-            Merge & Archive
+            {t("assistant.git.mergeMethodButtonMerge")}
           </DialogTitle>
           <DialogDescription>
-            Merge PR #{session.prNumber} and archive this session.
+            {t("assistant.git.mergeDialogDescription", {
+              prNumber: session.prNumber,
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -330,7 +335,7 @@ export function MergePrDialog({
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="text-sm font-medium text-foreground">
-                    Merge blocked
+                    {t("assistant.git.mergeBlocked")}
                   </p>
                 </div>
                 <div className="space-y-1.5 pl-6">
@@ -344,11 +349,9 @@ export function MergePrDialog({
                   ))}
                   {hasMergeConflicts && (
                     <p className="text-xs leading-relaxed text-muted-foreground/80">
-                      Fetch{" "}
-                      <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground/70">
-                        {baseBranchRef}
-                      </code>
-                      , resolve the conflicts, and avoid rebasing.
+                      {t("assistant.git.fetchResolveConflicts", {
+                        branchRef: baseBranchRef,
+                      })}
                     </p>
                   )}
                 </div>
@@ -364,7 +367,7 @@ export function MergePrDialog({
                       }}
                     >
                       <Sparkles className="mr-2 h-3.5 w-3.5" />
-                      Fix conflicts
+                      {t("assistant.git.fixConflicts")}
                     </Button>
                   </div>
                 )}
@@ -374,9 +377,11 @@ export function MergePrDialog({
 
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-3">
             <div className="space-y-0.5">
-              <p className="text-sm font-medium">Delete source branch</p>
+              <p className="text-sm font-medium">
+                {t("assistant.git.deleteSourceBranch")}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Deletes the PR branch after merge when possible.
+                {t("assistant.git.deleteSourceBranchDescriptionWhenPossible")}
               </p>
             </div>
             <Switch
@@ -399,7 +404,7 @@ export function MergePrDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            {t("assistant.git.cancel")}
           </Button>
           {canMerge ? (
             <div className="flex w-full sm:w-auto">
@@ -411,7 +416,7 @@ export function MergePrDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Merging...
+                    {t("assistant.git.merging")}
                   </>
                 ) : (
                   <>
@@ -428,7 +433,7 @@ export function MergePrDialog({
                       size="icon"
                       className="rounded-l-none border-l border-l-primary-foreground/25"
                       disabled={mergeDisabled}
-                      aria-label="Choose merge method"
+                      aria-label={t("assistant.git.chooseMergeMethod")}
                     >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
@@ -472,17 +477,17 @@ export function MergePrDialog({
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Merging...
+                  {t("assistant.git.merging")}
                 </>
               ) : forceConfirming ? (
                 <>
                   <AlertTriangle className="mr-2 h-4 w-4" />
-                  Click again to confirm
+                  {t("assistant.git.clickAgainToConfirm")}
                 </>
               ) : (
                 <>
                   <AlertTriangle className="mr-2 h-4 w-4" />
-                  Merge without passing checks
+                  {t("assistant.git.mergeWithoutChecks")}
                 </>
               )}
             </Button>

@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { WebAgentUIMessage } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +68,7 @@ export function CommitDialog({
   onGitMessage,
   onOpenCreatePr,
 }: CommitDialogProps) {
+  const { t } = useTranslation();
   const [baseBranch, setBaseBranch] = useState("main");
   const [branches, setBranches] = useState<string[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
@@ -132,7 +134,9 @@ export function CommitDialog({
     } catch (err) {
       if (requestId !== statusRequestIdRef.current) return;
       setError(
-        err instanceof Error ? err.message : "Failed to check git status",
+        err instanceof Error
+          ? err.message
+          : t("assistant.commit.checkGitStatusError"),
       );
     } finally {
       if (requestId === statusRequestIdRef.current) {
@@ -202,7 +206,7 @@ export function CommitDialog({
 
   const handleCreateBranch = async () => {
     if (!hasSandbox) {
-      setError("Sandbox not active. Please wait for sandbox to start.");
+      setError(t("assistant.commit.sandboxNotActive"));
       return;
     }
 
@@ -224,7 +228,11 @@ export function CommitDialog({
       setIsDetachedHead(false);
       await syncGitStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create branch");
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("assistant.commit.createBranchError"),
+      );
     } finally {
       setIsCreatingBranch(false);
     }
@@ -232,7 +240,7 @@ export function CommitDialog({
 
   const handleSubmit = async () => {
     if (!hasSandbox) {
-      setError("Sandbox not active. Please wait for sandbox to start.");
+      setError(t("assistant.commit.sandboxNotActive"));
       return;
     }
     if (!hasPendingGitWork) {
@@ -240,7 +248,7 @@ export function CommitDialog({
       return;
     }
     if (mode === "manual" && hasUncommittedChanges && !manualTitle.trim()) {
-      setError("Commit title is required when using manual commit mode.");
+      setError(t("assistant.commit.commitTitleRequired"));
       return;
     }
 
@@ -324,7 +332,7 @@ export function CommitDialog({
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Failed to commit and push changes";
+          : t("assistant.commit.commitPushError");
 
       await onGitMessage?.({
         id: gitMessageId,
@@ -351,9 +359,9 @@ export function CommitDialog({
   const shouldEmphasizePush = Boolean(session.prNumber) || hasUnpushedCommits;
   const submitLabel = hasUncommittedChanges
     ? shouldEmphasizePush
-      ? "Commit & Push"
-      : "Commit changes"
-    : "Push commits";
+      ? t("assistant.commit.commitAndPush")
+      : t("assistant.commit.commitChanges")
+    : t("assistant.commit.pushCommits");
   const isDisabled = isCheckingStatus || isCreatingBranch || isSubmitting;
 
   const commitUrl =
@@ -369,7 +377,7 @@ export function CommitDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Commit Changes</DialogTitle>
+          <DialogTitle>{t("assistant.commit.dialogTitle")}</DialogTitle>
           <DialogDescription>
             {session.repoOwner}/{session.repoName} - {displayBranch}
           </DialogDescription>
@@ -379,26 +387,30 @@ export function CommitDialog({
           {step === "loading" && (
             <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Checking current git changes...
+              {t("assistant.commit.checkingGitChanges")}
             </div>
           )}
 
           {step === "create-branch" && (
             <>
               <div className="grid gap-2">
-                <Label htmlFor="base-branch">Base branch</Label>
+                <Label htmlFor="base-branch">
+                  {t("assistant.commit.baseBranchLabel")}
+                </Label>
                 <Select
                   value={baseBranch}
                   onValueChange={setBaseBranch}
                   disabled={isDisabled || isLoadingBranches}
                 >
                   <SelectTrigger id="base-branch" className="w-full">
-                    <SelectValue placeholder="Select base branch" />
+                    <SelectValue
+                      placeholder={t("assistant.commit.selectBaseBranchPlaceholder")}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {isLoadingBranches ? (
                       <SelectItem value="loading" disabled>
-                        Loading branches...
+                        {t("assistant.commit.loadingBranches")}
                       </SelectItem>
                     ) : (
                       branches.map((branch) => (
@@ -413,8 +425,8 @@ export function CommitDialog({
 
               <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                 {isDetachedHead
-                  ? "You are in detached HEAD state. Create a branch before committing."
-                  : "You are on the base branch. Create a new branch before committing."}
+                  ? t("assistant.commit.detachedHeadWarning")
+                  : t("assistant.commit.onBaseBranchWarning")}
               </div>
             </>
           )}
@@ -445,12 +457,16 @@ export function CommitDialog({
                   >
                     {hasPendingGitWork
                       ? hasUncommittedChanges
-                        ? "Uncommitted changes detected"
-                        : "Unpushed commits detected"
-                      : "No pending git changes"}
+                        ? t("assistant.commit.uncommittedChangesDetected")
+                        : t("assistant.commit.unpushedCommitsDetected")
+                      : t("assistant.commit.noPendingGitChanges")}
                   </p>
                   <p className="text-muted-foreground">
-                    {`Unstaged: ${unstagedCount}, staged: ${stagedCount}, untracked: ${untrackedCount}`}
+                    {t("assistant.commit.changesSummary", {
+                      unstagedCount,
+                      stagedCount,
+                      untrackedCount,
+                    })}
                   </p>
                 </div>
               </div>
@@ -464,32 +480,33 @@ export function CommitDialog({
                   className="gap-3"
                 >
                   <div className="grid gap-2">
-                    <Label>Commit mode</Label>
+                    <Label>{t("assistant.commit.commitModeLabel")}</Label>
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="ai">
                         <Sparkles className="h-4 w-4" />
-                        AI message
+                        {t("assistant.commit.aiMessage")}
                       </TabsTrigger>
                       <TabsTrigger value="manual">
                         <GitCommit className="h-4 w-4" />
-                        Manual message
+                        {t("assistant.commit.manualMessage")}
                       </TabsTrigger>
                     </TabsList>
                   </div>
 
                   <TabsContent value="ai" className="mt-0">
                     <p className="text-sm text-muted-foreground">
-                      AI will generate a concise commit message from staged
-                      changes.
+                      {t("assistant.commit.aiMessageDescription")}
                     </p>
                   </TabsContent>
 
                   <TabsContent value="manual" className="mt-0 grid gap-3">
                     <div className="grid gap-2">
-                      <Label htmlFor="commit-title">Commit title</Label>
+                      <Label htmlFor="commit-title">
+                        {t("assistant.commit.commitTitleLabel")}
+                      </Label>
                       <Input
                         id="commit-title"
-                        placeholder="feat: add git panel improvements"
+                        placeholder={t("assistant.commit.commitTitlePlaceholder")}
                         value={manualTitle}
                         onChange={(e) => setManualTitle(e.target.value)}
                         disabled={isDisabled}
@@ -498,10 +515,12 @@ export function CommitDialog({
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="commit-body">Commit description</Label>
+                      <Label htmlFor="commit-body">
+                        {t("assistant.commit.commitDescriptionLabel")}
+                      </Label>
                       <Textarea
                         id="commit-body"
-                        placeholder="Optional details for commit body"
+                        placeholder={t("assistant.commit.commitBodyPlaceholder")}
                         value={manualBody}
                         onChange={(e) => setManualBody(e.target.value)}
                         disabled={isDisabled}
@@ -522,11 +541,15 @@ export function CommitDialog({
               </div>
 
               <div className="space-y-2 text-center text-sm">
-                <p className="font-medium">Git changes updated successfully.</p>
+                <p className="font-medium">
+                  {t("assistant.commit.successMessage")}
+                </p>
 
                 {gitActions?.committed && gitActions.commitMessage && (
                   <p>
-                    <span className="font-medium">Committed:</span>{" "}
+                    <span className="font-medium">
+                      {t("assistant.commit.committedLabel")}
+                    </span>{" "}
                     <code className="rounded bg-muted px-1 py-0.5 text-xs">
                       {gitActions.commitMessage}
                     </code>
@@ -534,7 +557,9 @@ export function CommitDialog({
                 )}
 
                 {gitActions?.pushed && (
-                  <p className="text-muted-foreground">Pushed to origin</p>
+                  <p className="text-muted-foreground">
+                    {t("assistant.commit.pushedToOrigin")}
+                  </p>
                 )}
 
                 {commitUrl && (
@@ -545,7 +570,7 @@ export function CommitDialog({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-sm text-blue-500 hover:underline"
                   >
-                    View commit
+                    {t("assistant.commit.viewCommit")}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
@@ -569,10 +594,10 @@ export function CommitDialog({
               {isCreatingBranch ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating branch...
+                  {t("assistant.commit.creatingBranch")}
                 </>
               ) : (
-                "Create new branch"
+                t("assistant.commit.createNewBranch")
               )}
             </Button>
           )}
@@ -581,7 +606,7 @@ export function CommitDialog({
             <>
               {!hasPendingGitWork ? (
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Close
+                  {t("assistant.commit.close")}
                 </Button>
               ) : (
                 <Button
@@ -591,7 +616,9 @@ export function CommitDialog({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {hasUncommittedChanges ? "Committing..." : "Pushing..."}
+                      {hasUncommittedChanges
+                        ? t("assistant.commit.committing")
+                        : t("assistant.commit.pushing")}
                     </>
                   ) : (
                     submitLabel
@@ -610,7 +637,7 @@ export function CommitDialog({
                     onOpenCreatePr();
                   }}
                 >
-                  Create PR
+                  {t("assistant.commit.createPr")}
                 </Button>
               )}
 
@@ -620,12 +647,12 @@ export function CommitDialog({
                     window.open(prUrl, "_blank", "noopener,noreferrer");
                   }}
                 >
-                  View PR
+                  {t("assistant.commit.viewPr")}
                 </Button>
               )}
 
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
+                {t("assistant.commit.close")}
               </Button>
             </>
           )}

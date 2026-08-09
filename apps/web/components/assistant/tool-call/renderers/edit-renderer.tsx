@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { toRelativePath } from "@viben/shared/lib/tool-state";
 import { Pencil } from "lucide-react";
 import { MultiFileDiff } from "@pierre/diffs/react";
@@ -16,8 +17,9 @@ export function EditRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-edit">) {
+  const { t } = useTranslation();
   const input = part.input;
-  const rawFilePath = input?.filePath ?? "...";
+  const rawFilePath = input?.filePath ?? t("assistant.toolCall.placeholder");
   const filePath =
     rawFilePath === "..." ? rawFilePath : toRelativePath(rawFilePath, cwd);
   const oldString = input?.oldString ?? "";
@@ -52,7 +54,9 @@ export function EditRenderer({
 
   const output = part.state === "output-available" ? part.output : undefined;
   const outputError =
-    output?.success === false ? (output?.error ?? "Edit failed") : undefined;
+    output?.success === false
+      ? (output?.error ?? t("assistant.toolCall.editFailed"))
+      : undefined;
 
   const mergedState = outputError
     ? { ...state, error: state.error ?? outputError }
@@ -83,7 +87,7 @@ export function EditRenderer({
 
   return (
     <ToolLayout
-      name="Update"
+      name={t("assistant.toolCall.toolUpdate")}
       icon={<Pencil className="h-3.5 w-3.5" />}
       summary={
         filePath === "..." ? (
@@ -97,7 +101,9 @@ export function EditRenderer({
         )
       }
       meta={meta}
-      errorMeta={mergedState.error ? "failed" : undefined}
+      errorMeta={
+        mergedState.error ? t("assistant.toolCall.failed") : undefined
+      }
       state={mergedState}
       expandedContent={expandedContent}
       onApprove={onApprove}

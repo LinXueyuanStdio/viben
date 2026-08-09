@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { CodeXml, Loader2, Square } from "lucide-react";
 import {
   DropdownMenuItem,
@@ -17,6 +18,7 @@ export function CodeEditorMenuItems({
   canRun,
   codeEditor,
 }: CodeEditorMenuItemsProps) {
+  const { t } = useTranslation();
   const isPrimaryBusy =
     codeEditor.state.status === "starting" ||
     codeEditor.state.status === "stopping";
@@ -69,8 +71,8 @@ export function CodeEditorMenuItems({
             <Square className="mr-2 h-3.5 w-3.5 fill-current" />
           )}
           {codeEditor.state.status === "stopping"
-            ? "Stopping Editor..."
-            : "Stop Editor"}
+            ? t("assistant.editor.stoppingEditor")
+            : t("assistant.editor.stopEditor")}
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuSeparator />

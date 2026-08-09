@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import {
   getValidRenameTitle,
@@ -30,6 +31,7 @@ export function InboxSidebarRenameDialog({
   onRenameSession,
   onRenamed,
 }: InboxSidebarRenameDialogProps) {
+  const { t } = useTranslation();
   const [draftTitle, setDraftTitle] = useState("");
   const [renaming, setRenaming] = useState(false);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
@@ -97,9 +99,9 @@ export function InboxSidebarRenameDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit session</DialogTitle>
+          <DialogTitle>{t("assistant.renameDialog.title")}</DialogTitle>
           <DialogDescription>
-            Update the session name shown in your sidebar.
+            {t("assistant.renameDialog.description")}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -113,7 +115,7 @@ export function InboxSidebarRenameDialog({
             ref={renameInputRef}
             value={draftTitle}
             onChange={(event) => setDraftTitle(event.target.value)}
-            placeholder="Session title"
+            placeholder={t("assistant.renameDialog.placeholder")}
             maxLength={120}
             disabled={renaming}
           />
@@ -124,10 +126,12 @@ export function InboxSidebarRenameDialog({
               onClick={onClose}
               disabled={renaming}
             >
-              Cancel
+              {t("assistant.renameDialog.cancel")}
             </Button>
             <Button type="submit" disabled={isSaveDisabled}>
-              {renaming ? "Saving..." : "Save"}
+              {renaming
+                ? t("assistant.renameDialog.saving")
+                : t("assistant.renameDialog.save")}
             </Button>
           </DialogFooter>
         </form>

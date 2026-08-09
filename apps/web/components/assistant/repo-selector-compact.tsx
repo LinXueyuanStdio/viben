@@ -10,7 +10,9 @@ import {
   SearchIcon,
 } from "lucide-react";
 import Link from "next/link";
+import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { z } from "zod";
 import {
@@ -46,19 +48,24 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
-function formatRelativeDate(dateString: string): string {
+function formatRelativeDate(dateString: string, t: TFunction): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays === 0) return t("assistant.repo.dateToday");
+  if (diffDays === 1) return t("assistant.repo.dateYesterday");
+  if (diffDays < 7) return t("assistant.repo.dateDaysAgo", { days: diffDays });
+  if (diffDays < 30)
+    return t("assistant.repo.dateWeeksAgo", {
+      weeks: Math.floor(diffDays / 7),
+    });
   if (diffDays < 365) {
     const months = Math.floor(diffDays / 30);
-    return months === 1 ? "1mo ago" : `${months}mo ago`;
+    return months === 1
+      ? t("assistant.repo.dateOneMonthAgo")
+      : t("assistant.repo.dateMonthsAgo", { months });
   }
   // Show as short date for older
   return date.toLocaleDateString("en-US", {
@@ -154,6 +161,7 @@ export function RepoSelectorCompact({
   selectedRepo,
   onSelect,
 }: RepoSelectorCompactProps) {
+  const { t } = useTranslation();
   const { hasGitHub, loading: sessionLoading } = useSession();
   const { reconnectRequired } = useGitHubConnectionStatus({
     enabled: hasGitHub,
@@ -272,9 +280,9 @@ export function RepoSelectorCompact({
   if (!sessionLoading && !hasGitHub) {
     return (
       <GitHubActionCard
-        title="Install GitHub App"
-        description="Continue on GitHub to choose which repositories are available."
-        buttonLabel="Choose repositories"
+        title={t("assistant.repo.installGitHubApp")}
+        description={t("assistant.repo.continueOnGitHubToChooseRepos")}
+        buttonLabel={t("assistant.repo.chooseRepositories")}
         onClick={startGitHubInstall}
       />
     );
@@ -283,9 +291,9 @@ export function RepoSelectorCompact({
   if (reconnectRequired) {
     return (
       <GitHubActionCard
-        title="Reconnect GitHub"
-        description="Your saved GitHub connection is no longer valid. Reconnect to refresh repository access."
-        buttonLabel="Reconnect GitHub"
+        title={t("assistant.repo.reconnectGitHub")}
+        description={t("assistant.repo.savedConnectionNoLongerValidReconnect")}
+        buttonLabel={t("assistant.repo.reconnectGitHub")}
         onClick={startGitHubReconnect}
       />
     );
@@ -295,9 +303,9 @@ export function RepoSelectorCompact({
   if (!installationsLoading && installations.length === 0) {
     return (
       <GitHubActionCard
-        title="Install GitHub App"
-        description="Install the GitHub App to choose which repositories are available."
-        buttonLabel="Choose repositories"
+        title={t("assistant.repo.installGitHubApp")}
+        description={t("assistant.repo.installAppToChooseRepos")}
+        buttonLabel={t("assistant.repo.chooseRepositories")}
         onClick={startGitHubInstall}
       />
     );
@@ -366,7 +374,7 @@ export function RepoSelectorCompact({
                       className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                     >
                       <Plus className="size-3.5" />
-                      Add GitHub account
+                      {t("assistant.repo.addGitHubAccount")}
                     </button>
                   </div>
                 </CommandList>
@@ -382,7 +390,7 @@ export function RepoSelectorCompact({
             )}
             {selectedRepoData?.updated_at && (
               <span className="shrink-0 text-xs text-muted-foreground">
-                · {formatRelativeDate(selectedRepoData.updated_at)}
+                · {formatRelativeDate(selectedRepoData.updated_at, t)}
               </span>
             )}
           </div>
@@ -393,7 +401,7 @@ export function RepoSelectorCompact({
             onClick={handleDeselect}
             className="shrink-0 px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            Change
+            {t("assistant.repo.change")}
           </button>
         </div>
       </div>
@@ -417,7 +425,7 @@ export function RepoSelectorCompact({
                 <div className="h-4 w-[80px] animate-pulse rounded bg-muted-foreground/10" />
               ) : (
                 <span className="max-w-[140px] truncate font-medium">
-                  {currentOwner || "Select account"}
+                  {currentOwner || t("assistant.repo.selectAccount")}
                 </span>
               )}
               <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
@@ -461,7 +469,7 @@ export function RepoSelectorCompact({
                     className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <Plus className="size-3.5" />
-                    Add GitHub account
+                    {t("assistant.repo.addGitHubAccount")}
                   </button>
                 </div>
               </CommandList>
@@ -474,7 +482,7 @@ export function RepoSelectorCompact({
           <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search repositories..."
+            placeholder={t("assistant.repo.searchRepositories")}
             value={repoSearch}
             onChange={(e) => setRepoSearch(e.target.value)}
             className="h-full w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
@@ -485,7 +493,7 @@ export function RepoSelectorCompact({
               onClick={() => setRepoSearch("")}
               className="text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              Esc
+              {t("assistant.repo.esc")}
             </button>
           )}
         </div>
@@ -509,7 +517,7 @@ export function RepoSelectorCompact({
           </div>
         ) : sortedRepos.length === 0 ? (
           <div className="flex h-full items-center justify-center px-4 text-sm text-muted-foreground">
-            No repositories found.
+            {t("assistant.repo.noRepositoriesFound")}
           </div>
         ) : (
           <div className="divide-y divide-border/50 dark:divide-white/[0.06]">
@@ -527,7 +535,7 @@ export function RepoSelectorCompact({
                   )}
                   {repo.updated_at && (
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      · {formatRelativeDate(repo.updated_at)}
+                      · {formatRelativeDate(repo.updated_at, t)}
                     </span>
                   )}
                 </div>
@@ -536,13 +544,13 @@ export function RepoSelectorCompact({
                   onClick={() => handleRepoSelect(repo)}
                   className="shrink-0 rounded-md border border-border/70 bg-background px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent dark:border-white/20 dark:bg-white/[0.06] dark:hover:bg-white/10"
                 >
-                  Select
+                  {t("assistant.repo.select")}
                 </button>
               </div>
             ))}
             {sortedRepos.length === 25 && !debouncedRepoSearch && (
               <div className="px-4 py-2.5 text-center text-xs text-muted-foreground">
-                Showing first 25 results. Use search to narrow.
+                {t("assistant.repo.showingFirst25Results")}
               </div>
             )}
           </div>
@@ -559,7 +567,7 @@ export function RepoSelectorCompact({
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
             >
-              Manage access
+              {t("assistant.repo.manageAccess")}
               <ExternalLink className="size-3" />
             </Link>
           )}
@@ -571,7 +579,9 @@ export function RepoSelectorCompact({
           className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           <RefreshCw className={cn("size-3", isRefreshing && "animate-spin")} />
-          {isRefreshing ? "Refreshing..." : "Refresh"}
+          {isRefreshing
+            ? t("assistant.repo.refreshing")
+            : t("assistant.repo.refresh")}
         </button>
       </div>
     </div>

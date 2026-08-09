@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { CheckIcon, GitBranch, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ export function BranchPickerDialog({
   isCreating,
   onSelectBranch,
 }: BranchPickerDialogProps) {
+  const { t } = useTranslation();
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
   const { data, isLoading } = useSWR<BranchesResponse>(
@@ -76,25 +78,29 @@ export function BranchPickerDialog({
         <DialogHeader className="px-4 pt-4 pb-2">
           <DialogTitle className="flex items-center gap-2 text-sm font-medium">
             <GitBranch className="h-4 w-4" />
-            <span>
-              Select branch for {owner}/{repo}
-            </span>
+            <span>{t("assistant.repo.selectBranchFor", { owner, repo })}</span>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Search and select the branch to use for this session.
+            {t("assistant.repo.searchAndSelectBranch")}
           </DialogDescription>
         </DialogHeader>
         {isCreating ? (
           <div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Creating session on {selectedBranch}…</span>
+            <span>
+              {t("assistant.repo.creatingSessionOnBranch", {
+                branch: selectedBranch,
+              })}
+            </span>
           </div>
         ) : (
           <Command className="border-t">
-            <CommandInput placeholder="Search branches…" />
+            <CommandInput placeholder={t("assistant.branch.searchBranches")} />
             <CommandList className="max-h-64">
               <CommandEmpty>
-                {isLoading ? "Loading branches…" : "No branches found."}
+                {isLoading
+                  ? t("assistant.repo.loadingBranches")
+                  : t("assistant.branch.noBranchesFound")}
               </CommandEmpty>
               <CommandGroup>
                 {branches.map((branch) => (
@@ -112,7 +118,7 @@ export function BranchPickerDialog({
                     <span className="truncate">{branch}</span>
                     {branch === defaultBranch && (
                       <span className="ml-auto text-xs text-muted-foreground">
-                        default
+                        {t("assistant.branch.defaultBadge")}
                       </span>
                     )}
                   </CommandItem>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { ArrowRight, CheckCircle, Circle, LayoutList, ListChecks, ListTodo } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -85,6 +86,7 @@ export function TodoRenderer({
   part,
   state,
 }: ToolRendererProps<"tool-todo_write">) {
+  const { t } = useTranslation();
   const input = part.input;
   const todos: Todo[] = (input?.todos ?? []).filter(
     (t): t is Todo => t !== undefined,
@@ -103,22 +105,25 @@ export function TodoRenderer({
   let statusMeta: string | undefined;
 
   if (allDone) {
-    name = "All tasks completed";
+    name = t("assistant.toolCall.allTasksCompleted");
     summary = "";
     icon = <ListChecks className="h-3.5 w-3.5" />;
   } else if (activeTodo?.content) {
     name = activeTodo.content;
     summary = "";
-    statusMeta = "→ in progress";
+    statusMeta = t("assistant.toolCall.inProgress");
     icon = <ListTodo className="h-3.5 w-3.5" />;
   } else if (noneStarted) {
-    name = `${todos.length} task${todos.length !== 1 ? "s" : ""} created`;
+    name = t("assistant.toolCall.tasksCreated", { count: todos.length });
     summary = "";
     icon = <LayoutList className="h-3.5 w-3.5" />;
   } else {
-    name = `${todos.length} task${todos.length !== 1 ? "s" : ""} updated`;
+    name = t("assistant.toolCall.tasksUpdated", { count: todos.length });
     summary = "";
-    statusMeta = `${completedCount}/${todos.length} done`;
+    statusMeta = t("assistant.toolCall.todoProgress", {
+      done: completedCount,
+      total: todos.length,
+    });
     icon = <ListTodo className="h-3.5 w-3.5" />;
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { MessageCircleQuestion } from "lucide-react";
 import type { ToolRendererProps } from "@/lib/render-tool";
 import { ToolLayout } from "../tool-layout";
@@ -8,6 +9,7 @@ export function AskUserQuestionRenderer({
   part,
   state,
 }: ToolRendererProps<"tool-ask_user_question">) {
+  const { t } = useTranslation();
   const input = part.input;
   const output = part.state === "output-available" ? part.output : undefined;
   const questions = input?.questions ?? [];
@@ -21,21 +23,21 @@ export function AskUserQuestionRenderer({
     hasOutput && output && "answers" in output && output.answers !== null;
 
   const summary = isStreaming
-    ? "Generating questions"
+    ? t("assistant.toolCall.generatingQuestions")
     : isWaitingForInput
-      ? "Waiting for user input"
+      ? t("assistant.toolCall.waitingForUserInput")
       : isDeclined
-        ? "User declined to answer"
+        ? t("assistant.toolCall.userDeclinedToAnswer")
         : hasAnswers
-          ? "Answered"
+          ? t("assistant.toolCall.answered")
           : state.denied
-            ? "Cancelled"
-            : "Questions";
+            ? t("assistant.toolCall.cancelled")
+            : t("assistant.toolCall.questions");
 
   const questionCount = questions.length;
   const meta =
     questionCount > 0
-      ? `${questionCount} question${questionCount === 1 ? "" : "s"}`
+      ? t("assistant.toolCall.questionCount", { count: questionCount })
       : undefined;
 
   const expandedContent =
@@ -47,7 +49,7 @@ export function AskUserQuestionRenderer({
           const answer = output.answers[questionKey];
           const answerStr = Array.isArray(answer)
             ? answer.join(", ")
-            : (answer ?? "(not answered)");
+            : (answer ?? t("assistant.toolCall.notAnswered"));
           return (
             <div key={questionKey} className="space-y-0.5">
               <p className="text-sm text-foreground">{questionKey}</p>
@@ -66,7 +68,7 @@ export function AskUserQuestionRenderer({
 
   return (
     <ToolLayout
-      name="Ask user"
+      name={t("assistant.toolCall.toolAskUser")}
       summary={summary}
       meta={meta}
       state={displayState}

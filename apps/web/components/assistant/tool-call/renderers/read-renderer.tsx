@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { toRelativePath } from "@viben/shared/lib/tool-state";
 import { FileText } from "lucide-react";
 import { File as DiffsFile } from "@pierre/diffs/react";
@@ -21,8 +22,9 @@ export function ReadRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-read">) {
+  const { t } = useTranslation();
   const input = part.input;
-  const rawFilePath = input?.filePath ?? "...";
+  const rawFilePath = input?.filePath ?? t("assistant.toolCall.placeholder");
   const filePath =
     rawFilePath === "..." ? rawFilePath : toRelativePath(rawFilePath, cwd);
 
@@ -37,7 +39,9 @@ export function ReadRenderer({
     totalLines !== undefined &&
     (startLine > 1 || endLine < totalLines);
   const outputError =
-    output?.success === false ? (output?.error ?? "Read failed") : undefined;
+    output?.success === false
+      ? (output?.error ?? t("assistant.toolCall.readFailed"))
+      : undefined;
 
   const mergedState = outputError
     ? { ...state, error: state.error ?? outputError }
@@ -67,12 +71,12 @@ export function ReadRenderer({
   const meta = isPartialRead
     ? `[${startLine}–${endLine}]`
     : totalLines !== undefined
-      ? `${totalLines} lines`
+      ? t("assistant.toolCall.lineCount", { count: totalLines })
       : undefined;
 
   return (
     <ToolLayout
-      name="Read"
+      name={t("assistant.toolCall.toolRead")}
       icon={<FileText className="h-3.5 w-3.5" />}
       summary={
         filePath === "..." ? (
@@ -86,7 +90,9 @@ export function ReadRenderer({
         )
       }
       meta={meta}
-      errorMeta={mergedState.error ? "failed" : undefined}
+      errorMeta={
+        mergedState.error ? t("assistant.toolCall.failed") : undefined
+      }
       state={mergedState}
       expandedContent={expandedContent}
       onApprove={onApprove}

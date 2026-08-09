@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RepoSelector } from "./repo-selector";
 import { BranchSelector } from "./branch-selector";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ export function RepoSelectionScreen({
   onSelect,
   isLoading,
 }: RepoSelectionScreenProps) {
+  const { t } = useTranslation();
   const [selectedOwner, setSelectedOwner] = useState("");
   const [selectedRepo, setSelectedRepo] = useState("");
   const [branch, setBranch] = useState("main");
@@ -35,7 +37,7 @@ export function RepoSelectionScreen({
     <div className="flex h-screen flex-col items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-6">
         <h1 className="text-3xl font-light text-foreground">
-          Select a repository
+          {t("assistant.repo.selectARepository")}
         </h1>
         <div className="flex flex-col gap-4">
           <RepoSelector onRepoSelect={handleRepoSelect} />
@@ -47,7 +49,7 @@ export function RepoSelectionScreen({
           />
         </div>
         <Button onClick={handleStart} disabled={!canStart}>
-          {isLoading ? "Creating sandbox..." : "Start"}
+          {isLoading ? t("assistant.repo.creatingSandbox") : t("assistant.repo.start")}
         </Button>
       </div>
     </div>

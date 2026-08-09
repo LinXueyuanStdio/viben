@@ -2,6 +2,7 @@
 
 import { ArrowRight, CheckCircle, ChevronDown, ChevronRight, Circle } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { isToolUIPart } from "ai";
 import type { WebAgentUIMessage } from "@/app/types";
@@ -87,6 +88,7 @@ export type PinnedTodoPanelProps = {
 };
 
 export function PinnedTodoPanel({ todos }: PinnedTodoPanelProps) {
+  const { t } = useTranslation();
   const [isMinimized, setIsMinimized] = useState(false);
 
   const completedCount = todos.filter((t) => t.status === "completed").length;
@@ -118,7 +120,10 @@ export function PinnedTodoPanel({ todos }: PinnedTodoPanelProps) {
         )}
         {/* Counter + label — always visible */}
         <span className="shrink-0 text-xs font-semibold text-muted-foreground/70">
-          {completedCount}/{totalCount} Tasks
+          {t("assistant.todoPanel.tasks", {
+            completed: completedCount,
+            total: totalCount,
+          })}
         </span>
         {/* Active task name — only when minimized */}
         {isMinimized && activeTask?.content && (

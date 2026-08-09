@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import type { ToolRendererProps } from "@/lib/render-tool";
 import { ToolLayout } from "../tool-layout";
@@ -10,14 +11,17 @@ export function FetchRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-web_fetch">) {
+  const { t } = useTranslation();
   const input = part.input;
-  const url = input?.url ?? "...";
+  const url = input?.url ?? t("assistant.toolCall.placeholder");
   const method = input?.method ?? "GET";
 
   const output = part.state === "output-available" ? part.output : undefined;
   const status = output?.success === true ? output.status : undefined;
   const outputError =
-    output?.success === false ? (output.error ?? "Fetch failed") : undefined;
+    output?.success === false
+      ? (output.error ?? t("assistant.toolCall.fetchFailed"))
+      : undefined;
 
   const mergedState = outputError
     ? { ...state, error: state.error ?? outputError }
@@ -30,7 +34,7 @@ export function FetchRenderer({
 
   return (
     <ToolLayout
-      name="Fetch"
+      name={t("assistant.toolCall.toolFetch")}
       icon={<Globe className="h-3.5 w-3.5" />}
       summary={summary}
       summaryClassName="font-mono"

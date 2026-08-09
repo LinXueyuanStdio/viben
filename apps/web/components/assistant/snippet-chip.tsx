@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -22,10 +23,14 @@ export function SnippetChip({
   content,
   className,
 }: SnippetChipProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const lineCount = content.split("\n").length;
   const byteSize = new Blob([content]).size;
-  const meta = `${lineCount} lines · ${formatBytes(byteSize)}`;
+  const meta = t("assistant.snippet.meta", {
+    lines: lineCount,
+    size: formatBytes(byteSize),
+  });
 
   return (
     <>
@@ -55,7 +60,7 @@ export function SnippetChip({
               </span>
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Preview the attached text snippet content.
+              {t("assistant.snippet.previewDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-4">

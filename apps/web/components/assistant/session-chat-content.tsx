@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { AskUserQuestionInput } from "@viben/agent";
 import { formatTokens } from "@viben/shared";
 import {
@@ -259,6 +260,7 @@ function GitDataPartCard({
 }: {
   part: WebAgentCommitDataPart | WebAgentPrDataPart;
 }) {
+  const { t } = useTranslation();
   const isCommit = part.type === "data-commit";
   const { status } = part.data;
   const isPending = status === "pending";
@@ -280,33 +282,34 @@ function GitDataPartCard({
   // Determine primary label
   let label: string;
   if (isCommit) {
-    if (isPending) label = "Creating commit…";
+    if (isPending) label = t("assistant.chatContent.commitCreating");
     else if (isSuccess) {
       if (part.data.committed && part.data.pushed) {
-        label = "Committed & pushed";
+        label = t("assistant.chatContent.commitCommittedAndPushed");
       } else if (part.data.committed) {
-        label = "Committed";
+        label = t("assistant.chatContent.commitCommitted");
       } else if (part.data.pushed) {
-        label = "Pushed commits";
+        label = t("assistant.chatContent.commitPushed");
       } else {
-        label = "Commit complete";
+        label = t("assistant.chatContent.commitComplete");
       }
-    } else if (isError) label = part.data.error ?? "Commit failed";
-    else label = "No changes to commit";
+    } else if (isError)
+      label = part.data.error ?? t("assistant.chatContent.commitFailed");
+    else label = t("assistant.chatContent.commitNoChanges");
   } else {
-    if (isPending) label = "Creating pull request…";
+    if (isPending) label = t("assistant.chatContent.prCreating");
     else if (isSuccess) {
       if (part.data.requiresManualCreation) {
-        label = "Ready to create on GitHub";
+        label = t("assistant.chatContent.prReadyToCreate");
       } else if (part.data.syncedExisting && prNumber) {
-        label = `Synced to existing PR #${prNumber}`;
+        label = t("assistant.chatContent.prSyncedToExisting", { prNumber });
       } else if (prNumber) {
-        label = `Opened PR #${prNumber}`;
+        label = t("assistant.chatContent.prOpened", { prNumber });
       } else {
-        label = "Pull request ready";
+        label = t("assistant.chatContent.prReady");
       }
-    } else if (isError) label = part.data.error ?? "PR failed";
-    else label = part.data.skipReason ?? "PR skipped";
+    } else if (isError) label = part.data.error ?? t("assistant.chatContent.prFailed");
+    else label = part.data.skipReason ?? t("assistant.chatContent.prSkipped");
   }
 
   // Build the detail fragment shown after the dot separator
@@ -631,6 +634,7 @@ function ContextUsageIndicator({
   conversationCost?: ConversationCost;
   contextLimit: number;
 }) {
+  const { t } = useTranslation();
   if (inputTokens === 0) {
     return null;
   }
@@ -667,29 +671,37 @@ function ContextUsageIndicator({
         {/* Breakdown */}
         <div className="space-y-1 p-3 text-xs">
           <div className="flex justify-between gap-6">
-            <span className="opacity-60">Conversation input</span>
+            <span className="opacity-60">
+              {t("assistant.chatContent.conversationInput")}
+            </span>
             <span>{formatTokens(conversationInputTokens)}</span>
           </div>
           <div className="flex justify-between gap-6">
-            <span className="opacity-60">Cached input</span>
+            <span className="opacity-60">
+              {t("assistant.chatContent.cachedInput")}
+            </span>
             <span>{formatTokens(conversationCachedInputTokens)}</span>
           </div>
           <div className="flex justify-between gap-6">
-            <span className="opacity-60">Uncached input</span>
+            <span className="opacity-60">
+              {t("assistant.chatContent.uncachedInput")}
+            </span>
             <span>{formatTokens(uncachedConversationInputTokens)}</span>
           </div>
           <div className="flex justify-between gap-6">
-            <span className="opacity-60">Conversation output</span>
+            <span className="opacity-60">
+              {t("assistant.chatContent.conversationOutput")}
+            </span>
             <span>{formatTokens(conversationOutputTokens)}</span>
           </div>
           {conversationCost !== undefined ? (
             <div className="flex justify-between gap-6">
               <span className="opacity-60">
                 {conversationCost.source === "gateway"
-                  ? "Cost"
+                  ? t("assistant.chatContent.cost")
                   : conversationCost.source === "mixed"
-                    ? "Cost (partial est.)"
-                    : "Est. cost"}
+                    ? t("assistant.chatContent.costPartialEstimate")
+                    : t("assistant.chatContent.costEstimate")}
               </span>
               <span className="tabular-nums">
                 {formatUsd(conversationCost.total)}
@@ -717,13 +729,14 @@ function _SandboxHeaderBadge({
   isReconnecting: boolean;
   isHibernating: boolean;
 }) {
+  const { t } = useTranslation();
   // Creating/restoring/transition state.
   if (isCreating || isRestoring || isReconnecting || isHibernating) {
     const transitionLabel = isHibernating
-      ? "Hibernating sandbox..."
+      ? t("assistant.chatContent.sandboxHibernating")
       : isReconnecting
-        ? "Reconnecting sandbox..."
-        : "Creating sandbox...";
+        ? t("assistant.chatContent.sandboxReconnecting")
+        : t("assistant.chatContent.sandboxCreating");
 
     return (
       <Tooltip>
@@ -733,7 +746,9 @@ function _SandboxHeaderBadge({
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={8}>
-          {isRestoring ? "Restoring sandbox..." : transitionLabel}
+          {isRestoring
+            ? t("assistant.chatContent.sandboxRestoring")
+            : transitionLabel}
         </TooltipContent>
       </Tooltip>
     );
@@ -749,7 +764,7 @@ function _SandboxHeaderBadge({
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={8}>
-          Sandbox inactive
+          {t("assistant.chatContent.sandboxInactive")}
         </TooltipContent>
       </Tooltip>
     );
@@ -765,7 +780,7 @@ function _SandboxHeaderBadge({
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={8}>
-          Sandbox active
+          {t("assistant.chatContent.sandboxActive")}
         </TooltipContent>
       </Tooltip>
     </div>
@@ -779,6 +794,7 @@ function SandboxInputOverlay({
   isArchived: boolean;
   snapshotPending: boolean;
 }) {
+  const { t } = useTranslation();
   if (isArchived) {
     return (
       <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/60 backdrop-blur-[2px]">
@@ -786,8 +802,8 @@ function SandboxInputOverlay({
           <Archive className="h-4 w-4" />
           <span className="text-sm">
             {snapshotPending
-              ? "Sandbox pause in progress. Unarchive will be available in a few seconds."
-              : "This session is archived. Unarchive it to resume."}
+              ? t("assistant.chatContent.sandboxPauseInProgress")
+              : t("assistant.chatContent.sessionArchived")}
           </span>
         </div>
       </div>
@@ -810,6 +826,7 @@ function ShareDialog({
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = externalOpen ?? internalOpen;
   const setOpen = onExternalOpenChange ?? setInternalOpen;
@@ -874,13 +891,13 @@ function ShareDialog({
         },
       );
       if (!res.ok) {
-        setError("Failed to enable sharing");
+        setError(t("assistant.chatContent.shareEnableError"));
         return;
       }
       const data = (await res.json()) as { shareId: string };
       setShareId(data.shareId);
     } catch {
-      setError("Failed to enable sharing");
+      setError(t("assistant.chatContent.shareEnableError"));
     } finally {
       setIsLoading(false);
     }
@@ -897,13 +914,13 @@ function ShareDialog({
         },
       );
       if (!res.ok) {
-        setError("Failed to disable sharing");
+        setError(t("assistant.chatContent.shareDisableError"));
         return;
       }
       setShareId(null);
       setCopied(false);
     } catch {
-      setError("Failed to disable sharing");
+      setError(t("assistant.chatContent.shareDisableError"));
     } finally {
       setIsLoading(false);
     }
@@ -925,15 +942,15 @@ function ShareDialog({
         <DialogTrigger asChild>
           <Button variant="ghost" size="sm">
             <Share2 className="h-4 w-4 mr-2" />
-            Share
+            {t("assistant.chatContent.share")}
           </Button>
         </DialogTrigger>
       )}
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Share chat</DialogTitle>
+          <DialogTitle>{t("assistant.chatContent.shareChatTitle")}</DialogTitle>
           <DialogDescription>
-            Anyone with the link can view this chat in read-only mode.
+            {t("assistant.chatContent.shareChatDescription")}
           </DialogDescription>
         </DialogHeader>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -953,12 +970,12 @@ function ShareDialog({
                 {copied ? (
                   <>
                     <Check className="mr-2 h-4 w-4" />
-                    Copied
+                    {t("assistant.chatContent.copied")}
                   </>
                 ) : (
                   <>
                     <Copy className="mr-2 h-4 w-4" />
-                    Copy link
+                    {t("assistant.chatContent.copyLink")}
                   </>
                 )}
               </Button>
@@ -974,11 +991,11 @@ function ShareDialog({
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Revoke link
+                {t("assistant.chatContent.revokeLink")}
               </Button>
               <DialogClose asChild>
                 <Button variant="outline" size="sm">
-                  Close
+                  {t("assistant.chatContent.close")}
                 </Button>
               </DialogClose>
             </DialogFooter>
@@ -995,7 +1012,7 @@ function ShareDialog({
               ) : (
                 <Link2 className="mr-2 h-4 w-4" />
               )}
-              Create share link
+              {t("assistant.chatContent.createShareLink")}
             </Button>
           </DialogFooter>
         )}
@@ -1020,6 +1037,7 @@ export function SessionChatContent({
   lastUserMessageSentAt: string | null;
   codeEditorDisabledReason: string | null;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [input, setInput] = useState("");
   const [isCreatingSandbox, setIsCreatingSandbox] = useState(false);
@@ -1337,7 +1355,7 @@ export function SessionChatContent({
             error?: string;
           } | null;
           throw new Error(
-            body?.error ?? "Failed to persist synthetic assistant message",
+            body?.error ?? t("assistant.chatContent.persistMessageError"),
           );
         }
 
@@ -1350,7 +1368,14 @@ export function SessionChatContent({
         );
       }
     },
-    [chatInfo.id, markChatRead, refreshChats, session.id, setMessages],
+    [
+      chatInfo.id,
+      markChatRead,
+      refreshChats,
+      session.id,
+      setMessages,
+      t,
+    ],
   );
   const renderMessages = useMemo(
     () => (hasMounted ? messages : initialMessages),
@@ -1980,7 +2005,7 @@ export function SessionChatContent({
       }
 
       const confirmed = window.confirm(
-        "Delete this message and all following messages?",
+        t("assistant.chatContent.deleteMessageConfirm"),
       );
       if (!confirmed) {
         return;
@@ -2000,7 +2025,9 @@ export function SessionChatContent({
         };
 
         if (!response.ok || !payload.success) {
-          throw new Error(payload.error ?? "Failed to delete message");
+          throw new Error(
+            payload.error ?? t("assistant.chatContent.deleteMessageError"),
+          );
         }
 
         setMessages(messages.slice(0, targetMessageIndex));
@@ -2008,7 +2035,9 @@ export function SessionChatContent({
       } catch (err) {
         console.error("Failed to delete message:", err);
         setDeleteMessageError(
-          err instanceof Error ? err.message : "Failed to delete message",
+          err instanceof Error
+            ? err.message
+            : t("assistant.chatContent.deleteMessageError"),
         );
       } finally {
         setDeletingMessageId(null);
@@ -2021,6 +2050,7 @@ export function SessionChatContent({
       chatInfo.id,
       setMessages,
       refreshChats,
+      t,
     ],
   );
 
@@ -2079,7 +2109,7 @@ export function SessionChatContent({
       }
 
       const confirmed = window.confirm(
-        "Resend this message? This will delete this message and everything after it.",
+        t("assistant.chatContent.resendMessageConfirm"),
       );
       if (!confirmed) {
         return;
@@ -2099,7 +2129,9 @@ export function SessionChatContent({
         };
 
         if (!response.ok || !payload.success) {
-          throw new Error(payload.error ?? "Failed to resend message");
+          throw new Error(
+            payload.error ?? t("assistant.chatContent.resendMessageError"),
+          );
         }
 
         setMessages(messages.slice(0, targetMessageIndex));
@@ -2118,7 +2150,9 @@ export function SessionChatContent({
       } catch (err) {
         console.error("Failed to resend message:", err);
         setDeleteMessageError(
-          err instanceof Error ? err.message : "Failed to resend message",
+          err instanceof Error
+            ? err.message
+            : t("assistant.chatContent.resendMessageError"),
         );
       } finally {
         setResendingMessageId(null);
@@ -2132,6 +2166,7 @@ export function SessionChatContent({
       setMessages,
       sendMessageWithPendingState,
       refreshChats,
+      t,
     ],
   );
 
@@ -2204,7 +2239,7 @@ export function SessionChatContent({
       };
 
       if (!response.ok) {
-        const errorMsg = payload.error ?? "Unknown error";
+        const errorMsg = payload.error ?? t("assistant.chatContent.unknownError");
 
         // If a sandbox is already running (for example after a lifecycle
         // restore), reconnect instead of surfacing a blocking error.
@@ -2212,15 +2247,15 @@ export function SessionChatContent({
           shouldRefreshRestoredWorkspaceRef.current = true;
           const reconnected = await waitForSandboxReady();
           if (!reconnected) {
-            setRestoreError(
-              "Sandbox is already running. Refresh in a few seconds if it does not reconnect automatically.",
-            );
+            setRestoreError(t("assistant.chatContent.sandboxAlreadyRunning"));
           }
           return;
         }
 
         shouldRefreshRestoredWorkspaceRef.current = false;
-        setRestoreError(`Sandbox resume failed: ${errorMsg}`);
+        setRestoreError(
+          t("assistant.chatContent.sandboxResumeFailed", { errorMsg }),
+        );
         return;
       }
 
@@ -2228,9 +2263,7 @@ export function SessionChatContent({
         shouldRefreshRestoredWorkspaceRef.current = true;
         const reconnected = await waitForSandboxReady();
         if (!reconnected) {
-          setRestoreError(
-            "Sandbox is already running. Refresh in a few seconds if it does not reconnect automatically.",
-          );
+          setRestoreError(t("assistant.chatContent.sandboxAlreadyRunning"));
         }
         return;
       }
@@ -2242,14 +2275,14 @@ export function SessionChatContent({
       // Refresh local timeout/connection data from server state.
       const reconnected = await waitForSandboxReady();
       if (!reconnected) {
-        setRestoreError(
-          "Sandbox resumed, but reconnect did not complete yet. Try Resume sandbox again.",
-        );
+        setRestoreError(t("assistant.chatContent.sandboxResumedReconnectPending"));
       }
     } catch (err) {
       shouldRefreshRestoredWorkspaceRef.current = false;
       const errorMsg = err instanceof Error ? err.message : String(err);
-      setRestoreError(`Failed to resume sandbox: ${errorMsg}`);
+      setRestoreError(
+        t("assistant.chatContent.sandboxResumeError", { errorMsg }),
+      );
     } finally {
       setIsRestoringSnapshot(false);
     }
@@ -2258,6 +2291,7 @@ export function SessionChatContent({
     session.sandboxState,
     setSandboxTypeFromUnknown,
     waitForSandboxReady,
+    t,
   ]);
 
   const _handleCreateNewSandbox = useCallback(async () => {
@@ -2644,50 +2678,66 @@ export function SessionChatContent({
 
   const _sandboxUiStatus = useMemo(() => {
     if (isArchived) {
-      return { label: "Archived", className: "bg-muted text-muted-foreground" };
+      return {
+        label: t("assistant.chatContent.statusArchived"),
+        className: "bg-muted text-muted-foreground",
+      };
     }
     if (isCreatingSandbox) {
-      return { label: "Creating", className: "bg-amber-500/15 text-amber-700" };
+      return {
+        label: t("assistant.chatContent.statusCreating"),
+        className: "bg-amber-500/15 text-amber-700",
+      };
     }
     if (isRestoringSnapshot || isServerRestoring) {
       return {
-        label: "Restoring",
+        label: t("assistant.chatContent.statusRestoring"),
         className: "bg-amber-500/15 text-amber-700",
       };
     }
     if (isHibernatingUi) {
       return {
-        label: "Hibernating",
+        label: t("assistant.chatContent.statusHibernating"),
         className: "bg-amber-500/15 text-amber-700",
       };
     }
     if (isReconnectingSandbox) {
       return {
-        label: "Reconnecting",
+        label: t("assistant.chatContent.statusReconnecting"),
         className: "bg-amber-500/15 text-amber-700",
       };
     }
     // Server says hibernated — show Paused regardless of local sandboxInfo
     if (isServerHibernated && hasSnapshot) {
-      return { label: "Paused", className: "bg-muted text-muted-foreground" };
+      return {
+        label: t("assistant.chatContent.statusPaused"),
+        className: "bg-muted text-muted-foreground",
+      };
     }
     if (isSandboxActive) {
       return {
-        label: "Active",
+        label: t("assistant.chatContent.statusActive"),
         className: "bg-emerald-500/15 text-emerald-700",
       };
     }
     if (hasSnapshot) {
-      return { label: "Paused", className: "bg-muted text-muted-foreground" };
+      return {
+        label: t("assistant.chatContent.statusPaused"),
+        className: "bg-muted text-muted-foreground",
+      };
     }
     if (reconnectionStatus === "failed") {
       return {
-        label: "Connection issue",
+        label: t("assistant.chatContent.statusConnectionIssue"),
         className: "bg-destructive/10 text-destructive",
       };
     }
-    return { label: "No sandbox", className: "bg-muted text-muted-foreground" };
+    return {
+      label: t("assistant.chatContent.statusNoSandbox"),
+      className: "bg-muted text-muted-foreground",
+    };
   }, [
+    t,
     isArchived,
     isCreatingSandbox,
     isRestoringSnapshot,
@@ -2976,16 +3026,18 @@ export function SessionChatContent({
         const archiveMessage =
           archiveError instanceof Error
             ? archiveError.message
-            : "Failed to archive session";
+            : t("assistant.chatContent.archiveSessionError");
         throw new Error(
-          `Pull request merged, but archiving the session failed: ${archiveMessage}`,
+          t("assistant.chatContent.archiveAfterMergeError", {
+            archiveMessage,
+          }),
           {
             cause: archiveError,
           },
         );
       }
     },
-    [archiveSession, router, updateSessionPullRequest],
+    [archiveSession, router, updateSessionPullRequest, t],
   );
 
   const handleClosed = useCallback(
@@ -3002,16 +3054,18 @@ export function SessionChatContent({
         const archiveMessage =
           archiveError instanceof Error
             ? archiveError.message
-            : "Failed to archive session";
+            : t("assistant.chatContent.archiveSessionError");
         throw new Error(
-          `Pull request closed, but archiving the session failed: ${archiveMessage}`,
+          t("assistant.chatContent.archiveAfterCloseError", {
+            archiveMessage,
+          }),
           {
             cause: archiveError,
           },
         );
       }
     },
-    [archiveSession, router, updateSessionPullRequest],
+    [archiveSession, router, updateSessionPullRequest, t],
   );
 
   const gitPanelElement = gitPanelOpen ? (
@@ -3106,7 +3160,7 @@ export function SessionChatContent({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                          Open dev server
+                          {t("assistant.chatContent.openDevServer")}
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
@@ -3121,7 +3175,7 @@ export function SessionChatContent({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                          Stop dev server
+                          {t("assistant.chatContent.stopDevServer")}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -3140,8 +3194,8 @@ export function SessionChatContent({
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
                         {devServer.state.status === "starting"
-                          ? "Starting dev server..."
-                          : "Stopping dev server..."}
+                          ? t("assistant.chatContent.startingDevServer")
+                          : t("assistant.chatContent.stoppingDevServer")}
                       </TooltipContent>
                     </Tooltip>
                   ) : (
@@ -3157,7 +3211,7 @@ export function SessionChatContent({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
-                        Start dev server
+                        {t("assistant.chatContent.startDevServer")}
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -3179,8 +3233,8 @@ export function SessionChatContent({
                       rel="noopener noreferrer"
                       aria-label={
                         isDeploymentStale
-                          ? "Open latest preview deployment (building)"
-                          : "Open latest preview deployment"
+                          ? t("assistant.chatContent.openPreviewDeploymentBuilding")
+                          : t("assistant.chatContent.openPreviewDeployment")
                       }
                     >
                       <Globe
@@ -3200,8 +3254,8 @@ export function SessionChatContent({
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   {isDeploymentStale
-                    ? "Open latest preview deployment (building)"
-                    : "Open latest preview deployment"}
+                    ? t("assistant.chatContent.openPreviewDeploymentBuilding")
+                    : t("assistant.chatContent.openPreviewDeployment")}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -3228,15 +3282,18 @@ export function SessionChatContent({
         >
           <DialogContent showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle>Archive session?</DialogTitle>
+              <DialogTitle>
+                {t("assistant.chatContent.archiveSessionTitle")}
+              </DialogTitle>
               <DialogDescription>
-                This will stop the sandbox and archive the session. You can
-                still view it in the archive tab.
+                {t("assistant.chatContent.archiveSessionDescription")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline">
+                  {t("assistant.chatContent.cancel")}
+                </Button>
               </DialogClose>
               <DialogClose asChild>
                 <Button
@@ -3247,7 +3304,7 @@ export function SessionChatContent({
                     router.push("/sessions");
                   }}
                 >
-                  Archive
+                  {t("assistant.chatContent.archive")}
                 </Button>
               </DialogClose>
             </DialogFooter>
@@ -3273,7 +3330,7 @@ export function SessionChatContent({
                     onClick={() => retryChatStream()}
                   >
                     <RefreshCw className="h-3 w-3" />
-                    Retry
+                    {t("assistant.chatContent.retry")}
                   </Button>
                 </div>
               )}
@@ -3290,7 +3347,7 @@ export function SessionChatContent({
                           !hasPendingResponse && (
                             <div className="flex h-full min-h-[40vh] items-center justify-center">
                               <p className="text-sm text-muted-foreground">
-                                Send a message to get started
+                                {t("assistant.chatContent.emptyState")}
                               </p>
                             </div>
                           )}
@@ -3433,7 +3490,9 @@ export function SessionChatContent({
                                                 disabled={
                                                   hasMessageActionInFlight
                                                 }
-                                                aria-label="Resend this message and delete everything after it"
+                                                aria-label={t(
+                                                  "assistant.chatContent.resendMessageAria",
+                                                )}
                                                 className="rounded p-1 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                                               >
                                                 {resendingMessageId === m.id ? (
@@ -3452,7 +3511,9 @@ export function SessionChatContent({
                                                 disabled={
                                                   hasMessageActionInFlight
                                                 }
-                                                aria-label="Delete this message and everything after it"
+                                                aria-label={t(
+                                                  "assistant.chatContent.deleteMessageAria",
+                                                )}
                                                 className="rounded p-1 transition hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                                               >
                                                 {deletingMessageId === m.id ? (
@@ -3502,7 +3563,9 @@ export function SessionChatContent({
                                                         p.text,
                                                       )
                                                     }
-                                                    aria-label="Copy assistant response"
+                                                    aria-label={t(
+                                                      "assistant.chatContent.copyAssistantResponseAria",
+                                                    )}
                                                     className="rounded p-1 text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
                                                   >
                                                     {copiedAssistantMessageId ===
@@ -3523,7 +3586,9 @@ export function SessionChatContent({
                                                       forkingAssistantMessageId !==
                                                       null
                                                     }
-                                                    aria-label="Fork conversation from this response"
+                                                    aria-label={t(
+                                                      "assistant.chatContent.forkConversationAria",
+                                                    )}
                                                     className={cn(
                                                       "rounded p-1 text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-40",
                                                       forkingAssistantMessageId ===
@@ -3622,7 +3687,10 @@ export function SessionChatContent({
                                         {/* eslint-disable-next-line @next/next/no-img-element -- Data URLs not supported by next/image */}
                                         <img
                                           src={p.url}
-                                          alt={p.filename ?? "Attached image"}
+                                          alt={
+                                            p.filename ??
+                                            t("assistant.chatContent.attachedImageAlt")
+                                          }
                                           className="max-h-64 rounded-lg"
                                         />
                                         {m.role === "user" &&
@@ -3637,7 +3705,9 @@ export function SessionChatContent({
                                               disabled={
                                                 hasMessageActionInFlight
                                               }
-                                              aria-label="Delete this message and everything after it"
+                                              aria-label={t(
+                                                "assistant.chatContent.deleteMessageAria",
+                                              )}
                                               className="absolute -left-10 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                               {deletingMessageId === m.id ? (
@@ -3686,7 +3756,9 @@ export function SessionChatContent({
                                               disabled={
                                                 hasMessageActionInFlight
                                               }
-                                              aria-label="Delete this message and everything after it"
+                                              aria-label={t(
+                                                "assistant.chatContent.deleteMessageAria",
+                                              )}
                                               className="absolute -left-10 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                               {deletingMessageId === m.id ? (
@@ -3741,7 +3813,8 @@ export function SessionChatContent({
                                 <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-muted-foreground" />
                               </span>
                               <span className="leading-none">
-                                {workspaceStatus?.message ?? "Thinking…"}
+                                {workspaceStatus?.message ??
+                                  t("assistant.chatContent.thinking")}
                               </span>
                             </div>
                           </div>
@@ -4056,7 +4129,7 @@ export function SessionChatContent({
                             placeholder={
                               showInlineQuestion
                                 ? inlineQuestion.placeholder
-                                : "Request changes or ask a question..."
+                                : t("assistant.chatContent.inputPlaceholder")
                             }
                             rows={1}
                             onFocus={handleTextareaFocus}

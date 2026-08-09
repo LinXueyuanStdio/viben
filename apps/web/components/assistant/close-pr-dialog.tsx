@@ -2,6 +2,7 @@
 
 import { GitPullRequestClosed, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { closePr, type ClosePullRequestResult } from "@/lib/github/actions/pr";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ export function ClosePrDialog({
   session,
   onClosed,
 }: ClosePrDialogProps) {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export function ClosePrDialog({
     try {
       const closeResult = await closePr({ sessionId: session.id });
       if (!closeResult.closed) {
-        throw new Error("Failed to close pull request");
+        throw new Error(t("assistant.commit.closePrError"));
       }
 
       await onClosed?.(closeResult);
@@ -47,7 +49,7 @@ export function ClosePrDialog({
       setError(
         closeError instanceof Error
           ? closeError.message
-          : "Failed to close pull request",
+          : t("assistant.commit.closePrError"),
       );
     } finally {
       setIsSubmitting(false);
@@ -60,11 +62,12 @@ export function ClosePrDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitPullRequestClosed className="h-5 w-5" />
-            Close & Archive
+            {t("assistant.commit.closeAndArchiveTitle")}
           </DialogTitle>
           <DialogDescription>
-            Close PR #{session.prNumber} and archive this session. This will not
-            merge any changes.
+            {t("assistant.commit.closeAndArchiveDescription", {
+              prNumber: session.prNumber,
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -80,7 +83,7 @@ export function ClosePrDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            {t("assistant.commit.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -90,10 +93,10 @@ export function ClosePrDialog({
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Closing...
+                {t("assistant.commit.closing")}
               </>
             ) : (
-              "Confirm Close & Archive"
+              t("assistant.commit.closeAndArchiveConfirm")
             )}
           </Button>
         </DialogFooter>

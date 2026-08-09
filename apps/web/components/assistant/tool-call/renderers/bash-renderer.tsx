@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Terminal } from "lucide-react";
 import type { ToolRendererProps } from "@/lib/render-tool";
 import { ToolLayout } from "../tool-layout";
@@ -10,6 +11,7 @@ export function BashRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-bash">) {
+  const { t } = useTranslation();
   const input = part.input;
   const command = String(input?.command ?? "");
   const cwd = input?.cwd;
@@ -33,17 +35,24 @@ export function BashRenderer({
   // The expanded view uses our custom card below.
   const mergedState =
     isError && !state.error
-      ? { ...state, error: `Exit code ${exitCode ?? "unknown"}` }
+      ? {
+          ...state,
+          error: t("assistant.toolCall.bashExitCode", {
+            code: exitCode ?? t("assistant.toolCall.unknown"),
+          }),
+        }
       : state;
 
   const meta = isDetached ? (
     <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[11px] font-medium text-blue-500">
-      detached
+      {t("assistant.toolCall.detached")}
     </span>
   ) : undefined;
 
   const errorMetaContent =
-    isError && exitCode !== undefined ? `exit ${exitCode}` : undefined;
+    isError && exitCode !== undefined
+      ? t("assistant.toolCall.exitMeta", { code: exitCode })
+      : undefined;
 
   const expandedContent = hasExpandableContent ? (
     isError ? (
@@ -54,15 +63,15 @@ export function BashRenderer({
       ) : undefined
     ) : (
       <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/50 p-3 font-mono text-xs leading-relaxed text-muted-foreground">
-        {hasOutput ? combinedOutput : "(No output)"}
+        {hasOutput ? combinedOutput : t("assistant.toolCall.noOutput")}
       </pre>
     )
   ) : undefined;
 
   return (
     <ToolLayout
-      name="Bash"
-      summary={command || "..."}
+      name={t("assistant.toolCall.toolBash")}
+      summary={command || t("assistant.toolCall.placeholder")}
       summaryClassName="font-mono"
       meta={meta}
       errorMeta={errorMetaContent}

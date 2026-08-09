@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import type { DiffFile } from "@/app/api/sessions/[sessionId]/diff/route";
 import { useGitPanel } from "./git-panel-context";
@@ -82,15 +83,18 @@ function createDownloadFilename(value: string): string {
 }
 
 function StaleBanner({ cachedAt }: { cachedAt: Date | null }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 border-b border-border bg-amber-100 px-4 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
       <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
       <span>
-        Viewing cached changes - sandbox is offline
+        {t("assistant.diff.viewingCachedChanges")}
         {cachedAt && (
           <span className="text-amber-700/70 dark:text-amber-400/70">
             {" "}
-            (saved {formatTimestamp(cachedAt)})
+            {t("assistant.diff.cachedSavedAt", {
+              timestamp: formatTimestamp(cachedAt),
+            })}
           </span>
         )}
       </span>
@@ -132,6 +136,7 @@ function FileDiffSection({
   diffScope: string;
   sectionRef?: React.Ref<HTMLDivElement>;
 }) {
+  const { t } = useTranslation();
   const baseOptions =
     diffStyle === "split" ? splitDiffOptions : defaultDiffOptions;
   const fileName = file.path.split("/").pop() ?? file.path;
@@ -190,11 +195,13 @@ function FileDiffSection({
         <div>
           {isLocalScope && !hasLocalChanges ? (
             <div className="flex flex-col items-center justify-center gap-3 py-6 text-muted-foreground/50">
-              <p className="text-sm">No uncommitted changes to display</p>
+              <p className="text-sm">
+                {t("assistant.diff.noUncommittedChanges")}
+              </p>
             </div>
           ) : file.generated ? (
             <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-              Generated file — diff content hidden
+              {t("assistant.diff.generatedFileHidden")}
             </div>
           ) : patchContent ? (
             <PatchDiff
@@ -208,7 +215,7 @@ function FileDiffSection({
             />
           ) : (
             <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-              No diff content available
+              {t("assistant.diff.noDiffContent")}
             </div>
           )}
         </div>
@@ -226,6 +233,7 @@ function FileDiffSection({
  * When a file is clicked in the git panel sidebar, it is expanded and scrolled into view.
  */
 export function DiffTabView() {
+  const { t } = useTranslation();
   const params = useParams<{ sessionId?: string }>();
   const {
     diff,
@@ -326,7 +334,7 @@ export function DiffTabView() {
         const message =
           typeof data?.error === "string"
             ? data.error
-            : "Failed to download diff";
+            : t("assistant.diff.downloadFailed");
         throw new Error(message);
       }
 
@@ -344,10 +352,10 @@ export function DiffTabView() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast.success("Diff downloaded");
+      toast.success(t("assistant.diff.downloaded"));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to download diff",
+        error instanceof Error ? error.message : t("assistant.diff.downloadFailed"),
       );
     } finally {
       setDiffDownloading(false);
@@ -384,8 +392,7 @@ export function DiffTabView() {
       <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-sm font-medium font-mono">
-            {visibleFiles.length} file{visibleFiles.length !== 1 ? "s" : ""}{" "}
-            changed
+            {t("assistant.diff.filesChanged", { count: visibleFiles.length })}
           </span>
           <div className="flex shrink-0 items-center gap-1.5 text-xs">
             {summaryAdds > 0 && (
@@ -418,7 +425,9 @@ export function DiffTabView() {
                 />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Refresh</TooltipContent>
+            <TooltipContent side="bottom">
+              {t("assistant.diff.refresh")}
+            </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -428,7 +437,7 @@ export function DiffTabView() {
                 onClick={openDownloadDialog}
                 disabled={!canDownloadDiff || diffDownloading}
                 className="h-7 w-7 px-0"
-                aria-label="Download diff"
+                aria-label={t("assistant.diff.downloadDiff")}
               >
                 {diffDownloading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -437,7 +446,9 @@ export function DiffTabView() {
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Download diff</TooltipContent>
+            <TooltipContent side="bottom">
+              {t("assistant.diff.downloadDiff")}
+            </TooltipContent>
           </Tooltip>
           {/* Expand / Collapse all */}
           <div className="flex items-center gap-0.5">
@@ -451,10 +462,12 @@ export function DiffTabView() {
                   }
                   className="h-7 px-1.5 text-xs text-muted-foreground"
                 >
-                  Expand all
+                  {t("assistant.diff.expandAll")}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Expand all files</TooltipContent>
+              <TooltipContent side="bottom">
+                {t("assistant.diff.expandAllTooltip")}
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -464,10 +477,12 @@ export function DiffTabView() {
                   onClick={() => setExpandedFiles(new Set())}
                   className="h-7 px-1.5 text-xs text-muted-foreground"
                 >
-                  Collapse all
+                  {t("assistant.diff.collapseAll")}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Collapse all files</TooltipContent>
+              <TooltipContent side="bottom">
+                {t("assistant.diff.collapseAllTooltip")}
+              </TooltipContent>
             </Tooltip>
           </div>
           {/* Unified / Split icon toggle */}
@@ -487,7 +502,9 @@ export function DiffTabView() {
                   <AlignJustify className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Unified</TooltipContent>
+              <TooltipContent side="bottom">
+                {t("assistant.diff.unified")}
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -504,7 +521,9 @@ export function DiffTabView() {
                   <Columns2 className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Split</TooltipContent>
+              <TooltipContent side="bottom">
+                {t("assistant.diff.split")}
+              </TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -538,8 +557,8 @@ export function DiffTabView() {
             <FileText className="h-8 w-8" />
             <p className="text-sm">
               {diffScope === "uncommitted"
-                ? "No uncommitted changes to display"
-                : "No file changes yet"}
+                ? t("assistant.diff.noUncommittedChanges")
+                : t("assistant.diff.noFileChanges")}
             </p>
           </div>
         )}

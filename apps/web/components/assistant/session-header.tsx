@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import {
   GitMerge,
   GitPullRequest,
@@ -24,6 +25,7 @@ interface SessionHeaderProps {
 }
 
 export function SessionHeader({ activeChatId }: SessionHeaderProps) {
+  const { t } = useTranslation();
   const { toggleSidebar } = useSidebar();
   const {
     gitPanelOpen,
@@ -56,22 +58,33 @@ export function SessionHeader({ activeChatId }: SessionHeaderProps) {
     if (session.prNumber) {
       const statusLabel =
         session.prStatus === "merged"
-          ? "Merged"
+          ? t("assistant.drawer.prStatusMerged")
           : session.prStatus === "closed"
-            ? "Closed"
-            : "Open";
-      parts.push(`PR #${session.prNumber} (${statusLabel})`);
-    }
-    if (changesCount > 0) {
+            ? t("assistant.drawer.prStatusClosed")
+            : t("assistant.drawer.prStatusOpen");
       parts.push(
-        `${changesCount} file${changesCount !== 1 ? "s" : ""} changed`,
+        t("assistant.drawer.prNumberStatus", {
+          prNumber: session.prNumber,
+          status: statusLabel,
+        }),
       );
     }
-    if (hasActionNeeded) {
-      parts.push("Uncommitted changes");
+    if (changesCount > 0) {
+      parts.push(t("assistant.drawer.filesChanged", { count: changesCount }));
     }
-    return parts.length > 0 ? parts.join(" · ") : "Git panel";
-  }, [session.prNumber, session.prStatus, changesCount, hasActionNeeded]);
+    if (hasActionNeeded) {
+      parts.push(t("assistant.drawer.uncommittedChanges"));
+    }
+    return parts.length > 0
+      ? parts.join(" · ")
+      : t("assistant.drawer.gitPanel");
+  }, [
+    session.prNumber,
+    session.prStatus,
+    changesCount,
+    hasActionNeeded,
+    t,
+  ]);
 
   const openGitPanel = useCallback(() => {
     const defaultTab = session.prNumber
@@ -135,7 +148,9 @@ export function SessionHeader({ activeChatId }: SessionHeaderProps) {
               <PanelLeft className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Toggle left sidebar</TooltipContent>
+          <TooltipContent side="bottom">
+            {t("assistant.drawer.toggleLeftSidebar")}
+          </TooltipContent>
         </Tooltip>
 
         {/* ChatTabs inline — only when there is an active chat */}
@@ -172,7 +187,7 @@ export function SessionHeader({ activeChatId }: SessionHeaderProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {`${tooltipText} · ⌘⇧B / Ctrl+Shift+B`}
+            {t("assistant.drawer.gitPanelTooltip", { tooltipText })}
           </TooltipContent>
         </Tooltip>
       </div>

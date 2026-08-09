@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,7 @@ import { useSession } from "@/hooks/assistant/use-session";
 
 export function UserAvatarDropdown() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { session } = useSession();
 
   const handleSignOut = useCallback(async () => {
@@ -54,7 +56,7 @@ export function UserAvatarDropdown() {
           <DropdownMenuItem asChild>
             <Link href="/settings">
               <Settings className="mr-2 h-4 w-4" />
-              Settings
+              {t("assistant.user.settings")}
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -65,7 +67,7 @@ export function UserAvatarDropdown() {
             className="text-destructive focus:text-destructive"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Log out
+            {t("assistant.user.logOut")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

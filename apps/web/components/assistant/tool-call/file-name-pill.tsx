@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -23,6 +24,7 @@ export function FileNamePill({
   fullPath?: string;
   error?: boolean;
 }) {
+  const { t } = useTranslation();
   const onOpenFile = useOpenFile();
   const fileName = getFileName(filePath);
   const tooltipPath = fullPath ?? filePath;
@@ -53,7 +55,7 @@ export function FileNamePill({
     <button
       type="button"
       onClick={handleClick}
-      title={showTooltip ? undefined : `Open ${fileName}`}
+      title={showTooltip ? undefined : t("assistant.toolCall.openFile", { fileName })}
       className={cn(
         "inline-flex max-w-[220px] cursor-pointer items-center rounded border px-1.5 py-0.5 font-mono text-[12px] leading-tight transition-all",
         normalStyles,

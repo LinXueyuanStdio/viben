@@ -1,8 +1,11 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Loading() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex h-full flex-col">
       {/* Messages area with centered spinner */}
@@ -18,7 +21,7 @@ export default function Loading() {
               <textarea
                 disabled
                 rows={1}
-                placeholder="Request changes or ask a question..."
+                placeholder={t("assistant.page.inputPlaceholder")}
                 className="w-full resize-none overflow-y-auto bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
                 style={{ minHeight: "24px" }}
               />

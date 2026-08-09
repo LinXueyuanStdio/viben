@@ -1,6 +1,12 @@
 import type { SVGProps } from "react";
 
+import i18n from "@/lib/i18n";
+import type { TFunction } from "i18next";
+
 type IconProps = SVGProps<SVGSVGElement>;
+
+/** Bound translation helper for use outside React components. */
+const defaultT: TFunction = i18n.t.bind(i18n);
 
 function AnthropicIcon(props: IconProps) {
   return (
@@ -248,32 +254,36 @@ const providerIconMap: Record<string, React.FC<IconProps>> = {
   zai: ZAIIcon,
 };
 
-const providerDisplayNames: Record<string, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  google: "Google",
-  xai: "xAI",
-  groq: "Groq",
-  mistral: "Mistral",
-  deepseek: "DeepSeek",
-  perplexity: "Perplexity",
-  moonshot: "Moonshot",
-  togetherai: "Together AI",
-  cohere: "Cohere",
-  fireworks: "Fireworks",
-  meta: "Meta",
-  zai: "ZAI",
-};
+function getProviderDisplayNames(t: TFunction): Record<string, string> {
+  return {
+    anthropic: t("assistant.provider.nameAnthropic"),
+    openai: t("assistant.provider.nameOpenAI"),
+    google: t("assistant.provider.nameGoogle"),
+    xai: t("assistant.provider.nameXai"),
+    groq: t("assistant.provider.nameGroq"),
+    mistral: t("assistant.provider.nameMistral"),
+    deepseek: t("assistant.provider.nameDeepSeek"),
+    perplexity: t("assistant.provider.namePerplexity"),
+    moonshot: t("assistant.provider.nameMoonshot"),
+    togetherai: t("assistant.provider.nameTogetherAi"),
+    cohere: t("assistant.provider.nameCohere"),
+    fireworks: t("assistant.provider.nameFireworks"),
+    meta: t("assistant.provider.nameMeta"),
+    zai: t("assistant.provider.nameZai"),
+  };
+}
 
 /** Prefixes in model display names that match the provider brand (stripped in compact UI). */
-const providerLabelPrefixes: Record<string, string[]> = {
-  anthropic: ["Claude"],
-  google: ["Gemini"],
-  xai: ["Grok"],
-  mistral: ["Mistral"],
-  deepseek: ["DeepSeek"],
-  meta: ["Meta"],
-};
+function getProviderLabelPrefixes(t: TFunction): Record<string, string[]> {
+  return {
+    anthropic: [t("assistant.provider.prefixClaude")],
+    google: [t("assistant.provider.prefixGemini")],
+    xai: [t("assistant.provider.prefixGrok")],
+    mistral: [t("assistant.provider.prefixMistral")],
+    deepseek: [t("assistant.provider.prefixDeepSeek")],
+    meta: [t("assistant.provider.prefixMeta")],
+  };
+}
 
 export function getProviderFromModelId(modelId: string): string {
   const slashIndex = modelId.indexOf("/");
@@ -285,8 +295,12 @@ export function getProviderFromModelId(modelId: string): string {
  * Strip the provider brand prefix from a model label for compact display.
  * e.g. "Claude Opus 4.6" → "Opus 4.6", "GPT-5.4" → "GPT-5.4"
  */
-export function stripProviderPrefix(label: string, provider: string): string {
-  const prefixes = providerLabelPrefixes[provider];
+export function stripProviderPrefix(
+  label: string,
+  provider: string,
+  t: TFunction = defaultT,
+): string {
+  const prefixes = getProviderLabelPrefixes(t)[provider];
   if (!prefixes) return label;
   for (const prefix of prefixes) {
     if (label.startsWith(prefix + " ")) {
@@ -296,9 +310,12 @@ export function stripProviderPrefix(label: string, provider: string): string {
   return label;
 }
 
-export function getProviderDisplayName(provider: string): string {
+export function getProviderDisplayName(
+  provider: string,
+  t: TFunction = defaultT,
+): string {
   return (
-    providerDisplayNames[provider] ??
+    getProviderDisplayNames(t)[provider] ??
     provider.charAt(0).toUpperCase() + provider.slice(1)
   );
 }

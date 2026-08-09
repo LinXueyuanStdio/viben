@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CheckIcon,
   ChevronsUpDownIcon,
@@ -45,6 +46,7 @@ export function BranchSelector({
   onChange,
   disabled,
 }: BranchSelectorProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [branches, setBranches] = useState<string[]>([]);
   const [defaultBranch, setDefaultBranch] = useState("main");
@@ -74,7 +76,7 @@ export function BranchSelector({
           `/api/github/branches?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`,
         );
         if (!response.ok) {
-          throw new Error("Failed to fetch branches");
+          throw new Error(t("assistant.branch.fetchError"));
         }
         const data = (await response.json()) as BranchesResponse;
         setBranches(data.branches);
@@ -85,7 +87,7 @@ export function BranchSelector({
         }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to fetch branches",
+          err instanceof Error ? err.message : t("assistant.branch.fetchError"),
         );
         setBranches([]);
       } finally {
@@ -133,7 +135,7 @@ export function BranchSelector({
           value={newBranchName}
           onChange={(e) => setNewBranchName(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Enter branch name"
+          placeholder={t("assistant.branch.enterBranchName")}
           className="w-48"
         />
         <Button
@@ -141,10 +143,10 @@ export function BranchSelector({
           onClick={handleSubmitNewBranch}
           disabled={!newBranchName.trim()}
         >
-          Use
+          {t("assistant.branch.use")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setCreatingNew(false)}>
-          Cancel
+          {t("assistant.branch.cancel")}
         </Button>
       </div>
     );
@@ -162,11 +164,15 @@ export function BranchSelector({
           <div className="flex items-center gap-2 truncate">
             <GitBranchIcon className="size-4 shrink-0" />
             {loading ? (
-              <span className="text-muted-foreground">Loading...</span>
+              <span className="text-muted-foreground">
+                {t("assistant.branch.loading")}
+              </span>
             ) : value ? (
               <span className="truncate">{value}</span>
             ) : (
-              <span className="text-muted-foreground">Select branch</span>
+              <span className="text-muted-foreground">
+                {t("assistant.branch.selectBranch")}
+              </span>
             )}
           </div>
           <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
@@ -174,13 +180,13 @@ export function BranchSelector({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
-          <CommandInput placeholder="Search branches..." />
+          <CommandInput placeholder={t("assistant.branch.searchBranches")} />
           <CommandList>
             <CommandEmpty>
               {error ? (
                 <span className="text-destructive">{error}</span>
               ) : (
-                "No branches found."
+                t("assistant.branch.noBranchesFound")
               )}
             </CommandEmpty>
             <CommandGroup>
@@ -199,7 +205,7 @@ export function BranchSelector({
                   <span className="truncate">{branch}</span>
                   {branch === defaultBranch && (
                     <span className="ml-auto text-xs text-muted-foreground">
-                      default
+                      {t("assistant.branch.defaultBadge")}
                     </span>
                   )}
                 </CommandItem>
@@ -209,7 +215,7 @@ export function BranchSelector({
             <CommandGroup>
               <CommandItem onSelect={handleCreateNew}>
                 <PlusIcon className="mr-2 size-4" />
-                Create new branch...
+                {t("assistant.branch.createNewBranch")}
               </CommandItem>
             </CommandGroup>
           </CommandList>

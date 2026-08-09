@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { WebAgentMessageMetadata } from "@/app/types";
 import type { ModelOption } from "@/lib/model-options";
 import {
@@ -62,6 +63,7 @@ export function MessageModelPill({
   metadata,
   modelOptions,
 }: MessageModelPillProps) {
+  const { t } = useTranslation();
   const {
     selectedModelId,
     modelId: resolvedModelId,
@@ -110,7 +112,9 @@ export function MessageModelPill({
   }
   if (hasCost) {
     tooltipParts.push(
-      `Cost: ${(totalMessageCost as number).toFixed(6)} (gateway)`,
+      t("assistant.modelPill.costGateway", {
+        cost: (totalMessageCost as number).toFixed(6),
+      }),
     );
   }
 

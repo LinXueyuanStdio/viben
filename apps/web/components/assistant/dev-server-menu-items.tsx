@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { ExternalLink, Loader2, Square } from "lucide-react";
 import {
   DropdownMenuItem,
@@ -17,6 +18,7 @@ export function DevServerMenuItems({
   canRun,
   devServer,
 }: DevServerMenuItemsProps) {
+  const { t } = useTranslation();
   const isPrimaryBusy =
     devServer.state.status === "starting" ||
     devServer.state.status === "stopping";
@@ -69,8 +71,8 @@ export function DevServerMenuItems({
             <Square className="mr-2 h-3.5 w-3.5 fill-current" />
           )}
           {devServer.state.status === "stopping"
-            ? "Stopping Dev Server..."
-            : "Stop Dev Server"}
+            ? t("assistant.sandbox.stoppingDevServer")
+            : t("assistant.sandbox.stopDevServer")}
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuSeparator />

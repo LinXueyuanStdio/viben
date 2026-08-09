@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileText, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { TextAttachment } from "@/lib/text-attachment-utils";
 import { formatByteSize } from "@/lib/text-attachment-utils";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,11 @@ function TextAttachmentChip({
   onRemove,
   onPreview,
 }: TextAttachmentChipProps) {
-  const meta = `${attachment.lineCount} lines · ${formatByteSize(attachment.byteSize)}`;
+  const { t } = useTranslation();
+  const meta = t("assistant.attachment.textMeta", {
+    lines: attachment.lineCount,
+    size: formatByteSize(attachment.byteSize),
+  });
 
   return (
     <div className="group relative min-w-0 max-w-full p-1">
@@ -52,7 +57,7 @@ function TextAttachmentChip({
           onRemove();
         }}
         className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-700 text-neutral-300 opacity-0 transition-opacity hover:bg-neutral-600 group-hover:opacity-100"
-        aria-label="Remove text attachment"
+        aria-label={t("assistant.attachment.removeText")}
       >
         <X className="h-3 w-3" />
       </button>
@@ -71,9 +76,14 @@ function TextAttachmentPreviewDialog({
   open,
   onOpenChange,
 }: TextAttachmentPreviewDialogProps) {
+  const { t } = useTranslation();
+
   if (!attachment) return null;
 
-  const meta = `${attachment.lineCount} lines · ${formatByteSize(attachment.byteSize)}`;
+  const meta = t("assistant.attachment.textMeta", {
+    lines: attachment.lineCount,
+    size: formatByteSize(attachment.byteSize),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,7 +97,7 @@ function TextAttachmentPreviewDialog({
             </span>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Preview the attached text file content.
+            {t("assistant.attachment.textPreviewDescription")}
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-4">

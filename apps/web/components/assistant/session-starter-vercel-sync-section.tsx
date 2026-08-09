@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
@@ -57,6 +58,7 @@ export function SessionStarterVercelSyncSection({
   vercelProjectChoice,
   onVercelProjectChoiceChange,
 }: SessionStarterVercelSyncSectionProps) {
+  const { t } = useTranslation();
   // Auto-expand when user needs to make a choice
   const [manualExpanded, setManualExpanded] = useState(false);
   const expanded = manualExpanded || requiresVercelChoice;
@@ -78,7 +80,7 @@ export function SessionStarterVercelSyncSection({
         ),
         label: (
           <span className="text-xs text-muted-foreground">
-            Scanning for linked Vercel projects&hellip;
+            {t("assistant.sessionStarter.scanningVercelProjects")}
           </span>
         ),
       };
@@ -90,7 +92,7 @@ export function SessionStarterVercelSyncSection({
         ),
         label: (
           <span className="text-xs text-muted-foreground">
-            Could not load Vercel projects
+            {t("assistant.sessionStarter.couldNotLoadVercelProjects")}
           </span>
         ),
       };
@@ -100,7 +102,7 @@ export function SessionStarterVercelSyncSection({
         icon: <XCircleIcon className="h-3.5 w-3.5 text-muted-foreground/50" />,
         label: (
           <span className="text-xs text-muted-foreground">
-            No linked Vercel projects &mdash; starting without env sync
+            {t("assistant.sessionStarter.noLinkedVercelProjectsCompact")}
           </span>
         ),
       };
@@ -112,10 +114,9 @@ export function SessionStarterVercelSyncSection({
         ),
         label: (
           <span className="text-xs text-muted-foreground">
-            Syncing env from{" "}
-            <span className="font-medium text-foreground/80">
-              {formatVercelProjectLabel(selectedProject)}
-            </span>
+            {t("assistant.sessionStarter.syncingEnvFrom", {
+              project: formatVercelProjectLabel(selectedProject),
+            })}
           </span>
         ),
       };
@@ -125,7 +126,7 @@ export function SessionStarterVercelSyncSection({
         icon: <XCircleIcon className="h-3.5 w-3.5 text-muted-foreground/50" />,
         label: (
           <span className="text-xs text-muted-foreground">
-            Env sync disabled for this session
+            {t("assistant.sessionStarter.envSyncDisabled")}
           </span>
         ),
       };
@@ -160,13 +161,13 @@ export function SessionStarterVercelSyncSection({
           <VercelIcon className="h-3 w-3" />
         </div>
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-sm font-medium leading-snug">Environment sync</p>
+          <p className="text-sm font-medium leading-snug">
+            {t("assistant.sessionStarter.environmentSync")}
+          </p>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Pull Development env vars into{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-[11px] dark:bg-white/[0.06]">
-              .env.local
-            </code>{" "}
-            when the sandbox is created.
+            {t("assistant.sessionStarter.environmentSyncDescription", {
+              envFile: ".env.local",
+            })}
           </p>
         </div>
         {!requiresVercelChoice && (
@@ -178,22 +179,23 @@ export function SessionStarterVercelSyncSection({
           <div className="flex items-center gap-2.5 py-0.5">
             <Loader2Icon className="h-3.5 w-3.5 animate-spin text-muted-foreground/70" />
             <span className="text-xs text-muted-foreground">
-              Scanning for linked Vercel projects&hellip;
+              {t("assistant.sessionStarter.scanningVercelProjects")}
             </span>
           </div>
         ) : repoProjectsError ? (
           <div className="flex items-start gap-2.5">
             <AlertCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              {repoProjectsError}. Will fall back to any saved repo default.
+              {t("assistant.sessionStarter.vercelProjectErrorFallback", {
+                error: repoProjectsError,
+              })}
             </p>
           </div>
         ) : repoProjects?.projects.length === 0 ? (
           <div className="flex items-start gap-2.5">
             <XCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              No linked Vercel projects found for this repo. The session will
-              start without env sync.
+              {t("assistant.sessionStarter.noLinkedVercelProjectsFound")}
             </p>
           </div>
         ) : repoProjects ? (
@@ -212,7 +214,9 @@ export function SessionStarterVercelSyncSection({
               disabled={controlsDisabled}
             >
               <SelectTrigger className="w-full bg-background/80 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]">
-                <SelectValue placeholder="Select a Vercel project&hellip;" />
+                <SelectValue
+                  placeholder={t("assistant.sessionStarter.selectVercelProject")}
+                />
               </SelectTrigger>
               <SelectContent align="start">
                 {repoProjects.projects.map((project) => (
@@ -223,14 +227,14 @@ export function SessionStarterVercelSyncSection({
                 <SelectSeparator />
                 <SelectItem value={NO_VERCEL_PROJECT_VALUE}>
                   <span className="text-muted-foreground">
-                    Don&apos;t sync env variables
+                    {t("assistant.sessionStarter.dontSyncEnvVariables")}
                   </span>
                 </SelectItem>
               </SelectContent>
             </Select>
             {requiresVercelChoice && (
               <p className="text-xs text-amber-600 dark:text-amber-400/80">
-                Select a project to sync, or opt out for this session.
+                {t("assistant.sessionStarter.selectProjectToSync")}
               </p>
             )}
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { TaskPendingToolCall } from "@viben/agent";
 import { formatTokens, toRelativePath } from "@viben/shared";
 import type { ToolRenderState } from "@viben/shared/lib/tool-state";
@@ -45,51 +46,53 @@ type ToolMeta = { displayName: string; icon: ReactNode };
 
 const TOOL_ICON_CLASS = "h-3.5 w-3.5";
 
-function getToolMeta(toolName: string): ToolMeta {
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+function getToolMeta(toolName: string, t: TranslateFn): ToolMeta {
   switch (toolName) {
     case "bash":
       return {
-        displayName: "Bash",
+        displayName: t("assistant.toolCall.toolBash"),
         icon: <Terminal className={TOOL_ICON_CLASS} />,
       };
     case "read":
       return {
-        displayName: "Read",
+        displayName: t("assistant.toolCall.toolRead"),
         icon: <FileText className={TOOL_ICON_CLASS} />,
       };
     case "write":
       return {
-        displayName: "Create",
+        displayName: t("assistant.toolCall.toolCreate"),
         icon: <FilePlus className={TOOL_ICON_CLASS} />,
       };
     case "edit":
       return {
-        displayName: "Update",
+        displayName: t("assistant.toolCall.toolUpdate"),
         icon: <Pencil className={TOOL_ICON_CLASS} />,
       };
     case "grep":
       return {
-        displayName: "Grep",
+        displayName: t("assistant.toolCall.toolGrep"),
         icon: <Search className={TOOL_ICON_CLASS} />,
       };
     case "glob":
       return {
-        displayName: "Glob",
+        displayName: t("assistant.toolCall.toolGlob"),
         icon: <FolderSearch className={TOOL_ICON_CLASS} />,
       };
     case "web_fetch":
       return {
-        displayName: "Fetch",
+        displayName: t("assistant.toolCall.toolFetch"),
         icon: <Globe className={TOOL_ICON_CLASS} />,
       };
     case "skill":
       return {
-        displayName: "Skill",
+        displayName: t("assistant.toolCall.toolSkill"),
         icon: <Zap className={TOOL_ICON_CLASS} />,
       };
     case "task":
       return {
-        displayName: "Task",
+        displayName: t("assistant.toolCall.toolTask"),
         icon: <Telescope className={TOOL_ICON_CLASS} />,
       };
     default: {
@@ -239,18 +242,23 @@ function getSubagentIcon(
   }
 }
 
-function getSubagentLabel(subagentType: string | undefined): string {
+function getSubagentLabel(
+  subagentType: string | undefined,
+  t: TranslateFn,
+): string {
   switch (subagentType) {
     case "executor":
-      return "Executor Subagent";
+      return t("assistant.toolCall.executorSubagent");
     case "design":
-      return "Design Subagent";
+      return t("assistant.toolCall.designSubagent");
     case "explorer":
-      return "Explorer Subagent";
+      return t("assistant.toolCall.explorerSubagent");
     default:
       return subagentType
-        ? `${subagentType.charAt(0).toUpperCase() + subagentType.slice(1)} Subagent`
-        : "Subagent";
+        ? t("assistant.toolCall.subagentType", {
+            type: subagentType.charAt(0).toUpperCase() + subagentType.slice(1),
+          })
+        : t("assistant.toolCall.subagent");
   }
 }
 
@@ -271,6 +279,7 @@ const IDLE_STATE: ToolRenderState = {
  * This is a local dispatch to avoid circular imports with tool-call.tsx.
  */
 function SubagentToolCall({ part }: { part: WebAgentUIToolPart }) {
+  const { t } = useTranslation();
   const state = extractRenderState(part, null, false);
   const cwd = DEFAULT_WORKING_DIRECTORY;
 
@@ -299,13 +308,19 @@ function SubagentToolCall({ part }: { part: WebAgentUIToolPart }) {
       const toolName = getToolName(part);
       const name = toolName.charAt(0).toUpperCase() + toolName.slice(1);
       const input = part.input as Record<string, unknown> | undefined;
-      const summary = input ? JSON.stringify(input).slice(0, 40) : "...";
+      const summary = input
+        ? JSON.stringify(input).slice(0, 40)
+        : t("assistant.toolCall.placeholder");
       return (
         <ToolLayout
           name={name}
           summary={summary}
           summaryClassName="font-mono"
-          meta={part.state === "output-available" ? "Done" : undefined}
+          meta={
+            part.state === "output-available"
+              ? t("assistant.toolCall.done")
+              : undefined
+          }
           state={state}
         />
       );
@@ -320,7 +335,8 @@ function PendingMiniToolCall({
   name: string;
   input: unknown;
 }) {
-  const meta = getToolMeta(name);
+  const { t } = useTranslation();
+  const meta = getToolMeta(name, t);
   const summary = getToolSummary(name, input);
 
   return (
@@ -344,8 +360,9 @@ export function TaskRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-task">) {
+  const { t } = useTranslation();
   const input = part.input;
-  const desc = input?.task ?? "Spawning subagent";
+  const desc = input?.task ?? t("assistant.toolCall.spawningSubagent");
   const subagentType = input?.subagentType;
   const taskApprovalRequested = part.state === "approval-requested";
   const taskDenied = part.state === "output-denied";
@@ -363,10 +380,16 @@ export function TaskRenderer({
   // Build mono stats for right-aligned meta
   const statParts: string[] = [];
   if (toolCount > 0) {
-    statParts.push(`${toolCount} tool${toolCount !== 1 ? "s" : ""}`);
+    statParts.push(
+      t("assistant.toolCall.toolCount", { count: toolCount }),
+    );
   }
   if (tokenCount !== null) {
-    statParts.push(`${formatTokens(tokenCount)} tokens`);
+    statParts.push(
+      t("assistant.toolCall.tokenCount", {
+        count: formatTokens(tokenCount),
+      }),
+    );
   }
 
   const meta =
@@ -409,14 +432,13 @@ export function TaskRenderer({
   const approvalWarning =
     taskApprovalRequested && subagentType === "executor" ? (
       <div className="mt-2 pl-5 text-sm text-yellow-500">
-        This executor has full write access and can create, modify, and delete
-        files.
+        {t("assistant.toolCall.executorFullAccessWarning")}
       </div>
     ) : undefined;
 
   return (
     <ToolLayout
-      name={getSubagentLabel(subagentType)}
+      name={getSubagentLabel(subagentType, t)}
       summary={desc}
       summaryClassName="font-sans"
       meta={meta}

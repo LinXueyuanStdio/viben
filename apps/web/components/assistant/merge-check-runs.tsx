@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   Check,
   ChevronDown,
@@ -24,15 +26,14 @@ const stateOrder: Record<CheckState, number> = {
   passed: 2,
 };
 
-function groupLabel(state: CheckState, count: number): string {
-  const s = count === 1 ? "" : "s";
+function groupLabel(t: TFunction, state: CheckState, count: number): string {
   switch (state) {
     case "failed":
-      return `${count} failing check${s}`;
+      return t("assistant.git.failingCheckCount", { count });
     case "pending":
-      return `${count} pending check${s}`;
+      return t("assistant.git.pendingCheckCount", { count });
     case "passed":
-      return `${count} passing check${s}`;
+      return t("assistant.git.passingCheckCount", { count });
   }
 }
 
@@ -165,6 +166,8 @@ function CheckStateIcon({
 /* ------------------------------------------------------------------ */
 
 function CheckRunRow({ checkRun }: { checkRun: CheckRun }) {
+  const { t } = useTranslation();
+
   const inner = (
     <div className="flex min-w-0 items-center gap-2 py-0.5">
       <CheckStateIcon state={checkRun.state} />
@@ -188,7 +191,9 @@ function CheckRunRow({ checkRun }: { checkRun: CheckRun }) {
         target="_blank"
         rel="noopener noreferrer"
         className="group/check block"
-        aria-label={`Open details for ${checkRun.name}`}
+        aria-label={t("assistant.git.openDetailsForCheck", {
+          name: checkRun.name,
+        })}
       >
         {inner}
       </a>
@@ -213,6 +218,7 @@ function GroupSection({
   defaultOpen: boolean;
   trailing?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -229,7 +235,7 @@ function GroupSection({
             <ChevronRight className="h-3 w-3 shrink-0" />
           )}
           <span className="truncate">
-            {groupLabel(state, checkRuns.length)}
+            {groupLabel(t, state, checkRuns.length)}
           </span>
         </button>
         {trailing && <div className="shrink-0">{trailing}</div>}
@@ -258,6 +264,7 @@ function FixErrorsButton({
   disabled?: boolean;
   onClick: () => Promise<void> | void;
 }) {
+  const { t } = useTranslation();
   const [isFixing, setIsFixing] = useState(false);
 
   const handleClick = useCallback(async () => {
@@ -277,9 +284,9 @@ function FixErrorsButton({
       disabled={disabled || isFixing}
       title={
         disabled
-          ? "Disabled while the agent is working"
+          ? t("assistant.git.disabledWhileAgentWorking")
           : isFixing
-            ? "Analyzing logs…"
+            ? t("assistant.git.analyzingLogs")
             : undefined
       }
       onClick={() => void handleClick()}
@@ -289,7 +296,7 @@ function FixErrorsButton({
       ) : (
         <Sparkles className="h-3 w-3" />
       )}
-      {isFixing ? "Analyzing logs…" : "Fix errors"}
+      {isFixing ? t("assistant.git.analyzingLogs") : t("assistant.git.fixErrors")}
     </button>
   );
 }
@@ -325,6 +332,8 @@ export function CheckRunsList({
   fixChecksDisabled = false,
   onFixChecks,
 }: CheckRunsListProps) {
+  const { t } = useTranslation();
+
   const passed =
     checks?.passed ?? checkRuns.filter((c) => c.state === "passed").length;
   const pending =
@@ -391,15 +400,23 @@ export function CheckRunsList({
           )}
 
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="text-sm font-medium text-foreground">Checks</span>
+            <span className="text-sm font-medium text-foreground">
+              {t("assistant.git.checks")}
+            </span>
             <span className="truncate text-xs text-muted-foreground">
               {showLoading ? (
-                "Loading..."
+                t("assistant.git.loading")
               ) : (
                 <>
-                  {passed} passed
-                  {pending > 0 && `, ${pending} pending`}
-                  {failed > 0 && `, ${failed} failing`}
+                  {t("assistant.git.checksPassedCount", { count: passed })}
+                  {pending > 0 &&
+                    `, ${t("assistant.git.checksPendingCount", {
+                      count: pending,
+                    })}`}
+                  {failed > 0 &&
+                    `, ${t("assistant.git.checksFailingCount", {
+                      count: failed,
+                    })}`}
                 </>
               )}
             </span>
@@ -412,7 +429,7 @@ export function CheckRunsList({
             {onRefresh && (
               <button
                 type="button"
-                aria-label="Refresh checks"
+                aria-label={t("assistant.git.refreshChecks")}
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                 onClick={() => onRefresh()}
               >

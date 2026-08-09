@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Zap } from "lucide-react";
 import type { ToolRendererProps } from "@/lib/render-tool";
 import { ToolLayout } from "../tool-layout";
@@ -19,13 +20,16 @@ export function SkillRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-skill">) {
+  const { t } = useTranslation();
   const input = part.input;
   const skillName = getDisplayString(input?.skill);
   const rawArgs = getDisplayString(input?.args);
 
   const output = part.state === "output-available" ? part.output : undefined;
   const outputError =
-    output?.success === false ? (output?.error ?? "Skill failed") : undefined;
+    output?.success === false
+      ? (output?.error ?? t("assistant.toolCall.skillFailed"))
+      : undefined;
 
   const mergedState = outputError
     ? { ...state, error: state.error ?? outputError }
@@ -39,9 +43,9 @@ export function SkillRenderer({
 
   return (
     <ToolLayout
-      name="Skill"
+      name={t("assistant.toolCall.toolSkill")}
       icon={<Zap className="h-3.5 w-3.5" />}
-      summary={skillName ? `/${skillName}` : "..."}
+      summary={skillName ? `/${skillName}` : t("assistant.toolCall.placeholder")}
       summaryClassName="font-mono"
       state={mergedState}
       nameClassName={mergedState.error ? "text-red-500" : undefined}

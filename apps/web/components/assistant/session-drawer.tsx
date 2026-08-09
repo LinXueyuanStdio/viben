@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Archive, GitMerge } from "lucide-react";
 import { useState } from "react";
 import {
@@ -88,13 +89,14 @@ function DiffStats({
 }
 
 function PrStatus({ status }: { status: "open" | "merged" | "closed" | null }) {
+  const { t } = useTranslation();
   if (!status || status === "open") return null;
 
   if (status === "merged") {
     return (
       <div className="flex items-center gap-1 rounded-md bg-purple-500/20 px-1.5 py-0.5 text-xs text-purple-700 dark:text-purple-400">
         <GitMerge className="h-3 w-3" />
-        <span>Merged</span>
+        <span>{t("assistant.drawer.prStatusMerged")}</span>
       </div>
     );
   }
@@ -111,10 +113,15 @@ function SessionGroup({
   sessions: SessionWithUnread[];
   onSessionClick: (sessionId: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       <h3 className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {dateGroup}
+        {dateGroup === "TODAY"
+          ? t("assistant.drawer.today")
+          : dateGroup === "YESTERDAY"
+            ? t("assistant.drawer.yesterday")
+            : dateGroup}
       </h3>
       <div className="space-y-0.5">
         {sessions.map((session) => (
@@ -145,7 +152,9 @@ function SessionGroup({
                       )}
                     </span>
                   ) : session.hasStreaming ? (
-                    <span className="text-muted-foreground/60">Working...</span>
+                    <span className="text-muted-foreground/60">
+                      {t("assistant.drawer.working")}
+                    </span>
                   ) : null}
                 </p>
               </div>
@@ -179,6 +188,7 @@ function SessionDrawerInner({
   onSessionClick,
   onOpenChange,
 }: Omit<SessionDrawerProps, "open">) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<DrawerTab>("sessions");
 
   const activeSessions = sessions.filter((s) => s.status !== "archived");
@@ -196,7 +206,9 @@ function SessionDrawerInner({
     <>
       <div className="border-b px-4 py-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Sessions</h2>
+          <h2 className="text-base font-semibold">
+            {t("assistant.drawer.sessions")}
+          </h2>
         </div>
         <div className="flex gap-1 pt-1">
           <button
@@ -208,7 +220,7 @@ function SessionDrawerInner({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Active
+            {t("assistant.drawer.active")}
             {activeSessions.length > 0 && (
               <span className="ml-1.5 text-muted-foreground">
                 {activeSessions.length}
@@ -225,7 +237,7 @@ function SessionDrawerInner({
             }`}
           >
             <Archive className="h-3 w-3" />
-            Archive
+            {t("assistant.drawer.archive")}
             {archivedSessions.length > 0 && (
               <span className="ml-1 text-muted-foreground">
                 {archivedSessions.length}
@@ -241,7 +253,9 @@ function SessionDrawerInner({
             <SessionDrawerSkeleton />
           ) : displayedSessions.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              {tab === "sessions" ? "No sessions yet" : "No archived sessions"}
+              {tab === "sessions"
+                ? t("assistant.drawer.noSessionsYet")
+                : t("assistant.drawer.noArchivedSessions")}
             </div>
           ) : (
             <div className="space-y-4">
@@ -270,6 +284,7 @@ export function SessionDrawer({
   loading,
   onSessionClick,
 }: SessionDrawerProps) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
 
   if (isMobile) {
@@ -277,7 +292,7 @@ export function SessionDrawer({
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="h-[85dvh]">
           <DrawerHeader className="sr-only">
-            <DrawerTitle>Sessions</DrawerTitle>
+            <DrawerTitle>{t("assistant.drawer.sessions")}</DrawerTitle>
           </DrawerHeader>
           <SessionDrawerInner
             sessions={sessions}
@@ -297,7 +312,7 @@ export function SessionDrawer({
         className="flex flex-col gap-0 p-0 sm:max-w-sm"
       >
         <SheetHeader className="sr-only">
-          <SheetTitle>Sessions</SheetTitle>
+          <SheetTitle>{t("assistant.drawer.sessions")}</SheetTitle>
         </SheetHeader>
         <SessionDrawerInner
           sessions={sessions}

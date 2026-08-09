@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { toRelativePath } from "@viben/shared/lib/tool-state";
 import { FilePlus } from "lucide-react";
 import { File as DiffsFile } from "@pierre/diffs/react";
@@ -24,8 +25,9 @@ export function WriteRenderer({
   onApprove,
   onDeny,
 }: ToolRendererProps<"tool-write">) {
+  const { t } = useTranslation();
   const input = part.input;
-  const rawFilePath = input?.filePath ?? "...";
+  const rawFilePath = input?.filePath ?? t("assistant.toolCall.placeholder");
   const filePath =
     rawFilePath === "..." ? rawFilePath : toRelativePath(rawFilePath, cwd);
   const content = input?.content ?? "";
@@ -37,7 +39,9 @@ export function WriteRenderer({
 
   const output = part.state === "output-available" ? part.output : undefined;
   const outputError =
-    output?.success === false ? (output?.error ?? "Write failed") : undefined;
+    output?.success === false
+      ? (output?.error ?? t("assistant.toolCall.writeFailed"))
+      : undefined;
 
   const mergedState = outputError
     ? { ...state, error: state.error ?? outputError }
@@ -67,7 +71,7 @@ export function WriteRenderer({
 
   return (
     <ToolLayout
-      name="Create"
+      name={t("assistant.toolCall.toolCreate")}
       icon={<FilePlus className="h-3.5 w-3.5" />}
       summary={
         filePath === "..." ? (
@@ -81,7 +85,9 @@ export function WriteRenderer({
         )
       }
       meta={meta}
-      errorMeta={mergedState.error ? "failed" : undefined}
+      errorMeta={
+        mergedState.error ? t("assistant.toolCall.failed") : undefined
+      }
       state={mergedState}
       expandedContent={expandedContent}
       onApprove={onApprove}

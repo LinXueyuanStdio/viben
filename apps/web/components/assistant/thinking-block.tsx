@@ -2,6 +2,7 @@
 
 import { Brain } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ToolRenderState } from "@viben/shared/lib/tool-state";
 import { ToolLayout } from "./tool-call/tool-layout";
 
@@ -32,6 +33,7 @@ export function ThinkingBlock({
   isStreaming = false,
   partCount = 1,
 }: ThinkingBlockProps) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -74,14 +76,14 @@ export function ThinkingBlock({
   const hasContent = text.trim().length > 0;
   const thoughtLabel =
     partCount === 1
-      ? "Thought"
-      : `${partCount} thought${partCount !== 1 ? "s" : ""}`;
+      ? t("assistant.thinking.thought")
+      : t("assistant.thinking.thoughtCount", { count: partCount });
 
-  const name = isStreaming ? "Thinking..." : thoughtLabel;
+  const name = isStreaming ? t("assistant.thinking.thinking") : thoughtLabel;
 
   const summary =
     !isStreaming && elapsed > 0
-      ? `${elapsed} second${elapsed !== 1 ? "s" : ""}`
+      ? t("assistant.thinking.elapsedSeconds", { count: elapsed })
       : "";
 
   const expandedContent = hasContent ? (

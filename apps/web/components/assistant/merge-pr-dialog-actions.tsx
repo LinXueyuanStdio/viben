@@ -1,4 +1,5 @@
 import { ExternalLink, GitCompare } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 type MergePrDialogActionsProps = {
@@ -14,6 +15,8 @@ export function MergePrDialogActions({
   onOpenPullRequest,
   onViewDiff,
 }: MergePrDialogActionsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button
@@ -24,7 +27,7 @@ export function MergePrDialogActions({
         disabled={!canOpenPullRequest}
       >
         <ExternalLink className="mr-2 h-4 w-4" />
-        View PR
+        {t("assistant.git.viewPr")}
       </Button>
       <Button
         type="button"
@@ -34,7 +37,7 @@ export function MergePrDialogActions({
         disabled={!canViewDiff || !onViewDiff}
       >
         <GitCompare className="mr-2 h-4 w-4" />
-        View Diff
+        {t("assistant.git.viewDiff")}
       </Button>
     </div>
   );

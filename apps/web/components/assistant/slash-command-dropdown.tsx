@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Terminal } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { SkillSuggestion } from "@/app/api/sessions/[sessionId]/skills/route";
 
@@ -20,6 +21,7 @@ export function SlashCommandDropdown({
   onSelect,
   isLoading,
 }: SlashCommandDropdownProps) {
+  const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
@@ -42,7 +44,7 @@ export function SlashCommandDropdown({
   if (isLoading) {
     return (
       <div className="absolute bottom-full left-0 right-0 mb-2 rounded-md border bg-popover p-2 text-sm text-muted-foreground shadow-md">
-        Loading skills...
+        {t("assistant.slashCommand.loading")}
       </div>
     );
   }
@@ -82,9 +84,7 @@ export function SlashCommandDropdown({
         ))}
       </div>
       <div className="border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
-        <kbd className="rounded bg-muted px-1">Tab</kbd> or{" "}
-        <kbd className="rounded bg-muted px-1">Enter</kbd> to select,{" "}
-        <kbd className="rounded bg-muted px-1">Esc</kbd> to dismiss
+        {t("assistant.slashCommand.keyboardHint")}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { ToolRenderState } from "@viben/shared/lib/tool-state";
 import { CircleX, Loader2, Minus, OctagonPause, Plus } from "lucide-react";
 import type React from "react";
@@ -82,6 +83,7 @@ export function ToolLayout({
   indicator,
   nameClassName,
 }: ToolLayoutProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const showApprovalButtons = Boolean(
     state.approvalRequested && !state.isActiveApproval && state.approvalId,
@@ -265,7 +267,9 @@ export function ToolLayout({
       {children}
 
       {showRunningNotice && (
-        <div className="mt-2 text-sm text-muted-foreground">Running...</div>
+        <div className="mt-2 text-sm text-muted-foreground">
+          {t("assistant.toolCall.running")}
+        </div>
       )}
 
       {showApprovalButtons && (
@@ -291,7 +295,11 @@ export function ToolLayout({
 
       {state.denied && (
         <div className="mt-2 text-sm text-red-500">
-          Denied{state.denialReason ? `: ${state.denialReason}` : ""}
+          {state.denialReason
+            ? t("assistant.toolCall.deniedWithReason", {
+                reason: state.denialReason,
+              })
+            : t("assistant.toolCall.denied")}
         </div>
       )}
 
@@ -317,7 +325,7 @@ export function ToolLayout({
                   )}
                 {showInterruptedExpanded && (
                   <pre className="rounded-md border border-yellow-500/20 bg-yellow-500/5 px-3 py-2 font-mono text-xs leading-relaxed text-yellow-500">
-                    interrupted
+                    {t("assistant.toolCall.interrupted")}
                   </pre>
                 )}
                 {expandedContent}

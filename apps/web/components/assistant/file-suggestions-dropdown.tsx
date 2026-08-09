@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getFileIcon, FolderIcon } from "@/components/assistant/file-type-icons";
 import type { FileSuggestion } from "@/app/api/sessions/[sessionId]/files/route";
@@ -20,6 +21,7 @@ export function FileSuggestionsDropdown({
   onSelect,
   isLoading,
 }: FileSuggestionsDropdownProps) {
+  const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
@@ -42,7 +44,7 @@ export function FileSuggestionsDropdown({
   if (isLoading) {
     return (
       <div className="absolute bottom-full left-0 right-0 mb-2 rounded-md border bg-popover p-2 text-sm text-muted-foreground shadow-md">
-        Loading files...
+        {t("assistant.fileSuggestion.loading")}
       </div>
     );
   }
@@ -107,9 +109,7 @@ export function FileSuggestionsDropdown({
         </div>
       </div>
       <div className="border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
-        <kbd className="rounded bg-muted px-1">Tab</kbd> or{" "}
-        <kbd className="rounded bg-muted px-1">Enter</kbd> to select,{" "}
-        <kbd className="rounded bg-muted px-1">Esc</kbd> to dismiss
+        {t("assistant.fileSuggestion.keyboardHint")}
       </div>
     </div>
   );

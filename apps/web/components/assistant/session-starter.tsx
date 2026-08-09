@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -49,6 +50,7 @@ export function SessionStarter({
   isLoading,
   lastRepo,
 }: SessionStarterProps) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<SessionMode>(() =>
     lastRepo ? "repo" : "empty",
   );
@@ -225,8 +227,11 @@ export function SessionStarter({
 
   const buttonLabel =
     mode === "repo" && selectedOwner && selectedRepo
-      ? `Start with ${selectedOwner}/${selectedRepo}`
-      : "Start session";
+      ? t("assistant.sessionStarter.startWithRepo", {
+          owner: selectedOwner,
+          repo: selectedRepo,
+        })
+      : t("assistant.sessionStarter.startSession");
 
   return (
     <div
@@ -248,7 +253,7 @@ export function SessionStarter({
             )}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            New Chat
+            {t("assistant.sessionStarter.newChat")}
           </button>
           <button
             type="button"
@@ -264,7 +269,7 @@ export function SessionStarter({
             )}
           >
             <GitBranch className="h-3.5 w-3.5" />
-            Start Session
+            {t("assistant.sessionStarter.startSessionTab")}
           </button>
         </div>
 
@@ -305,8 +310,8 @@ export function SessionStarter({
         {mode === "empty" && (
           <p className="text-center text-sm text-muted-foreground dark:text-neutral-500">
             {isTrialUser
-              ? "In the hosted demo, you can start chats without connecting GitHub."
-              : "Start a new chat -- no repository required."}
+              ? t("assistant.sessionStarter.demoEmptyState")
+              : t("assistant.sessionStarter.emptyState")}
           </p>
         )}
 
@@ -320,17 +325,22 @@ export function SessionStarter({
             <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
               {effectiveAutoCommitPush ? (
                 <>
-                  Auto commit{" "}
-                  <span className="font-medium text-foreground/80">on</span>
+                  {t("assistant.sessionStarter.autoCommit")}{" "}
+                  <span className="font-medium text-foreground/80">
+                    {t("assistant.sessionStarter.on")}
+                  </span>
                   {effectiveAutoCreatePr && (
                     <>
-                      {" · "}Auto PR{" "}
-                      <span className="font-medium text-foreground/80">on</span>
+                      {" · "}
+                      {t("assistant.sessionStarter.autoPr")}{" "}
+                      <span className="font-medium text-foreground/80">
+                        {t("assistant.sessionStarter.on")}
+                      </span>
                     </>
                   )}
                 </>
               ) : (
-                "Auto commit and push disabled"
+                t("assistant.sessionStarter.autoCommitPushDisabled")
               )}
             </span>
             <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
@@ -345,16 +355,20 @@ export function SessionStarter({
               className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left transition-colors hover:bg-muted/30"
             >
               <div className="space-y-1">
-                <p className="text-sm font-medium">Auto commit and push</p>
+                <p className="text-sm font-medium">
+                  {t("assistant.sessionStarter.autoCommitAndPush")}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Automatically commit and push after each agent turn.
+                  {t("assistant.sessionStarter.autoCommitAndPushDescription")}
                 </p>
               </div>
               <ChevronUpIcon className="h-4 w-4 shrink-0 text-muted-foreground/50" />
             </button>
             <div className="border-t border-border/50 dark:border-white/[0.06]">
               <div className="flex items-center justify-between gap-4 px-3 py-2">
-                <p className="text-sm font-medium">Commit and push</p>
+                <p className="text-sm font-medium">
+                  {t("assistant.sessionStarter.commitAndPush")}
+                </p>
                 <Switch
                   checked={effectiveAutoCommitPush}
                   onCheckedChange={setAutoCommitPush}
@@ -364,7 +378,7 @@ export function SessionStarter({
               {effectiveAutoCommitPush && (
                 <div className="flex items-center justify-between gap-4 border-t border-border/30 px-3 py-2 pl-6 dark:border-white/[0.04]">
                   <p className="text-sm text-muted-foreground">
-                    Create pull request
+                    {t("assistant.sessionStarter.createPullRequest")}
                   </p>
                   <Switch
                     checked={effectiveAutoCreatePr}
@@ -389,17 +403,19 @@ export function SessionStarter({
           )}
         >
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isLoading ? "Creating session…" : buttonLabel}
+          {isLoading
+            ? t("assistant.sessionStarter.creatingSession")
+            : buttonLabel}
         </button>
 
         <p className="text-center text-xs text-muted-foreground">
-          Using {sandboxName} sandbox{" "}
+          {t("assistant.sessionStarter.usingSandbox", { sandboxName })}{" "}
           <span className="text-muted-foreground/60">&middot;</span>{" "}
           <Link
             href="/settings/sandbox"
             className="text-muted-foreground underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/40"
           >
-            Change
+            {t("assistant.sessionStarter.change")}
           </Link>
         </p>
       </div>

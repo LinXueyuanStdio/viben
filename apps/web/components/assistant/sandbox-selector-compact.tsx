@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { ChevronDown, CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ export function SandboxSelectorCompact({
   value,
   onChange,
 }: SandboxSelectorCompactProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const handleSelect = (sandboxType: SandboxType) => {
@@ -67,7 +69,7 @@ export function SandboxSelectorCompact({
       <PopoverContent className="w-64 p-0" align="start">
         <Command>
           <CommandList>
-            <CommandEmpty>No sandbox types found.</CommandEmpty>
+            <CommandEmpty>{t("assistant.sandbox.noSandboxTypes")}</CommandEmpty>
             <CommandGroup>
               {SANDBOX_OPTIONS.map((sandbox) => (
                 <CommandItem
@@ -84,12 +86,14 @@ export function SandboxSelectorCompact({
                   <div className="flex flex-col">
                     <span>{sandbox.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {sandbox.description}
+                      {sandbox.id === "vercel"
+                        ? t("assistant.sandbox.cloudSandbox")
+                        : sandbox.description}
                     </span>
                   </div>
                   {sandbox.id === DEFAULT_SANDBOX_TYPE && (
                     <span className="ml-auto text-xs text-muted-foreground">
-                      default
+                      {t("assistant.sandbox.default")}
                     </span>
                   )}
                 </CommandItem>

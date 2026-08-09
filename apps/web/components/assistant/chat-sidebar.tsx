@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Check,
@@ -42,6 +43,7 @@ export function ChatSidebar({
   onRenameChat,
   onDeleteChat,
 }: ChatSidebarProps) {
+  const { t } = useTranslation();
   const { isMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
@@ -121,7 +123,7 @@ export function ChatSidebar({
           className="mb-3 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Sessions
+          {t("assistant.chat.sessions")}
         </button>
         {isEditingTitle ? (
           <div className="flex items-center gap-1">
@@ -177,7 +179,7 @@ export function ChatSidebar({
           className="mt-3 w-full justify-start"
         >
           <Plus className="mr-2 h-4 w-4" />
-          New chat
+          {t("assistant.chat.newChat")}
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -193,14 +195,14 @@ export function ChatSidebar({
                 disabled={chatsLoading}
                 className="mt-2 text-xs font-medium text-destructive underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Retry
+                {t("assistant.chat.retry")}
               </button>
             </div>
           ) : null}
 
           {!chatsLoading && chats.length === 0 && !chatsErrorMessage ? (
             <p className="px-2 py-1 text-xs text-muted-foreground">
-              No chats yet.
+              {t("assistant.chat.noChatsYet")}
             </p>
           ) : null}
 
@@ -256,7 +258,7 @@ export function ChatSidebar({
               {c.isStreaming && (
                 <span
                   className="pointer-events-none absolute top-1/2 right-3 size-2 -translate-y-1/2 rounded-full bg-zinc-600 animate-pulse transition-opacity group-hover:opacity-0 dark:bg-white"
-                  aria-label="Streaming response"
+                  aria-label={t("assistant.chat.streamingResponse")}
                 />
               )}
               {editingChatId !== c.id &&
@@ -265,7 +267,7 @@ export function ChatSidebar({
                 c.hasUnread && (
                   <span
                     className="pointer-events-none absolute top-1/2 right-3 size-2 -translate-y-1/2 rounded-full bg-emerald-500 transition-opacity group-hover:opacity-0"
-                    aria-label="Unread messages"
+                    aria-label={t("assistant.chat.unreadMessages")}
                   />
                 )}
               {editingChatId !== c.id && (
@@ -277,7 +279,7 @@ export function ChatSidebar({
                       setEditingChatTitle(c.title);
                     }}
                     className="rounded p-1.5 text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                    aria-label={`Rename ${c.title}`}
+                    aria-label={t("assistant.chat.renameChatAria", { title: c.title })}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -288,7 +290,7 @@ export function ChatSidebar({
                     }}
                     disabled={chats.length <= 1}
                     className="rounded p-1.5 text-muted-foreground hover:bg-background/60 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label={`Delete ${c.title}`}
+                    aria-label={t("assistant.chat.deleteChatAria", { title: c.title })}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

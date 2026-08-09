@@ -9,6 +9,7 @@ import {
   UserIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +58,7 @@ export function RepoSelector({
 }: {
   onRepoSelect: (owner: string, repo: string) => void;
 }) {
+  const { t } = useTranslation();
   const { hasGitHub } = useSession();
   const { reconnectRequired } = useGitHubConnectionStatus({
     enabled: hasGitHub,
@@ -119,7 +121,7 @@ export function RepoSelector({
             .safeParse(data);
           setError(parsed.success ? (parsed.data.error ?? "") : "");
           if (!parsed.success || !parsed.data.error) {
-            setError("Connect GitHub to access repositories");
+            setError(t("assistant.repo.connectGitHubToAccessRepos"));
           }
           return;
         }
@@ -127,14 +129,14 @@ export function RepoSelector({
         const json = await response.json();
         const parsed = installationsSchema.safeParse(json);
         if (!parsed.success) {
-          setError("Failed to load GitHub installations");
+          setError(t("assistant.repo.failedToLoadInstallations"));
           return;
         }
 
         setInstallations(parsed.data);
         setSelectedOwner(parsed.data[0]?.accountLogin ?? "");
       } catch {
-        setError("Failed to load GitHub data");
+        setError(t("assistant.repo.failedToLoadGitHubData"));
       } finally {
         setOwnersLoading(false);
       }
@@ -182,9 +184,11 @@ export function RepoSelector({
     return (
       <div className="flex flex-col items-center gap-4">
         <p className="text-sm text-muted-foreground">
-          Your saved GitHub connection is no longer valid.
+          {t("assistant.repo.savedConnectionNoLongerValid")}
         </p>
-        <Button onClick={startGitHubReconnect}>Reconnect GitHub</Button>
+        <Button onClick={startGitHubReconnect}>
+          {t("assistant.repo.reconnectGitHub")}
+        </Button>
       </div>
     );
   }
@@ -194,7 +198,7 @@ export function RepoSelector({
       <div className="flex flex-col items-center gap-4">
         <p className="text-sm text-destructive">{error}</p>
         <Button variant="outline" onClick={startGitHubInstall}>
-          Continue on GitHub
+          {t("assistant.repo.continueOnGitHub")}
         </Button>
       </div>
     );
@@ -204,9 +208,11 @@ export function RepoSelector({
     return (
       <div className="flex flex-col items-center gap-4">
         <p className="text-sm text-muted-foreground">
-          Install the GitHub App to choose repository access.
+          {t("assistant.repo.installAppToChooseRepoAccess")}
         </p>
-        <Button onClick={startGitHubInstall}>Choose repositories</Button>
+        <Button onClick={startGitHubInstall}>
+          {t("assistant.repo.chooseRepositories")}
+        </Button>
       </div>
     );
   }
@@ -223,11 +229,15 @@ export function RepoSelector({
             <div className="flex items-center gap-2 truncate">
               <UserIcon className="size-4 shrink-0" />
               {ownersLoading ? (
-                <span className="text-muted-foreground">Loading...</span>
+                <span className="text-muted-foreground">
+                  {t("assistant.repo.loading")}
+                </span>
               ) : selectedOwner ? (
                 <span className="truncate">{selectedOwner}</span>
               ) : (
-                <span className="text-muted-foreground">Select account</span>
+                <span className="text-muted-foreground">
+                  {t("assistant.repo.selectAccount")}
+                </span>
               )}
             </div>
             <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
@@ -235,10 +245,12 @@ export function RepoSelector({
         </PopoverTrigger>
         <PopoverContent className="w-48 p-0">
           <Command>
-            <CommandInput placeholder="Search accounts..." />
+            <CommandInput placeholder={t("assistant.repo.searchAccounts")} />
             <CommandList>
               <CommandEmpty>
-                {ownersLoading ? "Loading..." : "No accounts found."}
+                {ownersLoading
+                  ? t("assistant.repo.loading")
+                  : t("assistant.repo.noAccountsFound")}
               </CommandEmpty>
               <CommandGroup>
                 {installations.map((installation) => (
@@ -279,11 +291,15 @@ export function RepoSelector({
             <div className="flex items-center gap-2 truncate">
               <BookIcon className="size-4 shrink-0" />
               {reposLoading ? (
-                <span className="text-muted-foreground">Loading...</span>
+                <span className="text-muted-foreground">
+                  {t("assistant.repo.loading")}
+                </span>
               ) : selectedRepo ? (
                 <span className="truncate">{selectedRepo}</span>
               ) : (
-                <span className="text-muted-foreground">Select repository</span>
+                <span className="text-muted-foreground">
+                  {t("assistant.repo.selectRepository")}
+                </span>
               )}
             </div>
             <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
@@ -292,8 +308,7 @@ export function RepoSelector({
         <PopoverContent className="w-64 p-0">
           <div className="flex items-center justify-between border-b px-3 py-2 text-xs text-muted-foreground">
             <span>
-              Showing repos for{" "}
-              <span className="text-foreground">{selectedOwner}</span>
+              {t("assistant.repo.showingReposFor", { owner: selectedOwner })}
             </span>
             <button
               type="button"
@@ -304,12 +319,14 @@ export function RepoSelector({
               <RefreshCw
                 className={cn("size-3", isRefreshing && "animate-spin")}
               />
-              {isRefreshing ? "Refreshing..." : "Refresh"}
+              {isRefreshing
+                ? t("assistant.repo.refreshing")
+                : t("assistant.repo.refresh")}
             </button>
           </div>
           <Command>
             <CommandInput
-              placeholder="Search repositories..."
+              placeholder={t("assistant.repo.searchRepositories")}
               value={repoSearch}
               onValueChange={setRepoSearch}
             />
@@ -318,8 +335,8 @@ export function RepoSelector({
                 {reposError
                   ? reposError
                   : reposLoading
-                    ? "Loading..."
-                    : "No repositories found."}
+                    ? t("assistant.repo.loading")
+                    : t("assistant.repo.noRepositoriesFound")}
               </CommandEmpty>
               <CommandGroup>
                 {repos.slice(0, 25).map((repo) => (
@@ -344,7 +361,7 @@ export function RepoSelector({
                 ))}
                 {repos.length === 25 && !debouncedRepoSearch && (
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    Showing first 25 results. Use search to narrow.
+                    {t("assistant.repo.showingFirst25Results")}
                   </div>
                 )}
               </CommandGroup>

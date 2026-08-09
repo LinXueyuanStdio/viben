@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { FileSuggestion } from "@/app/api/sessions/[sessionId]/files/route";
 import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react";
@@ -11,6 +12,7 @@ type FileTreeProps = {
 };
 
 export function FileTree({ files, repoName, onFileClick }: FileTreeProps) {
+  const { t } = useTranslation();
   const onFileClickRef = useRef(onFileClick);
   onFileClickRef.current = onFileClick;
 
@@ -61,7 +63,9 @@ export function FileTree({ files, repoName, onFileClick }: FileTreeProps) {
   if (files.length === 0) {
     return (
       <div className="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/25 py-8 text-center">
-        <p className="text-xs text-muted-foreground">No files found</p>
+        <p className="text-xs text-muted-foreground">
+          {t("assistant.workspace.noFilesFound")}
+        </p>
       </div>
     );
   }

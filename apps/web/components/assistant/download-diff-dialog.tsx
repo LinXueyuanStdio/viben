@@ -2,6 +2,7 @@
 
 import { Check, Copy, Download, Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +31,7 @@ export function DownloadDiffDialog({
   canDownload,
   filename,
 }: DownloadDiffDialogProps) {
+  const { t } = useTranslation();
   const applyCommands = `# From a clean checkout of the target repository
 git checkout main
 git pull
@@ -45,10 +47,9 @@ git apply --3way ~/Downloads/${filename}`;
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Download diff</DialogTitle>
+          <DialogTitle>{t("assistant.diff.downloadDiff")}</DialogTitle>
           <DialogDescription>
-            Download the patch file, then apply it in a local checkout of the
-            same repository.
+            {t("assistant.diff.downloadDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -60,18 +61,18 @@ git apply --3way ~/Downloads/${filename}`;
             onClick={() => onOpenChange(false)}
             disabled={downloading}
           >
-            Close
+            {t("assistant.diff.close")}
           </Button>
           <Button onClick={onDownload} disabled={!canDownload || downloading}>
             {downloading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Downloading...
+                {t("assistant.diff.downloading")}
               </>
             ) : (
               <>
                 <Download className="mr-2 h-4 w-4" />
-                Download diff
+                {t("assistant.diff.downloadDiff")}
               </>
             )}
           </Button>
@@ -82,6 +83,7 @@ git apply --3way ~/Downloads/${filename}`;
 }
 
 function CommandBlock({ commands }: { commands: string }) {
+  const { t } = useTranslation();
   const { copied, copy } = useCopy();
 
   return (
@@ -92,7 +94,9 @@ function CommandBlock({ commands }: { commands: string }) {
       <button
         type="button"
         onClick={() => copy(commands)}
-        aria-label={copied ? "Copied" : "Copy commands"}
+        aria-label={
+          copied ? t("assistant.diff.copied") : t("assistant.diff.copyCommands")
+        }
         className={cn(
           "absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-400",
           "transition-[color,background-color,transform] duration-150 ease-out",

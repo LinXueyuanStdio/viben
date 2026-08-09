@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import Link from "next/link";
 import type { SandboxCreateErrorDetails } from "./sandbox-create";
@@ -18,6 +21,7 @@ export function SandboxCreateErrorBanner({
   error: SandboxCreateErrorDetails;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation();
   const actionUrl =
     error.actionUrl && isSafeActionUrl(error.actionUrl)
       ? error.actionUrl
@@ -32,7 +36,7 @@ export function SandboxCreateErrorBanner({
             href={actionUrl}
             className="font-medium underline underline-offset-4 hover:no-underline"
           >
-            Reconnect GitHub
+            {t("assistant.sandbox.reconnectGitHub")}
           </Link>
         ) : null}
       </div>

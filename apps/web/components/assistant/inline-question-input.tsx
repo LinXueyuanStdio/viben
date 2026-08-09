@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import {
   useState,
   useCallback,
@@ -33,6 +34,7 @@ export function useInlineQuestion({
   textareaValue,
   onTextareaChange,
 }: UseInlineQuestionOptions) {
+  const { t } = useTranslation();
   const [state, setState] = useState<QuestionState>(() => ({
     currentIndex: 0,
     answers: {},
@@ -131,11 +133,14 @@ export function useInlineQuestion({
     onTextareaChange,
   ]);
 
-  const buttonLabel = isLastQuestion ? "Submit answers" : "Next question";
-  const compactButtonLabel = isLastQuestion ? "Submit" : "Next";
+  const buttonLabel = isLastQuestion
+    ? t("assistant.chat.submitAnswers")
+    : t("assistant.chat.nextQuestion");
+  const compactButtonLabel = isLastQuestion
+    ? t("assistant.chat.submit")
+    : t("assistant.chat.next");
 
-  const placeholder =
-    "Type your own answer, or leave this blank to use the selected option";
+  const placeholder = t("assistant.chat.answerPlaceholder");
 
   // Escape to cancel (only when active)
   useEffect(() => {

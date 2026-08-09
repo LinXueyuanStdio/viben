@@ -3,6 +3,7 @@
 /**
  * Tool call component that renders tool invocations for the web app.
  */
+import { useTranslation } from "react-i18next";
 import type { WebAgentUIToolPart } from "@/app/types";
 import {
   extractRenderState,
@@ -43,6 +44,7 @@ export function ToolCall({
   onApprove,
   onDeny,
 }: ToolCallProps) {
+  const { t } = useTranslation();
   const state = extractRenderState(part, activeApprovalId, isStreaming);
   const approvalProps = { onApprove, onDeny };
 
@@ -101,10 +103,14 @@ function DefaultRenderer({
   onApprove?: (id: string) => void;
   onDeny?: (id: string, reason?: string) => void;
 }) {
+  const { t } = useTranslation();
   const name = toolName.charAt(0).toUpperCase() + toolName.slice(1);
   const input = part.input as Record<string, unknown> | undefined;
-  const summary = input ? JSON.stringify(input).slice(0, 40) : "...";
-  const meta = part.state === "output-available" ? "Done" : undefined;
+  const summary = input
+    ? JSON.stringify(input).slice(0, 40)
+    : t("assistant.toolCall.placeholder");
+  const meta =
+    part.state === "output-available" ? t("assistant.toolCall.done") : undefined;
 
   return (
     <ToolLayout
