@@ -1136,7 +1136,7 @@ export function InboxSidebar({
           className="mb-3 w-full justify-start gap-2 text-sm font-medium"
         >
           <MessageSquare className="h-4 w-4" />
-          新对话
+          {t("assistant.sidebar.newChat")}
         </Button>
 
         <div className="flex gap-1">
@@ -1149,7 +1149,7 @@ export function InboxSidebar({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Active
+            {t("assistant.sidebar.active")}
             {activeSessions.length > 0 && (
               <span className="ml-1.5 text-muted-foreground">
                 {activeSessions.length}
@@ -1166,7 +1166,7 @@ export function InboxSidebar({
             }`}
           >
             <Archive className="h-3 w-3" />
-            Archive
+            {t("assistant.sidebar.archive")}
             {archivedCount > 0 && (
               <span className="ml-1 text-muted-foreground">
                 {archivedCount}
@@ -1189,8 +1189,8 @@ export function InboxSidebar({
         ) : displayedSessions.length === 0 ? (
           <div className="px-4 py-12 text-center text-sm text-muted-foreground">
             {showArchived
-              ? (archivedSessionsError ?? "No archived sessions")
-              : "No sessions yet"}
+              ? (archivedSessionsError ?? t("assistant.sidebar.noArchivedSessions"))
+              : t("assistant.sidebar.noSessions")}
             {showArchived && archivedSessionsError ? (
               <div className="mt-3">
                 <Button
@@ -1199,7 +1199,7 @@ export function InboxSidebar({
                   size="sm"
                   onClick={handleRetryArchivedSessions}
                 >
-                  Retry
+                  {t("assistant.sidebar.retry")}
                 </Button>
               </div>
             ) : null}
@@ -1264,7 +1264,7 @@ export function InboxSidebar({
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={4}>
-                              Create from branch
+                              {t("assistant.sidebar.createFromBranch")}
                             </TooltipContent>
                           </Tooltip>
                           <Tooltip>
@@ -1279,13 +1279,13 @@ export function InboxSidebar({
                                   );
                                 }}
                                 className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground"
-                                aria-label={`Create session for ${group.label}`}
+                                aria-label={t("assistant.sidebar.createSessionForRepo", { label: group.label })}
                               >
                                 <Plus className="h-3 w-3" />
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={4}>
-                              Create session
+                              {t("assistant.sidebar.createSession")}
                             </TooltipContent>
                           </Tooltip>
                         </span>
@@ -1342,10 +1342,10 @@ export function InboxSidebar({
                   disabled={archivedSessionsLoading}
                 >
                   {archivedSessionsLoading
-                    ? "Loading..."
+                    ? t("assistant.sidebar.loading")
                     : archivedSessionsError
-                      ? "Retry loading archived sessions"
-                      : "Load more archived sessions"}
+                      ? t("assistant.sidebar.retryLoadingArchived")
+                      : t("assistant.sidebar.loadMoreArchived")}
                 </Button>
               </div>
             ) : null}
