@@ -2168,7 +2168,59 @@
   },
   "assistant": {
     "newSession": "新建会话",
-    "newSessionDescription": "选择一个仓库或创建空白会话。"
+    "newSessionDescription": "选择一个仓库或创建空白会话。",
+    "metadata": {
+      "title": "助手",
+      "description": "AI 编码助手",
+      "sessionDescription": "查看会话进度、对话记录和输出结果。"
+    },
+    "session": {
+      "shareChat": "分享对话",
+      "closeSidebar": "关闭右侧栏"
+    },
+    "sidebar": {
+      "newChat": "新对话",
+      "active": "活跃",
+      "archive": "归档",
+      "archiveSession": "归档",
+      "cancelArchive": "取消归档",
+      "pin": "置顶",
+      "unpin": "取消置顶",
+      "share": "分享",
+      "rename": "重命名",
+      "delete": "删除",
+      "moreActions": "更多操作",
+      "openSettings": "打开设置",
+      "noSessions": "暂无会话",
+      "noArchivedSessions": "暂无归档会话",
+      "loading": "加载中…",
+      "retry": "重试",
+      "retryLoadingArchived": "重试加载归档会话",
+      "loadMoreArchived": "加载更多归档会话",
+      "failedToLoadArchived": "加载归档会话失败",
+      "createSession": "创建会话",
+      "createFromBranch": "从分支创建",
+      "createSessionForRepo": "为 {{label}} 创建会话",
+      "createSessionFromBranch": "从 {{label}} 的分支创建会话",
+      "archiveConfirmTitle": "归档会话？",
+      "archiveConfirmDescription": "这将停止沙箱并归档该会话。你仍可以在归档标签页中查看它。",
+      "archiveConfirmCancel": "取消",
+      "archiveConfirmButton": "归档",
+      "chats": "聊天",
+      "statusWorking": "执行中",
+      "statusNeedsAttention": "需要注意",
+      "statusNewSession": "新会话",
+      "statusSettingUp": "启动中",
+      "statusRestoring": "恢复中",
+      "statusSandboxReady": "沙箱就绪",
+      "statusHibernating": "休眠中",
+      "statusNoSandbox": "无沙箱",
+      "statusFailed": "失败",
+      "statusSandboxRunning": "沙箱运行中",
+      "statusCompleted": "已完成",
+      "statusArchived": "已归档",
+      "statusIdle": "空闲"
+    }
   },
   "homepage": {
     "nav": {

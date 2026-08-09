@@ -2144,7 +2144,59 @@
   },
   "assistant": {
     "newSession": "New Session",
-    "newSessionDescription": "Choose a repository or start an empty session."
+    "newSessionDescription": "Choose a repository or start an empty session.",
+    "metadata": {
+      "title": "Assistant",
+      "description": "AI Coding Assistant",
+      "sessionDescription": "Review session progress, chats, and outputs."
+    },
+    "session": {
+      "shareChat": "Share chat",
+      "closeSidebar": "Close right sidebar"
+    },
+    "sidebar": {
+      "newChat": "New Chat",
+      "active": "Active",
+      "archive": "Archive",
+      "archiveSession": "Archive",
+      "cancelArchive": "Unarchive",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "share": "Share",
+      "rename": "Rename",
+      "delete": "Delete",
+      "moreActions": "More actions",
+      "openSettings": "Open settings",
+      "noSessions": "No sessions yet",
+      "noArchivedSessions": "No archived sessions",
+      "loading": "Loading...",
+      "retry": "Retry",
+      "retryLoadingArchived": "Retry loading archived sessions",
+      "loadMoreArchived": "Load more archived sessions",
+      "failedToLoadArchived": "Failed to load archived sessions",
+      "createSession": "Create session",
+      "createFromBranch": "Create from branch",
+      "createSessionForRepo": "Create session for {{label}}",
+      "createSessionFromBranch": "Create session from branch for {{label}}",
+      "archiveConfirmTitle": "Archive session?",
+      "archiveConfirmDescription": "This will stop the sandbox and archive the session. You can still view it in the archive tab.",
+      "archiveConfirmCancel": "Cancel",
+      "archiveConfirmButton": "Archive",
+      "chats": "Chats",
+      "statusWorking": "Working",
+      "statusNeedsAttention": "Needs attention",
+      "statusNewSession": "New session",
+      "statusSettingUp": "Setting up",
+      "statusRestoring": "Restoring",
+      "statusSandboxReady": "Sandbox ready",
+      "statusHibernating": "Hibernating",
+      "statusNoSandbox": "No sandbox",
+      "statusFailed": "Failed",
+      "statusSandboxRunning": "Sandbox running",
+      "statusCompleted": "Completed",
+      "statusArchived": "Archived",
+      "statusIdle": "Idle"
+    }
   },
   "homepage": {
     "nav": {

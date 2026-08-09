@@ -53,6 +53,7 @@ function SessionLayoutInner({
   const { panelPortalRef, gitPanelOpen, setGitPanelOpen, setShareRequested } = useGitPanel();
   const { setTopbarCenterContent } = useAppShell();
   const { chats, session } = useSessionLayout();
+  const { t } = useTranslation();
 
   // Derive active chat title and inject into Topbar center
   const activeChatTitle = useMemo(() => {
@@ -137,7 +138,7 @@ function SessionLayoutInner({
       {gitPanelOpen && (
         <button
           type="button"
-          aria-label="Close right sidebar"
+          aria-label={t("assistant.session.closeSidebar")}
           className="absolute inset-0 z-20 bg-background/20 sm:hidden"
           onClick={() => setGitPanelOpen(false)}
         />
