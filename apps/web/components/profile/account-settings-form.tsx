@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation, Trans } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,14 @@ interface AccountSettingsFormProps {
 export function AccountSettingsForm({ user }: AccountSettingsFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const provider = searchParams.get("provider");
+    if (!error) return;
+    toast.error(t(`profile.settings.oauthError.${error}`, provider ? { provider } : {}));
+  }, [searchParams, t]);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');

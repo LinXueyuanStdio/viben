@@ -62,7 +62,10 @@ export async function GET(request: NextRequest) {
       hasStoredState: Boolean(storedState),
       stateMatch: state === storedState,
     });
-    return NextResponse.redirect(`${appUrl}/login?error=invalid_state`);
+    const errorFallback = webRedirect?.startsWith('/') && !webRedirect.startsWith('//')
+      ? `${appUrl}${webRedirect}?error=invalid_state`
+      : `${appUrl}/login?error=invalid_state`;
+    return NextResponse.redirect(errorFallback);
   }
 
   try {
@@ -88,7 +91,10 @@ export async function GET(request: NextRequest) {
 
     if (!tokenData.access_token) {
       console.error('[OAuth][Google] no access token received:', tokenData);
-      return NextResponse.redirect(`${appUrl}/login?error=no_token`);
+      const errorFallback = webRedirect?.startsWith('/') && !webRedirect.startsWith('//')
+        ? `${appUrl}${webRedirect}?error=no_token`
+        : `${appUrl}/login?error=no_token`;
+      return NextResponse.redirect(errorFallback);
     }
 
     // Get user info

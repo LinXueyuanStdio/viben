@@ -2201,6 +2201,13 @@
       "avatarUpdated": "Avatar updated",
       "avatarUploadFailed": "Failed to upload avatar"
     },
+    "oauthError": {
+      "oauth_failed": "Third-party authorization failed. Please try again.",
+      "invalid_state": "Request expired. Please try again.",
+      "no_token": "Unable to obtain access token.",
+      "no_email": "Could not retrieve email. Please ensure your account has a public email and grant email access during authorization.",
+      "already_linked": "This {{provider}} account is already linked to another user"
+    },
     "password": {
       "title": "Change Password",
       "currentPassword": "Current Password",
