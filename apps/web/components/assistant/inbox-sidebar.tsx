@@ -273,13 +273,14 @@ function getSessionPrUrl(session: SessionWithUnread): string | null {
 }
 
 function SessionPopoverContent({ session }: { session: SessionWithUnread }) {
+  const { t } = useTranslation();
   const lastActivityLabel = formatRelativeTime(
     session.lastActivityAt ?? session.createdAt,
   );
   const branchUrl = getSessionBranchUrl(session);
   const prUrl = getSessionPrUrl(session);
   const hasDiff = session.linesAdded !== null || session.linesRemoved !== null;
-  const statusLabel = getSessionStatusLabel(session);
+  const statusLabel = getSessionStatusLabel(session, t);
 
   return (
     <div className="space-y-2">
@@ -370,6 +371,7 @@ function getRepoGroupLabel(session: SessionWithUnread, t: (key: string) => strin
 
 function groupSessionsByRepo(
   sessions: SessionWithUnread[],
+  t: (key: string) => string,
 ): SessionRepoGroup[] {
   const groups = new Map<string, SessionRepoGroup>();
 
@@ -384,7 +386,7 @@ function groupSessionsByRepo(
 
     groups.set(groupId, {
       id: groupId,
-      label: getRepoGroupLabel(session),
+      label: getRepoGroupLabel(session, t),
       sessions: [session],
     });
   }
@@ -430,6 +432,7 @@ const SessionRow = memo(function SessionRow({
   onTogglePin,
 }: SessionRowProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -543,7 +546,7 @@ const SessionRow = memo(function SessionRow({
               "flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 transition-all hover:text-muted-foreground",
               !isHovered && !moreMenuOpen ? "hidden" : "",
             )}
-            aria-label="More actions"
+            aria-label={t("assistant.sidebar.moreActions")}
             onClick={(event) => { event.stopPropagation(); }}
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
