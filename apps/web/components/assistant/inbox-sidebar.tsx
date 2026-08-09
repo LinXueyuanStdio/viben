@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/assistant/use-mobile";
+import { useTranslation } from "react-i18next";
 import { useLeaderboardRank } from "@/hooks/assistant/use-leaderboard-rank";
 import { useSession } from "@/hooks/assistant/use-session";
 import type { SessionWithUnread } from "@/hooks/assistant/use-sessions";
@@ -212,11 +213,14 @@ function getSessionStatusIcon(session: SessionWithUnread) {
   return <Monitor className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />;
 }
 
-function getSessionStatusLabel(session: SessionWithUnread): {
+function getSessionStatusLabel(
+  session: SessionWithUnread,
+  t: (key: string) => string,
+): {
   text: string;
   prNumber: number | null;
 } {
-  if (session.hasStreaming) return { text: "Working", prNumber: null };
+  if (session.hasStreaming) return { text: t("assistant.sidebar.statusWorking"), prNumber: null };
   if (session.prNumber && session.prStatus === "merged")
     return { text: `PR #${session.prNumber}`, prNumber: session.prNumber };
   if (session.prNumber && session.prStatus === "open")
@@ -225,29 +229,29 @@ function getSessionStatusLabel(session: SessionWithUnread): {
     return { text: `PR #${session.prNumber}`, prNumber: session.prNumber };
   const hasDiff = session.linesAdded || session.linesRemoved;
   if (session.branch && hasDiff)
-    return { text: "Needs attention", prNumber: null };
-  if (session.branch) return { text: "New session", prNumber: null };
+    return { text: t("assistant.sidebar.statusNeedsAttention"), prNumber: null };
+  if (session.branch) return { text: t("assistant.sidebar.statusNewSession"), prNumber: null };
   // No branch: sandbox lifecycle states
   if (session.lifecycleState === "provisioning")
-    return { text: "Setting up", prNumber: null };
+    return { text: t("assistant.sidebar.statusSettingUp"), prNumber: null };
   if (session.lifecycleState === "restoring")
-    return { text: "Restoring", prNumber: null };
+    return { text: t("assistant.sidebar.statusRestoring"), prNumber: null };
   if (session.lifecycleState === "active")
-    return { text: "Sandbox ready", prNumber: null };
+    return { text: t("assistant.sidebar.statusSandboxReady"), prNumber: null };
   if (session.lifecycleState === "hibernating")
-    return { text: "Hibernating", prNumber: null };
+    return { text: t("assistant.sidebar.statusHibernating"), prNumber: null };
   if (session.lifecycleState === "hibernated")
-    return { text: "No sandbox", prNumber: null };
+    return { text: t("assistant.sidebar.statusNoSandbox"), prNumber: null };
   if (session.lifecycleState === "failed")
-    return { text: "Failed", prNumber: null };
+    return { text: t("assistant.sidebar.statusFailed"), prNumber: null };
   if (session.status === "running")
-    return { text: "Sandbox running", prNumber: null };
+    return { text: t("assistant.sidebar.statusSandboxRunning"), prNumber: null };
   if (session.status === "completed")
-    return { text: "Completed", prNumber: null };
-  if (session.status === "failed") return { text: "Failed", prNumber: null };
+    return { text: t("assistant.sidebar.statusCompleted"), prNumber: null };
+  if (session.status === "failed") return { text: t("assistant.sidebar.statusFailed"), prNumber: null };
   if (session.status === "archived")
-    return { text: "Archived", prNumber: null };
-  return { text: "Idle", prNumber: null };
+    return { text: t("assistant.sidebar.statusArchived"), prNumber: null };
+  return { text: t("assistant.sidebar.statusIdle"), prNumber: null };
 }
 
 function getSessionBranchUrl(session: SessionWithUnread): string | null {
@@ -353,12 +357,12 @@ function getRepoGroupId(session: SessionWithUnread): string {
   return `repo:${repoOwner ?? ""}/${repoName}`.toLowerCase();
 }
 
-function getRepoGroupLabel(session: SessionWithUnread): string {
+function getRepoGroupLabel(session: SessionWithUnread, t: (key: string) => string): string {
   const repoName = session.repoName?.trim();
   const repoOwner = session.repoOwner?.trim();
 
   if (!repoName) {
-    return "Chats";
+    return t("assistant.sidebar.chats");
   }
 
   return repoOwner ? `${repoOwner}/${repoName}` : repoName;
