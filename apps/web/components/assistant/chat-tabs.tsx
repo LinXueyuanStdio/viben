@@ -74,6 +74,17 @@ function ChatTabItem({
   const [popoverOpen, setPopoverOpen] = useState(false);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isRenaming) {
+      // Delay to ensure the input is mounted, then focus and select all
+      const timer = setTimeout(() => {
+        renameInputRef.current?.select();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isRenaming]);
 
   useEffect(() => {
     return () => {
@@ -113,6 +124,7 @@ function ChatTabItem({
   const tabButton = isRenaming ? (
     <div className="flex items-center px-2 py-[7px]">
       <input
+        ref={renameInputRef}
         value={renameValue}
         onChange={(e) => onRenameChange(e.target.value)}
         onBlur={() => void onFinishRename()}
@@ -262,7 +274,6 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeChatTabRef = useRef<HTMLDivElement>(null);
 
@@ -373,7 +384,6 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
     (chatId: string, currentTitle: string) => {
       setRenamingChatId(chatId);
       setRenameValue(currentTitle || "");
-      setTimeout(() => renameInputRef.current?.select(), 0);
     },
     [],
   );
