@@ -6,7 +6,11 @@ import { AccountSettingsForm } from '@/components/profile/account-settings-form'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SettingsAccountPage() {
+interface SettingsAccountPageProps {
+  searchParams: Promise<{ error?: string; provider?: string }>;
+}
+
+export default async function SettingsAccountPage({ searchParams }: SettingsAccountPageProps) {
   const session = await getSession()
 
   if (!session?.userId) {
@@ -21,6 +25,11 @@ export default async function SettingsAccountPage() {
     redirect('/login')
   }
 
+  const params = await searchParams;
+  const oauthError = params.error === "already_linked" && params.provider
+    ? { error: "already_linked" as const, provider: params.provider }
+    : null;
+
   return (
     <AccountSettingsForm
       user={{
@@ -31,6 +40,7 @@ export default async function SettingsAccountPage() {
         createdAt: user.createdAt?.toISOString() ?? null,
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       }}
+      oauthError={oauthError}
     />
   )
 }

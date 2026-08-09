@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
       const currentSession = await getSession();
       if (currentSession?.userId && currentSession.userId !== existingConnection.userId) {
         return NextResponse.redirect(
-          `${appUrl}/settings/connections?error=already_linked&provider=google`,
+          `${appUrl}/settings/account?error=already_linked&provider=google`,
         );
       }
 
