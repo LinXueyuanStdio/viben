@@ -1,7 +1,11 @@
-import { Suspense } from "react"
+import dynamic from "next/dynamic"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
-import { UrlErrorToast } from "@/components/layout/url-error-toast"
 import { getSession } from "@/lib/auth/cookies"
+
+const UrlErrorToast = dynamic(
+  () => import("@/components/layout/url-error-toast").then((m) => ({ default: m.UrlErrorToast })),
+  { ssr: false },
+)
 
 export default async function DashboardLayout({
   children,
@@ -11,9 +15,7 @@ export default async function DashboardLayout({
   const session = await getSession()
   return (
     <DashboardShell isLoggedIn={!!session}>
-      <Suspense>
-        <UrlErrorToast />
-      </Suspense>
+      <UrlErrorToast />
       {children}
     </DashboardShell>
   )
