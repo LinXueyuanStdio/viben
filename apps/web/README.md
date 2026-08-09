@@ -310,7 +310,7 @@ REDIS_URL=
 ELEVENLABS_API_KEY=
 
 # 资源模式（hobby = Hobby 兼容）
-OPEN_AGENTS_RESOURCE_PROFILE=hobby
+VIBEN_AGENTS_RESOURCE_PROFILE=hobby
 ```
 
 详细文档：[docs/assistant/](./docs/assistant/README.md)

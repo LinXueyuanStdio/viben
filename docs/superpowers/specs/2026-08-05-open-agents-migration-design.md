@@ -688,7 +688,7 @@ REDIS_URL=
 ELEVENLABS_API_KEY=
 
 # Assistant - Resource Profile (可选，hobby=Hobby 兼容)
-OPEN_AGENTS_RESOURCE_PROFILE=
+VIBEN_AGENTS_RESOURCE_PROFILE=
 ```
 
 ---
