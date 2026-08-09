@@ -561,7 +561,7 @@ const SessionRow = memo(function SessionRow({
             }}
           >
             <Pin className="mr-2 h-4 w-4" />
-            {isPinned ? "取消置顶" : "置顶"}
+            {isPinned ? t("assistant.sidebar.unpin") : t("assistant.sidebar.pin")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={(event) => {
@@ -572,7 +572,7 @@ const SessionRow = memo(function SessionRow({
             }}
           >
             <Share2 className="mr-2 h-4 w-4" />
-            分享
+            {t("assistant.sidebar.share")}
           </DropdownMenuItem>
           {onRenameSession ? (
             <DropdownMenuItem
@@ -589,7 +589,7 @@ const SessionRow = memo(function SessionRow({
               }}
             >
               <Pencil className="mr-2 h-4 w-4" />
-              重命名
+              {t("assistant.sidebar.rename")}
             </DropdownMenuItem>
           ) : null}
           {session.status === "archived" ? (
@@ -601,7 +601,7 @@ const SessionRow = memo(function SessionRow({
               }}
             >
               <Archive className="mr-2 h-4 w-4" />
-              取消归档
+              {t("assistant.sidebar.cancelArchive")}
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
@@ -612,7 +612,7 @@ const SessionRow = memo(function SessionRow({
               }}
             >
               <Archive className="mr-2 h-4 w-4" />
-              归档
+              {t("assistant.sidebar.archiveSession")}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -624,7 +624,7 @@ const SessionRow = memo(function SessionRow({
             }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            删除
+            {t("assistant.sidebar.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -828,6 +828,7 @@ export function InboxSidebar({
   initialUser,
 }: InboxSidebarProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { session } = useSession();
   const { rank: leaderboardRank, loading: leaderboardLoading } =
     useLeaderboardRank();
@@ -930,7 +931,7 @@ export function InboxSidebar({
     (showArchived && archivedSessionsLoading && archivedSessions.length === 0);
   const sidebarUser = session?.user ?? initialUser;
   const groupedSessions = useMemo(
-    () => groupSessionsByRepo(displayedSessions).map((group) => ({
+    () => groupSessionsByRepo(displayedSessions, t).map((group) => ({
       ...group,
       sessions: [...group.sessions].sort((a, b) => {
         // Pinned sessions first
