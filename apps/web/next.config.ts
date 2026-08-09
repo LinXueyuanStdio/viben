@@ -1,17 +1,13 @@
 import type { NextConfig } from 'next';
 import path from 'path';
 import { withWorkflow } from 'workflow/next';
+import { withBotId } from 'botid/next/config';
 
 const nextConfig: NextConfig = {
   // Skip ESLint during build - run separately due to ESLint 9.x + eslint-config-next compatibility issue
   // See: https://github.com/vercel/next.js/issues/64409
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  // 客户端路由缓存：页面在浏览器端缓存 5 分钟
-  staleTimes: {
-    dynamic: 300,
-    static: 300,
   },
   experimental: {
     optimizePackageImports: [
@@ -74,4 +70,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withWorkflow(nextConfig);
+export default withWorkflow(withBotId(nextConfig));
