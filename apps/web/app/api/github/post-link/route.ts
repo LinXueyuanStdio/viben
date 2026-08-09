@@ -62,14 +62,14 @@ export async function GET(req: Request): Promise<Response> {
     }
   }
 
-  // no installations found â€?check if any exist in DB from a previous install
+  // no installations found â€”check if any exist in DB from a previous install
   const existingInstallations = await getInstallationsByUserId(session.user.id);
   if (existingInstallations.length > 0) {
     redirectUrl.searchParams.set("github", "account_connected");
     return NextResponse.redirect(redirectUrl);
   }
 
-  // no installations at all â€?route through the internal install flow so it can
+  // no installations at all â€”route through the internal install flow so it can
   // preserve the intended destination across the GitHub App setup callback.
   const installUrl = new URL("/api/github/app/install", req.url);
   installUrl.searchParams.set("next", next);

@@ -180,7 +180,7 @@ export async function generatePrContent(params: {
   const statusResult = await sandbox.exec("git status --porcelain", cwd, 10000);
   if (statusResult.stdout.trim().length > 0) {
     throw new Error(
-      "Uncommitted changes â€?commit first before generating PR content",
+      "Uncommitted changes â€”commit first before generating PR content",
     );
   }
 

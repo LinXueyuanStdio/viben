@@ -120,7 +120,7 @@ export async function GET() {
     ]);
 
     if (!userResponse.ok || !orgsResponse.ok) {
-      // token revoked/expired â€?fall back to DB-cached installations
+      // token revoked/expired â€”fall back to DB-cached installations
       const isAuthError =
         userResponse.status === 401 ||
         userResponse.status === 403 ||

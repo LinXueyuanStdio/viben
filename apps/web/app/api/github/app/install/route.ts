@@ -73,7 +73,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     return redirectWithInstallCookies(installUrl, redirectTo, state);
   }
 
-  // reconnect mode â€?skip account picker, target the user's personal account
+  // reconnect mode â€”skip account picker, target the user's personal account
   const reconnect = req.nextUrl.searchParams.get("reconnect");
   if (reconnect === "1") {
     const accountId = await getGitHubAccountId(session.user.id);
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     }
   }
 
-  // check existing installations first â€?if user has any, skip to account picker
+  // check existing installations first â€”if user has any, skip to account picker
   let installations = await getInstallationsByUserId(session.user.id);
 
   if (installations.length === 0) {
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
 
   if (installations.length === 0) {
-    // no installations â€?route to GitHub App install page directly
+    // no installations â€”route to GitHub App install page directly
     // (the callback will use App JWT to register the installation, no OAuth needed)
     const installUrl = new URL(
       `https://github.com/apps/${appSlug}/installations/new`,
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     return redirectWithInstallCookies(installUrl, redirectTo, state);
   }
 
-  // already has installations â€?show account/org picker for additional installs
+  // already has installations â€”show account/org picker for additional installs
   const installUrl = new URL(
     `https://github.com/apps/${appSlug}/installations/select_target`,
   );

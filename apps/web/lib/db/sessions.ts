@@ -187,6 +187,7 @@ type SessionSidebarFields = Pick<
   | "linesRemoved"
   | "prNumber"
   | "prStatus"
+  | "lifecycleState"
   | "createdAt"
 >;
 
