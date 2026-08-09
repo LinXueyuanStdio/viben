@@ -7,15 +7,31 @@ import { checkBotId } from "botid/server";
  * call the protected endpoints — anything on our own domains plus Vercel
  * preview / sandbox URLs.
  */
+function resolveAllowedHosts(): string[] {
+  const base = [
+    "vercel.com",
+    "*.vercel.com",
+    "*.vercel.dev",
+    "*.vercel.run",
+  ];
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    try {
+      const hostname = new URL(appUrl).hostname;
+      base.push(hostname, `*.${hostname}`);
+    } catch { /* ignore invalid URLs */ }
+  }
+
+  // Additional custom domains
+  base.push("viben.linxueyuan.online", "*.viben.linxueyuan.online");
+
+  return base;
+}
+
 export const botIdConfig = {
   advancedOptions: {
-    extraAllowedHosts: [
-      "vercel.com",
-      "*.vercel.com",
-      "*.vercel.dev",
-      "*.vercel.run",
-      "*.open-agents.dev",
-    ],
+    extraAllowedHosts: resolveAllowedHosts(),
   },
 };
 

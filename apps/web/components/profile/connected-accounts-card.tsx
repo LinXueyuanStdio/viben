@@ -5,8 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import Google from "@lobehub/icons/es/Google";
-import Github from "@lobehub/icons/es/Github";
+import { GithubIcon, GoogleIcon } from "@/components/ui/icons";
 import type { OAuthConnectionStatus } from "@/app/api/account/oauth-connections/route";
 
 async function fetchConnections(): Promise<OAuthConnectionStatus[]> {
@@ -36,12 +35,12 @@ const PROVIDER_CONFIG: Record<
   }
 > = {
   google: {
-    icon: Google.Color as React.ComponentType<{ size?: number }>,
+    icon: GoogleIcon,
     nameKey: "profile.connectedAccounts.providers.google",
     connectUrl: "/api/auth/google?redirect=/settings/account",
   },
   github: {
-    icon: Github as React.ComponentType<{ size?: number }>,
+    icon: GithubIcon,
     nameKey: "profile.connectedAccounts.providers.github",
     connectUrl: "/api/auth/github?redirect=/settings/account",
   },

@@ -4,20 +4,22 @@ import { ArrowLeft } from 'lucide-react';
 import { GithubIcon as Github } from '@/components/ui/icons';
 import {
   StatsHeader,
+  ModuleList,
+  TopFilesTable,
+  CommitHeatmap,
+  ArchitectureChart,
+} from '../components/code-stats';
+import {
   LangChart,
   ModuleChart,
   CategoryChart,
   AppsChart,
   DesktopChart,
   DensityChart,
-  ModuleList,
-  TopFilesTable,
-  CommitHeatmap,
   CodeFreshnessChart,
   FileSizeChart,
   FileChurnChart,
-  ArchitectureChart,
-} from '../components/code-stats';
+} from '../components/code-stats/lazy';
 import type { CodeStatsData } from '../components/code-stats';
 
 async function getCodeStats(): Promise<CodeStatsData | null> {
