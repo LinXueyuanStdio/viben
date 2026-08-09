@@ -33,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { useIsMobile } from "@/hooks/assistant/use-mobile";
+import type { SessionChatListItem } from "@/hooks/assistant/use-session-chats";
 import { useGitPanel } from "./git-panel-context";
 
 type ChatTabItemProps = {
@@ -51,8 +52,6 @@ type ChatTabItemProps = {
   onClick: () => void;
   onPrefetch: () => void;
 };
-
-import type { SessionChatListItem } from "@/hooks/assistant/use-session-chats";
 
 function ChatTabItem({
   chat,
@@ -78,7 +77,6 @@ function ChatTabItem({
 
   useEffect(() => {
     if (isRenaming) {
-      // Delay to ensure the input is mounted, then focus and select all
       const timer = setTimeout(() => {
         renameInputRef.current?.select();
       }, 0);
@@ -121,26 +119,40 @@ function ChatTabItem({
     chat.updatedAt ?? chat.createdAt,
   );
 
-  const tabButton = isRenaming ? (
-    <div className="flex items-center px-2 py-[7px]">
-      <input
-        ref={renameInputRef}
-        value={renameValue}
-        onChange={(e) => onRenameChange(e.target.value)}
-        onBlur={() => void onFinishRename()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            void onFinishRename();
-          }
-          if (e.key === "Escape") {
-            onCancelRename();
-          }
-        }}
-        className="max-w-[130px] rounded border border-border bg-background px-1.5 py-0 text-sm font-medium outline-none focus:ring-1 focus:ring-ring"
-        autoFocus
-      />
-    </div>
-  ) : (
+  if (isRenaming) {
+    return (
+      <div
+        ref={tabRef}
+        className={cn(
+          "group relative flex shrink-0 items-center border-b-2 transition-colors",
+          isActive
+            ? "border-foreground text-foreground"
+            : "border-transparent text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <div className="flex items-center px-2 py-[7px]">
+          <input
+            ref={renameInputRef}
+            value={renameValue}
+            onChange={(e) => onRenameChange(e.target.value)}
+            onBlur={() => void onFinishRename()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                void onFinishRename();
+              }
+              if (e.key === "Escape") {
+                onCancelRename();
+              }
+            }}
+            className="max-w-[130px] rounded border border-border bg-background px-1.5 py-0 text-sm font-medium outline-none focus:ring-1 focus:ring-ring"
+            autoFocus
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const tabButton = (
     <button
       type="button"
       onMouseEnter={() => onPrefetch()}
@@ -157,7 +169,7 @@ function ChatTabItem({
     </button>
   );
 
-  const actionButtons = !isRenaming ? (
+  const actionButtons = (
     <div
       className={cn(
         "flex items-center gap-0.5 pr-1 transition-opacity",
@@ -189,32 +201,41 @@ function ChatTabItem({
         </button>
       )}
     </div>
-  ) : null;
-
-  const tab = (
-    <div
-      ref={tabRef}
-      className={cn(
-        "group relative flex shrink-0 items-center border-b-2 transition-colors",
-        isActive
-          ? "border-foreground text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground",
-      )}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {tabButton}
-      {actionButtons}
-    </div>
   );
 
-  if (isMobile || isRenaming) {
-    return tab;
+  if (isMobile) {
+    return (
+      <div
+        ref={tabRef}
+        className={cn(
+          "group relative flex shrink-0 items-center border-b-2 transition-colors",
+          isActive
+            ? "border-foreground text-foreground"
+            : "border-transparent text-muted-foreground hover:text-foreground",
+        )}
+      >
+        {tabButton}
+        {actionButtons}
+      </div>
+    );
   }
 
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-      <PopoverTrigger asChild>{tab}</PopoverTrigger>
+      <div
+        ref={tabRef}
+        className={cn(
+          "group relative flex shrink-0 items-center border-b-2 transition-colors",
+          isActive
+            ? "border-foreground text-foreground"
+            : "border-transparent text-muted-foreground hover:text-foreground",
+        )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <PopoverTrigger asChild>{tabButton}</PopoverTrigger>
+        {actionButtons}
+      </div>
       <PopoverContent
         side="bottom"
         align="start"
@@ -229,16 +250,16 @@ function ChatTabItem({
         onMouseLeave={handleMouseLeave}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <p className="text-sm font-medium text-foreground leading-snug">
             {chat.title || "New Chat"}
           </p>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="truncate">{chat.modelId}</span>
-          </div>
-          <div className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground truncate">
+            {chat.modelId}
+          </p>
+          <p className="text-xs text-muted-foreground/70">
             {lastActivityLabel}
-          </div>
+          </p>
         </div>
       </PopoverContent>
     </Popover>
