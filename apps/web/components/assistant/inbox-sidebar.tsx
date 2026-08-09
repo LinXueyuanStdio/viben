@@ -894,7 +894,7 @@ export function InboxSidebar({
         const message =
           error instanceof Error
             ? error.message
-            : "Failed to load archived sessions";
+            : t("assistant.sidebar.failedToLoadArchived");
         setArchivedSessionsError(message);
       } finally {
         archivedRequestInFlightRef.current = false;
@@ -1427,22 +1427,21 @@ export function InboxSidebar({
       >
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Archive session?</DialogTitle>
+            <DialogTitle>{t("assistant.sidebar.archiveConfirmTitle")}</DialogTitle>
             <DialogDescription>
-              This will stop the sandbox and archive the session. You can still
-              view it in the archive tab.
+              {t("assistant.sidebar.archiveConfirmDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">{t("assistant.sidebar.archiveConfirmCancel")}</Button>
             </DialogClose>
             <Button
               onClick={() => {
                 void handleConfirmArchive();
               }}
             >
-              Archive
+              {t("assistant.sidebar.archiveConfirmButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
