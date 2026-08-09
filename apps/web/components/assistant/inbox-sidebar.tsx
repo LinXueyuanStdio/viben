@@ -873,7 +873,7 @@ export function InboxSidebar({
         const data = (await res.json()) as ArchivedSessionsResponse;
 
         if (!res.ok) {
-          throw new Error(data.error ?? "Failed to load archived sessions");
+          throw new Error(data.error ?? t("assistant.sidebar.failedToLoadArchived"));
         }
 
         setArchivedSessions((current) => {
@@ -1258,7 +1258,7 @@ export function InboxSidebar({
                                   );
                                 }}
                                 className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground"
-                                aria-label={`Create session from branch for ${group.label}`}
+                                aria-label={t("assistant.sidebar.createSessionFromBranch", { label: group.label })}
                               >
                                 <GitBranch className="h-3 w-3" />
                               </button>
@@ -1397,7 +1397,7 @@ export function InboxSidebar({
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
               onClick={() => router.push("/settings")}
-              aria-label="Open settings"
+              aria-label={t("assistant.sidebar.openSettings")}
             >
               <Settings className="h-4 w-4" />
             </Button>
