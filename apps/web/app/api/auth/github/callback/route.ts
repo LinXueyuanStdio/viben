@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { db, users, oauthConnections } from '@/lib/db';
 import { uploadImageFromUrl } from '@/lib/media';
-import { setSessionCookie } from '@/lib/auth/cookies';
+import { getSession, setSessionCookie } from '@/lib/auth/cookies';
 import { encryptSession } from '@/lib/auth/jwe';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri, renderDesktopOAuthCallbackPage } from '@/lib/auth/desktop-redirect';
 import { generateId } from '@/lib/utils';
@@ -117,6 +117,15 @@ export async function GET(request: NextRequest) {
     let user;
 
     if (existingConnection) {
+      // If there is already an active session for a different user, reject the
+      // connection — this GitHub account is already linked to another viben account.
+      const currentSession = await getSession();
+      if (currentSession?.userId && currentSession.userId !== existingConnection.userId) {
+        return NextResponse.redirect(
+          `${appUrl}/settings/connections?error=already_linked&provider=github`,
+        );
+      }
+
       // Update access token
       await db
         .update(oauthConnections)

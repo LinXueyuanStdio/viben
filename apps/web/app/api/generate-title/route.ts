@@ -13,14 +13,19 @@ import { getServerSession } from "@/lib/session/get-server-session";
  */
 async function generateSessionTitle(
   message: string,
+  language?: string,
 ): Promise<string | null> {
   const trimmed = message.trim().slice(0, 2000);
   if (trimmed.length === 0) return null;
 
+  const languageHint = language
+    ? ` Generate the title in ${language}.`
+    : "";
+
   try {
     const result = await generateText({
       model: gateway("anthropic/claude-haiku-4.5"),
-      prompt: `You are a developer tool that names coding sessions. Generate a concise title (max 5 words) for a coding session based on the user's first message below. The title should help the user quickly identify what this session is about at a glance. Do NOT use quotes or punctuation around the title. Respond with ONLY the title, nothing else.
+      prompt: `You are a developer tool that names coding sessions. Generate a concise title (max 5 words) for a coding session based on the user's first message below. The title should help the user quickly identify what this session is about at a glance. Do NOT use quotes or punctuation around the title.${languageHint} Respond with ONLY the title, nothing else.
 
 User message:
 ${trimmed}`,
@@ -37,8 +42,32 @@ ${trimmed}`,
   }
 }
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  "zh-CN": "Simplified Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  de: "German",
+  fr: "French",
+  es: "Spanish",
+  pt: "Portuguese",
+  it: "Italian",
+  nl: "Dutch",
+  pl: "Polish",
+  ru: "Russian",
+  tr: "Turkish",
+  vi: "Vietnamese",
+  th: "Thai",
+  id: "Indonesian",
+  ms: "Malay",
+  hi: "Hindi",
+  uk: "Ukrainian",
+  sv: "Swedish",
+};
+
 const generateTitleRequestSchema = z.object({
   message: z.string().trim().min(1),
+  language: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -77,9 +106,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const { message } = parsedBody.data;
+  const { message, language } = parsedBody.data;
 
-  const title = await generateSessionTitle(message);
+  const langName = language ? LANGUAGE_NAMES[language] : undefined;
+  const title = await generateSessionTitle(message, langName);
 
   if (!title) {
     return Response.json(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import useSWR, { useSWRConfig } from "swr";
 import type { Chat } from "@/lib/db/schema";
 import { fetcherNoStore } from "@/lib/swr";
@@ -206,6 +207,9 @@ export function useSessionChats(
     sessionId: null,
     chats: [],
   });
+  const { t } = useTranslation();
+  const defaultTitle = t("assistant.newChat");
+
   const optimisticOverlay = useMemo(
     () => (sessionId ? getSessionOverlay(sessionId) : null),
     [sessionId],
@@ -311,7 +315,7 @@ export function useSessionChats(
     }
 
     let next = chat;
-    if (overlay.title && chat.title === "New chat") {
+    if (overlay.title && chat.title === defaultTitle) {
       next = { ...next, title: overlay.title };
     }
     if (overlay.streaming && !chat.isStreaming) {
@@ -419,7 +423,7 @@ export function useSessionChats(
 
       let nextOverlay = overlay;
 
-      if (overlay.title && chat.title !== "New chat") {
+      if (overlay.title && chat.title !== defaultTitle) {
         if (nextOverlay === overlay) {
           nextOverlay = { ...overlay };
         }
@@ -495,7 +499,7 @@ export function useSessionChats(
     const optimisticChat: Chat = {
       id: crypto.randomUUID(),
       sessionId,
-      title: "New chat",
+      title: t("assistant.newChat"),
       modelId: data?.defaultModelId ?? null,
       activeStreamId: null,
       lastAssistantMessageAt: null,

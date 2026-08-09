@@ -114,6 +114,7 @@ import {
   shouldShowThinkingIndicator,
   shouldUseChatListStreamingState,
 } from "@/lib/chat-streaming-state";
+import { getCurrentLanguage } from "@/lib/i18n";
 import { ACCEPT_IMAGE_TYPES, isValidImageType } from "@/lib/image-utils";
 import { isLargeText } from "@/lib/text-attachment-utils";
 import {
@@ -3948,6 +3949,7 @@ export function SessionChatContent({
                                   },
                                   body: JSON.stringify({
                                     message: trimmedText,
+                                    language: getCurrentLanguage(),
                                   }),
                                 },
                               )

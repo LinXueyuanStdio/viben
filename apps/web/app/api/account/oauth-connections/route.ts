@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, oauthConnections } from "@/lib/db";
+import { db, oauthConnections, users } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 
@@ -55,6 +55,28 @@ export async function DELETE(req: Request) {
   const provider = searchParams.get("provider");
   if (!provider || !DISCONNECT_SCHEMA.includes(provider as typeof DISCONNECT_SCHEMA[number])) {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
+  }
+
+  // Prevent user from removing their last login method
+  const [connections, userRecord] = await Promise.all([
+    db.query.oauthConnections.findMany({
+      where: eq(oauthConnections.userId, session.userId),
+      columns: { provider: true },
+    }),
+    db.query.users.findFirst({
+      where: eq(users.id, session.userId),
+      columns: { passwordHash: true },
+    }),
+  ]);
+
+  const hasPassword = Boolean(userRecord?.passwordHash);
+  const otherConnections = connections.filter((c) => c.provider !== provider);
+
+  if (!hasPassword && otherConnections.length === 0) {
+    return NextResponse.json(
+      { error: "Cannot disconnect the only login method. Add another login method first." },
+      { status: 400 },
+    );
   }
 
   const [deleted] = await db

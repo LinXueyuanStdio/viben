@@ -19,6 +19,7 @@ import { useUserPreferences } from "@/hooks/assistant/use-user-preferences";
 import { DEFAULT_SANDBOX_TYPE } from "@/components/assistant/sandbox-selector-compact";
 import type { Session as AuthSession } from "@/lib/session/types";
 import { cn } from "@/lib/utils";
+import { getCurrentLanguage } from "@/lib/i18n";
 import { SessionsShellProvider } from "./sessions-shell-context";
 
 type SessionsRouteShellProps = {

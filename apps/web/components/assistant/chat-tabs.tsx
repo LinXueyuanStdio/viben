@@ -30,6 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { useIsMobile } from "@/hooks/assistant/use-mobile";
@@ -69,6 +70,7 @@ function ChatTabItem({
   onClick,
   onPrefetch,
 }: ChatTabItemProps) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -161,7 +163,7 @@ function ChatTabItem({
       className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium"
     >
       <span className="max-w-[120px] truncate">
-        {chat.title || "New Chat"}
+        {chat.title || t("assistant.newChat")}
       </span>
       {chat.hasUnread && (
         <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
@@ -252,7 +254,7 @@ function ChatTabItem({
       >
         <div className="space-y-1.5">
           <p className="text-sm font-medium text-foreground leading-snug">
-            {chat.title || "New Chat"}
+            {chat.title || t("assistant.newChat")}
           </p>
           <p className="text-xs text-muted-foreground truncate">
             {chat.modelId}
@@ -272,6 +274,7 @@ type ChatTabsProps = {
 };
 
 export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams<{ sessionId?: string }>();
   const sessionId = params.sessionId ?? "";
@@ -601,7 +604,7 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
             <Plus className="h-3.5 w-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">New chat</TooltipContent>
+        <TooltipContent side="bottom">{t("assistant.newChat")}</TooltipContent>
       </Tooltip>
     </div>
   );

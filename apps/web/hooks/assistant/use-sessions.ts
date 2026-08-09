@@ -30,6 +30,7 @@ export type SessionWithUnread = Pick<
 
 interface CreateSessionInput {
   title?: string;
+  language?: string;
   repoOwner?: string;
   repoName?: string;
   branch?: string;
