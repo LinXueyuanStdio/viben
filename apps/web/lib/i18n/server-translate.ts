@@ -6,18 +6,18 @@
  *
  * Usage in Server Components:
  * ```tsx
- * import { getServerT } from "@/lib/i18n/server-t";
+ * import { getTranslator } from "@/lib/i18n/server-translate";
  *
  * export default async function MyPage() {
- *   const { t } = await getServerT();
+ *   const { t } = await getTranslator();
  *   return <h1>{t("some.key")}</h1>;
  * }
  * ```
  *
  * For server utilities that need to translate outside a component:
  * ```ts
- * import { getServerT } from "@/lib/i18n/server-t";
- * const { t } = await getServerT("zh-CN");
+ * import { getTranslator } from "@/lib/i18n/server-translate";
+ * const { t } = await getTranslator("zh-CN");
  * ```
  *
  * Design notes:
@@ -109,9 +109,9 @@ async function detectLanguage(): Promise<string | null> {
  *
  * `cache()` ensures that within a single render pass, the same
  * language detection and `changeLanguage` call only happens once
- * regardless of how many components call `getServerT()`.
+ * regardless of how many components call `getTranslator()`.
  */
-export const getServerT = cache(async (lang?: string): Promise<{
+export const getTranslator = cache(async (lang?: string): Promise<{
   t: (key: string) => string;
   language: string;
 }> => {
