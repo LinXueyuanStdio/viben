@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import Link from "next/link";
-import type { SandboxCreateErrorDetails } from "./sandbox-create";
+import type { SandboxCreateErrorDetails } from "@/lib/sandbox-create";
 import { isSafeHttpUrl, sanitizeInternalRedirect } from "@/lib/redirect-safety";
 
 function isSafeActionUrl(url: string): boolean {

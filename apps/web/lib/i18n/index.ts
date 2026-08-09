@@ -1,5 +1,12 @@
 /**
- * i18n configuration for the web application.
+ * i18n core — server-safe entry point.
+ *
+ * This module depends ONLY on `i18next` (no React). It is safe to import
+ * from Server Components, API routes, and server utilities.
+ *
+ * For React bindings (`useTranslation`, `Trans`, etc.), import from
+ * `@/lib/i18n/client` instead — that module adds `react-i18next` on the
+ * client side.
  *
  * Lazy-loads non-default languages to reduce initial bundle size.
  * Only en + zh-CN are eagerly loaded (~90 KB each); the other 18
@@ -7,8 +14,6 @@
  */
 
 import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 import { DEFAULT_LANGUAGE, LANGUAGES, LANGUAGE_STORAGE_KEY } from './languages';
 
 // Eagerly load only the two most-used languages
@@ -50,30 +55,16 @@ const localeLoaders: Record<string, () => Promise<{ default: any }>> = {
 // Get supported language codes
 const supportedLanguages = LANGUAGES.map((lang) => lang.code);
 
-// Check if running on client or server
-const isClient = typeof window !== 'undefined';
-
-// Initialize i18next
+// Initialize the base i18next instance.
+// react-i18next is initialized separately in `./client.ts` (client-only).
 if (!i18n.isInitialized) {
-  if (isClient) {
-    i18n.use(LanguageDetector);
-  }
-
-  i18n
-    .use(initReactI18next)
-    .init({
-      resources,
-      lng: isClient ? undefined : DEFAULT_LANGUAGE,
-      fallbackLng: DEFAULT_LANGUAGE,
-      supportedLngs: supportedLanguages,
-      interpolation: { escapeValue: false },
-      detection: isClient ? {
-        order: ['localStorage', 'navigator'],
-        caches: ['localStorage'],
-        lookupLocalStorage: LANGUAGE_STORAGE_KEY,
-      } : undefined,
-      react: { useSuspense: false },
-    });
+  i18n.init({
+    resources,
+    lng: typeof window !== 'undefined' ? undefined : DEFAULT_LANGUAGE,
+    fallbackLng: DEFAULT_LANGUAGE,
+    supportedLngs: supportedLanguages,
+    interpolation: { escapeValue: false },
+  });
 }
 
 /**
