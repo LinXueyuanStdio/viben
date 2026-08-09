@@ -58,6 +58,9 @@ export function UserMenu({ session, isMobile = false, isRead = false }: UserMenu
     } catch {
       // ignore network errors
     }
+    // Clear the client-side session cache so AppShellWrapper doesn't
+    // show the old session after redirect.
+    try { localStorage.removeItem("viben_session") } catch { /* ignore */ }
     window.location.href = "/"
   }, [])
 

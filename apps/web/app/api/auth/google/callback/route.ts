@@ -283,7 +283,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.info('[OAuth][Google] redirecting to web login error page');
-    return NextResponse.redirect(`${appUrl}/login?error=oauth_failed`);
+    const errorFallback = webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')
+      ? `${appUrl}${webRedirect}?error=oauth_failed`
+      : `${appUrl}/login?error=oauth_failed`;
+    console.info('[OAuth][Google] redirecting to error fallback', { errorFallback });
+    return NextResponse.redirect(errorFallback);
   }
 }

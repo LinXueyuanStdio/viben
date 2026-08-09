@@ -97,12 +97,16 @@ export async function GET(request: NextRequest) {
     const emailResponse = await fetch('https://api.github.com/user/emails', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const emails: GitHubEmail[] = await emailResponse.json();
+    const emailsRaw = await emailResponse.json();
+    const emails: GitHubEmail[] = Array.isArray(emailsRaw) ? emailsRaw : [];
     const primaryEmail =
       emails.find((e) => e.primary)?.email || githubUser.email;
 
     if (!primaryEmail) {
-      return NextResponse.redirect(`${appUrl}/login?error=no_email`);
+      const errorFallback = webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')
+        ? `${appUrl}${webRedirect}?error=no_email`
+        : `${appUrl}/login?error=no_email`;
+      return NextResponse.redirect(errorFallback);
     }
 
     // Find existing OAuth connection
@@ -312,7 +316,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.info('[OAuth][GitHub] redirecting to web login error page');
-    return NextResponse.redirect(`${appUrl}/login?error=oauth_failed`);
+    // If the user came from a logged-in page (e.g. settings), redirect back
+    // there with the error instead of dumping them at the login page.
+    const errorFallback = webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')
+      ? `${appUrl}${webRedirect}?error=oauth_failed`
+      : `${appUrl}/login?error=oauth_failed`;
+    console.info('[OAuth][GitHub] redirecting to error fallback', { errorFallback });
+    return NextResponse.redirect(errorFallback);
   }
 }

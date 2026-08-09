@@ -1,3 +1,4 @@
+import i18n from "@/lib/i18n";
 import type { SandboxInfo } from "@/components/assistant/session-chat-context";
 
 type CreateSandboxResponse = SandboxInfo & {
@@ -81,15 +82,15 @@ export function getSandboxCreateErrorDetails(
     return { message: error.message };
   }
 
-  return { message: "Failed to create sandbox. Please try again." };
+  return { message: i18n.t("assistant.sandbox.createFailed") };
 }
 
 function getFallbackSandboxCreateErrorMessage(status: number): string {
   if (status === 403) {
-    return "Sandbox access denied. Please reconnect GitHub and try again.";
+    return i18n.t("assistant.sandbox.accessDenied");
   }
 
-  return "Failed to create sandbox. Please try again.";
+  return i18n.t("assistant.sandbox.createFailed");
 }
 
 export async function createSandbox(
