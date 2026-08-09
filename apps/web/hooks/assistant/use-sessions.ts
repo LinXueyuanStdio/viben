@@ -372,6 +372,45 @@ export function useSessions(options?: {
     [data, includeArchived, mutate],
   );
 
+  const deleteSession = useCallback(
+    async (sessionId: string) => {
+      const previousData = cloneSessionsResponse(data);
+
+      await mutate(
+        (current) => {
+          const source = current ?? previousData;
+          if (!source) return source;
+
+          return {
+            sessions: source.sessions.filter((s) => s.id !== sessionId),
+            archivedCount: source.archivedCount,
+          };
+        },
+        { revalidate: false },
+      );
+
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const responseData = (await res.json()) as { error?: string };
+          throw new Error(responseData.error ?? "Failed to delete session");
+        }
+      } catch (error) {
+        if (previousData) {
+          await mutate(previousData, { revalidate: false });
+        } else {
+          void mutate();
+        }
+
+        throw error;
+      }
+    },
+    [data, mutate],
+  );
+
   const unarchiveSession = useCallback(
     async (sessionId: string) => {
       const previousData = cloneSessionsResponse(data);
@@ -465,6 +504,7 @@ export function useSessions(options?: {
     renameSession,
     archiveSession,
     unarchiveSession,
+    deleteSession,
     refreshSessions: mutate,
   };
 }

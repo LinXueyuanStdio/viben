@@ -12,12 +12,14 @@ import {
   GitPullRequest,
   Loader2,
   Monitor,
+  Moon,
   Pencil,
   Pin,
   Plus,
   Settings,
   Share2,
   Trash2,
+  TriangleAlert,
   MoreHorizontal,
 } from "lucide-react";
 import Link from "next/link";
@@ -74,6 +76,7 @@ type InboxSidebarProps = {
   onRenameSession?: (sessionId: string, title: string) => Promise<void>;
   onArchiveSession: (sessionId: string) => Promise<void>;
   onUnarchiveSession: (sessionId: string) => Promise<void>;
+  onDeleteSession: (sessionId: string) => Promise<void>;
   onOpenNewSession: () => void;
   onCreateSessionForRepo: (repoOwner: string, repoName: string) => void;
   onCreateSessionFromBranch: (
@@ -151,7 +154,7 @@ function getSessionStatusIcon(session: SessionWithUnread) {
     return <GitMerge className="h-3.5 w-3.5 shrink-0 text-purple-500" />;
   }
 
-  // PR open → yellow-orange PR icon (awaiting review)
+  // PR open → green PR icon (awaiting review)
   if (session.prNumber && session.prStatus === "open") {
     return <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />;
   }
@@ -186,12 +189,18 @@ function getSessionStatusIcon(session: SessionWithUnread) {
     return <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />;
   }
 
-  // Repo session — show sandbox provisioning state
-  if (session.lifecycleState === "provisioning") {
+  // Repo session — show sandbox provisioning/restoring state
+  if (session.lifecycleState === "provisioning" || session.lifecycleState === "restoring") {
     return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />;
   }
   if (session.lifecycleState === "active") {
     return <Monitor className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />;
+  }
+  if (session.lifecycleState === "hibernating") {
+    return <Moon className="h-3.5 w-3.5 shrink-0 text-amber-500/70" />;
+  }
+  if (session.lifecycleState === "hibernated") {
+    return <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" />;
   }
   if (session.lifecycleState === "failed") {
     return <CircleAlert className="h-3.5 w-3.5 shrink-0 text-destructive/70" />;
@@ -218,11 +227,19 @@ function getSessionStatusLabel(session: SessionWithUnread): {
   if (session.branch && hasDiff)
     return { text: "Needs attention", prNumber: null };
   if (session.branch) return { text: "New session", prNumber: null };
-  // No branch: sandbox is ready (empty chat) or provisioning
-  if (session.lifecycleState === "active")
-    return { text: "Sandbox ready", prNumber: null };
+  // No branch: sandbox lifecycle states
   if (session.lifecycleState === "provisioning")
     return { text: "Setting up", prNumber: null };
+  if (session.lifecycleState === "restoring")
+    return { text: "Restoring", prNumber: null };
+  if (session.lifecycleState === "active")
+    return { text: "Sandbox ready", prNumber: null };
+  if (session.lifecycleState === "hibernating")
+    return { text: "Hibernating", prNumber: null };
+  if (session.lifecycleState === "hibernated")
+    return { text: "No sandbox", prNumber: null };
+  if (session.lifecycleState === "failed")
+    return { text: "Failed", prNumber: null };
   if (session.status === "running")
     return { text: "Sandbox running", prNumber: null };
   if (session.status === "completed")
@@ -391,6 +408,7 @@ type SessionRowProps = {
   onRenameSession?: (sessionId: string, title: string) => Promise<void>;
   onArchiveSession: (session: SessionWithUnread) => void;
   onUnarchiveSession: (session: SessionWithUnread) => void;
+  onDeleteSession: (session: SessionWithUnread) => void;
   onTogglePin: (sessionId: string) => void;
 };
 
@@ -404,6 +422,7 @@ const SessionRow = memo(function SessionRow({
   onRenameSession,
   onArchiveSession,
   onUnarchiveSession,
+  onDeleteSession,
   onTogglePin,
 }: SessionRowProps) {
   const isMobile = useIsMobile();
@@ -503,8 +522,14 @@ const SessionRow = memo(function SessionRow({
     };
   }, []);
 
+  const hasShowUnreadDot = session.hasUnread && !isActive;
+
   const actionButtons = (
     <span className="flex shrink-0 items-center">
+      {/* Unread dot — always visible when session has unread and not active */}
+      {hasShowUnreadDot && (
+        <span className="mr-1 h-2 w-2 shrink-0 rounded-full bg-destructive" />
+      )}
       {/* More menu — always visible on hover or when menu is open */}
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
         <DropdownMenuTrigger asChild>
@@ -560,20 +585,39 @@ const SessionRow = memo(function SessionRow({
               重命名
             </DropdownMenuItem>
           ) : null}
+          {session.status === "archived" ? (
+            <DropdownMenuItem
+              onClick={(event) => {
+                event.stopPropagation();
+                setMoreMenuOpen(false);
+                onUnarchiveSession(session);
+              }}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              取消归档
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={(event) => {
+                event.stopPropagation();
+                setMoreMenuOpen(false);
+                onArchiveSession(session);
+              }}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              归档
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={(event) => {
               event.stopPropagation();
               setMoreMenuOpen(false);
-              if (session.status === "archived") {
-                onUnarchiveSession(session);
-              } else {
-                onArchiveSession(session);
-              }
+              onDeleteSession(session);
             }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            {session.status === "archived" ? "取消归档" : "删除"}
+            删除
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -599,7 +643,7 @@ const SessionRow = memo(function SessionRow({
           className={`truncate text-[13px] leading-5 ${
             session.hasUnread && !isActive
               ? "font-semibold text-foreground"
-              : "font-normal text-foreground/75"
+              : "font-normal text-foreground/85"
           }`}
         >
           {session.title}
@@ -770,6 +814,7 @@ export function InboxSidebar({
   onRenameSession,
   onArchiveSession,
   onUnarchiveSession,
+  onDeleteSession,
   onOpenNewSession,
   onCreateSessionForRepo,
   onCreateSessionFromBranch,
@@ -1000,6 +1045,20 @@ export function InboxSidebar({
       }
     },
     [onUnarchiveSession],
+  );
+
+  const handleDeleteSession = useCallback(
+    async (session: SessionWithUnread) => {
+      try {
+        await onDeleteSession(session.id);
+        setArchivedSessions((current) =>
+          current.filter((s) => s.id !== session.id),
+        );
+      } catch (err) {
+        console.error("Failed to delete session:", err);
+      }
+    },
+    [onDeleteSession],
   );
 
   const handleLoadMoreArchivedSessions = useCallback(() => {
@@ -1248,6 +1307,7 @@ export function InboxSidebar({
                               onRenameSession={onRenameSession}
                               onArchiveSession={handleArchiveSession}
                               onUnarchiveSession={handleUnarchiveSession}
+                              onDeleteSession={handleDeleteSession}
                               onTogglePin={togglePin}
                             />
                           ))}

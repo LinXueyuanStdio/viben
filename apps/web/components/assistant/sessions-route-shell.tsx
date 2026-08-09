@@ -42,6 +42,7 @@ type SessionsRouteInnerProps = {
   onRenameSession: (sessionId: string, title: string) => Promise<void>;
   onArchiveSession: (sessionId: string) => Promise<void>;
   onUnarchiveSession: (sessionId: string) => Promise<void>;
+  onDeleteSession: (sessionId: string) => Promise<void>;
   onOpenNewSession: () => void;
   onCreateSessionForRepo: (repoOwner: string, repoName: string) => Promise<void>;
   onCreateSessionFromBranch: (repoOwner: string, repoName: string, branch: string) => Promise<void>;
@@ -60,6 +61,7 @@ function SessionsRouteInner({
   onRenameSession,
   onArchiveSession,
   onUnarchiveSession,
+  onDeleteSession,
   onOpenNewSession,
   onCreateSessionForRepo,
   onCreateSessionFromBranch,
@@ -88,6 +90,7 @@ function SessionsRouteInner({
           onRenameSession={onRenameSession}
           onArchiveSession={onArchiveSession}
           onUnarchiveSession={onUnarchiveSession}
+          onDeleteSession={onDeleteSession}
           onOpenNewSession={onOpenNewSession}
           onCreateSessionForRepo={onCreateSessionForRepo}
           onCreateSessionFromBranch={onCreateSessionFromBranch}
@@ -125,6 +128,7 @@ export function SessionsRouteShell({
     renameSession,
     archiveSession,
     unarchiveSession,
+    deleteSession,
   } = useSessions({
     enabled: true,
     includeArchived: false,
@@ -232,6 +236,20 @@ export function SessionsRouteShell({
     [routeSessionId, unarchiveSession],
   );
 
+  const handleDeleteSession = useCallback(
+    async (targetSessionId: string) => {
+      await deleteSession(targetSessionId);
+
+      if (targetSessionId === routeSessionId) {
+        setOptimisticActiveSessionId(null);
+        startNavigationTransition(() => {
+          router.push("/assistant", { scroll: false });
+        });
+      }
+    },
+    [deleteSession, routeSessionId, router, startNavigationTransition],
+  );
+
   const handleCreateSessionForRepo = useCallback(
     async (repoOwner: string, repoName: string) => {
       try {
@@ -323,6 +341,7 @@ export function SessionsRouteShell({
           onRenameSession={handleRenameSession}
           onArchiveSession={handleArchiveSession}
           onUnarchiveSession={handleUnarchiveSession}
+          onDeleteSession={handleDeleteSession}
           onOpenNewSession={openNewSessionDialog}
           onCreateSessionForRepo={handleCreateSessionForRepo}
           onCreateSessionFromBranch={handleCreateSessionFromBranch}
