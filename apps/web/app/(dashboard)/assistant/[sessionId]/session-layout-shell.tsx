@@ -2,6 +2,13 @@
 
 import { useParams, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { ExternalLink, Link2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   useCallback,
   useEffect,
@@ -20,8 +27,8 @@ import {
   useGitPanel,
 } from "@/components/assistant/git-panel-context";
 import { SessionHeader } from "@/components/assistant/session-header";
-import { ChatTabs } from "@/components/assistant/chat-tabs";
-import { SessionLayoutContext } from "@/components/assistant/session-layout-context";
+import { SessionLayoutContext, useSessionLayout } from "@/components/assistant/session-layout-context";
+import { useAppShell } from "@/components/layout/app-shell";
 
 type SessionLayoutShellProps = {
   session: Session;
@@ -43,14 +50,86 @@ function SessionLayoutInner({
   activeChatId: string;
   children: ReactNode;
 }) {
-  const { panelPortalRef, gitPanelOpen, setGitPanelOpen } = useGitPanel();
+  const { panelPortalRef, gitPanelOpen, setGitPanelOpen, setShareRequested } = useGitPanel();
+  const { setTopbarCenterContent } = useAppShell();
+  const { chats, session } = useSessionLayout();
+
+  // Derive active chat title and inject into Topbar center
+  const activeChatTitle = useMemo(() => {
+    if (!activeChatId) return session.title;
+    const chat = chats.find((c) => c.id === activeChatId);
+    return chat?.title || session.title;
+  }, [activeChatId, chats, session.title]);
+
+  useEffect(() => {
+    setTopbarCenterContent(
+      <div className="flex items-center gap-1.5 min-w-0">
+        {/* Repo + branch prefix */}
+        {session.repoName && (
+          <div className="hidden min-w-0 items-center gap-1 sm:flex">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {session.cloneUrl ? (
+                  <a
+                    href={`https://github.com/${session.repoOwner}/${session.repoName}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 truncate text-sm font-medium text-foreground/70 hover:underline"
+                  >
+                    {session.repoName}
+                    <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  </a>
+                ) : (
+                  <span className="truncate text-sm font-medium text-foreground/70">
+                    {session.repoName}
+                  </span>
+                )}
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {session.repoOwner}/{session.repoName}
+              </TooltipContent>
+            </Tooltip>
+            {session.branch && (
+              <>
+                <span className="text-muted-foreground/40">/</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate font-mono text-xs text-muted-foreground">
+                      {session.branch}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{session.branch}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            <span className="text-muted-foreground/40">/</span>
+          </div>
+        )}
+        <span className="truncate max-w-[200px] text-sm font-medium text-foreground sm:font-normal sm:text-muted-foreground">
+          {activeChatTitle}
+        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setShareRequested(true)}
+              className="shrink-0 rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-foreground"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{t("assistant.session.shareChat")}</TooltipContent>
+        </Tooltip>
+      </div>
+    );
+    return () => setTopbarCenterContent(null);
+  }, [activeChatTitle, setTopbarCenterContent, setShareRequested, session.repoName, session.repoOwner, session.branch, session.cloneUrl]);
 
   return (
     <div className="relative flex h-full overflow-hidden">
-      {/* Left column: header + tabs + page content */}
+      {/* Left column: header + page content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <SessionHeader />
-        {activeChatId && <ChatTabs activeChatId={activeChatId} />}
+        <SessionHeader activeChatId={activeChatId} />
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       </div>
 

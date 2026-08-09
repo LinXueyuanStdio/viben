@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { createContext, useContext } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { Topbar } from "./topbar"
 import { Sidebar } from "./sidebar"
 import { DrawerProvider, useDrawer } from "./drawer-context"
+import { TopbarSlotProvider } from "./topbar-slots"
 import { useRouteResolution } from "@/lib/navigation/route-resolver"
 import type { RouteResolution } from "@/lib/navigation/route-resolver"
 import { cn } from "@/lib/utils/index"
@@ -31,6 +32,9 @@ interface AppShellContextType {
   // read page meta（由 ReadPageShell 写入，Topbar 读取）
   readPageMeta: ReadPageMeta | null
   setReadPageMeta: (meta: ReadPageMeta | null) => void
+  // topbar center content（由 assistant 页面写入，Topbar 读取）
+  topbarCenterContent: ReactNode
+  setTopbarCenterContent: (content: ReactNode) => void
 }
 
 const AppShellContext = createContext<AppShellContextType>({
@@ -43,6 +47,8 @@ const AppShellContext = createContext<AppShellContextType>({
   closeSidebar: () => {},
   readPageMeta: null,
   setReadPageMeta: () => {},
+  topbarCenterContent: null,
+  setTopbarCenterContent: () => {},
 })
 
 export function useAppShell() {
@@ -184,6 +190,7 @@ export function AppShell({
 
   // ---- read page meta（由 ReadPageShell 写入，Topbar 读取） ----
   const [readPageMeta, setReadPageMeta] = React.useState<ReadPageMeta | null>(null)
+  const [topbarCenterContent, setTopbarCenterContent] = useState<ReactNode>(null)
 
   const contextValue = React.useMemo<AppShellContextType>(
     () => ({
@@ -196,35 +203,39 @@ export function AppShell({
       closeSidebar,
       readPageMeta,
       setReadPageMeta,
+      topbarCenterContent,
+      setTopbarCenterContent,
     }),
-    [session, sidebarCollapsed, toggleSidebar, isMobile, sidebarOpen, openSidebar, closeSidebar, readPageMeta]
+    [session, sidebarCollapsed, toggleSidebar, isMobile, sidebarOpen, openSidebar, closeSidebar, readPageMeta, topbarCenterContent]
   )
 
   return (
     <AppShellContext.Provider value={contextValue}>
       <DrawerProvider>
         <div className="flex h-screen flex-col overflow-hidden">
-          <Topbar
-            session={session}
-            onToggleSidebar={toggleSidebar}
-            sidebarCollapsed={sidebarCollapsed}
-            isMobile={isMobile}
-            onOpenSidebar={openSidebar}
-            resolution={resolution}
-          />
-          <Body
-            sidebarCollapsed={sidebarCollapsed}
-            desktopSidebarVisible={desktopSidebarVisible}
-            isReadLike={isReadLike}
-            isFullWidth={isFullWidth}
-            isMobile={isMobile}
-            session={session}
-            adminStats={adminStats}
-            sidebarOpen={sidebarOpen}
-            onClose={closeSidebar}
-          >
-            {children}
-          </Body>
+          <TopbarSlotProvider value={{ centerContent: topbarCenterContent }}>
+            <Topbar
+              session={session}
+              onToggleSidebar={toggleSidebar}
+              sidebarCollapsed={sidebarCollapsed}
+              isMobile={isMobile}
+              onOpenSidebar={openSidebar}
+              resolution={resolution}
+            />
+            <Body
+              sidebarCollapsed={sidebarCollapsed}
+              desktopSidebarVisible={desktopSidebarVisible}
+              isReadLike={isReadLike}
+              isFullWidth={isFullWidth}
+              isMobile={isMobile}
+              session={session}
+              adminStats={adminStats}
+              sidebarOpen={sidebarOpen}
+              onClose={closeSidebar}
+            >
+              {children}
+            </Body>
+          </TopbarSlotProvider>
         </div>
       </DrawerProvider>
     </AppShellContext.Provider>

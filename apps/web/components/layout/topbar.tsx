@@ -239,6 +239,8 @@ export function Topbar({
             <HomeTabBar iconOnly={isMobile} />
           ) : isTeamRoute && resolution ? (
             <TeamTabs teamSlug={resolution.teamSlug!} />
+          ) : isAssistantRoute ? (
+            topbarSlots?.centerContent
           ) : null}
         </div>
 

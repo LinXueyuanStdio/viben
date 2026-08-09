@@ -1,12 +1,9 @@
 "use client";
 
 import {
-  ExternalLink,
-  FolderGit2,
   GitMerge,
   GitPullRequest,
   GitPullRequestClosed,
-  Link2,
   PanelLeft,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -18,14 +15,15 @@ import {
 } from "@/components/ui/tooltip";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { ChatTabs } from "./chat-tabs";
 import { useGitPanel } from "./git-panel-context";
 import { useSessionLayout } from "@/components/assistant/session-layout-context";
 
-/**
- * Session header that uses only layout-level data (persists across chat switches).
- * Sandbox-specific props are removed to prevent layout shift during navigation.
- */
-export function SessionHeader() {
+interface SessionHeaderProps {
+  activeChatId: string;
+}
+
+export function SessionHeader({ activeChatId }: SessionHeaderProps) {
   const { toggleSidebar } = useSidebar();
   const {
     gitPanelOpen,
@@ -34,7 +32,6 @@ export function SessionHeader() {
     hasActionNeeded,
     changesCount,
     hasCommittedChanges,
-    setShareRequested,
     headerActionsRef,
   } = useGitPanel();
   const { session } = useSessionLayout();
@@ -50,8 +47,8 @@ export function SessionHeader() {
     return { icon: GitPullRequest, color: "text-green-500" } as const;
   }, [session.prNumber, session.prStatus]);
 
-  const GitIcon = prState?.icon ?? FolderGit2;
-  const iconColor = prState?.color ?? undefined;
+  const GitIcon = prState?.icon ?? GitPullRequest;
+  const iconColor = prState?.color ?? "text-muted-foreground";
 
   // Build contextual tooltip
   const tooltipText = useMemo(() => {
@@ -124,106 +121,60 @@ export function SessionHeader() {
   }, [handleGitPanelToggle]);
 
   return (
-    <header className="border-b border-border px-3 py-1.5">
-      <div className="flex items-center justify-between gap-2">
-        {/* Left side: panel toggle + repo/branch + title */}
-        <div className="flex min-w-0 items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0"
-                onClick={toggleSidebar}
-              >
-                <PanelLeft className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Toggle left sidebar</TooltipContent>
-          </Tooltip>
+    <header className="flex items-center gap-2 border-b border-border px-2 py-0">
+      {/* Left side: panel toggle + repo/branch hint + chat tabs */}
+      <div className="flex min-w-0 flex-1 items-center gap-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={toggleSidebar}
+            >
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Toggle left sidebar</TooltipContent>
+        </Tooltip>
 
-          <div className="flex min-w-0 items-center gap-1.5 text-sm">
-            {session.repoName && (
-              <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
-                {session.cloneUrl ? (
-                  /* oxlint-disable-next-line nextjs/no-html-link-for-pages */
-                  <a
-                    href={`https://github.com/${session.repoOwner}/${session.repoName}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 truncate font-medium text-foreground hover:underline"
-                  >
-                    {session.repoName}
-                    <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                  </a>
-                ) : (
-                  <span className="truncate font-medium text-foreground">
-                    {session.repoName}
-                  </span>
-                )}
-                {session.branch && (
-                  <>
-                    <span className="text-muted-foreground/40">/</span>
-                    <span className="truncate font-mono text-muted-foreground">
-                      {session.branch}
-                    </span>
-                  </>
-                )}
-                <span className="text-muted-foreground/40">/</span>
-              </div>
-            )}
-            <span className="truncate font-medium text-foreground sm:font-normal sm:text-muted-foreground">
-              {session.title}
-            </span>
+        {/* ChatTabs inline — only when there is an active chat */}
+        {activeChatId && (
+          <ChatTabs activeChatId={activeChatId} variant="inline" />
+        )}
+      </div>
 
-            {/* Share link icon */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setShareRequested(true)}
-                  className="ml-1 rounded p-1 text-muted-foreground/60 transition-colors hover:text-foreground"
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Share chat</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+      {/* Right side: dev actions portal + git panel toggle */}
+      <div className="flex shrink-0 items-center gap-1">
+        {/* Portal target for dev server / code editor buttons (rendered from per-chat content) */}
+        <div ref={headerActionsRef} className="flex items-center" />
 
-        {/* Right side: dev server / code editor actions + git panel toggle */}
-        <div className="flex items-center gap-1">
-          {/* Portal target for dev server / code editor buttons (rendered from per-chat content) */}
-          <div ref={headerActionsRef} className="flex items-center" />
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "relative h-7 w-7 shrink-0",
-                  gitPanelOpen && "bg-accent text-accent-foreground",
-                )}
-                onClick={handleGitPanelToggle}
-              >
-                <GitIcon
-                  className={cn("h-4 w-4", !gitPanelOpen && iconColor)}
-                />
-                {!gitPanelOpen && hasActionNeeded && (
-                  <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-amber-500" />
-                )}
-                {!gitPanelOpen && !hasActionNeeded && hasCommittedChanges && (
-                  <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-blue-500" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {`${tooltipText} · ⌘⇧B / Ctrl+Shift+B`}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "relative h-7 w-7 shrink-0",
+                gitPanelOpen && "bg-accent text-accent-foreground",
+              )}
+              onClick={handleGitPanelToggle}
+            >
+              <GitIcon
+                className={cn("h-4 w-4", !gitPanelOpen && iconColor)}
+              />
+              {!gitPanelOpen && hasActionNeeded && (
+                <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-amber-500" />
+              )}
+              {!gitPanelOpen && !hasActionNeeded && hasCommittedChanges && (
+                <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-blue-500" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {`${tooltipText} · ⌘⇧B / Ctrl+Shift+B`}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );
