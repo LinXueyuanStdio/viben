@@ -1,4 +1,5 @@
 import { Sandbox as VercelSandboxSDK } from "@vercel/sandbox";
+import type { NetworkPolicy } from "@vercel/sandbox";
 import type { Dirent } from "fs";
 import type {
   ExecResult,
@@ -26,19 +27,7 @@ interface SandboxRouteLike {
   port: number;
 }
 
-interface SandboxNetworkTransform {
-  headers?: Record<string, string>;
-}
-
-interface SandboxNetworkRule {
-  transform?: SandboxNetworkTransform[];
-}
-
-interface SandboxNetworkPolicy {
-  allow: Record<string, SandboxNetworkRule[]>;
-}
-
-const DEFAULT_NETWORK_POLICY: SandboxNetworkPolicy = {
+const DEFAULT_NETWORK_POLICY: NetworkPolicy = {
   allow: {
     "*": [],
   },
@@ -46,7 +35,7 @@ const DEFAULT_NETWORK_POLICY: SandboxNetworkPolicy = {
 
 function buildGitHubCredentialBrokeringPolicy(
   token?: string,
-): SandboxNetworkPolicy {
+): NetworkPolicy {
   if (!token) {
     return DEFAULT_NETWORK_POLICY;
   }
@@ -91,7 +80,7 @@ async function syncGitHubCredentialBrokering(
 ): Promise<void> {
   const updateNetworkPolicy = (
     sdk as VercelSandboxSDK & {
-      updateNetworkPolicy?: (policy: SandboxNetworkPolicy) => Promise<void>;
+      updateNetworkPolicy?: (policy: NetworkPolicy) => Promise<void>;
     }
   ).updateNetworkPolicy;
 
@@ -539,23 +528,23 @@ ${hostLine}${portLines}${runtimeEnvLine}`;
     const sdkTimeout = effectiveTimeout + TIMEOUT_BUFFER_MS;
 
     const snapshotId = restoreSnapshotId ?? baseSnapshotId;
-    const createBaseConfig = {
+    const commonCreateConfig = {
       ...(name ? { name } : {}),
       resources: { vcpus },
       timeout: sdkTimeout,
-      ...(snapshotId ? {} : { runtime }),
       persistent,
       networkPolicy: buildGitHubCredentialBrokeringPolicy(githubToken),
       ...(ports && { ports }),
       ...(snapshotExpiration !== undefined && { snapshotExpiration }),
     };
-    const sdkConfig = snapshotId
+    const createBaseConfig = snapshotId
       ? {
-        ...createBaseConfig,
+          ...commonCreateConfig,
           source: { type: "snapshot" as const, snapshotId },
         }
       : {
-          ...createBaseConfig,
+          ...commonCreateConfig,
+          runtime,
           ...(source && {
             source: {
               type: "git" as const,
@@ -564,7 +553,7 @@ ${hostLine}${portLines}${runtimeEnvLine}`;
             },
           }),
         };
-    const sdk = await VercelSandboxSDK.create(sdkConfig);
+    const sdk = await VercelSandboxSDK.create(createBaseConfig);
 
     const workingDirectory = DEFAULT_WORKING_DIRECTORY;
 
