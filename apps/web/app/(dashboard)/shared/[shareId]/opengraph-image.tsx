@@ -8,7 +8,7 @@ import {
   getShareByIdCached,
 } from "@/lib/db/sessions-cache";
 
-export const alt = "Shared Open Agents session";
+export const alt = "Shared Viben session";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -164,19 +164,55 @@ export default async function Image({
               marginBottom: 32,
             }}
           >
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+            <svg
+              viewBox="0 0 100 100"
+              width="26"
+              height="26"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient
+                  id="viben-logo-gradient"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <stop offset="0%" stopColor="#FDB813" />
+                  <stop offset="100%" stopColor="#38B2AC" />
+                </linearGradient>
+              </defs>
+              <rect
+                x="0"
+                y="0"
+                width="100"
+                height="100"
+                rx="22"
+                fill="url(#viben-logo-gradient)"
+              />
               <path
-                d="M4 17L10 11L4 5"
-                stroke="rgba(255,255,255,0.5)"
-                strokeWidth="1.5"
+                d="M28 30 L15 50 L28 70"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="7"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
               <path
-                d="M12 19H20"
-                stroke="rgba(255,255,255,0.5)"
-                strokeWidth="1.5"
+                d="M38 32 L50 68 L62 32"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="7"
                 strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M72 30 L85 50 L72 70"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
             <span
@@ -187,7 +223,7 @@ export default async function Image({
                 color: "rgba(255, 255, 255, 0.45)",
               }}
             >
-              Open Agents
+              Viben
             </span>
           </div>
 
@@ -428,7 +464,7 @@ function fallbackImage() {
           'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       }}
     >
-      Shared Open Agents session
+      Shared Viben session
     </div>,
     { ...size },
   );

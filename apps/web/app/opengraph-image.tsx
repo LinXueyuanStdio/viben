@@ -60,19 +60,55 @@ export default function Image() {
         }}
       >
         {/* Logo */}
-        <svg viewBox="0 0 24 24" width="80" height="80" fill="none">
+        <svg
+          viewBox="0 0 100 100"
+          width="80"
+          height="80"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient
+              id="viben-logo-gradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="#FDB813" />
+              <stop offset="100%" stopColor="#38B2AC" />
+            </linearGradient>
+          </defs>
+          <rect
+            x="0"
+            y="0"
+            width="100"
+            height="100"
+            rx="22"
+            fill="url(#viben-logo-gradient)"
+          />
           <path
-            d="M4 17L10 11L4 5"
-            stroke="rgba(255,255,255,0.6)"
-            strokeWidth="1.5"
+            d="M28 30 L15 50 L28 70"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="7"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
-            d="M12 19H20"
-            stroke="rgba(255,255,255,0.6)"
-            strokeWidth="1.5"
+            d="M38 32 L50 68 L62 32"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="7"
             strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M72 30 L85 50 L72 70"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </svg>
 
