@@ -2077,6 +2077,15 @@ export const sessions = pgTable(
     })
       .notNull()
       .default("running"),
+    agentType: text("agent_type", { enum: ["work", "chat"] })
+      .notNull()
+      .default("work"),
+    publishedPageId: text("published_page_id").references(
+      () => publishedPages.id,
+      { onDelete: "set null" },
+    ),
+    pageUserSlug: text("page_user_slug"),
+    pageSlug: text("page_slug"),
     repoOwner: text("repo_owner"),
     repoName: text("repo_name"),
     branch: text("branch"),
@@ -2290,6 +2299,7 @@ export const usageEvents = pgTable("usage_events", {
 // Type exports for assistant tables
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+export type SessionAgentType = Session["agentType"];
 export type VercelProjectLink = typeof vercelProjectLinks.$inferSelect;
 export type NewVercelProjectLink = typeof vercelProjectLinks.$inferInsert;
 export type Chat = typeof chats.$inferSelect;
