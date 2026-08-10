@@ -45,15 +45,17 @@
 
 ### Session 模式操作行
 
-共享输入框卡片底部增加一行灰色背景区域：
+共享输入框卡片底部增加一行灰色背景区域。整行左对齐，并将当前操作行压缩为约 32px 的紧凑高度：
 
-- 左侧 Cloud 图标是独立按钮，点击后导航至 `/settings/sandbox`；
-- 右侧默认显示 `New chat >`；
-- 点击 `New chat >` 后进入仓库 session 选择状态，文案切换为 `New session >`，并打开原有 repo 选择器 popover；
-- repo 选择器沿用现有仓库、分支、Vercel 项目和 Git 自动化设置能力；
-- popover 关闭时如果用户没有选定仓库，取消本次选择，清理临时 repo 状态并自动恢复 `New chat >`；
-- 用户选定仓库后保持 `New session >` 状态，发送时创建 repo session；
-- 未进入仓库模式时发送，创建空白 session。
+- 左侧 Settings 图标是独立按钮，点击后导航至 `/settings/sandbox`；
+- 未选择仓库时，图标右侧显示 `New chat` 和上下双向指示图标；
+- 点击 `New chat` 直接打开原有 repo 选择器 popover，不提前切换 session 模式，也不显示 `New session` 文案；
+- popover 关闭时如果用户没有选定仓库，取消本次选择，清理临时 repo 状态并保持 `New chat`；
+- 用户选定仓库后，操作行立即切换为 `Settings 图标 | username/reponame ⇅ > branch ⇅`；
+- `username/reponame` 分段打开同一个 repo 选择器 popover，可用于更换仓库；此处暂不展示用户或组织头像；
+- repo popover 保留仓库选择、Vercel 项目和 Git 自动化设置，分支选择从该 popover 移出，避免出现两个分支入口；
+- `branch` 分段打开独立分支 popover，沿用现有分支搜索、选择既有分支和自动创建新分支能力；
+- 只有选定仓库后才进入 repo session 模式并在发送时创建 repo session；未选择仓库时发送仍创建空白 session。
 
 试用用户或 GitHub 状态不允许创建 repo session 时，沿用当前禁用规则，并保持空白 chat 可用。
 
@@ -67,14 +69,14 @@
 
 调整为欢迎页编排组件，职责包括：
 
-- 管理空白 chat/repo session 模式；
-- 管理 repo popover 的打开、确认和取消；
+- 以“是否已经选定仓库”派生空白 chat/repo session 模式，避免仅打开 popover 就切换模式；
+- 分别管理 repo popover 与 branch popover 的打开、确认和取消；
 - 复用图片、文本附件和语音 hooks；
 - 加载默认模型和可选模型；
 - 组装首消息草稿；
 - 请求上层创建 session，并在成功后发起路由跳转。
 
-现有 repo、branch、Vercel 和 Git 设置 UI 保留为 repo popover 内容，不复制其业务逻辑。
+现有 repo、branch、Vercel 和 Git 设置逻辑继续复用，但触发器重新组合：repo popover 承载 repo、Vercel 和 Git 设置，branch popover 由操作行中的 branch 分段独立触发。选择器的数据请求、默认分支和新分支语义不复制。
 
 ### 首消息一次性交接区
 
@@ -119,33 +121,39 @@
 
 - 创建中禁用输入、模型选择、模式切换和发送按钮，防止重复 session。
 - session 创建失败时停留在欢迎页，并保留文本、附件、模型及 repo 选择。
-- repo popover 未完成选择便关闭时恢复空白 chat 模式。
+- repo popover 未完成选择便关闭时保持空白 chat 模式；已经存在有效 repo 选择时，关闭 popover 保留当前 repo session 状态。
+- 更换 repo 后清空旧 branch 选择，并由现有逻辑重新解析默认或自动创建分支状态。
 - 模型列表加载失败时允许使用 session API 返回的新 chat 默认模型，不阻塞文本发送。
 - 自动发送失败时，将已取出的草稿恢复到正式输入框，保留附件并允许用户手动重试。
 - 自动发送逻辑需要防御 React Strict Mode 重复执行；一次性交接的 `take` 语义和本地处理中标记共同保证只提交一次。
-- Cloud 图标只负责导航，不改变当前输入草稿。
+- Settings 图标只负责导航，不改变当前输入草稿。
 
 ## 可访问性与响应式
 
-- Cloud、附件、语音、模型和发送按钮提供可翻译的可访问名称。
+- Settings、repo、branch、附件、语音、模型和发送按钮提供可翻译的可访问名称。
 - 所有模式切换和 popover 操作支持键盘访问与焦点返回。
-- repo popover 关闭后焦点返回模式按钮；取消时更新按钮文案与可访问状态。
+- repo popover 关闭后焦点返回 repo 分段；branch popover 关闭后焦点返回 branch 分段。
+- 紧凑操作行保持清晰的 hover、focus-visible 和 disabled 状态；缩小视觉行高时仍保留可操作的按钮热区。
 - 发送按钮的禁用状态同时覆盖无内容、创建中、录音处理中和模型更新中。
 - 使用项目现有语义色彩变量与 Tailwind 类，不用 `hsl()` 包裹 oklch 变量。
 - 移动端保持触摸目标尺寸，并沿用正式输入框的 iOS 发送键盘处理。
 
 ## 国际化
 
-新增或调整的欢迎语、模式文案、按钮可访问名称和错误提示全部进入 locale JSON。英文使用 `New chat`、`New session`；简体中文遵循项目约定。既有 session starter 翻译键可复用时不重复创建。
+新增或调整的欢迎语、模式文案、按钮可访问名称和错误提示全部进入 locale JSON。未选择仓库时使用 `New chat`；选中仓库后直接显示 `username/reponame` 和 branch，不引入 `New session` 文案。简体中文遵循项目约定，既有 session starter 翻译键可复用时不重复创建。
 
 ## 测试策略
 
 ### 单元与组件测试
 
 - 共享输入框渲染文本区、附件、模型、语音和发送控件，并正确触发受控回调；
-- 默认显示 `New chat >`，点击后显示 `New session >` 并打开 repo popover；
-- 未选择 repo 关闭 popover后恢复 `New chat >`；
-- Cloud 图标导航到 `/settings/sandbox`；
+- 默认显示 Settings 图标和 `New chat ⇅`，点击后打开 repo popover 且不改变文案；
+- 未选择 repo 关闭 popover 后保持 `New chat ⇅`；
+- 选中 repo 后显示 `username/reponame ⇅ > branch ⇅`，且不显示 `New session`；
+- repo 分段可重新打开同一个 repo popover，Vercel 和 Git 设置仍可用；
+- branch 分段打开独立 branch popover，并能选择既有分支或自动创建新分支；
+- 更换 repo 后不会保留旧 repo 的 branch；
+- Settings 图标导航到 `/settings/sandbox`；
 - 创建失败时保留完整草稿；
 - 创建成功后按 chat ID 写入一次性交接数据；
 - `take` 同一草稿两次时第二次返回空，证明不会重复自动发送；
@@ -157,14 +165,14 @@
 - 运行本次新增与相关 assistant 测试；
 - 在 `apps/web` 目录运行 `pnpm typecheck`；
 - 在 `apps/web` 目录运行 `pnpm build`；
-- 手动检查桌面端与移动端的空白 chat、repo session、取消 popover、附件、语音、模型切换和首消息自动发送流程。
+- 手动检查桌面端与移动端的紧凑操作行、空白 chat、repo session、repo/branch 两个 popover、取消 popover、附件、语音、模型切换和首消息自动发送流程。
 
 ## 成功标准
 
 - `/assistant` 空页面展示 Viben Assistant 欢迎标识与大输入卡片；
 - 欢迎页和正式对话页的基础输入框来自同一个共享组件；
 - 所有要求的输入能力在欢迎页可用；
-- Cloud 与 session 模式操作符合指定导航和回退行为；
+- Settings 与紧凑 session 模式操作行符合指定导航、选择和回退行为；
 - 空白 chat 与 repo session 均可携带完整首消息进入正式页面并自动发送；
 - 创建或发送失败不会静默丢失草稿；
 - `apps/web` 测试、类型检查和构建通过。
