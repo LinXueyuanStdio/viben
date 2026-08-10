@@ -3,9 +3,10 @@
 import {
   ChevronDownIcon,
   ChevronRight,
+  ChevronsUpDown,
   ChevronUpIcon,
-  Cloud,
   GitCommitHorizontal,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -37,8 +38,6 @@ import {
 } from "./sandbox-selector-compact";
 import { SessionStarterVercelSyncSection } from "./session-starter-vercel-sync-section";
 
-type SessionMode = "chat" | "repo";
-
 export interface SessionStarterCreateInput {
   repoOwner?: string;
   repoName?: string;
@@ -69,7 +68,6 @@ export function SessionStarter({
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<SessionMode>("chat");
   const [repoPopoverOpen, setRepoPopoverOpen] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState("");
   const [selectedRepo, setSelectedRepo] = useState("");
@@ -124,9 +122,10 @@ export function SessionStarter({
   const effectiveAutoCreatePr = autoCreatePr ?? defaultAutoCreatePr;
   const sandboxType = preferences?.defaultSandboxType ?? DEFAULT_SANDBOX_TYPE;
   const isRepoModeDisabled = sessionLoading || isTrialUser;
+  const hasRepoSelection = Boolean(selectedOwner && selectedRepo);
 
   const shouldLoadVercelProjects =
-    mode === "repo" &&
+    hasRepoSelection &&
     !isTrialUser &&
     !githubConnectionLoading &&
     !reconnectRequired &&
@@ -159,7 +158,6 @@ export function SessionStarter({
   }, [repoProjects, repoProjectsLoading, shouldLoadVercelProjects]);
 
   const resetRepoSelection = () => {
-    setMode("chat");
     setSelectedOwner("");
     setSelectedRepo("");
     setSelectedBranch(null);
@@ -171,11 +169,7 @@ export function SessionStarter({
   const handleRepoPopoverChange = (open: boolean) => {
     if (open && isRepoModeDisabled) return;
     setRepoPopoverOpen(open);
-    if (open) {
-      setMode("repo");
-      return;
-    }
-    if (!selectedOwner || !selectedRepo) resetRepoSelection();
+    if (!open && !hasRepoSelection) resetRepoSelection();
   };
 
   const handleRepoSelect = (owner: string, repo: string) => {
@@ -202,7 +196,7 @@ export function SessionStarter({
   };
 
   const isVercelLookupPending =
-    mode === "repo" &&
+    hasRepoSelection &&
     Boolean(selectedOwner) &&
     Boolean(selectedRepo) &&
     (sessionLoading || (shouldLoadVercelProjects && repoProjectsLoading));
@@ -215,7 +209,7 @@ export function SessionStarter({
     repoProjects?.selectedProjectId === null &&
     vercelProjectChoice === undefined;
   const showVercelProjectSection =
-    mode === "repo" &&
+    hasRepoSelection &&
     !isTrialUser &&
     !githubConnectionLoading &&
     !reconnectRequired &&
@@ -229,7 +223,7 @@ export function SessionStarter({
     controlsDisabled ||
     recordingState === "processing" ||
     !hasContent ||
-    (mode === "repo" &&
+    (hasRepoSelection &&
       (isRepoModeDisabled ||
         githubConnectionLoading ||
         reconnectRequired ||
@@ -258,14 +252,14 @@ export function SessionStarter({
     try {
       await onSubmit({
         sessionInput: {
-          repoOwner: mode === "repo" ? selectedOwner : undefined,
-          repoName: mode === "repo" ? selectedRepo : undefined,
-          branch: mode === "repo" ? (selectedBranch ?? undefined) : undefined,
+          repoOwner: hasRepoSelection ? selectedOwner : undefined,
+          repoName: hasRepoSelection ? selectedRepo : undefined,
+          branch: hasRepoSelection ? (selectedBranch ?? undefined) : undefined,
           cloneUrl:
-            mode === "repo"
+            hasRepoSelection
               ? `https://github.com/${selectedOwner}/${selectedRepo}`
               : undefined,
-          isNewBranch: mode === "repo" ? isNewBranch : false,
+          isNewBranch: hasRepoSelection ? isNewBranch : false,
           sandboxType,
           autoCommitPush: effectiveAutoCommitPush,
           autoCreatePr: effectiveAutoCommitPush ? effectiveAutoCreatePr : false,
@@ -295,18 +289,6 @@ export function SessionStarter({
         selectedRepo={selectedRepo}
         onSelect={handleRepoSelect}
       />
-      {selectedOwner &&
-        selectedRepo &&
-        !githubConnectionLoading &&
-        !reconnectRequired && (
-          <BranchSelectorCompact
-            owner={selectedOwner}
-            repo={selectedRepo}
-            value={selectedBranch}
-            isNewBranch={isNewBranch}
-            onChange={handleBranchChange}
-          />
-        )}
       {showVercelProjectSection && (
         <SessionStarterVercelSyncSection
           controlsDisabled={controlsDisabled}
@@ -416,15 +398,18 @@ export function SessionStarter({
         }}
         className="border border-border/70 bg-card shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-none"
         footer={
-          <div className="flex items-center border-t border-border/60 bg-muted/60 px-3 py-2">
+          <div
+            data-slot="session-starter-mode-bar"
+            className="flex h-8 items-center justify-start border-t border-border/60 bg-muted/60 px-2"
+          >
             <Link
               href="/settings/sandbox"
               aria-label={t("assistant.sessionStarter.openSandboxSettings")}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Cloud className="h-4 w-4" />
+              <Settings className="size-3.5" />
             </Link>
-            <div className="mx-2 h-5 w-px bg-border/70" />
+            <div className="mx-1 h-4 w-px bg-border/70" />
             <Popover
               open={repoPopoverOpen}
               onOpenChange={handleRepoPopoverChange}
@@ -433,14 +418,14 @@ export function SessionStarter({
                 <button
                   type="button"
                   disabled={controlsDisabled || isRepoModeDisabled}
-                  className="flex min-h-9 flex-1 cursor-pointer items-center justify-between rounded-lg px-3 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs font-medium text-foreground transition-colors duration-200 hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span>
-                    {mode === "repo"
-                      ? t("assistant.sessionStarter.newSession")
+                  <span className="max-w-56 truncate">
+                    {hasRepoSelection
+                      ? `${selectedOwner}/${selectedRepo}`
                       : t("assistant.sessionStarter.newChat")}
                   </span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -451,6 +436,24 @@ export function SessionStarter({
                 {repoSettings}
               </PopoverContent>
             </Popover>
+            {hasRepoSelection &&
+              !githubConnectionLoading &&
+              !reconnectRequired && (
+                <>
+                  <ChevronRight
+                    className="mx-0.5 size-3.5 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <BranchSelectorCompact
+                    owner={selectedOwner}
+                    repo={selectedRepo}
+                    value={selectedBranch}
+                    isNewBranch={isNewBranch}
+                    onChange={handleBranchChange}
+                    variant="sessionFooter"
+                  />
+                </>
+              )}
           </div>
         }
       />

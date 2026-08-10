@@ -250,7 +250,7 @@ const handleRepoPopoverChange = (open: boolean) => {
 
 从 `repoSettings` 移除 `BranchSelectorCompact`，保留 Repo、Vercel、Git sections。图标 import 改用 `Settings`、`ChevronsUpDown` 和作为分隔符的 `ChevronRight`。
 
-Footer 外层使用 `justify-start px-2 py-1`；Settings link 使用 `h-8 w-8`；repo trigger 使用 `h-8`、`text-xs`、自动宽度，并显示：
+Footer 外层使用 `h-8 justify-start px-2`，不增加纵向 padding；Settings link 使用 `h-8 w-8`；repo trigger 使用 `h-8`、`text-xs`、自动宽度，并显示：
 
 ~~~tsx
 <span className="max-w-56 truncate">
