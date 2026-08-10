@@ -3,7 +3,6 @@
 import { useTranslation } from "react-i18next";
 import { File as DiffsFile } from "@pierre/diffs/react";
 import { Check, CodeXml, Copy, Loader2, RefreshCw } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useCallback, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import type { WorkspaceFileContentResponse } from "@/app/api/sessions/[sessionId]/files/content/route";
@@ -23,14 +22,9 @@ import {
 import { SelectionPopover } from "@/components/assistant/selection-popover";
 import { useIsMobile } from "@/hooks/assistant/use-mobile";
 import { defaultFileOptions } from "@/lib/diffs-config";
-import { streamdownPlugins } from "@/lib/streamdown-config";
+import { LazyStreamdown } from "@/components/assistant/lazy-streamdown";
 import { fetcherNoStore } from "@/lib/swr";
 import { cn } from "@/lib/utils";
-
-const Streamdown = dynamic(
-  () => import("streamdown").then((m) => m.Streamdown),
-  { ssr: false },
-);
 
 type WorkspaceFileViewerProps = {
   editorBusy?: boolean;
@@ -149,9 +143,9 @@ function stripMarkdownFrontmatter(content: string) {
 function PrettyMarkdown({ content }: { content: string }) {
   return (
     <div className="p-6">
-      <Streamdown mode="static" isAnimating={false} plugins={streamdownPlugins}>
+      <LazyStreamdown mode="static" isAnimating={false}>
         {stripMarkdownFrontmatter(content)}
-      </Streamdown>
+      </LazyStreamdown>
     </div>
   );
 }

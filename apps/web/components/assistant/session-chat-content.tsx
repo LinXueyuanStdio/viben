@@ -64,12 +64,7 @@ import {
   AssistantFileLink,
   type AssistantFileLinkProps,
 } from "@/components/assistant/assistant-file-link";
-import { FileSuggestionsDropdown } from "@/components/assistant/file-suggestions-dropdown";
-import { ImageAttachmentsPreview } from "@/components/assistant/image-attachments-preview";
-import { TextAttachmentsPreview } from "@/components/assistant/text-attachments-preview";
-import { ModelSelectorCompact } from "@/components/assistant/model-selector-compact";
 import { useInlineQuestion } from "@/components/assistant/inline-question-input";
-import { SlashCommandDropdown } from "@/components/assistant/slash-command-dropdown";
 import { SnippetChip } from "@/components/assistant/snippet-chip";
 import { AssistantMessageGroups } from "@/components/assistant/assistant-message-groups";
 import { MessageModelPill } from "@/components/assistant/message-model-pill";
@@ -125,7 +120,7 @@ import {
 } from "@/lib/models";
 import { getPrDeploymentRefreshInterval } from "@/lib/pr-deployment-polling";
 
-import { streamdownPlugins } from "@/lib/streamdown-config";
+import { LazyStreamdown } from "@/components/assistant/lazy-streamdown";
 import { cn } from "@/lib/utils";
 import {
   type SandboxInfo,
@@ -143,9 +138,6 @@ import {
   getSandboxCreateErrorDetails,
   type SandboxCreateErrorDetails,
 } from "@/lib/sandbox-create";
-import { SandboxCreateErrorBanner } from "@/components/assistant/sandbox-create-error-banner";
-import { WorkspaceFileViewer } from "@/components/assistant/workspace-file-viewer";
-import "streamdown/styles.css";
 
 /** Minimum interval between textarea-focus activity pings (5 minutes). */
 const ACTIVITY_PING_THROTTLE_MS = 5 * 60 * 1000;
@@ -169,10 +161,6 @@ const CreateRepoDialog = dynamic(
     import("@/components/assistant/create-repo-dialog").then((m) => m.CreateRepoDialog),
   { ssr: false },
 );
-const Streamdown = dynamic(
-  () => import("streamdown").then((m) => m.Streamdown),
-  { ssr: false },
-);
 const DiffTabView = dynamic(
   () => import("./diff-tab-view").then((m) => m.DiffTabView),
   { ssr: false },
@@ -184,6 +172,36 @@ const FileTabView = dynamic(
 const GitPanel = dynamic(() => import("./git-panel").then((m) => m.GitPanel), {
   ssr: false,
 });
+
+// Conditionally rendered UI — only loaded when user triggers them
+const FileSuggestionsDropdown = dynamic(
+  () => import("./file-suggestions-dropdown").then((m) => m.FileSuggestionsDropdown),
+  { ssr: false },
+);
+const SlashCommandDropdown = dynamic(
+  () => import("./slash-command-dropdown").then((m) => m.SlashCommandDropdown),
+  { ssr: false },
+);
+const ImageAttachmentsPreview = dynamic(
+  () => import("./image-attachments-preview").then((m) => m.ImageAttachmentsPreview),
+  { ssr: false },
+);
+const TextAttachmentsPreview = dynamic(
+  () => import("./text-attachments-preview").then((m) => m.TextAttachmentsPreview),
+  { ssr: false },
+);
+const SandboxCreateErrorBanner = dynamic(
+  () => import("./sandbox-create-error-banner").then((m) => m.SandboxCreateErrorBanner),
+  { ssr: false },
+);
+const ModelSelectorCompact = dynamic(
+  () => import("./model-selector-compact").then((m) => m.ModelSelectorCompact),
+  { ssr: false },
+);
+const WorkspaceFileViewer = dynamic(
+  () => import("./workspace-file-viewer").then((m) => m.WorkspaceFileViewer),
+  { ssr: false },
+);
 
 const emptySubscribe = () => () => {};
 
@@ -3527,7 +3545,7 @@ export function SessionChatContent({
                                         </div>
                                       ) : (
                                         <div className="group min-w-0 w-full overflow-hidden">
-                                          <Streamdown
+                                          <LazyStreamdown
                                             animated={
                                               isMessageStreaming
                                                 ? {
@@ -3544,10 +3562,9 @@ export function SessionChatContent({
                                             }
                                             isAnimating={isMessageStreaming}
                                             components={streamdownComponents}
-                                            plugins={streamdownPlugins}
                                           >
                                             {p.text}
-                                          </Streamdown>
+                                          </LazyStreamdown>
                                           {(canCopyAssistantMessage ||
                                             (!isMessageStreaming &&
                                               isFinalAssistantTextPart &&

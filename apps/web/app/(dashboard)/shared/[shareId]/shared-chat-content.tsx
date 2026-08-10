@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
-import { Streamdown } from "streamdown";
+import { LazyStreamdown } from "@/components/assistant/lazy-streamdown";
 import type {
   WebAgentUIMessage,
   WebAgentUIMessagePart,
@@ -27,10 +27,9 @@ import { ToolCall } from "@/components/assistant/tool-call";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { Chat } from "@/lib/db/schema";
-import { streamdownPlugins } from "@/lib/streamdown-config";
+
 import { cn } from "@/lib/utils";
 import { SharedChatStatus } from "./shared-chat-status";
-import "streamdown/styles.css";
 
 export type MessageWithTiming = {
   message: WebAgentUIMessage;
@@ -440,14 +439,13 @@ function SharedMessage({
               </div>
             ) : (
               <div className="min-w-0 w-full overflow-hidden">
-                <Streamdown
+                <LazyStreamdown
                   mode="static"
                   isAnimating={false}
                   components={streamdownComponents}
-                  plugins={streamdownPlugins}
                 >
                   {p.text}
-                </Streamdown>
+                </LazyStreamdown>
               </div>
             )}
           </div>
