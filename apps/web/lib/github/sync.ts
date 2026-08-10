@@ -6,6 +6,7 @@ import {
 
 const userInstallationSchema = z.object({
   id: z.number(),
+  app_id: z.number(),
   repository_selection: z.enum(["all", "selected"]),
   html_url: z.string().url().nullable().optional(),
   account: z.object({
@@ -149,9 +150,16 @@ export async function syncUserInstallations(
   userToken: string,
   personalAccountLogin: string,
 ): Promise<number> {
+  const configuredAppId = Number.parseInt(process.env.GITHUB_APP_ID ?? "", 10);
+  if (!Number.isFinite(configuredAppId)) {
+    throw new Error("GitHub App is not configured");
+  }
+
   const installations = await fetchUserInstallations(userToken);
-  const syncableInstallations = installations.filter((installation) =>
-    isSyncableInstallation(installation, personalAccountLogin),
+  const syncableInstallations = installations.filter(
+    (installation) =>
+      installation.app_id === configuredAppId &&
+      isSyncableInstallation(installation, personalAccountLogin),
   );
 
   for (const installation of syncableInstallations) {

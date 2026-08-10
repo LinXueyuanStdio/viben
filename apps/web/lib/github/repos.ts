@@ -74,6 +74,22 @@ interface ListReposOptions {
   limit?: number;
 }
 
+export class GitHubInstallationRequestError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "GitHubInstallationRequestError";
+    this.status = status;
+  }
+}
+
+export function isMissingGitHubInstallationError(error: unknown): boolean {
+  return (
+    error instanceof GitHubInstallationRequestError && error.status === 404
+  );
+}
+
 /** List repos for an installation via App JWT (mints an installation token). */
 export async function listInstallationRepositories(
   options: ListReposOptions,
@@ -97,8 +113,9 @@ export async function listInstallationRepositories(
     },
   );
   if (!tokenRes.ok) {
-    throw new Error(
+    throw new GitHubInstallationRequestError(
       `Failed to mint installation token: ${tokenRes.status}`,
+      tokenRes.status,
     );
   }
   const { token: installationToken } = (await tokenRes.json()) as { token: string };

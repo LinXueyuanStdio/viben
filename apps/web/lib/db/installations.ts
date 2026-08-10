@@ -146,6 +146,23 @@ export async function deleteInstallationByInstallationId(
   return deleted.length;
 }
 
+export async function deleteInstallationByUserAndId(
+  userId: string,
+  installationId: number,
+): Promise<number> {
+  const deleted = await db
+    .delete(githubInstallations)
+    .where(
+      and(
+        eq(githubInstallations.userId, userId),
+        eq(githubInstallations.installationId, installationId),
+      ),
+    )
+    .returning({ id: githubInstallations.id });
+
+  return deleted.length;
+}
+
 export async function deleteInstallationsByUserId(
   userId: string,
 ): Promise<number> {

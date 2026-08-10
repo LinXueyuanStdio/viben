@@ -185,9 +185,11 @@ export function RepoSelectorCompact({
     window.location.href = buildGitHubReconnectUrl(getCurrentPathWithSearch());
   }, []);
 
-  const { data: installations = [], isLoading: installationsLoading } = useSWR<
-    Installation[]
-  >(
+  const {
+    data: installations = [],
+    isLoading: installationsLoading,
+    mutate: refreshInstallations,
+  } = useSWR<Installation[]>(
     hasGitHub && !reconnectRequired ? "github-installations" : null,
     fetchInstallations,
   );
@@ -200,12 +202,25 @@ export function RepoSelectorCompact({
     repos,
     isLoading: reposLoading,
     error: reposError,
+    errorStatus: reposErrorStatus,
     refresh: refreshRepos,
   } = useInstallationRepos({
     installationId: currentInstallation?.installationId ?? null,
     query: debouncedRepoSearch,
     limit: 25,
   });
+
+  useEffect(() => {
+    if (reposErrorStatus !== 410) {
+      return;
+    }
+
+    void refreshInstallations().then((nextInstallations) => {
+      const nextOwner = nextInstallations?.[0]?.accountLogin ?? "";
+      hasAutoSelectedRef.current = Boolean(nextOwner);
+      setCurrentOwner(nextOwner);
+    });
+  }, [reposErrorStatus, refreshInstallations]);
 
   // Sort repos: by updated_at desc if available, otherwise alphabetical
   const sortedRepos = useMemo(() => {

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInstallationByUserAndId } from "@/lib/db/installations";
-import { listInstallationRepositories } from "@/lib/github/repos";
+import {
+  deleteInstallationByUserAndId,
+  getInstallationByUserAndId,
+} from "@/lib/db/installations";
+import {
+  isMissingGitHubInstallationError,
+  listInstallationRepositories,
+} from "@/lib/github/repos";
 import { getServerSession } from "@/lib/session/get-server-session";
 
 function parseInstallationId(value: string | null): number | null {
@@ -39,6 +45,17 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(repos);
   } catch (error) {
+    if (isMissingGitHubInstallationError(error)) {
+      await deleteInstallationByUserAndId(session.user.id, installationId);
+      return NextResponse.json(
+        {
+          error: "GitHub installation is no longer available",
+          code: "installation_not_found",
+        },
+        { status: 410 },
+      );
+    }
+
     console.error("Failed to fetch installation repositories:", error);
     return NextResponse.json(
       { error: "Failed to fetch repositories" },

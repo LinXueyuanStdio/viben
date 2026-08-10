@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { z } from "zod";
-import { fetcher } from "@/lib/swr";
+import { FetchError, fetcher } from "@/lib/swr";
 
 const installationRepoSchema = z.object({
   name: z.string(),
@@ -27,6 +27,7 @@ interface UseInstallationReposReturn {
   repos: InstallationRepo[];
   isLoading: boolean;
   error: string | null;
+  errorStatus: number | null;
   refresh: () => Promise<InstallationRepo[] | undefined>;
 }
 
@@ -89,6 +90,7 @@ export function useInstallationRepos({
     repos: data ?? [],
     isLoading,
     error: error?.message ?? null,
+    errorStatus: error instanceof FetchError ? error.status : null,
     refresh,
   };
 }

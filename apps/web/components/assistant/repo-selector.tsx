@@ -93,12 +93,28 @@ export function RepoSelector({
     repos,
     isLoading: reposLoading,
     error: reposError,
+    errorStatus: reposErrorStatus,
     refresh: refreshRepos,
   } = useInstallationRepos({
     installationId: selectedInstallation?.installationId ?? null,
     query: debouncedRepoSearch,
     limit: 25,
   });
+
+  useEffect(() => {
+    if (reposErrorStatus !== 410) {
+      return;
+    }
+
+    setInstallations((current) =>
+      current.filter(
+        (installation) =>
+          installation.installationId !== selectedInstallation?.installationId,
+      ),
+    );
+    setSelectedOwner("");
+    setSelectedRepo("");
+  }, [reposErrorStatus, selectedInstallation?.installationId]);
 
   useEffect(() => {
     const loadInstallations = async () => {

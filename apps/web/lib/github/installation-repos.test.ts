@@ -1,8 +1,18 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { listInstallationRepositories } from "./repos";
+import {
+  GitHubInstallationRequestError,
+  isMissingGitHubInstallationError,
+  listInstallationRepositories,
+} from "./repos";
 
 const originalFetch = globalThis.fetch;
+const originalGitHubAppId = process.env.GITHUB_APP_ID;
+const originalGitHubAppPrivateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+
+vi.mock("@octokit/auth-app", () => ({
+  createAppAuth: () => async () => ({ token: "app-jwt" }),
+}));
 
 function createRepository(name: string, updatedAt: string) {
   return {
@@ -37,15 +47,40 @@ function createPage(
 describe("installation-repos", () => {
   beforeEach(() => {
     globalThis.fetch = originalFetch;
+    process.env.GITHUB_APP_ID = "777";
+    process.env.GITHUB_APP_PRIVATE_KEY = "test-private-key";
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    if (originalGitHubAppId === undefined) {
+      delete process.env.GITHUB_APP_ID;
+    } else {
+      process.env.GITHUB_APP_ID = originalGitHubAppId;
+    }
+    if (originalGitHubAppPrivateKey === undefined) {
+      delete process.env.GITHUB_APP_PRIVATE_KEY;
+    } else {
+      process.env.GITHUB_APP_PRIVATE_KEY = originalGitHubAppPrivateKey;
+    }
+  });
+
+  test("classifies a missing installation when token minting returns 404", async () => {
+    const error = new GitHubInstallationRequestError(
+      "Failed to mint installation token: 404",
+      404,
+    );
+
+    expect(isMissingGitHubInstallationError(error)).toBe(true);
   });
 
   test("stops paging once it has enough matches to satisfy the limit", async () => {
-    const fetchMock = mock(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
+      if (url.pathname.endsWith("/access_tokens")) {
+        return Response.json({ token: "installation-token" });
+      }
+
       const page = url.searchParams.get("page");
 
       expect(url.searchParams.get("per_page")).toBe("50");
@@ -72,18 +107,27 @@ describe("installation-repos", () => {
 
     const repos = await listInstallationRepositories({
       installationId: 123,
-      userToken: "token",
       owner: "acme",
       limit: 2,
     });
 
     expect(repos.map((repo) => repo.name)).toEqual(["alpha", "beta"]);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        new URL(input.toString()).pathname.endsWith(
+          "/installation/repositories",
+        ),
+      ),
+    ).toHaveLength(1);
   });
 
   test("continues paging until a query has enough matches", async () => {
-    const fetchMock = mock(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
+      if (url.pathname.endsWith("/access_tokens")) {
+        return Response.json({ token: "installation-token" });
+      }
+
       const page = url.searchParams.get("page");
 
       expect(url.searchParams.get("per_page")).toBe("50");
@@ -121,13 +165,18 @@ describe("installation-repos", () => {
 
     const repos = await listInstallationRepositories({
       installationId: 123,
-      userToken: "token",
       owner: "acme",
       query: "docs",
       limit: 2,
     });
 
     expect(repos.map((repo) => repo.name)).toEqual(["docs-site", "docs"]);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        new URL(input.toString()).pathname.endsWith(
+          "/installation/repositories",
+        ),
+      ),
+    ).toHaveLength(2);
   });
 });
