@@ -163,7 +163,7 @@ function ChatTabItem({
       className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium"
     >
       <span className="max-w-[120px] truncate">
-        {chat.title || t("assistant.newChat")}
+        {chat.title || t("assistant.chat.newChat")}
       </span>
       {chat.hasUnread && (
         <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
@@ -254,7 +254,7 @@ function ChatTabItem({
       >
         <div className="space-y-1.5">
           <p className="text-sm font-medium text-foreground leading-snug">
-            {chat.title || t("assistant.newChat")}
+            {chat.title || t("assistant.chat.newChat")}
           </p>
           <p className="text-xs text-muted-foreground truncate">
             {chat.modelId}
@@ -604,7 +604,9 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
             <Plus className="h-3.5 w-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">{t("assistant.newChat")}</TooltipContent>
+        <TooltipContent side="bottom">
+          {t("assistant.chat.newChat")}
+        </TooltipContent>
       </Tooltip>
     </div>
   );

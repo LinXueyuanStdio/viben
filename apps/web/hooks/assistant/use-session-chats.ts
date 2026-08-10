@@ -208,7 +208,7 @@ export function useSessionChats(
     chats: [],
   });
   const { t } = useTranslation();
-  const defaultTitle = t("assistant.newChat");
+  const defaultTitle = t("assistant.chat.newChat");
 
   const optimisticOverlay = useMemo(
     () => (sessionId ? getSessionOverlay(sessionId) : null),
@@ -499,7 +499,7 @@ export function useSessionChats(
     const optimisticChat: Chat = {
       id: crypto.randomUUID(),
       sessionId,
-      title: t("assistant.newChat"),
+      title: t("assistant.chat.newChat"),
       modelId: data?.defaultModelId ?? null,
       activeStreamId: null,
       lastAssistantMessageAt: null,
