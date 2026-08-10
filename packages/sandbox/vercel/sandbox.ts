@@ -538,40 +538,33 @@ ${hostLine}${portLines}${runtimeEnvLine}`;
     // Calculate SDK timeout with buffer for beforeStop hook.
     const sdkTimeout = effectiveTimeout + TIMEOUT_BUFFER_MS;
 
+    const snapshotId = restoreSnapshotId ?? baseSnapshotId;
     const createBaseConfig = {
       ...(name ? { name } : {}),
       resources: { vcpus },
       timeout: sdkTimeout,
-      runtime,
+      ...(snapshotId ? {} : { runtime }),
       persistent,
       networkPolicy: buildGitHubCredentialBrokeringPolicy(githubToken),
       ...(ports && { ports }),
       ...(snapshotExpiration !== undefined && { snapshotExpiration }),
     };
-
-    let sdk: VercelSandboxSDK;
-    if (restoreSnapshotId) {
-      sdk = await VercelSandboxSDK.create({
+    const sdkConfig = snapshotId
+      ? {
         ...createBaseConfig,
-        source: { type: "snapshot", snapshotId: restoreSnapshotId },
-      });
-    } else if (baseSnapshotId) {
-      sdk = await VercelSandboxSDK.create({
-        ...createBaseConfig,
-        source: { type: "snapshot", snapshotId: baseSnapshotId },
-      });
-    } else if (source) {
-      sdk = await VercelSandboxSDK.create({
-        ...createBaseConfig,
-        source: {
-          type: "git",
-          url: source.url,
-          ...(source.branch && { revision: source.branch }),
-        },
-      });
-    } else {
-      sdk = await VercelSandboxSDK.create(createBaseConfig);
-    }
+          source: { type: "snapshot" as const, snapshotId },
+        }
+      : {
+          ...createBaseConfig,
+          ...(source && {
+            source: {
+              type: "git" as const,
+              url: source.url,
+              ...(source.branch && { revision: source.branch }),
+            },
+          }),
+        };
+    const sdk = await VercelSandboxSDK.create(sdkConfig);
 
     const workingDirectory = DEFAULT_WORKING_DIRECTORY;
 

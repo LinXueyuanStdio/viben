@@ -1,11 +1,6 @@
 'use client';
 
 import { useRef } from 'react';
-import Claude from '@lobehub/icons/es/Claude';
-import Cursor from '@lobehub/icons/es/Cursor';
-import Windsurf from '@lobehub/icons/es/Windsurf';
-import Cline from '@lobehub/icons/es/Cline';
-import Gemini from '@lobehub/icons/es/Gemini';
 import { useInView } from './use-in-view';
 
 type AgentName = 'Claude Desktop' | 'Claude Code' | 'Cursor' | 'Windsurf' | 'Cline' | 'Gemini CLI';
@@ -15,41 +10,38 @@ interface AgentBadgeProps {
   index: number;
 }
 
- 
-type IconComponent = React.ComponentType<any>;
-
 const agentConfig: Record<AgentName, {
-  icon: IconComponent;
+  iconSrc: string;
   color: string;
   glowColor: string;
 }> = {
   'Claude Desktop': {
-    icon: Claude.Color,
+    iconSrc: '/icons/agents/claude.svg',
     color: '#D97757',
     glowColor: 'rgba(217, 119, 87, 0.4)',
   },
   'Claude Code': {
-    icon: Claude.Color,
+    iconSrc: '/icons/agents/claude.svg',
     color: '#D97757',
     glowColor: 'rgba(217, 119, 87, 0.4)',
   },
   Cursor: {
-    icon: Cursor,
+    iconSrc: '/icons/agents/cursor.svg',
     color: '#000000',
     glowColor: 'rgba(255, 255, 255, 0.3)',
   },
   Windsurf: {
-    icon: Windsurf,
+    iconSrc: '/icons/agents/windsurf.svg',
     color: '#00D1FF',
     glowColor: 'rgba(0, 209, 255, 0.4)',
   },
   Cline: {
-    icon: Cline,
+    iconSrc: '/icons/agents/cline.svg',
     color: '#EC6547',
     glowColor: 'rgba(236, 101, 71, 0.4)',
   },
   'Gemini CLI': {
-    icon: Gemini.Color,
+    iconSrc: '/icons/agents/gemini-cli.svg',
     color: '#8B5CF6',
     glowColor: 'rgba(139, 92, 246, 0.4)',
   },
@@ -59,7 +51,6 @@ export function AgentBadge({ name, index }: AgentBadgeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref);
   const config = agentConfig[name];
-  const Icon = config.icon;
 
   return (
     <div
@@ -94,7 +85,13 @@ export function AgentBadge({ name, index }: AgentBadgeProps) {
       {/* 图标和文字 */}
       <div className="relative flex items-center gap-2">
         <span className="transition-transform duration-300 group-hover:scale-110">
-          <Icon size={18} className="transition-all duration-300" />
+          <img
+            src={config.iconSrc}
+            alt=""
+            width={18}
+            height={18}
+            className="transition-all duration-300"
+          />
         </span>
         <span>{name}</span>
       </div>

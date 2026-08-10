@@ -249,7 +249,7 @@ export function HomePage() {
       {/* Download — lazy (16 KB) */}
       <DownloadSection />
 
-      {/* Supported Agents — lazy (92 KB via @lobehub/icons) */}
+      {/* Supported Agents — lazy-loaded with local SVG assets */}
       <section className="border-y border-white/10 bg-[#0f0f16] py-20">
         <div className="mx-auto max-w-6xl px-6 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('homepage.agents.title')}</h2>

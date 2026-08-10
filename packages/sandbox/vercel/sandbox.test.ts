@@ -454,6 +454,7 @@ describe("VercelSandbox.create", () => {
       type: "snapshot",
       snapshotId: "snap-base-1",
     });
+    expect(createCalls[0]).not.toHaveProperty("runtime");
     expect(runCommandCalls[0]).toEqual({
       cmd: "git",
       args: [

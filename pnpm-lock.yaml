@@ -9,6 +9,7 @@ overrides:
   lucide-react: ^1.16.0
   react: 19.2.7
   react-dom: 19.2.7
+  '@vercel/oidc': 3.8.2
   '@types/react': 19.2.15
   '@types/react-dom': 19.2.3
 
@@ -675,7 +676,7 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0
       '@vercel/oidc':
-        specifier: ^3.8.2
+        specifier: 3.8.2
         version: 3.8.2
       '@vercel/sandbox':
         specifier: 3.0.0
@@ -1766,8 +1767,8 @@ importers:
   packages/sandbox:
     dependencies:
       '@vercel/sandbox':
-        specifier: 2.0.0-beta.11
-        version: 2.0.0-beta.11
+        specifier: 3.0.0
+        version: 3.0.0
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -9861,10 +9862,6 @@ packages:
       ws:
         optional: true
 
-  '@vercel/oidc@3.2.0':
-    resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
-    engines: {node: '>= 20'}
-
   '@vercel/oidc@3.8.2':
     resolution: {integrity: sha512-nmVSeQ7tewCkqYBNB/MNL8aPB9sTvtjvqIE6+U17U4IuTyehuWVERDlWrSn0DVfiFAstRlRkGLHBlKHB2FyzbQ==}
     engines: {node: '>= 20'}
@@ -9872,9 +9869,6 @@ packages:
   '@vercel/queue@0.3.1':
     resolution: {integrity: sha512-6pjdXyNfdCQnj1nyeB1rPtll/XUhmciyeZJD0rpIUUwmcIfR+utDl6+iFvlHvsBdqAVT8UC6ydObT0v+xldfUQ==}
     engines: {node: '>=20.0.0'}
-
-  '@vercel/sandbox@2.0.0-beta.11':
-    resolution: {integrity: sha512-92B4b3cgUIR9CTGsGlIgy7UIrdyqIqQQom8U8YD10m5lXbjbZrf/tU7Rt+S+Vy0hlI94hKVjPkx7U+fPyBtpNA==}
 
   '@vercel/sandbox@3.0.0':
     resolution: {integrity: sha512-1pF3id7LIG2GfjkEAZW+ZngMDdywJw7aFLOyIlry/lj8v3b4GMn3WCuBbvG4N4wTmYUfFzHaVHfdwVpqALEFkw==}
@@ -10794,14 +10788,6 @@ packages:
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
-
-  bare-events@2.8.2:
-    resolution: {integrity: sha512-riJjyv1/mHLIPX4RwiK+oW9/4c3TEUeORHKefKAKnZ5kyslbN+HXowtbaVEqt4IMUB7OXlfixcs6gsFeo/jhiQ==}
-    peerDependencies:
-      bare-abort-controller: '*'
-    peerDependenciesMeta:
-      bare-abort-controller:
-        optional: true
 
   bare-events@2.8.3:
     resolution: {integrity: sha512-HdUm8EMQBLaJvGUdidNNbqpA1kYkwNcb+MYxkxCLAPJGQzlv9J0C24h8V65Z4c5GLd/JEALDvpFCQgpLJqc0zw==}
@@ -20382,9 +20368,6 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@3.24.4:
-    resolution: {integrity: sha512-OdqJE9UDRPwWsrHjLN2F8bPxvwJBK22EHLWtanu0LSYr5YqzsaaW3RMgmjwr8Rypg5k+meEJdSPXJZXE/yqOMg==}
-
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
@@ -20477,14 +20460,14 @@ snapshots:
     dependencies:
       '@ai-sdk/provider': 3.0.10
       '@ai-sdk/provider-utils': 4.0.29(zod@4.3.6)
-      '@vercel/oidc': 3.2.0
+      '@vercel/oidc': 3.8.2
       zod: 4.3.6
 
   '@ai-sdk/gateway@3.0.164(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
       '@ai-sdk/provider-utils': 4.0.41(zod@4.3.6)
-      '@vercel/oidc': 3.2.0
+      '@vercel/oidc': 3.8.2
       zod: 4.3.6
 
   '@ai-sdk/google@3.0.103(zod@4.3.6)':
@@ -29611,8 +29594,6 @@ snapshots:
       '@aws-sdk/credential-provider-web-identity': 3.972.49
       ws: 8.20.1
 
-  '@vercel/oidc@3.2.0': {}
-
   '@vercel/oidc@3.8.2':
     dependencies:
       '@vercel/cli-config': 0.2.2
@@ -29626,24 +29607,9 @@ snapshots:
       mixpart: 0.0.6
       picocolors: 1.1.1
 
-  '@vercel/sandbox@2.0.0-beta.11':
-    dependencies:
-      '@vercel/oidc': 3.2.0
-      async-retry: 1.3.3
-      jsonlines: 0.1.1
-      ms: 2.1.3
-      picocolors: 1.1.1
-      tar-stream: 3.1.7
-      undici: 7.25.0
-      xdg-app-paths: 5.1.0
-      zod: 3.24.4
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - react-native-b4a
-
   '@vercel/sandbox@3.0.0':
     dependencies:
-      '@vercel/oidc': 3.2.0
+      '@vercel/oidc': 3.8.2
       '@workflow/serde': 4.1.0-beta.2
       async-retry: 1.3.3
       jose: 6.2.3
@@ -30514,7 +30480,7 @@ snapshots:
 
   '@workflow/world-vercel@5.0.0-beta.23(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@vercel/oidc': 3.2.0
+      '@vercel/oidc': 3.8.2
       '@vercel/queue': 0.3.1
       '@workflow/errors': 5.0.0-beta.9
       '@workflow/world': 5.0.0-beta.15
@@ -30939,10 +30905,11 @@ snapshots:
       buffer-crc32: 1.0.0
       readable-stream: 4.7.0
       readdir-glob: 1.1.3
-      tar-stream: 3.1.7
+      tar-stream: 3.2.0
       zip-stream: 6.0.1
     transitivePeerDependencies:
       - bare-abort-controller
+      - bare-buffer
       - react-native-b4a
 
   archiver@8.0.0:
@@ -31236,8 +31203,6 @@ snapshots:
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
-
-  bare-events@2.8.2: {}
 
   bare-events@2.8.3: {}
 
@@ -33698,7 +33663,7 @@ snapshots:
 
   events-universal@1.0.1:
     dependencies:
-      bare-events: 2.8.2
+      bare-events: 2.8.3
     transitivePeerDependencies:
       - bare-abort-controller
 
@@ -42850,8 +42815,6 @@ snapshots:
   zod-validation-error@4.0.2(zod@4.3.6):
     dependencies:
       zod: 4.3.6
-
-  zod@3.24.4: {}
 
   zod@3.25.76: {}
 
