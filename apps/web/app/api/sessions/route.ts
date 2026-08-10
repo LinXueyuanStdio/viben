@@ -367,6 +367,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
         title,
         status: "running",
+        agentType: "work",
         repoOwner,
         repoName,
         branch: finalBranch,
