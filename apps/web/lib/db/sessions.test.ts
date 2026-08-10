@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
+import { chats, sessions } from "./schema";
 
 type UpsertMode = "inserted" | "updated" | "conflict";
 
@@ -6,6 +9,21 @@ let upsertMode: UpsertMode = "inserted";
 
 // Rows returned by the fakeDb select() chain (used by getUsedSessionTitles)
 let fakeSelectRows: { title: string }[] = [];
+
+let recordedSessionInsert: Record<string, unknown> | undefined;
+let recordedSessionUpdate: Record<string, unknown> | undefined;
+let renderedWhereClause = "";
+let recordedChatOrder = "";
+
+const dialect = new PgDialect();
+
+function renderSql(statement: SQL): string {
+  const query = dialect.sqlToQuery(statement);
+  return `${query.sql} ${query.params.join(" ")}`
+    .replaceAll('"', "")
+    .replaceAll("sessions.", "")
+    .replaceAll("chats.", "");
+}
 
 const fakeInsertedMessage = {
   id: "message-1",
@@ -20,6 +38,39 @@ const fakeDb = {
   select: (_columns: unknown) => ({
     from: (_table: unknown) => ({
       where: async (_condition: unknown) => fakeSelectRows,
+    }),
+  }),
+
+  query: {
+    sessions: {
+      findFirst: async ({ where }: { where: SQL }) => {
+        renderedWhereClause = renderSql(where);
+        return undefined;
+      },
+    },
+    chats: {
+      findFirst: async ({
+        orderBy,
+      }: {
+        orderBy: SQL[];
+      }) => {
+        recordedChatOrder = renderSql(orderBy[0] as SQL).trim();
+        return undefined;
+      },
+    },
+  },
+
+  update: (table: unknown) => ({
+    set: (input: Record<string, unknown>) => ({
+      where: (_condition: unknown) => ({
+        returning: async () => {
+          if (table === sessions) {
+            recordedSessionUpdate = input;
+            return [{ id: "session-1", sandboxState: null, ...input }];
+          }
+          return [];
+        },
+      }),
     }),
   }),
 
@@ -42,19 +93,38 @@ const fakeDb = {
     }) => Promise<T>,
   ) => {
     const tx = {
-      insert: (_table: unknown) => ({
-        values: (_input: unknown) => ({
-          onConflictDoNothing: (_config: unknown) => ({
-            returning: async () =>
-              upsertMode === "inserted" ? [fakeInsertedMessage] : [],
-          }),
-        }),
+      insert: (table: unknown) => ({
+        values: (input: Record<string, unknown>) => {
+          const returning = async () => {
+            if (table === sessions) {
+              recordedSessionInsert = input;
+              return [input];
+            }
+            if (table === chats) {
+              return [input];
+            }
+            return [];
+          };
+
+          return {
+            returning,
+            onConflictDoNothing: (_config: unknown) => ({
+              returning: async () =>
+                upsertMode === "inserted" ? [fakeInsertedMessage] : [],
+            }),
+          };
+        },
       }),
-      update: (_table: unknown) => ({
-        set: (_input: unknown) => ({
+      update: (table: unknown) => ({
+        set: (input: Record<string, unknown>) => ({
           where: (_condition: unknown) => ({
-            returning: async () =>
-              upsertMode === "updated" ? [fakeInsertedMessage] : [],
+            returning: async () => {
+              if (table === sessions) {
+                recordedSessionUpdate = input;
+                return [{ id: "session-1", sandboxState: null, ...input }];
+              }
+              return upsertMode === "updated" ? [fakeInsertedMessage] : [];
+            },
           }),
         }),
       }),
@@ -64,7 +134,7 @@ const fakeDb = {
   },
 };
 
-mock.module("./client", () => ({
+vi.mock("./client", () => ({
   db: fakeDb,
 }));
 
@@ -154,6 +224,74 @@ describe("getUsedSessionTitles", () => {
     const result = await getUsedSessionTitles("user-1");
     expect(result.size).toBe(1);
     expect(result.has("Rome")).toBe(true);
+  });
+});
+
+describe("page chat sessions", () => {
+  beforeEach(() => {
+    recordedSessionInsert = undefined;
+    recordedSessionUpdate = undefined;
+    renderedWhereClause = "";
+    recordedChatOrder = "";
+  });
+
+  test("creates chat page sessions without sandbox lifecycle fields", async () => {
+    const { createPageSessionWithInitialChat } = await sessionsModulePromise;
+
+    const result = await createPageSessionWithInitialChat({
+      userId: "user-1",
+      publishedPageId: "page-1",
+      pageUserSlug: "alice",
+      pageSlug: "guide",
+      title: "Guide",
+      chatId: "chat-1",
+      chatTitle: "New chat",
+      modelId: "openai/gpt-5",
+    });
+
+    expect(recordedSessionInsert).toMatchObject({
+      agentType: "chat",
+      publishedPageId: "page-1",
+      pageUserSlug: "alice",
+      pageSlug: "guide",
+      sandboxState: null,
+      lifecycleState: null,
+    });
+    expect(result.chat.sessionId).toBe(result.session.id);
+  });
+
+  test("active lookup excludes archived and non-chat sessions", async () => {
+    const { getActivePageSession } = await sessionsModulePromise;
+
+    await getActivePageSession("user-1", "page-1");
+
+    expect(renderedWhereClause).toContain("agent_type");
+    expect(renderedWhereClause).toContain("archived");
+  });
+
+  test("latest chat uses updated_at descending", async () => {
+    const { getLatestChatBySessionId } = await sessionsModulePromise;
+
+    await getLatestChatBySessionId("session-1");
+
+    expect(recordedChatOrder).toBe("updated_at desc");
+  });
+
+  test("snapshot sync only updates display fields", async () => {
+    const { syncPageSessionSnapshot } = await sessionsModulePromise;
+
+    await syncPageSessionSnapshot("session-1", {
+      title: "Renamed",
+      pageUserSlug: "alice-new",
+      pageSlug: "guide-new",
+    });
+
+    expect(recordedSessionUpdate).toEqual({
+      title: "Renamed",
+      pageUserSlug: "alice-new",
+      pageSlug: "guide-new",
+      updatedAt: expect.any(Date),
+    });
   });
 });
 

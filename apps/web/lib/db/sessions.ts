@@ -1,5 +1,6 @@
 import type { SandboxState } from "@viben/sandbox";
 import { and, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { db } from "./client";
 import {
   chatMessages,
@@ -113,6 +114,113 @@ export async function getSessionById(sessionId: string) {
 export type SessionRecord = NonNullable<
   Awaited<ReturnType<typeof getSessionById>>
 >;
+
+export type Chat = typeof chats.$inferSelect;
+
+export type CreatePageSessionInput = {
+  userId: string;
+  publishedPageId: string;
+  pageUserSlug: string;
+  pageSlug: string;
+  title: string;
+  chatId: string;
+  chatTitle: string;
+  modelId: string;
+};
+
+/**
+ * Finds the one non-archived chat session a user has for a published page.
+ * The partial unique index makes this lookup safe to retry after a concurrent
+ * creator wins the insert race.
+ */
+export async function getActivePageSession(
+  userId: string,
+  publishedPageId: string,
+): Promise<SessionRecord | undefined> {
+  const session = await db.query.sessions.findFirst({
+    where: and(
+      eq(sessions.userId, userId),
+      eq(sessions.publishedPageId, publishedPageId),
+      eq(sessions.agentType, "chat"),
+      ne(sessions.status, "archived"),
+    ),
+  });
+
+  return session ? normalizeSessionRecord(session) : undefined;
+}
+
+/**
+ * Creates the Page Chat session and its initial chat atomically. Page Chat
+ * sessions intentionally have no sandbox or lifecycle state.
+ */
+export async function createPageSessionWithInitialChat(
+  input: CreatePageSessionInput,
+): Promise<{ session: SessionRecord; chat: Chat }> {
+  return db.transaction(async (tx) => {
+    const [session] = await tx
+      .insert(sessions)
+      .values({
+        id: nanoid(),
+        userId: input.userId,
+        title: input.title,
+        agentType: "chat",
+        publishedPageId: input.publishedPageId,
+        pageUserSlug: input.pageUserSlug,
+        pageSlug: input.pageSlug,
+        sandboxState: null,
+        lifecycleState: null,
+      })
+      .returning();
+    if (!session) {
+      throw new Error("Failed to create page session");
+    }
+
+    const [chat] = await tx
+      .insert(chats)
+      .values({
+        id: input.chatId,
+        sessionId: session.id,
+        title: input.chatTitle,
+        modelId: input.modelId,
+      })
+      .returning();
+    if (!chat) {
+      throw new Error("Failed to create page chat");
+    }
+
+    return { session: normalizeSessionRecord(session), chat };
+  });
+}
+
+export async function getLatestChatBySessionId(
+  sessionId: string,
+): Promise<Chat | undefined> {
+  return db.query.chats.findFirst({
+    where: eq(chats.sessionId, sessionId),
+    orderBy: [desc(chats.updatedAt), desc(chats.createdAt)],
+  });
+}
+
+export async function syncPageSessionSnapshot(
+  sessionId: string,
+  snapshot: { title: string; pageUserSlug: string; pageSlug: string },
+): Promise<SessionRecord> {
+  const [session] = await db
+    .update(sessions)
+    .set({
+      title: snapshot.title,
+      pageUserSlug: snapshot.pageUserSlug,
+      pageSlug: snapshot.pageSlug,
+      updatedAt: new Date(),
+    })
+    .where(eq(sessions.id, sessionId))
+    .returning();
+  if (!session) {
+    throw new Error("Failed to sync page session snapshot");
+  }
+
+  return normalizeSessionRecord(session);
+}
 
 export async function getShareById(shareId: string) {
   return db.query.shares.findFirst({
