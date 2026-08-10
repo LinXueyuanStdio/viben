@@ -30,8 +30,8 @@ export type CodeEditorStopResponse = {
   stopped: boolean;
 };
 
-const CODE_SERVER_PIDFILE = "/tmp/open-agents-code-server.pid";
-const CODE_SERVER_LOCKDIR = "/tmp/open-agents-code-server.lock";
+const CODE_SERVER_PIDFILE = "/tmp/viben-agent-code-server.pid";
+const CODE_SERVER_LOCKDIR = "/tmp/viben-agent-code-server.lock";
 
 type ConnectedSandbox = Awaited<ReturnType<typeof connectSandbox>>;
 

@@ -2008,7 +2008,7 @@ export const oauthTokensRelations = relations(oauthTokens, ({ one }) => ({
 }));
 
 // ============================================
-// Assistant Tables (from open-agents)
+// Viben Assistant tables
 // ============================================
 
 export const githubInstallations = pgTable(

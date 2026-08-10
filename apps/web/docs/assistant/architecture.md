@@ -23,7 +23,7 @@
 | 模块 | 职责 |
 |------|------|
 | `system-prompt.ts` | 构建 Agent 的 system prompt |
-| `open-agent.ts` | 核心 `openAgent()` 函数，创建 Agent 实例 |
+| `viben-agent.ts` | 核心 `vibenAgent()` 函数，创建 Viben Agent 实例 |
 | `models.ts` | 模型选择与 gateway 配置 |
 | `tools/` | 工具定义：read、write、bash、glob、grep、fetch、task、todo、skill、ask-user-question |
 | `skills/` | Skill 发现、加载、参数化 |

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 const DEV_SERVER_PID_FILE =
-  "/vercel/sandbox/apps/web/.open-agents-dev-server-3000.pid";
+  "/vercel/sandbox/apps/web/.viben-agent-dev-server-3000.pid";
 const DEV_SERVER_STATE_FILE =
-  "/vercel/sandbox/.open-agents-dev-server-state.json";
+  "/vercel/sandbox/.viben-agent-dev-server-state.json";
 const RUNNING_PID = "4242";
 
 const currentSessionRecord = {
@@ -181,7 +181,7 @@ const execDetachedMock = mock(async (command: string, cwd: string) => {
   lastLaunchCwd = cwd;
 
   const pidFilePath = command.match(
-    /> '([^']+\.open-agents-dev-server-[0-9]+\.pid)'/,
+    /> '([^']+\.viben-agent-dev-server-[0-9]+\.pid)'/,
   )?.[1];
   if (pidFilePath) {
     setMockFile(pidFilePath, `${RUNNING_PID}\n`);

@@ -278,7 +278,7 @@ apps/web/
 
 ## Assistant（助手）模块
 
-AI 编码助手，从 [open-agents](https://github.com/vercel-labs/open-agents) 移植。
+Viben Assistant 是由 Viben Agent 驱动的 AI 编码助手。
 
 ### 页面
 

@@ -375,14 +375,14 @@ describe("/api/chat route", () => {
             },
           ],
         }),
-        "https://open-agents.dev/api/chat",
+        "https://viben-web.vercel.app/api/chat",
       ),
     );
     const body = (await response.json()) as { error: string };
 
     expect(response.status).toBe(403);
     expect(body.error).toBe(
-      "This hosted demo has a 5 message limit. Deploy your own copy to unlock the full Open Agents template.",
+      "This hosted demo has a 5 message limit. Deploy your own copy to unlock the full Viben Assistant template.",
     );
     expect(startCalls).toHaveLength(0);
   });
@@ -413,7 +413,7 @@ describe("/api/chat route", () => {
             },
           ],
         }),
-        "https://open-agents.dev/api/chat",
+        "https://viben-web.vercel.app/api/chat",
       ),
     );
 

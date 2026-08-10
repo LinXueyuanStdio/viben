@@ -54,20 +54,20 @@ export async function generateMetadata({
 
   return {
     title: sharedChat?.title ?? "Shared Chat",
-    description: "A shared Open Agents chat.",
+    description: "A shared Viben Assistant chat.",
     alternates: {
       canonical: shareUrl,
     },
     openGraph: makeOG({
       title: sharedChat?.title ?? "Shared Chat",
-      description: "A shared Open Agents chat.",
+      description: "A shared Viben Assistant chat.",
       url: shareUrl,
       type: "website",
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],
     }),
     twitter: makeTwitter({
       title: sharedChat?.title ?? "Shared Chat",
-      description: "A shared Open Agents chat.",
+      description: "A shared Viben Assistant chat.",
       images: [ogImageUrl],
     }),
   };

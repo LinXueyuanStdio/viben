@@ -64,7 +64,7 @@ describe("/api/vercel/repo-projects", () => {
 
     const response = await GET(
       new Request(
-        "http://localhost/api/vercel/repo-projects?repoOwner=vercel&repoName=open-agents",
+        "http://localhost/api/vercel/repo-projects?repoOwner=viben&repoName=viben-agent",
       ),
     );
     const body = (await response.json()) as {
@@ -91,7 +91,7 @@ describe("/api/vercel/repo-projects", () => {
 
     const response = await GET(
       new Request(
-        "http://localhost/api/vercel/repo-projects?repoOwner=vercel&repoName=open-agents",
+        "http://localhost/api/vercel/repo-projects?repoOwner=viben&repoName=viben-agent",
       ),
     );
     const body = (await response.json()) as {
@@ -109,7 +109,7 @@ describe("/api/vercel/repo-projects", () => {
 
     const response = await GET(
       new Request(
-        "http://localhost/api/vercel/repo-projects?repoOwner=vercel&repoName=open-agents",
+        "http://localhost/api/vercel/repo-projects?repoOwner=viben&repoName=viben-agent",
       ),
     );
     const body = (await response.json()) as { error?: string };

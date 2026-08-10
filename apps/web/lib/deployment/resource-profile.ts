@@ -1,11 +1,11 @@
-export type OpenAgentsResourceProfile = "standard" | "hobby";
+export type VibenAgentResourceProfile = "standard" | "hobby";
 
-export function getOpenAgentsResourceProfile(): OpenAgentsResourceProfile {
+export function getVibenAgentResourceProfile(): VibenAgentResourceProfile {
   return process.env.VIBEN_AGENTS_RESOURCE_PROFILE === "hobby"
     ? "hobby"
     : "standard";
 }
 
 export function isHobbyResourceProfile(): boolean {
-  return getOpenAgentsResourceProfile() === "hobby";
+  return getVibenAgentResourceProfile() === "hobby";
 }

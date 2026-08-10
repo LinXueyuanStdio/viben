@@ -158,18 +158,18 @@ describe("/api/sessions POST vercel project linking", () => {
       createJsonRequest(
         {
           branch: "main",
-          cloneUrl: "https://github.com/vercel-labs/open-agents",
-          repoOwner: "vercel-labs",
-          repoName: "open-agents",
+          cloneUrl: "https://github.com/viben/viben-agent",
+          repoOwner: "viben",
+          repoName: "viben-agent",
         },
-        "https://open-agents.dev/api/sessions",
+        "https://viben-web.vercel.app/api/sessions",
       ),
     );
     const body = (await response.json()) as { error: string };
 
     expect(response.status).toBe(403);
     expect(body.error).toBe(
-      "This hosted demo includes 1 trial session. Deploy your own copy to unlock the full Open Agents template.",
+      "This hosted demo includes 1 trial session. Deploy your own copy to unlock the full Viben Assistant template.",
     );
     expect(createCalls).toHaveLength(0);
   });
@@ -191,9 +191,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         branch: "main",
-        cloneUrl: "https://github.com/vercel-labs/open-agents",
-        repoOwner: "vercel-labs",
-        repoName: "open-agents",
+        cloneUrl: "https://github.com/viben/viben-agent",
+        repoOwner: "viben",
+        repoName: "viben-agent",
       }),
     );
     const body = (await response.json()) as { error: string };
@@ -273,9 +273,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         repoOwner: "vercel",
-        repoName: "open-agents",
+        repoName: "viben-agent",
         branch: "main",
-        cloneUrl: "https://github.com/vercel/open-agents",
+        cloneUrl: "https://github.com/vercel/viben-agent",
         vercelProject: {
           projectId: "project-999",
           projectName: "rogue-project",
@@ -307,9 +307,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         repoOwner: "vercel",
-        repoName: "open-agents",
+        repoName: "viben-agent",
         branch: "main",
-        cloneUrl: "https://github.com/vercel/open-agents",
+        cloneUrl: "https://github.com/vercel/viben-agent",
       }),
     );
     const body = (await response.json()) as {
@@ -340,9 +340,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         repoOwner: "vercel",
-        repoName: "open-agents",
+        repoName: "viben-agent",
         branch: "main",
-        cloneUrl: "https://github.com/vercel/open-agents",
+        cloneUrl: "https://github.com/vercel/viben-agent",
         vercelProject: null,
       }),
     );
@@ -367,9 +367,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         repoOwner: "vercel",
-        repoName: "open-agents",
+        repoName: "viben-agent",
         branch: "main",
-        cloneUrl: "https://github.com/vercel/open-agents",
+        cloneUrl: "https://github.com/vercel/viben-agent",
       }),
     );
 
@@ -385,9 +385,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         repoOwner: 'vercel" && echo nope && "',
-        repoName: "open-agents",
+        repoName: "viben-agent",
         branch: "main",
-        cloneUrl: "https://github.com/vercel/open-agents",
+        cloneUrl: "https://github.com/vercel/viben-agent",
       }),
     );
     const body = (await response.json()) as { error: string };
@@ -403,9 +403,9 @@ describe("/api/sessions POST vercel project linking", () => {
     const response = await POST(
       createJsonRequest({
         repoOwner: "vercel",
-        repoName: "open-agents",
+        repoName: "viben-agent",
         branch: "feature/auto-pr",
-        cloneUrl: "https://github.com/vercel/open-agents",
+        cloneUrl: "https://github.com/vercel/viben-agent",
         autoCommitPush: true,
         autoCreatePr: true,
       }),

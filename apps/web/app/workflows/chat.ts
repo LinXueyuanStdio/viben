@@ -8,7 +8,7 @@ import {
   pruneMessages,
   type UIMessageChunk,
 } from "ai";
-import type { OpenAgentCallOptions } from "@viben/agent";
+import type { VibenAgentCallOptions } from "@viben/agent";
 import { getWorkflowMetadata, getWritable } from "workflow";
 import { getRun } from "workflow/api";
 import { assistantFileLinkPrompt } from "@/lib/assistant-file-links";
@@ -68,7 +68,7 @@ type Options = {
   authSession: AuthSessionContext;
   selectedModelId?: string;
   modelId?: string;
-  agentOptions?: Omit<OpenAgentCallOptions, "sandbox" | "skills">;
+  agentOptions?: Omit<VibenAgentCallOptions, "sandbox" | "skills">;
   assistantId?: string;
   inputMessagesPersisted?: boolean;
   maxSteps?: number;
@@ -79,7 +79,7 @@ type Options = {
 type ChatModelRuntime = {
   selectedModelId: string;
   modelId: string;
-  agentOptions: Omit<OpenAgentCallOptions, "sandbox" | "skills">;
+  agentOptions: Omit<VibenAgentCallOptions, "sandbox" | "skills">;
   autoCommitEnabled: boolean;
   autoCreatePrEnabled: boolean;
 };
@@ -685,7 +685,7 @@ export async function runAgentWorkflow(options: Options) {
   let streamClosed = false;
   let workflowStatus: WorkflowRunStatus = "completed";
   let caughtError: unknown;
-  let sandboxState: OpenAgentCallOptions["sandbox"]["state"] | undefined;
+  let sandboxState: VibenAgentCallOptions["sandbox"]["state"] | undefined;
   let shouldRefreshCachedDiff = false;
 
   try {
@@ -707,7 +707,7 @@ export async function runAgentWorkflow(options: Options) {
       ),
     };
 
-    const agentOptions: OpenAgentCallOptions = {
+    const agentOptions: VibenAgentCallOptions = {
       ...modelRuntime.agentOptions,
       ...options.agentOptions,
       sandbox: {
@@ -1008,7 +1008,7 @@ const runAgentStep = async (
   sessionId: string,
   selectedModelId: string,
   modelId: string,
-  agentOptions: OpenAgentCallOptions,
+  agentOptions: VibenAgentCallOptions,
   stepNumber: number,
 ) => {
   "use step";

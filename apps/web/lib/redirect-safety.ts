@@ -1,4 +1,4 @@
-const FALLBACK_BASE_URL = "https://open-agents.invalid";
+const FALLBACK_BASE_URL = "https://viben-agent.invalid";
 
 export function sanitizeInternalRedirect(
   rawRedirectTo: string | null | undefined,

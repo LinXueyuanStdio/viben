@@ -118,7 +118,7 @@ describe("/api/settings/model-variants", () => {
 
     const { GET } = await routeModulePromise;
     const response = await GET(
-      new Request("https://open-agents.dev/api/settings/model-variants"),
+      new Request("https://viben-web.vercel.app/api/settings/model-variants"),
     );
     const body = (await response.json()) as { modelVariants: ModelVariant[] };
 
@@ -178,7 +178,7 @@ describe("/api/settings/model-variants", () => {
 
     const { POST } = await routeModulePromise;
     const response = await POST(
-      new Request("https://open-agents.dev/api/settings/model-variants", {
+      new Request("https://viben-web.vercel.app/api/settings/model-variants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

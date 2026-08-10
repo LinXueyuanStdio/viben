@@ -151,7 +151,7 @@ describe("/api/models context window enrichment", () => {
 
     const { GET } = await routeModulePromise;
     const response = await GET(
-      new Request("https://open-agents.dev/api/models"),
+      new Request("https://viben-web.vercel.app/api/models"),
     );
     const body = (await response.json()) as {
       models: Array<{ id: string }>;

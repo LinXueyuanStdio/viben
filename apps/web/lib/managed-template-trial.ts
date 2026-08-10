@@ -2,21 +2,20 @@ import type { Session } from "@/lib/session/types";
 
 const ALLOWED_VERCEL_EMAIL_DOMAIN = "vercel.com";
 const MANAGED_TEMPLATE_HOSTS = new Set([
-  "open-agents.dev",
-  "www.open-agents.dev",
+  "viben-web.vercel.app",
 ]);
 const LOCAL_DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export const MANAGED_TEMPLATE_TRIAL_MESSAGE_LIMIT = 5;
 export const MANAGED_TEMPLATE_TRIAL_SESSION_LIMIT = 1;
 export const MANAGED_TEMPLATE_TRIAL_MESSAGE_LIMIT_ERROR =
-  "This hosted demo has a 5 message limit. Deploy your own copy to unlock the full Open Agents template.";
+  "This hosted demo has a 5 message limit. Deploy your own copy to unlock the full Viben Assistant template.";
 export const MANAGED_TEMPLATE_TRIAL_SESSION_LIMIT_ERROR =
-  "This hosted demo includes 1 trial session. Deploy your own copy to unlock the full Open Agents template.";
+  "This hosted demo includes 1 trial session. Deploy your own copy to unlock the full Viben Assistant template.";
 export const MANAGED_TEMPLATE_TRIAL_DELETE_MESSAGE_ERROR =
   "Message deletion is disabled in the hosted demo. Deploy your own copy to unlock full controls.";
 export const MANAGED_TEMPLATE_TRIAL_CODE_EDITOR_ERROR =
-  "The code editor is disabled in the hosted demo. Deploy your own copy to unlock the full Open Agents template.";
+  "The code editor is disabled in the hosted demo. Deploy your own copy to unlock the full Viben Assistant template.";
 export const MANAGED_TEMPLATE_TRIAL_GITHUB_SESSION_ERROR =
   "GitHub-backed sessions are disabled in the hosted demo. Deploy your own copy to unlock repository support, or start a new chat without a repository.";
 

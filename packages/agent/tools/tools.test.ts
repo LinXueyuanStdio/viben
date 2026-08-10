@@ -785,6 +785,7 @@ describe("tools execute behavior", () => {
   test("buildSystemPrompt lists subagents from the shared registry", () => {
     const prompt = buildSystemPrompt({});
 
+    expect(prompt).toContain("You are Viben Assistant");
     expect(prompt).toContain("Available subagents:");
     expect(prompt).toContain(
       "`explorer` - Use for read-only codebase exploration, tracing behavior, and answering questions without changing files",

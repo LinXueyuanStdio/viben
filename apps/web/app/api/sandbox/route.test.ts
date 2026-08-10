@@ -262,7 +262,7 @@ describe("/api/sandbox lifecycle kicks", () => {
       lifecycleVersion: 3,
       sandboxState: { type: "vercel" },
       vercelProjectId: "project-1",
-      vercelProjectName: "open-agents-web",
+      vercelProjectName: "viben-web",
       vercelTeamId: "team-1",
       globalSkillRefs: [],
     };

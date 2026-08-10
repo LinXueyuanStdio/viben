@@ -177,8 +177,8 @@ export function gateway(
   const { config, providerOptionsOverrides, appName, appUrl } = options;
 
   const attributionHeaders = {
-    "http-referer": appUrl ?? "https://open-agents.dev",
-    "x-title": appName ?? "Open Agents",
+    "http-referer": appUrl ?? "https://viben-web.vercel.app",
+    "x-title": appName ?? "Viben Agent",
   };
 
   const instance = config

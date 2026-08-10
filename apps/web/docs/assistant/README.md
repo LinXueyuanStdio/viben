@@ -1,6 +1,6 @@
 # Assistant（助手）模块
 
-Viben Assistant 是从 [open-agents](https://github.com/vercel-labs/open-agents) 移植的 AI 编码助手模块，提供 Agent 驱动的编码对话能力。
+Viben Assistant 是由 Viben Agent 驱动的 AI 编码助手模块，提供智能体驱动的编码对话能力。
 
 ## 功能概览
 
@@ -41,6 +41,5 @@ Web UI (Next.js) → Agent Runtime (packages/agent) → Sandbox VM (packages/san
 
 ## 相关资源
 
-- 源项目：[open-agents](https://github.com/vercel-labs/open-agents)
-- 设计文档：`docs/superpowers/specs/2026-08-05-open-agents-migration-design.md`
-- 实施计划：`docs/superpowers/plans/2026-08-05-open-agents-migration/`
+- Viben Agent：`packages/agent`
+- Viben Assistant：`apps/web/app/(dashboard)/assistant`

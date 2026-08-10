@@ -28,7 +28,7 @@ export function useSession() {
 
   const vibenUser = data?.user;
 
-  // Map viben user → open-agents SessionUserInfo format
+  // Map Viben user to the Viben Agent session format
   const sessionInfo: SessionUserInfo | undefined = vibenUser
     ? {
         user: {

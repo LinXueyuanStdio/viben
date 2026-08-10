@@ -29,7 +29,7 @@ export interface AgentModelSelection {
   providerOptionsOverrides?: ProviderOptionsByProvider;
 }
 
-export type OpenAgentModelInput = GatewayModelId | AgentModelSelection;
+export type VibenAgentModelInput = GatewayModelId | AgentModelSelection;
 
 export interface AgentSandboxContext {
   state: SandboxState;
@@ -40,19 +40,19 @@ export interface AgentSandboxContext {
 
 const callOptionsSchema = z.object({
   sandbox: z.custom<AgentSandboxContext>(),
-  model: z.custom<OpenAgentModelInput>().optional(),
-  subagentModel: z.custom<OpenAgentModelInput>().optional(),
+  model: z.custom<VibenAgentModelInput>().optional(),
+  subagentModel: z.custom<VibenAgentModelInput>().optional(),
   customInstructions: z.string().optional(),
   skills: z.custom<SkillMetadata[]>().optional(),
 });
 
-export type OpenAgentCallOptions = z.infer<typeof callOptionsSchema>;
+export type VibenAgentCallOptions = z.infer<typeof callOptionsSchema>;
 
 export const defaultModelLabel = "anthropic/claude-opus-4.6" as const;
 export const defaultModel = gateway(defaultModelLabel);
 
 function normalizeAgentModelSelection(
-  selection: OpenAgentModelInput | undefined,
+  selection: VibenAgentModelInput | undefined,
   fallbackId: GatewayModelId,
 ): AgentModelSelection {
   if (!selection) {
@@ -76,7 +76,7 @@ const tools = {
   web_fetch: webFetchTool,
 } satisfies ToolSet;
 
-export const openAgent = new ToolLoopAgent({
+export const vibenAgent = new ToolLoopAgent({
   model: defaultModel,
   instructions: buildSystemPrompt({}),
   tools,
@@ -92,7 +92,7 @@ export const openAgent = new ToolLoopAgent({
   },
   prepareCall: ({ options, ...settings }) => {
     if (!options) {
-      throw new Error("Open Agent requires call options with sandbox.");
+      throw new Error("Viben Agent requires call options with sandbox.");
     }
 
     const mainSelection = normalizeAgentModelSelection(
@@ -142,4 +142,4 @@ export const openAgent = new ToolLoopAgent({
   },
 });
 
-export type OpenAgent = typeof openAgent;
+export type VibenAgent = typeof vibenAgent;

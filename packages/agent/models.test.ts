@@ -248,8 +248,8 @@ describe("gateway attribution headers", () => {
     expect(createGatewayCalls).toEqual([
       {
         headers: {
-          "http-referer": "https://open-agents.dev",
-          "x-title": "Open Agents",
+          "http-referer": "https://viben-web.vercel.app",
+          "x-title": "Viben Agent",
         },
       },
     ]);
@@ -283,8 +283,8 @@ describe("gateway attribution headers", () => {
         baseURL: "https://custom.api",
         apiKey: "sk-test",
         headers: {
-          "http-referer": "https://open-agents.dev",
-          "x-title": "Open Agents",
+          "http-referer": "https://viben-web.vercel.app",
+          "x-title": "Viben Agent",
         },
       },
     ]);

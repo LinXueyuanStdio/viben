@@ -2575,7 +2575,7 @@
       "mergeMethodDescriptionSquash": "将所有提交合并为基准分支上的一个提交。",
       "mergeMethodDescriptionMerge": "所有提交将通过一个合并提交添加到基准分支。",
       "mergeMethodDescriptionRebase": "所有提交将被变基并添加到基准分支。",
-      "createRepoDisabled": "暂时无法从 Open Agents 创建仓库。请先在 GitHub 上创建仓库，然后将其连接到会话。",
+      "createRepoDisabled": "暂时无法从 Viben Assistant 创建仓库。请先在 GitHub 上创建仓库，然后将其连接到会话。",
       "noUncommittedChanges": "没有未提交的更改",
       "noFileChangesYet": "暂无文件更改",
       "discardChangesInFile": "放弃 {{filePath}} 中的更改",

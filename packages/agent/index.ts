@@ -3,10 +3,10 @@ export { gatewayInstance } from "./gateway-instance";
 export type {
   AgentModelSelection,
   AgentSandboxContext,
-  OpenAgentCallOptions,
-  OpenAgentModelInput,
-} from "./open-agent";
-export { defaultModel, defaultModelLabel, openAgent } from "./open-agent";
+  VibenAgentCallOptions,
+  VibenAgentModelInput,
+} from "./viben-agent";
+export { defaultModel, defaultModelLabel, vibenAgent } from "./viben-agent";
 // Skills exports
 export { discoverSkills, parseSkillFrontmatter } from "./skills/discovery";
 export { extractSkillBody, substituteArguments } from "./skills/loader";

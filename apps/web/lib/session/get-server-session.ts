@@ -10,7 +10,7 @@ export const getServerSession = cache(
       return undefined;
     }
 
-    // Map viben session → open-agents compatible Session format
+    // Map the Viben session to the Viben Agent session format
     return {
       created: Date.now(),
       authProvider: "github",

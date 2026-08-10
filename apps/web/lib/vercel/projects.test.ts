@@ -60,7 +60,7 @@ describe("Vercel project helpers", () => {
     const projects = await listMatchingVercelProjects({
       token: "token",
       repoOwner: "vercel",
-      repoName: "open-agents",
+      repoName: "viben-agent",
     });
 
     expect(projects).toEqual([
@@ -110,7 +110,7 @@ describe("Vercel project helpers", () => {
       await listMatchingVercelProjects({
         token: "token",
         repoOwner: "vercel",
-        repoName: "open-agents",
+        repoName: "viben-agent",
       });
     } catch (error) {
       thrownError = error;

@@ -108,7 +108,7 @@ describe("/api/settings/preferences", () => {
     ];
 
     const response = await GET(
-      new Request("https://open-agents.dev/api/settings/preferences"),
+      new Request("https://viben-web.vercel.app/api/settings/preferences"),
     );
     const body = (await response.json()) as {
       preferences: typeof preferencesState;
