@@ -23,6 +23,20 @@ vi.mock("swr", () => ({
   }),
 }));
 
+vi.stubGlobal(
+  "ResizeObserver",
+  class ResizeObserverMock {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
+
+Object.defineProperty(Element.prototype, "scrollIntoView", {
+  configurable: true,
+  value: vi.fn(),
+});
+
 describe("BranchSelectorCompact", () => {
   test("renders a compact footer trigger and keeps branch selection behavior", () => {
     const onChange = vi.fn();
