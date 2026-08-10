@@ -1,18 +1,1 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FDB813"/>
-      <stop offset="100%" style="stop-color:#38B2AC"/>
-    </linearGradient>
-  </defs>
-
-  <!-- 圆角背景 -->
-  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#bg-grad)"/>
-
-  <!-- <V> 符号 - 居中且更大 -->
-  <g transform="translate(512, 512) scale(8.5) translate(-50, -50)">
-    <path d="M20 20 L5 50 L20 80" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M35 23 L50 77 L65 23" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M80 20 L95 50 L80 80" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><linearGradient id="bg-grad" x1="0%" x2="100%" y1="0%" y2="100%"><stop offset="0%" style="stop-color:#fdb813"/><stop offset="100%" style="stop-color:#38b2ac"/></linearGradient></defs><rect width="1024" height="1024" x="0" y="0" fill="url(#bg-grad)" rx="228" ry="228"/><g><path fill="none" stroke="#FFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" d="M20 20 L5 50 L20 80" transform="translate(512, 512) scale(8.5) translate(-50, -50)"/><path fill="none" stroke="#FFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" d="M35 23 L50 77 L65 23" transform="translate(512, 512) scale(8.5) translate(-50, -50)"/><path fill="none" stroke="#FFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" d="M80 20 L95 50 L80 80" transform="translate(512, 512) scale(8.5) translate(-50, -50)"/></g></svg>
