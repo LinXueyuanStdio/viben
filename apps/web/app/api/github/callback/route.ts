@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { db, githubConnections } from '@/lib/db';
-import { getSession, encryptToken } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
-import { eq } from 'drizzle-orm';
+import { getSession } from '@/lib/auth';
+import { upsertGitHubRepoConnection } from '@/lib/github/repo-connection';
 import type { GitHubUser } from '@/lib/validations/github';
 
 /**
@@ -75,37 +73,13 @@ export async function GET(request: NextRequest) {
     });
     const githubUser: GitHubUser = await userResponse.json();
 
-    // Encrypt the access token before storage
-    const encryptedToken = await encryptToken(accessToken);
-
-    // Check if connection already exists
-    const existingConnection = await db.query.githubConnections.findFirst({
-      where: eq(githubConnections.userId, session.userId),
+    await upsertGitHubRepoConnection({
+      userId: session.userId,
+      accessToken,
+      scope,
+      githubUserId: String(githubUser.id),
+      githubUsername: githubUser.login,
     });
-
-    if (existingConnection) {
-      // Update existing connection
-      await db
-        .update(githubConnections)
-        .set({
-          accessTokenEncrypted: encryptedToken,
-          scope,
-          githubUserId: String(githubUser.id),
-          githubUsername: githubUser.login,
-          connectedAt: new Date(),
-        })
-        .where(eq(githubConnections.id, existingConnection.id));
-    } else {
-      // Create new connection
-      await db.insert(githubConnections).values({
-        id: generateId(),
-        userId: session.userId,
-        accessTokenEncrypted: encryptedToken,
-        scope,
-        githubUserId: String(githubUser.id),
-        githubUsername: githubUser.login,
-      });
-    }
 
     const successUrl = new URL(redirectAfterConnect, appUrl);
     successUrl.searchParams.set('github', 'connected');

@@ -3,7 +3,7 @@ import {
   requireOwnedSession,
 } from "@/app/api/sessions/_lib/session-context";
 import type { CheckRun } from "@/lib/github/pulls";
-import { getGithubAppToken } from "@/lib/github/token";
+import { getGitHubRepoOAuthToken } from "@/lib/github/token";
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { Octokit } from "@octokit/rest";
 import { gateway, generateText } from "ai";
@@ -242,7 +242,7 @@ export async function POST(req: Request, context: RouteContext) {
   const allAnnotations: Record<string, CheckAnnotation[]> = {};
 
   if (runsWithIds.length > 0) {
-    const token = await getGithubAppToken(authResult.userId);
+    const token = await getGitHubRepoOAuthToken(authResult.userId);
     if (!token) {
       return Response.json(
         formatFixResponse(checkRuns, compactedLogs, allAnnotations),

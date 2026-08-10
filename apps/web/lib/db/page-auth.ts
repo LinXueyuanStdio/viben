@@ -6,14 +6,21 @@ import { eq, and } from "drizzle-orm"
  * 优先按 userId=session.userId 查，若未命中则检查 page 是否归属 team 且
  * session user 是该 team 成员。
  */
-export async function findEditablePage(uid: string, sessionUserId: string) {
+export async function findEditablePage(
+  uid: string,
+  sessionUserId: string,
+  options?: { publishedPageId?: string },
+) {
+  const pageIdentity = options?.publishedPageId
+    ? eq(publishedPages.id, options.publishedPageId)
+    : eq(publishedPages.uid, uid)
   let page = await db.query.publishedPages.findFirst({
-    where: and(eq(publishedPages.userId, sessionUserId), eq(publishedPages.uid, uid)),
+    where: and(eq(publishedPages.userId, sessionUserId), pageIdentity),
   })
 
   if (!page) {
     page = await db.query.publishedPages.findFirst({
-      where: eq(publishedPages.uid, uid),
+      where: pageIdentity,
     })
     if (page) {
       const owner = await db.query.users.findFirst({

@@ -3,7 +3,7 @@ import "server-only";
 import { connectSandbox } from "@viben/sandbox";
 import { getSessionById, updateSession } from "@/lib/db/sessions";
 import { findPullRequest, getPullRequestStatus } from "@/lib/github/pulls";
-import { getGithubOAuthToken } from "@/lib/github/token";
+import { getGitHubRepoOAuthToken } from "@/lib/github/token";
 import { canOperateOnSandbox, clearSandboxState } from "./utils";
 
 type SessionRecord = NonNullable<Awaited<ReturnType<typeof getSessionById>>>;
@@ -68,7 +68,7 @@ async function refreshArchiveGitState(
     }
 
     const token =
-      (await getGithubOAuthToken(currentSession.userId)) ?? undefined;
+      (await getGitHubRepoOAuthToken(currentSession.userId)) ?? undefined;
 
     if (!branchChanged && currentSession.prNumber != null) {
       const repoUrl = getSessionRepoUrl(currentSession);

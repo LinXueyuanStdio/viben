@@ -1,12 +1,36 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { LoginForm } from './login-form';
 import { OAuthButtons } from './oauth-buttons';
 
+const OAUTH_ERROR_TRANSLATION_KEYS = {
+  invalid_state: 'auth.oauthError.invalid_state',
+  no_token: 'auth.oauthError.no_token',
+  no_email: 'auth.oauthError.no_email',
+  oauth_failed: 'auth.oauthError.oauth_failed',
+} as const;
+
+type OAuthErrorCode = keyof typeof OAUTH_ERROR_TRANSLATION_KEYS;
+
 export function LoginPageContent() {
   const { t } = useTranslation();
+  const notifiedError = useRef<string | null>(null);
+
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get('error');
+    const translationKey = error
+      ? OAUTH_ERROR_TRANSLATION_KEYS[error as OAuthErrorCode]
+      : undefined;
+
+    if (!error || !translationKey || notifiedError.current === error) return;
+
+    notifiedError.current = error;
+    toast.error(t(translationKey), { id: `login-oauth-error-${error}` });
+  }, [t]);
 
   return (
     <div className="mx-auto w-full max-w-md space-y-6">

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { db, users } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { UpdateProfileBody } from '@/lib/validations/user';
+import { hasGitHubRepoConnection } from '@/lib/github/repo-connection';
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
@@ -20,29 +21,32 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.userId),
-      columns: {
-        id: true,
-        email: true,
-        username: true,
-        userSlug: true,
-        displayName: true,
-        avatarUrl: true,
-        bio: true,
-        websiteUrl: true,
-        githubUsername: true,
-        role: true,
-        emailVerified: true,
-        createdAt: true,
-      },
-    });
+    const [user, hasGitHub] = await Promise.all([
+      db.query.users.findFirst({
+        where: eq(users.id, session.userId),
+        columns: {
+          id: true,
+          email: true,
+          username: true,
+          userSlug: true,
+          displayName: true,
+          avatarUrl: true,
+          bio: true,
+          websiteUrl: true,
+          githubUsername: true,
+          role: true,
+          emailVerified: true,
+          createdAt: true,
+        },
+      }),
+      hasGitHubRepoConnection(session.userId),
+    ]);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ user });
+    return NextResponse.json({ user, hasGitHub });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

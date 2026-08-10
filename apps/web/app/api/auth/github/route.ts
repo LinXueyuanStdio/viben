@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: `${appUrl}/api/auth/github/callback`,
-      scope: 'read:user user:email',
+      scope: 'read:user user:email repo',
       state,
     });
 

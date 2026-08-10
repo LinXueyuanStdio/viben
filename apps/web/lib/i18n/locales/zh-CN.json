@@ -1360,6 +1360,12 @@
     "continueWithGitHub": "使用 GitHub 登录",
     "continueWithGoogle": "使用 Google 登录",
     "orContinueWith": "或使用邮箱登录",
+    "oauthError": {
+      "invalid_state": "登录请求已过期，请重新尝试。",
+      "no_token": "登录服务未返回访问凭证，请重新尝试登录。",
+      "no_email": "无法获取你的邮箱地址，请授权邮箱访问权限后重试。",
+      "oauth_failed": "第三方登录失败，请重试。"
+    },
     "email": "邮箱",
     "emailPlaceholder": "you@example.com",
     "emailRequired": "请输入邮箱",

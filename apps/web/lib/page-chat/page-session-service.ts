@@ -148,7 +148,9 @@ export async function getOrCreatePageSession(
 
   const currentUserSlug = context.page.authorSlug;
   const currentPageSlug = context.page.uid;
-  const editablePage = await findEditablePage(context.page.uid, input.userId);
+  const editablePage = await findEditablePage(context.page.uid, input.userId, {
+    publishedPageId: context.page.id,
+  });
   const canEdit =
     context.page.userId === input.userId || editablePage?.id === context.page.id;
   return {

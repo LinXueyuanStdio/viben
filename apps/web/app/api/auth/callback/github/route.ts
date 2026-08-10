@@ -5,6 +5,7 @@ import { uploadImageFromUrl } from '@/lib/media';
 import { encryptSession } from '@/lib/auth/jwe';
 import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
+import { upsertGitHubRepoConnection } from '@/lib/github/repo-connection';
 import { eq, and } from 'drizzle-orm';
 
 interface GitHubUser {
@@ -156,6 +157,14 @@ export async function POST(request: NextRequest) {
     if (!user) {
       throw new Error('Failed to create or find user');
     }
+
+    await upsertGitHubRepoConnection({
+      userId: user.id,
+      accessToken: githubAccessToken,
+      scope: tokenData.scope || 'repo',
+      githubUserId: String(githubUser.id),
+      githubUsername: githubUser.login,
+    });
 
     // Create JWT access token for desktop client
     const accessToken = await encryptSession({

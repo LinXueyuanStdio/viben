@@ -15,7 +15,7 @@ import {
   mintInstallationToken,
   revokeInstallationToken,
 } from "@/lib/github/app";
-import { getGithubAppToken } from "@/lib/github/token";
+import { getGitHubRepoOAuthToken } from "@/lib/github/token";
 import { generatePullRequestContentFromSandbox } from "@/lib/github/pr-content";
 
 const SAFE_BRANCH_PATTERN = /^[\w\-/.]+$/;
@@ -141,7 +141,7 @@ export async function performAutoCreatePr(
     };
   }
 
-  const userToken = await getGithubAppToken(userId);
+  const userToken = await getGitHubRepoOAuthToken(userId);
   if (!userToken) {
     return {
       created: false,

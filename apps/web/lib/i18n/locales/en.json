@@ -1360,6 +1360,12 @@
     "continueWithGitHub": "Continue with GitHub",
     "continueWithGoogle": "Continue with Google",
     "orContinueWith": "Or continue with email",
+    "oauthError": {
+      "invalid_state": "Your sign-in request expired. Please try again.",
+      "no_token": "The provider did not return an access token. Please try signing in again.",
+      "no_email": "We could not access your email address. Please grant email access and try again.",
+      "oauth_failed": "Third-party sign-in failed. Please try again."
+    },
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "emailRequired": "Email is required",

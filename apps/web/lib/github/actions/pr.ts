@@ -16,7 +16,7 @@ import {
   getRepoAccessErrorMessage,
 } from "@/lib/github/access";
 import { withScopedInstallationOctokit } from "@/lib/github/app";
-import { getGithubAppToken } from "@/lib/github/token";
+import { getGitHubRepoOAuthToken } from "@/lib/github/token";
 import { generatePullRequestContentFromSandbox } from "@/lib/github/pr-content";
 import { getSessionById, updateSession } from "@/lib/db/sessions";
 import { isSandboxActive } from "@/lib/sandbox/utils";
@@ -371,7 +371,7 @@ export async function openPullRequest(params: {
     }
   }
 
-  const userToken = await getGithubAppToken(session.user.id);
+  const userToken = await getGitHubRepoOAuthToken(session.user.id);
   if (!userToken) {
     throw new Error("No GitHub token available for pull request creation");
   }
@@ -527,7 +527,7 @@ export async function mergePr(params: {
     throw new Error("Invalid merge method");
   }
 
-  const token = await getGithubAppToken(session.user.id);
+  const token = await getGitHubRepoOAuthToken(session.user.id);
   if (!token) {
     throw new Error("No GitHub token available for this repository");
   }

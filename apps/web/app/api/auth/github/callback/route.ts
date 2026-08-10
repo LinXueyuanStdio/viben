@@ -10,6 +10,7 @@ import { encryptSession } from '@/lib/auth/jwe';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri, renderDesktopOAuthCallbackPage } from '@/lib/auth/desktop-redirect';
 import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
+import { upsertGitHubRepoConnection } from '@/lib/github/repo-connection';
 import { eq, and } from 'drizzle-orm';
 
 interface GitHubUser {
@@ -213,6 +214,14 @@ export async function GET(request: NextRequest) {
     if (!user) {
       throw new Error('Failed to create or find user');
     }
+
+    await upsertGitHubRepoConnection({
+      userId: user.id,
+      accessToken,
+      scope: tokenData.scope || 'repo',
+      githubUserId: String(githubUser.id),
+      githubUsername: githubUser.login,
+    });
 
     console.info('[OAuth][GitHub] user resolved', {
       userId: user.id,

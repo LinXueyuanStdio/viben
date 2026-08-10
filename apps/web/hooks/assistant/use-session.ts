@@ -5,6 +5,7 @@ import type { SessionUserInfo } from "@/lib/session/types";
 import { fetcher } from "@/lib/swr";
 
 interface VibenUserResponse {
+  hasGitHub: boolean;
   user: {
     id: string;
     username: string;
@@ -43,7 +44,7 @@ export function useSession() {
       }
     : undefined;
 
-  const hasGitHub = Boolean(vibenUser?.githubUsername);
+  const hasGitHub = data?.hasGitHub ?? false;
 
   return {
     session: data ? sessionInfo ?? null : null,

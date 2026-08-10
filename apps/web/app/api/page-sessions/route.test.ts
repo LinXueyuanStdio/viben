@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   existingSessionCount: 0,
   managedTrial: false,
   editablePage: null as Record<string, any> | null,
+  findEditablePage: vi.fn(async () => null as Record<string, any> | null),
   createPageSessionError: null as Error | null,
   createPageSessionCalls: [] as Array<Record<string, unknown>>,
   syncCalls: [] as Array<Record<string, unknown>>,
@@ -78,7 +79,7 @@ vi.mock("@/lib/model-access", () => ({
 }));
 
 vi.mock("@/lib/db/page-auth", () => ({
-  findEditablePage: async () => mocks.editablePage,
+  findEditablePage: mocks.findEditablePage,
 }));
 
 vi.mock("@/lib/services/community", () => ({
@@ -200,6 +201,8 @@ describe("POST /api/page-sessions", () => {
     mocks.existingSessionCount = 0;
     mocks.managedTrial = false;
     mocks.editablePage = null;
+    mocks.findEditablePage.mockImplementation(async () => mocks.editablePage);
+    mocks.findEditablePage.mockClear();
     mocks.createPageSessionError = null;
     mocks.createPageSessionCalls.length = 0;
     mocks.syncCalls.length = 0;
@@ -298,6 +301,11 @@ describe("POST /api/page-sessions", () => {
     const body = await json(POST(pageSessionRequest("alice", "guide")));
 
     expect(body.page.can_edit).toBe(true);
+    expect(mocks.findEditablePage).toHaveBeenCalledWith(
+      "guide",
+      "user-1",
+      { publishedPageId: "page-1" },
+    );
   });
 
   test("does not grant can_edit when the permission helper resolves a different page", async () => {

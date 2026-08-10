@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { getGitHubRepoOAuthToken } from "./repo-connection";
 import { parseGitHubHttpsUrl, parseGitHubUrl } from "./urls";
 
 export type { Octokit } from "@octokit/rest";
@@ -26,12 +27,10 @@ export async function getOctokit(token?: string): Promise<OctokitResult> {
 
 /**
  * Create an Octokit instance for the given user.
- * Fetches the user's OAuth token internally via token.ts.
+ * Uses the encrypted repo-scoped OAuth connection.
  */
 export async function getUserOctokit(userId: string): Promise<Octokit | null> {
-  // dynamic import to avoid pulling in "server-only" at module load
-  const { getGithubOAuthToken } = await import("./token");
-  const token = await getGithubOAuthToken(userId);
+  const token = await getGitHubRepoOAuthToken(userId);
   if (!token) return null;
   return new Octokit({ auth: token });
 }

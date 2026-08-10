@@ -1,8 +1,9 @@
 import "server-only";
-import { db, githubConnections, oauthConnections } from "@/lib/db";
+import { db, oauthConnections } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { getGitHubRepoOAuthToken } from "./repo-connection";
 
-/** �?oauthConnections 获取登录 OAuth token（用户身份，scope: read:user�?*/
+/** Get the login OAuth token used for GitHub identity requests. */
 export async function getGithubOAuthToken(
   userId: string,
 ): Promise<string | null> {
@@ -13,20 +14,4 @@ export async function getGithubOAuthToken(
   return oauthConn?.accessToken ?? null;
 }
 
-/** �?githubConnections 获取加密的仓�?OAuth token（scope: repo�?*/
-export async function getGithubAppToken(
-  userId: string,
-): Promise<string | null> {
-  const ghConn = await db.query.githubConnections.findFirst({
-    where: eq(githubConnections.userId, userId),
-    columns: { accessTokenEncrypted: true },
-  });
-  if (!ghConn?.accessTokenEncrypted) return null;
-
-  try {
-    const { decryptToken } = await import("@/lib/auth/token-encryption");
-    return await decryptToken(ghConn.accessTokenEncrypted);
-  } catch {
-    return null;
-  }
-}
+export { getGitHubRepoOAuthToken };
