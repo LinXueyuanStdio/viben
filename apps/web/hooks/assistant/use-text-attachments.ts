@@ -35,11 +35,16 @@ export function useTextAttachments() {
     setTextAttachments([]);
   }, []);
 
+  const addTextAttachments = useCallback((attachments: TextAttachment[]) => {
+    setTextAttachments((current) => [...current, ...attachments]);
+  }, []);
+
   return {
     textAttachments,
     addTextAttachment,
     removeTextAttachment,
     clearTextAttachments,
+    addTextAttachments,
     hasTextAttachments: textAttachments.length > 0,
   };
 }

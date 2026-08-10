@@ -2710,7 +2710,13 @@
       "loadingBranches": "Loading branches…"
     },
     "sessionStarter": {
-      "newChat": "New Chat",
+      "welcomeTitle": "Viben Assistant",
+      "newChat": "New chat",
+      "newSession": "New session",
+      "openSandboxSettings": "Open sandbox settings",
+      "attachFiles": "Attach files",
+      "voiceInput": "Voice input",
+      "sendMessage": "Send message",
       "startSessionTab": "Start Session",
       "demoEmptyState": "In the hosted demo, you can start chats without connecting GitHub.",
       "emptyState": "Start a new chat -- no repository required.",

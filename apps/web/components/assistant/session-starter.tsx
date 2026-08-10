@@ -1,84 +1,128 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import {
   ChevronDownIcon,
+  ChevronRight,
   ChevronUpIcon,
-  GitBranch,
+  Cloud,
   GitCommitHorizontal,
-  Loader2,
-  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { Switch } from "@/components/ui/switch";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { VibenLogo } from "@/components/shared/viben-logo";
+import { useAudioRecording } from "@/hooks/assistant/use-audio-recording";
 import { useGitHubConnectionStatus } from "@/hooks/assistant/use-github-connection-status";
+import { useImageAttachments } from "@/hooks/assistant/use-image-attachments";
+import { useModelOptions } from "@/hooks/assistant/use-model-options";
 import { useSession } from "@/hooks/assistant/use-session";
+import { useTextAttachments } from "@/hooks/assistant/use-text-attachments";
 import { useUserPreferences } from "@/hooks/assistant/use-user-preferences";
 import { useVercelRepoProjects } from "@/hooks/assistant/use-vercel-repo-projects";
 import type { VercelProjectSelection } from "@/lib/vercel/types";
-import { cn } from "@/lib/utils";
+import { APP_DEFAULT_MODEL_ID } from "@/lib/models";
+import type { StarterMessageDraft } from "./starter-message-handoff";
+import { AssistantPromptComposer } from "./assistant-prompt-composer";
 import { BranchSelectorCompact } from "./branch-selector-compact";
 import { RepoSelectorCompact } from "./repo-selector-compact";
 import {
   DEFAULT_SANDBOX_TYPE,
-  SANDBOX_OPTIONS,
   type SandboxType,
 } from "./sandbox-selector-compact";
 import { SessionStarterVercelSyncSection } from "./session-starter-vercel-sync-section";
-import { Switch } from "@/components/ui/switch";
 
-type SessionMode = "empty" | "repo";
+type SessionMode = "chat" | "repo";
+
+export interface SessionStarterCreateInput {
+  repoOwner?: string;
+  repoName?: string;
+  branch?: string;
+  cloneUrl?: string;
+  isNewBranch: boolean;
+  sandboxType: SandboxType;
+  autoCommitPush: boolean;
+  autoCreatePr: boolean;
+  vercelProject?: VercelProjectSelection | null;
+}
+
+export interface SessionStarterSubmitInput {
+  sessionInput: SessionStarterCreateInput;
+  draft: StarterMessageDraft;
+}
 
 interface SessionStarterProps {
-  onSubmit: (session: {
-    repoOwner?: string;
-    repoName?: string;
-    branch?: string;
-    cloneUrl?: string;
-    isNewBranch: boolean;
-    sandboxType: SandboxType;
-    autoCommitPush: boolean;
-    autoCreatePr: boolean;
-    vercelProject?: VercelProjectSelection | null;
-  }) => void;
+  onSubmit: (input: SessionStarterSubmitInput) => Promise<void>;
   isLoading?: boolean;
   lastRepo?: { owner: string; repo: string } | null;
 }
 
 export function SessionStarter({
   onSubmit,
-  isLoading,
-  lastRepo,
+  isLoading = false,
 }: SessionStarterProps) {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<SessionMode>(() =>
-    lastRepo ? "repo" : "empty",
-  );
-  const [selectedOwner, setSelectedOwner] = useState(
-    () => lastRepo?.owner ?? "",
-  );
-  const [selectedRepo, setSelectedRepo] = useState(() => lastRepo?.repo ?? "");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [input, setInput] = useState("");
+  const [mode, setMode] = useState<SessionMode>("chat");
+  const [repoPopoverOpen, setRepoPopoverOpen] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState("");
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-  const [isNewBranch, setIsNewBranch] = useState(!!lastRepo);
+  const [isNewBranch, setIsNewBranch] = useState(false);
   const [vercelProjectChoice, setVercelProjectChoice] = useState<
     string | null | undefined
   >(undefined);
+  const [autoCommitPush, setAutoCommitPush] = useState<boolean | null>(null);
+  const [autoCreatePr, setAutoCreatePr] = useState<boolean | null>(null);
+  const [gitSettingsExpanded, setGitSettingsExpanded] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState(APP_DEFAULT_MODEL_ID);
 
   const { session, loading: sessionLoading, hasGitHub } = useSession();
   const isTrialUser = session?.isManagedTemplateTrialUser ?? false;
   const { reconnectRequired, isLoading: githubConnectionLoading } =
-    useGitHubConnectionStatus({
-      enabled: hasGitHub,
-    });
+    useGitHubConnectionStatus({ enabled: hasGitHub });
   const { preferences, loading: preferencesLoading } = useUserPreferences();
+  const { modelOptions, loading: modelOptionsLoading } = useModelOptions();
+  const {
+    images,
+    addImage,
+    addImages,
+    removeImage,
+    clearImages,
+    fileInputRef,
+    openFilePicker,
+  } = useImageAttachments();
+  const {
+    textAttachments,
+    addTextAttachment,
+    removeTextAttachment,
+    clearTextAttachments,
+  } = useTextAttachments();
+  const {
+    state: recordingState,
+    error: recordingError,
+    clearError: clearRecordingError,
+    toggleRecording,
+  } = useAudioRecording();
+
+  useEffect(() => {
+    if (preferences?.defaultModelId) {
+      setSelectedModelId(preferences.defaultModelId);
+    }
+  }, [preferences?.defaultModelId]);
+
   const defaultAutoCommitPush = preferences?.autoCommitPush ?? false;
   const defaultAutoCreatePr = preferences?.autoCreatePr ?? false;
-  const [autoCommitPush, setAutoCommitPush] = useState<boolean | null>(null);
-  const [autoCreatePr, setAutoCreatePr] = useState<boolean | null>(null);
-  const [gitSettingsExpanded, setGitSettingsExpanded] = useState(false);
+  const effectiveAutoCommitPush = autoCommitPush ?? defaultAutoCommitPush;
+  const effectiveAutoCreatePr = autoCreatePr ?? defaultAutoCreatePr;
   const sandboxType = preferences?.defaultSandboxType ?? DEFAULT_SANDBOX_TYPE;
-  const sandboxName =
-    SANDBOX_OPTIONS.find((s) => s.id === sandboxType)?.name ?? sandboxType;
   const isRepoModeDisabled = sessionLoading || isTrialUser;
 
   const shouldLoadVercelProjects =
@@ -86,8 +130,8 @@ export function SessionStarter({
     !isTrialUser &&
     !githubConnectionLoading &&
     !reconnectRequired &&
-    !!selectedOwner &&
-    !!selectedRepo &&
+    Boolean(selectedOwner) &&
+    Boolean(selectedRepo) &&
     session?.authProvider === "vercel";
   const {
     data: repoProjects,
@@ -100,18 +144,6 @@ export function SessionStarter({
   });
 
   useEffect(() => {
-    if (!isTrialUser || mode === "empty") return;
-
-    setMode("empty");
-    setSelectedOwner("");
-    setSelectedRepo("");
-    setSelectedBranch(null);
-    setIsNewBranch(false);
-    setVercelProjectChoice(undefined);
-    setGitSettingsExpanded(false);
-  }, [isTrialUser, mode]);
-
-  useEffect(() => {
     if (!shouldLoadVercelProjects) {
       setVercelProjectChoice(undefined);
       return;
@@ -119,26 +151,36 @@ export function SessionStarter({
     if (!repoProjects || repoProjectsLoading) return;
     if (repoProjects.selectedProjectId) {
       setVercelProjectChoice(repoProjects.selectedProjectId);
-      return;
-    }
-    if (repoProjects.projects.length === 0) {
+    } else if (repoProjects.projects.length === 0) {
       setVercelProjectChoice(null);
+    } else {
+      setVercelProjectChoice(undefined);
+    }
+  }, [repoProjects, repoProjectsLoading, shouldLoadVercelProjects]);
+
+  const resetRepoSelection = () => {
+    setMode("chat");
+    setSelectedOwner("");
+    setSelectedRepo("");
+    setSelectedBranch(null);
+    setIsNewBranch(false);
+    setVercelProjectChoice(undefined);
+    setGitSettingsExpanded(false);
+  };
+
+  const handleRepoPopoverChange = (open: boolean) => {
+    if (open && isRepoModeDisabled) return;
+    setRepoPopoverOpen(open);
+    if (open) {
+      setMode("repo");
       return;
     }
-    setVercelProjectChoice(undefined);
-  }, [repoProjects, repoProjectsLoading, shouldLoadVercelProjects]);
+    if (!selectedOwner || !selectedRepo) resetRepoSelection();
+  };
 
   const handleRepoSelect = (owner: string, repo: string) => {
     setSelectedOwner(owner);
     setSelectedRepo(repo);
-    setSelectedBranch(null);
-    setIsNewBranch(false);
-    setVercelProjectChoice(undefined);
-  };
-
-  const handleRepoClear = () => {
-    setSelectedOwner("");
-    setSelectedRepo("");
     setSelectedBranch(null);
     setIsNewBranch(false);
     setVercelProjectChoice(undefined);
@@ -149,276 +191,273 @@ export function SessionStarter({
     setIsNewBranch(newBranch);
   };
 
-  const handleModeChange = (newMode: SessionMode) => {
-    if (isRepoModeDisabled && newMode === "repo") return;
-
-    setMode(newMode);
-    if (newMode === "empty") handleRepoClear();
+  const handleMicClick = async () => {
+    clearRecordingError();
+    const transcribedText = await toggleRecording();
+    if (!transcribedText) return;
+    setInput((current) =>
+      current ? `${current} ${transcribedText}` : transcribedText,
+    );
+    inputRef.current?.focus();
   };
 
-  const isRepoSelectionComplete =
-    mode !== "repo" || (selectedOwner && selectedRepo);
   const isVercelLookupPending =
     mode === "repo" &&
-    !!selectedOwner &&
-    !!selectedRepo &&
+    Boolean(selectedOwner) &&
+    Boolean(selectedRepo) &&
     (sessionLoading || (shouldLoadVercelProjects && repoProjectsLoading));
   const requiresVercelChoice =
     shouldLoadVercelProjects &&
     !repoProjectsLoading &&
     !repoProjectsError &&
-    !!repoProjects &&
-    repoProjects.projects.length > 0 &&
-    repoProjects.selectedProjectId === null &&
+    Boolean(repoProjects) &&
+    Boolean(repoProjects?.projects.length) &&
+    repoProjects?.selectedProjectId === null &&
     vercelProjectChoice === undefined;
-  const controlsDisabled = isLoading || preferencesLoading;
-  const isSubmitDisabled =
-    controlsDisabled ||
-    (isRepoModeDisabled && mode === "repo") ||
-    (mode === "repo" && (githubConnectionLoading || reconnectRequired)) ||
-    !isRepoSelectionComplete ||
-    isVercelLookupPending ||
-    requiresVercelChoice;
-  const effectiveAutoCommitPush = autoCommitPush ?? defaultAutoCommitPush;
-  const effectiveAutoCreatePr = autoCreatePr ?? defaultAutoCreatePr;
   const showVercelProjectSection =
     mode === "repo" &&
     !isTrialUser &&
     !githubConnectionLoading &&
     !reconnectRequired &&
-    !!selectedOwner &&
-    !!selectedRepo &&
+    Boolean(selectedOwner) &&
+    Boolean(selectedRepo) &&
     (sessionLoading || session?.authProvider === "vercel");
+  const hasContent =
+    Boolean(input.trim()) || images.length > 0 || textAttachments.length > 0;
+  const controlsDisabled = isLoading || submitting || preferencesLoading;
+  const isSubmitDisabled =
+    controlsDisabled ||
+    recordingState === "processing" ||
+    !hasContent ||
+    (mode === "repo" &&
+      (isRepoModeDisabled ||
+        githubConnectionLoading ||
+        reconnectRequired ||
+        !selectedOwner ||
+        !selectedRepo ||
+        isVercelLookupPending ||
+        requiresVercelChoice));
 
-  const handleSubmit = () => {
-    if (isSubmitDisabled) return;
-
-    let vercelProject: VercelProjectSelection | null | undefined;
-    if (shouldLoadVercelProjects) {
-      if (repoProjectsError || !repoProjects) {
-        vercelProject = undefined;
-      } else if (vercelProjectChoice === null) {
-        vercelProject = null;
-      } else if (typeof vercelProjectChoice === "string") {
-        vercelProject =
-          repoProjects.projects.find(
-            (project) => project.projectId === vercelProjectChoice,
-          ) ?? null;
-      } else {
-        return;
-      }
-    }
-
-    onSubmit({
-      repoOwner: mode === "repo" ? selectedOwner || undefined : undefined,
-      repoName: mode === "repo" ? selectedRepo || undefined : undefined,
-      branch: mode === "repo" ? selectedBranch || undefined : undefined,
-      cloneUrl:
-        mode === "repo" && selectedOwner && selectedRepo
-          ? `https://github.com/${selectedOwner}/${selectedRepo}`
-          : undefined,
-      isNewBranch: mode === "repo" ? isNewBranch : false,
-      sandboxType,
-      autoCommitPush: effectiveAutoCommitPush,
-      autoCreatePr: effectiveAutoCommitPush ? effectiveAutoCreatePr : false,
-      vercelProject,
-    });
+  const resolveVercelProject = () => {
+    if (!shouldLoadVercelProjects) return undefined;
+    if (repoProjectsError || !repoProjects) return undefined;
+    if (vercelProjectChoice === null) return null;
+    if (typeof vercelProjectChoice !== "string") return undefined;
+    return (
+      repoProjects.projects.find(
+        (project) => project.projectId === vercelProjectChoice,
+      ) ?? null
+    );
   };
 
-  const buttonLabel =
-    mode === "repo" && selectedOwner && selectedRepo
-      ? t("assistant.sessionStarter.startWithRepo", {
-          owner: selectedOwner,
-          repo: selectedRepo,
-        })
-      : t("assistant.sessionStarter.startSession");
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitDisabled) return;
 
-  return (
-    <div
-      className={cn(
-        "w-full min-w-0 max-w-2xl overflow-hidden rounded-xl border border-border/70 bg-card/80 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/75 dark:border-white/10 dark:bg-neutral-900/60 dark:shadow-none sm:p-5",
-        "transition-all duration-200",
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        sessionInput: {
+          repoOwner: mode === "repo" ? selectedOwner : undefined,
+          repoName: mode === "repo" ? selectedRepo : undefined,
+          branch: mode === "repo" ? (selectedBranch ?? undefined) : undefined,
+          cloneUrl:
+            mode === "repo"
+              ? `https://github.com/${selectedOwner}/${selectedRepo}`
+              : undefined,
+          isNewBranch: mode === "repo" ? isNewBranch : false,
+          sandboxType,
+          autoCommitPush: effectiveAutoCommitPush,
+          autoCreatePr: effectiveAutoCommitPush ? effectiveAutoCreatePr : false,
+          vercelProject: resolveVercelProject(),
+        },
+        draft: {
+          text: input,
+          images,
+          textAttachments,
+          modelId: selectedModelId,
+        },
+      });
+      setInput("");
+      clearImages();
+      clearTextAttachments();
+    } catch (error) {
+      console.error("Failed to create session:", error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const repoSettings = (
+    <div className="flex max-h-[min(70vh,38rem)] flex-col gap-3 overflow-y-auto p-1">
+      <RepoSelectorCompact
+        selectedOwner={selectedOwner}
+        selectedRepo={selectedRepo}
+        onSelect={handleRepoSelect}
+      />
+      {selectedOwner &&
+        selectedRepo &&
+        !githubConnectionLoading &&
+        !reconnectRequired && (
+          <BranchSelectorCompact
+            owner={selectedOwner}
+            repo={selectedRepo}
+            value={selectedBranch}
+            isNewBranch={isNewBranch}
+            onChange={handleBranchChange}
+          />
+        )}
+      {showVercelProjectSection && (
+        <SessionStarterVercelSyncSection
+          controlsDisabled={controlsDisabled}
+          isVercelLookupPending={isVercelLookupPending}
+          repoProjects={repoProjects}
+          repoProjectsError={repoProjectsError}
+          requiresVercelChoice={requiresVercelChoice}
+          vercelProjectChoice={vercelProjectChoice}
+          onVercelProjectChoiceChange={setVercelProjectChoice}
+        />
       )}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex rounded-lg bg-muted/70 p-1 dark:bg-white/[0.04]">
-          <button
-            type="button"
-            onClick={() => handleModeChange("empty")}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
-              mode === "empty"
-                ? "border border-border/70 bg-background text-foreground shadow-sm dark:border-transparent dark:bg-white/10 dark:text-neutral-100"
-                : "text-muted-foreground hover:text-foreground dark:text-neutral-400 dark:hover:text-neutral-300",
-            )}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            {t("assistant.sessionStarter.newChat")}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange("repo")}
-            disabled={isRepoModeDisabled}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
-              isRepoModeDisabled
-                ? "cursor-not-allowed text-muted-foreground/50 dark:text-neutral-600"
-                : mode === "repo"
-                  ? "border border-border/70 bg-background text-foreground shadow-sm dark:border-transparent dark:bg-white/10 dark:text-neutral-100"
-                  : "text-muted-foreground hover:text-foreground dark:text-neutral-400 dark:hover:text-neutral-300",
-            )}
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            {t("assistant.sessionStarter.startSessionTab")}
-          </button>
-        </div>
-
-        {mode === "repo" && (
-          <div className="flex flex-col gap-3">
-            <RepoSelectorCompact
-              selectedOwner={selectedOwner}
-              selectedRepo={selectedRepo}
-              onSelect={handleRepoSelect}
-            />
-            {selectedOwner &&
-              selectedRepo &&
-              !githubConnectionLoading &&
-              !reconnectRequired && (
-                <BranchSelectorCompact
-                  owner={selectedOwner}
-                  repo={selectedRepo}
-                  value={selectedBranch}
-                  isNewBranch={isNewBranch}
-                  onChange={handleBranchChange}
-                />
-              )}
-
-            {showVercelProjectSection && (
-              <SessionStarterVercelSyncSection
-                controlsDisabled={controlsDisabled}
-                isVercelLookupPending={isVercelLookupPending}
-                repoProjects={repoProjects}
-                repoProjectsError={repoProjectsError}
-                requiresVercelChoice={requiresVercelChoice}
-                vercelProjectChoice={vercelProjectChoice}
-                onVercelProjectChoiceChange={setVercelProjectChoice}
-              />
-            )}
-          </div>
-        )}
-
-        {mode === "empty" && (
-          <p className="text-center text-sm text-muted-foreground dark:text-neutral-500">
-            {isTrialUser
-              ? t("assistant.sessionStarter.demoEmptyState")
-              : t("assistant.sessionStarter.emptyState")}
-          </p>
-        )}
-
-        {mode === "repo" && !gitSettingsExpanded && (
-          <button
-            type="button"
-            onClick={() => setGitSettingsExpanded(true)}
-            className="flex w-full items-center gap-2.5 rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-left transition-colors hover:bg-muted/40 dark:border-white/10 dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
-          >
-            <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              {effectiveAutoCommitPush ? (
-                <>
-                  {t("assistant.sessionStarter.autoCommit")}{" "}
-                  <span className="font-medium text-foreground/80">
-                    {t("assistant.sessionStarter.on")}
-                  </span>
-                  {effectiveAutoCreatePr && (
-                    <>
-                      {" · "}
-                      {t("assistant.sessionStarter.autoPr")}{" "}
-                      <span className="font-medium text-foreground/80">
-                        {t("assistant.sessionStarter.on")}
-                      </span>
-                    </>
-                  )}
-                </>
-              ) : (
-                t("assistant.sessionStarter.autoCommitPushDisabled")
-              )}
-            </span>
-            <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-          </button>
-        )}
-
-        {mode === "repo" && gitSettingsExpanded && (
-          <div className="overflow-hidden rounded-lg border border-border/70 bg-muted/20 dark:border-white/10 dark:bg-white/[0.02]">
-            <button
-              type="button"
-              onClick={() => setGitSettingsExpanded(false)}
-              className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left transition-colors hover:bg-muted/30"
-            >
-              <div className="space-y-1">
-                <p className="text-sm font-medium">
-                  {t("assistant.sessionStarter.autoCommitAndPush")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("assistant.sessionStarter.autoCommitAndPushDescription")}
-                </p>
-              </div>
-              <ChevronUpIcon className="h-4 w-4 shrink-0 text-muted-foreground/50" />
-            </button>
-            <div className="border-t border-border/50 dark:border-white/[0.06]">
-              <div className="flex items-center justify-between gap-4 px-3 py-2">
-                <p className="text-sm font-medium">
-                  {t("assistant.sessionStarter.commitAndPush")}
-                </p>
-                <Switch
-                  checked={effectiveAutoCommitPush}
-                  onCheckedChange={setAutoCommitPush}
-                  disabled={controlsDisabled}
-                />
-              </div>
-              {effectiveAutoCommitPush && (
-                <div className="flex items-center justify-between gap-4 border-t border-border/30 px-3 py-2 pl-6 dark:border-white/[0.04]">
-                  <p className="text-sm text-muted-foreground">
-                    {t("assistant.sessionStarter.createPullRequest")}
-                  </p>
-                  <Switch
-                    checked={effectiveAutoCreatePr}
-                    onCheckedChange={setAutoCreatePr}
-                    disabled={controlsDisabled}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
+      {selectedOwner && selectedRepo && !gitSettingsExpanded && (
         <button
           type="button"
-          onClick={handleSubmit}
-          disabled={isSubmitDisabled}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-            isSubmitDisabled
-              ? "cursor-not-allowed bg-muted text-muted-foreground"
-              : "bg-foreground text-background hover:bg-foreground/90",
-          )}
+          onClick={() => setGitSettingsExpanded(true)}
+          className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-left transition-colors duration-200 hover:bg-muted/40"
         >
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isLoading
-            ? t("assistant.sessionStarter.creatingSession")
-            : buttonLabel}
+          <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            {effectiveAutoCommitPush
+              ? t("assistant.sessionStarter.autoCommit")
+              : t("assistant.sessionStarter.autoCommitPushDisabled")}
+          </span>
+          <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
-
-        <p className="text-center text-xs text-muted-foreground">
-          {t("assistant.sessionStarter.usingSandbox", { sandboxName })}{" "}
-          <span className="text-muted-foreground/60">&middot;</span>{" "}
-          <Link
-            href="/settings/sandbox"
-            className="text-muted-foreground underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/40"
+      )}
+      {selectedOwner && selectedRepo && gitSettingsExpanded && (
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-muted/20">
+          <button
+            type="button"
+            onClick={() => setGitSettingsExpanded(false)}
+            className="flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left transition-colors duration-200 hover:bg-muted/30"
           >
-            {t("assistant.sessionStarter.change")}
-          </Link>
-        </p>
-      </div>
+            <span className="text-sm font-medium">
+              {t("assistant.sessionStarter.autoCommitAndPush")}
+            </span>
+            <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <div className="flex items-center justify-between border-t border-border/50 px-3 py-2">
+            <span className="text-sm font-medium">
+              {t("assistant.sessionStarter.commitAndPush")}
+            </span>
+            <Switch
+              checked={effectiveAutoCommitPush}
+              onCheckedChange={setAutoCommitPush}
+              disabled={controlsDisabled}
+            />
+          </div>
+          {effectiveAutoCommitPush && (
+            <div className="flex items-center justify-between border-t border-border/30 px-3 py-2 pl-6">
+              <span className="text-sm text-muted-foreground">
+                {t("assistant.sessionStarter.createPullRequest")}
+              </span>
+              <Switch
+                checked={effectiveAutoCreatePr}
+                onCheckedChange={setAutoCreatePr}
+                disabled={controlsDisabled}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="w-full max-w-4xl space-y-6">
+      <header className="flex flex-col items-center gap-3 text-center">
+        <VibenLogo size={52} className="shadow-sm" />
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          {t("assistant.sessionStarter.welcomeTitle")}
+        </h1>
+      </header>
+
+      <AssistantPromptComposer
+        inputRef={inputRef}
+        fileInputRef={fileInputRef}
+        value={input}
+        onValueChange={setInput}
+        onSubmit={handleSubmit}
+        placeholder={t("assistant.chatContent.inputPlaceholder")}
+        images={images}
+        textAttachments={textAttachments}
+        onRemoveImage={removeImage}
+        onRemoveTextAttachment={removeTextAttachment}
+        onAddImage={addImage}
+        onAddImages={addImages}
+        onAddLargeText={(text) => {
+          addTextAttachment(text);
+        }}
+        onOpenFilePicker={openFilePicker}
+        modelId={selectedModelId}
+        modelOptions={modelOptions}
+        onModelChange={setSelectedModelId}
+        modelDisabled={modelOptionsLoading}
+        recordingState={recordingState}
+        onMicClick={() => {
+          void handleMicClick();
+        }}
+        disabled={controlsDisabled}
+        submitting={submitting || isLoading}
+        canSubmit={!isSubmitDisabled}
+        labels={{
+          attachFiles: t("assistant.sessionStarter.attachFiles"),
+          voiceInput: t("assistant.sessionStarter.voiceInput"),
+          sendMessage: t("assistant.sessionStarter.sendMessage"),
+        }}
+        className="border border-border/70 bg-card shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-none"
+        footer={
+          <div className="flex items-center border-t border-border/60 bg-muted/60 px-3 py-2">
+            <Link
+              href="/settings/sandbox"
+              aria-label={t("assistant.sessionStarter.openSandboxSettings")}
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Cloud className="h-4 w-4" />
+            </Link>
+            <div className="mx-2 h-5 w-px bg-border/70" />
+            <Popover
+              open={repoPopoverOpen}
+              onOpenChange={handleRepoPopoverChange}
+            >
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={controlsDisabled || isRepoModeDisabled}
+                  className="flex min-h-9 flex-1 cursor-pointer items-center justify-between rounded-lg px-3 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span>
+                    {mode === "repo"
+                      ? t("assistant.sessionStarter.newSession")
+                      : t("assistant.sessionStarter.newChat")}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                side="bottom"
+                className="w-[min(42rem,calc(100vw-2rem))] p-3"
+              >
+                {repoSettings}
+              </PopoverContent>
+            </Popover>
+          </div>
+        }
+      />
+
+      {recordingError && (
+        <p className="text-center text-sm text-destructive">{recordingError}</p>
+      )}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SandboxType } from "@/components/assistant/sandbox-selector-compact";
 import { SessionStarter } from "@/components/assistant/session-starter";
+import type { SessionStarterSubmitInput } from "@/components/assistant/session-starter";
+import { putStarterMessage } from "@/components/assistant/starter-message-handoff";
 import type { VercelProjectSelection } from "@/lib/vercel/types";
 import {
   Dialog,
@@ -46,14 +48,20 @@ export function NewSessionDialog({
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreateSession = async (input: CreateSessionInput) => {
+  const handleCreateSession = async ({
+    sessionInput,
+    draft,
+  }: SessionStarterSubmitInput) => {
     setIsCreating(true);
     try {
-      const { session: createdSession, chat } = await createSession(input);
+      const { session: createdSession, chat } =
+        await createSession(sessionInput);
+      putStarterMessage(chat.id, draft);
       onOpenChange(false);
       router.push(`/assistant/${createdSession.id}/chats/${chat.id}`);
     } catch (error) {
       console.error("Failed to create session:", error);
+      throw error;
     } finally {
       setIsCreating(false);
     }
@@ -61,14 +69,14 @@ export function NewSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:hidden">
+      <DialogContent className="max-w-4xl gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none [&>button]:hidden">
         <DialogHeader className="sr-only">
           <DialogTitle>{t("assistant.newSession")}</DialogTitle>
           <DialogDescription>
             {t("assistant.newSessionDescription")}
           </DialogDescription>
         </DialogHeader>
-        <div className="min-w-0 rounded-2xl sm:rounded-[28px] border border-border/60 bg-card shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+        <div className="min-w-0">
           <SessionStarter
             onSubmit={handleCreateSession}
             isLoading={isCreating}

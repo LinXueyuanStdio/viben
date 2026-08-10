@@ -12,7 +12,6 @@ import {
 import {
   Archive,
   ArrowDown,
-  ArrowUp,
   Check,
   Code2,
   Copy,
@@ -23,8 +22,6 @@ import {
   Globe,
   Link2,
   Loader2,
-  Mic,
-  Paperclip,
   Play,
   RefreshCw,
   RotateCcw,
@@ -42,6 +39,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type FormEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import useSWR from "swr";
@@ -111,8 +109,7 @@ import {
   shouldUseChatListStreamingState,
 } from "@/lib/chat-streaming-state";
 import { getCurrentLanguage } from "@/lib/i18n";
-import { ACCEPT_IMAGE_TYPES, isValidImageType } from "@/lib/image-utils";
-import { isLargeText } from "@/lib/text-attachment-utils";
+import { imageAttachmentToFilePart } from "@/lib/image-utils";
 import {
   type AvailableModelCost,
   DEFAULT_CONTEXT_LIMIT,
@@ -121,6 +118,13 @@ import {
 import { getPrDeploymentRefreshInterval } from "@/lib/pr-deployment-polling";
 
 import { LazyStreamdown } from "@/components/assistant/lazy-streamdown";
+import { AssistantPromptComposer } from "@/components/assistant/assistant-prompt-composer";
+import { buildChatMessagePayload } from "@/components/assistant/chat-message-payload";
+import { deliverStarterMessage } from "@/components/assistant/deliver-starter-message";
+import {
+  takeStarterMessage,
+  type StarterMessageDraft,
+} from "@/components/assistant/starter-message-handoff";
 import { cn } from "@/lib/utils";
 import {
   type SandboxInfo,
@@ -148,17 +152,25 @@ const DiffViewer = dynamic(
 );
 
 const MergePrDialog = dynamic(
-  () => import("@/components/assistant/merge-pr-dialog").then((m) => m.MergePrDialog),
+  () =>
+    import("@/components/assistant/merge-pr-dialog").then(
+      (m) => m.MergePrDialog,
+    ),
   { ssr: false },
 );
 const ClosePrDialog = dynamic(
-  () => import("@/components/assistant/close-pr-dialog").then((m) => m.ClosePrDialog),
+  () =>
+    import("@/components/assistant/close-pr-dialog").then(
+      (m) => m.ClosePrDialog,
+    ),
   { ssr: false },
 );
 
 const CreateRepoDialog = dynamic(
   () =>
-    import("@/components/assistant/create-repo-dialog").then((m) => m.CreateRepoDialog),
+    import("@/components/assistant/create-repo-dialog").then(
+      (m) => m.CreateRepoDialog,
+    ),
   { ssr: false },
 );
 const DiffTabView = dynamic(
@@ -175,27 +187,21 @@ const GitPanel = dynamic(() => import("./git-panel").then((m) => m.GitPanel), {
 
 // Conditionally rendered UI — only loaded when user triggers them
 const FileSuggestionsDropdown = dynamic(
-  () => import("./file-suggestions-dropdown").then((m) => m.FileSuggestionsDropdown),
+  () =>
+    import("./file-suggestions-dropdown").then(
+      (m) => m.FileSuggestionsDropdown,
+    ),
   { ssr: false },
 );
 const SlashCommandDropdown = dynamic(
   () => import("./slash-command-dropdown").then((m) => m.SlashCommandDropdown),
   { ssr: false },
 );
-const ImageAttachmentsPreview = dynamic(
-  () => import("./image-attachments-preview").then((m) => m.ImageAttachmentsPreview),
-  { ssr: false },
-);
-const TextAttachmentsPreview = dynamic(
-  () => import("./text-attachments-preview").then((m) => m.TextAttachmentsPreview),
-  { ssr: false },
-);
 const SandboxCreateErrorBanner = dynamic(
-  () => import("./sandbox-create-error-banner").then((m) => m.SandboxCreateErrorBanner),
-  { ssr: false },
-);
-const ModelSelectorCompact = dynamic(
-  () => import("./model-selector-compact").then((m) => m.ModelSelectorCompact),
+  () =>
+    import("./sandbox-create-error-banner").then(
+      (m) => m.SandboxCreateErrorBanner,
+    ),
   { ssr: false },
 );
 const WorkspaceFileViewer = dynamic(
@@ -326,7 +332,8 @@ function GitDataPartCard({
       } else {
         label = t("assistant.chatContent.prReady");
       }
-    } else if (isError) label = part.data.error ?? t("assistant.chatContent.prFailed");
+    } else if (isError)
+      label = part.data.error ?? t("assistant.chatContent.prFailed");
     else label = part.data.skipReason ?? t("assistant.chatContent.prSkipped");
   }
 
@@ -1071,7 +1078,6 @@ export function SessionChatContent({
   const [mobileArchiveDialogOpen, setMobileArchiveDialogOpen] = useState(false);
   const [mobileShareOpen, setMobileShareOpen] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const [copiedAssistantMessageId, setCopiedAssistantMessageId] = useState<
     string | null
   >(null);
@@ -1165,34 +1171,6 @@ export function SessionChatContent({
     [],
   );
 
-  // Auto-resize textarea up to 3 lines
-  useEffect(() => {
-    const textarea = inputRef.current;
-    if (!textarea) return;
-
-    const computedStyle = getComputedStyle(textarea);
-    const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
-    const maxLines = 3;
-    const maxHeight = lineHeight * maxLines;
-
-    // Store current height to avoid flicker
-    const currentHeight = textarea.offsetHeight;
-
-    // Temporarily set height to 0 to measure scrollHeight accurately
-    textarea.style.height = "0";
-    const scrollHeight = textarea.scrollHeight;
-
-    // Set new height, capped at max
-    const newHeight = Math.min(scrollHeight, maxHeight);
-
-    // Only update if height actually changed to minimize reflows
-    if (Math.abs(newHeight - currentHeight) > 1) {
-      textarea.style.height = `${newHeight}px`;
-    } else {
-      textarea.style.height = `${currentHeight}px`;
-    }
-  }, [input]);
-
   const {
     images,
     addImage,
@@ -1202,12 +1180,14 @@ export function SessionChatContent({
     getFileParts,
     fileInputRef,
     openFilePicker,
+    addImageAttachments,
   } = useImageAttachments();
   const {
     textAttachments,
     addTextAttachment,
     removeTextAttachment,
     clearTextAttachments,
+    addTextAttachments,
   } = useTextAttachments();
   const { containerRef, isAtBottom, scrollToBottom } =
     useScrollToBottom<HTMLDivElement>();
@@ -1386,14 +1366,7 @@ export function SessionChatContent({
         );
       }
     },
-    [
-      chatInfo.id,
-      markChatRead,
-      refreshChats,
-      session.id,
-      setMessages,
-      t,
-    ],
+    [chatInfo.id, markChatRead, refreshChats, session.id, setMessages, t],
   );
   const renderMessages = useMemo(
     () => (hasMounted ? messages : initialMessages),
@@ -1598,6 +1571,7 @@ export function SessionChatContent({
   const statusSyncInFlightRef = useRef(false);
   const pendingOptimisticTitleChatIdRef = useRef<string | null>(null);
   const hasRequestedSessionTitleGenerationRef = useRef(false);
+  const consumedStarterChatIdRef = useRef<string | null>(null);
   const markReadRef = useRef<{
     lastAt: number;
     lastChatId: string | null;
@@ -2257,7 +2231,8 @@ export function SessionChatContent({
       };
 
       if (!response.ok) {
-        const errorMsg = payload.error ?? t("assistant.chatContent.unknownError");
+        const errorMsg =
+          payload.error ?? t("assistant.chatContent.unknownError");
 
         // If a sandbox is already running (for example after a lifecycle
         // restore), reconnect instead of surfacing a blocking error.
@@ -2293,7 +2268,9 @@ export function SessionChatContent({
       // Refresh local timeout/connection data from server state.
       const reconnected = await waitForSandboxReady();
       if (!reconnected) {
-        setRestoreError(t("assistant.chatContent.sandboxResumedReconnectPending"));
+        setRestoreError(
+          t("assistant.chatContent.sandboxResumedReconnectPending"),
+        );
       }
     } catch (err) {
       shouldRefreshRestoredWorkspaceRef.current = false;
@@ -3086,6 +3063,186 @@ export function SessionChatContent({
     [archiveSession, router, updateSessionPullRequest, t],
   );
 
+  const prepareFirstMessageTitle = useCallback(
+    (messageText: string) => {
+      const shouldSetOptimisticTitle =
+        initialIsOnlyChatInSession &&
+        !hadInitialMessages &&
+        messages.length === 0;
+      const trimmedText = messageText.trim();
+      const shouldGenerateSessionTitle =
+        shouldSetOptimisticTitle &&
+        trimmedText.length > 0 &&
+        !hasRequestedSessionTitleGenerationRef.current;
+
+      if (!shouldSetOptimisticTitle || trimmedText.length === 0) return;
+
+      const nextTitle =
+        trimmedText.length > 80
+          ? trimmedText.slice(0, 80) + "..."
+          : trimmedText;
+      pendingOptimisticTitleChatIdRef.current = chatInfo.id;
+      void setChatTitle(chatInfo.id, nextTitle);
+
+      if (!shouldGenerateSessionTitle) return;
+
+      hasRequestedSessionTitleGenerationRef.current = true;
+      const generatedTitlePromise = fetch("/api/generate-title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmedText,
+          language: getCurrentLanguage(),
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) return null;
+          const data = (await response.json().catch(() => null)) as {
+            title?: unknown;
+          } | null;
+          if (typeof data?.title !== "string") return null;
+          const title = data.title.trim();
+          return title.length > 0 ? title : null;
+        })
+        .catch(() => null);
+
+      void generatedTitlePromise
+        .then((generatedTitle) => {
+          if (!generatedTitle) return;
+          return updateSessionTitle(generatedTitle);
+        })
+        .catch(() => {
+          // Keep the optimistic title when generation persistence fails.
+        });
+    },
+    [
+      chatInfo.id,
+      hadInitialMessages,
+      initialIsOnlyChatInSession,
+      messages.length,
+      setChatTitle,
+      updateSessionTitle,
+    ],
+  );
+
+  const rollbackOptimisticTitle = useCallback(() => {
+    if (!pendingOptimisticTitleChatIdRef.current) return;
+    void clearChatTitle(pendingOptimisticTitleChatIdRef.current);
+    pendingOptimisticTitleChatIdRef.current = null;
+  }, [clearChatTitle]);
+
+  const handlePromptSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (
+        showInlineQuestion ||
+        isArchived ||
+        isChatInFlight ||
+        hasPendingResponse
+      ) {
+        return;
+      }
+      if (
+        !input.trim() &&
+        images.length === 0 &&
+        textAttachments.length === 0
+      ) {
+        return;
+      }
+
+      const messageText = input;
+      const messagePayload = buildChatMessagePayload({
+        text: messageText,
+        files: getFileParts() ?? [],
+        textAttachments,
+      });
+
+      setInput("");
+      clearImages();
+      clearTextAttachments();
+      prepareFirstMessageTitle(messageText);
+
+      try {
+        await sendMessageWithPendingState(messagePayload);
+      } catch (error) {
+        rollbackOptimisticTitle();
+        console.error("Failed to send message:", error);
+      }
+    },
+    [
+      clearImages,
+      clearTextAttachments,
+      getFileParts,
+      hasPendingResponse,
+      images.length,
+      input,
+      isArchived,
+      isChatInFlight,
+      prepareFirstMessageTitle,
+      rollbackOptimisticTitle,
+      sendMessageWithPendingState,
+      showInlineQuestion,
+      textAttachments,
+    ],
+  );
+
+  const sendStarterDraft = useCallback(
+    async (draft: StarterMessageDraft) => {
+      const messagePayload = buildChatMessagePayload({
+        text: draft.text,
+        files: draft.images.map(imageAttachmentToFilePart),
+        textAttachments: draft.textAttachments,
+      });
+      prepareFirstMessageTitle(draft.text);
+
+      try {
+        await sendMessageWithPendingState(messagePayload);
+      } catch (error) {
+        rollbackOptimisticTitle();
+        throw error;
+      }
+    },
+    [
+      prepareFirstMessageTitle,
+      rollbackOptimisticTitle,
+      sendMessageWithPendingState,
+    ],
+  );
+
+  useEffect(() => {
+    if (consumedStarterChatIdRef.current === chatInfo.id) return;
+
+    const draft = takeStarterMessage(chatInfo.id);
+    if (!draft) return;
+    consumedStarterChatIdRef.current = chatInfo.id;
+
+    void deliverStarterMessage({
+      draft,
+      currentModelId: chatInfo.modelId,
+      updateModel: async (modelId) => {
+        setIsUpdatingModel(true);
+        try {
+          await updateChatModel(modelId);
+        } finally {
+          setIsUpdatingModel(false);
+        }
+      },
+      sendDraft: sendStarterDraft,
+      restoreDraft: (failedDraft) => {
+        setInput(failedDraft.text);
+        addImageAttachments(failedDraft.images);
+        addTextAttachments(failedDraft.textAttachments);
+      },
+    });
+  }, [
+    addImageAttachments,
+    addTextAttachments,
+    chatInfo.id,
+    chatInfo.modelId,
+    sendStarterDraft,
+    updateChatModel,
+  ]);
+
   const gitPanelElement = gitPanelOpen ? (
     <GitPanel
       session={session}
@@ -3109,14 +3266,19 @@ export function SessionChatContent({
       onMerged={handleMerged}
       onCloseAndArchiveClick={() => setCloseDialogOpen(true)}
       onFixChecks={handleFixChecks}
-      onFixConflicts={(baseBranchRef: string) => handleFixConflicts(baseBranchRef)}
+      onFixConflicts={(baseBranchRef: string) =>
+        handleFixConflicts(baseBranchRef)
+      }
       hasSandbox={sandboxInfo !== null}
       gitStatus={gitStatus}
       gitStatusLoading={gitStatusLoading}
       refreshGitStatus={refreshGitStatus}
       onCommitted={handleCommitted}
       isAgentWorking={hasPendingResponse || isChatInFlight}
-      onPrDetected={(pr: { prNumber: number; prStatus: "open" | "merged" | "closed" }) => {
+      onPrDetected={(pr: {
+        prNumber: number;
+        prStatus: "open" | "merged" | "closed";
+      }) => {
         updateSessionPullRequest(pr);
         void refreshGitStatus().catch(() => {});
       }}
@@ -3251,7 +3413,9 @@ export function SessionChatContent({
                       rel="noopener noreferrer"
                       aria-label={
                         isDeploymentStale
-                          ? t("assistant.chatContent.openPreviewDeploymentBuilding")
+                          ? t(
+                              "assistant.chatContent.openPreviewDeploymentBuilding",
+                            )
                           : t("assistant.chatContent.openPreviewDeployment")
                       }
                     >
@@ -3706,7 +3870,9 @@ export function SessionChatContent({
                                           src={p.url}
                                           alt={
                                             p.filename ??
-                                            t("assistant.chatContent.attachedImageAlt")
+                                            t(
+                                              "assistant.chatContent.attachedImageAlt",
+                                            )
                                           }
                                           className="max-h-64 rounded-lg"
                                         />
@@ -3885,21 +4051,6 @@ export function SessionChatContent({
                       </button>
                     </div>
                   )}
-                  {/* Hidden file input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept={ACCEPT_IMAGE_TYPES}
-                    multiple
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        addImages(files);
-                      }
-                      e.target.value = "";
-                    }}
-                    className="hidden"
-                  />
                   <div className="relative">
                     {showSuggestions && (
                       <FileSuggestionsDropdown
@@ -3933,467 +4084,162 @@ export function SessionChatContent({
                         isLoading={skillsLoading}
                       />
                     )}
-                    {/* Pinned Todo Panel — sits above the input box */}
                     <PinnedTodoPanel todos={latestTodos} />
-                    {/* Input form */}
-                    <div
-                      className={`overflow-hidden rounded-2xl bg-muted transition-colors ${isDragging ? "ring-2 ring-blue-500/50" : ""}`}
-                    >
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          // When inline question is active, don't send a chat message
-                          if (showInlineQuestion) return;
-                          if (
-                            isArchived ||
-                            isChatInFlight ||
-                            hasPendingResponse
-                          ) {
-                            return;
-                          }
-                          const hasContent =
-                            input.trim() ||
-                            images.length > 0 ||
-                            textAttachments.length > 0;
-                          if (!hasContent) return;
-
-                          const messageText = input;
-                          const files = getFileParts();
-
-                          // Build the message payload. When text attachments are
-                          // present we use the parts-based form so we can include
-                          // data-snippet parts alongside text and file parts.
-                          const hasSnippets = textAttachments.length > 0;
-                          let messagePayload: Parameters<
-                            typeof sendMessageWithPendingState
-                          >[0];
-
-                          if (hasSnippets) {
-                            const parts: WebAgentUIMessage["parts"] = [];
-                            if (messageText.trim()) {
-                              parts.push({
-                                type: "text" as const,
-                                text: messageText,
-                              });
-                            }
-                            if (files) {
-                              for (const f of files) {
-                                parts.push(f);
-                              }
-                            }
-                            for (const attachment of textAttachments) {
-                              parts.push({
-                                type: "data-snippet" as const,
-                                id: attachment.id,
-                                data: {
-                                  content: attachment.content,
-                                  filename: attachment.filename,
-                                },
-                              });
-                            }
-                            messagePayload = { parts };
-                          } else {
-                            messagePayload = {
-                              text: messageText,
-                              files,
-                            };
-                          }
-
-                          setInput("");
-                          clearImages();
-                          clearTextAttachments();
-
-                          const isFirstChatInSession =
-                            initialIsOnlyChatInSession;
-                          const shouldSetOptimisticTitle =
-                            isFirstChatInSession &&
-                            !hadInitialMessages &&
-                            messages.length === 0;
-                          const trimmedText = messageText.trim();
-                          const shouldGenerateSessionTitle =
-                            shouldSetOptimisticTitle &&
-                            trimmedText.length > 0 &&
-                            !hasRequestedSessionTitleGenerationRef.current;
-                          if (
-                            shouldSetOptimisticTitle &&
-                            trimmedText.length > 0
-                          ) {
-                            const nextTitle =
-                              trimmedText.length > 80
-                                ? `${trimmedText.slice(0, 80)}...`
-                                : trimmedText;
-                            pendingOptimisticTitleChatIdRef.current =
-                              chatInfo.id;
-                            void setChatTitle(chatInfo.id, nextTitle);
-
-                            if (shouldGenerateSessionTitle) {
-                              hasRequestedSessionTitleGenerationRef.current = true;
-                              // Generate a title in parallel and persist it as soon as it
-                              // resolves, without waiting for the assistant response.
-                              const generatedTitlePromise = fetch(
-                                "/api/generate-title",
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({
-                                    message: trimmedText,
-                                    language: getCurrentLanguage(),
-                                  }),
-                                },
-                              )
-                                .then(async (res) => {
-                                  if (!res.ok) {
-                                    return null;
-                                  }
-
-                                  const data = (await res
-                                    .json()
-                                    .catch(() => null)) as {
-                                    title?: unknown;
-                                  } | null;
-                                  if (typeof data?.title !== "string") {
-                                    return null;
-                                  }
-
-                                  const title = data.title.trim();
-                                  return title.length > 0 ? title : null;
-                                })
-                                .catch(() => null);
-
-                              void generatedTitlePromise
-                                .then((generatedTitle) => {
-                                  if (!generatedTitle) {
-                                    return;
-                                  }
-                                  return updateSessionTitle(generatedTitle);
-                                })
-                                .catch(() => {
-                                  // Ignore failures and keep the existing session title.
-                                });
-                            }
-                          }
-                          try {
-                            await sendMessageWithPendingState(messagePayload);
-                          } catch (err) {
-                            if (pendingOptimisticTitleChatIdRef.current) {
-                              void clearChatTitle(
-                                pendingOptimisticTitleChatIdRef.current,
-                              );
-                              pendingOptimisticTitleChatIdRef.current = null;
-                            }
-                            console.error("Failed to send message:", err);
-                          }
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setIsDragging(true);
-                        }}
-                        onDragLeave={(e) => {
-                          e.preventDefault();
-                          // Only set isDragging to false if we're leaving the form entirely
-                          // (not just moving to a child element)
-                          if (
-                            !e.currentTarget.contains(e.relatedTarget as Node)
-                          ) {
-                            setIsDragging(false);
-                          }
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setIsDragging(false);
-                          const files = e.dataTransfer.files;
-                          if (files.length > 0) {
-                            addImages(files);
-                          }
-                        }}
-                      >
-                        {/* Sandbox overlay when inactive */}
+                    <AssistantPromptComposer
+                      inputRef={inputRef}
+                      fileInputRef={fileInputRef}
+                      value={input}
+                      onValueChange={setInput}
+                      onSubmit={handlePromptSubmit}
+                      placeholder={
+                        showInlineQuestion
+                          ? inlineQuestion.placeholder
+                          : t("assistant.chatContent.inputPlaceholder")
+                      }
+                      images={images}
+                      textAttachments={textAttachments}
+                      onRemoveImage={removeImage}
+                      onRemoveTextAttachment={removeTextAttachment}
+                      onAddImage={addImage}
+                      onAddImages={addImages}
+                      onAddLargeText={(text) => {
+                        addTextAttachment(text);
+                      }}
+                      onOpenFilePicker={openFilePicker}
+                      modelId={chatInfo.modelId}
+                      modelOptions={modelOptions}
+                      onModelChange={(modelId) => {
+                        void handleModelChange(modelId);
+                      }}
+                      onModelCloseAutoFocus={() => {
+                        window.requestAnimationFrame(() => {
+                          const textarea = inputRef.current;
+                          if (!textarea) return;
+                          textarea.focus();
+                          const nextCursorPosition = Math.min(
+                            cursorPosition,
+                            textarea.value.length,
+                          );
+                          textarea.setSelectionRange(
+                            nextCursorPosition,
+                            nextCursorPosition,
+                          );
+                        });
+                      }}
+                      modelDisabled={
+                        isChatInFlight || isUpdatingModel || modelOptionsLoading
+                      }
+                      recordingState={recordingState}
+                      onMicClick={() => {
+                        void handleMicClick();
+                      }}
+                      disabled={isArchived}
+                      submitting={false}
+                      canSubmit={
+                        !isChatInFlight &&
+                        !hasPendingResponse &&
+                        (Boolean(input.trim()) ||
+                          images.length > 0 ||
+                          textAttachments.length > 0)
+                      }
+                      labels={{
+                        attachFiles: t("assistant.sessionStarter.attachFiles"),
+                        voiceInput: t("assistant.sessionStarter.voiceInput"),
+                        sendMessage: t("assistant.sessionStarter.sendMessage"),
+                      }}
+                      inputOverlay={
                         <SandboxInputOverlay
                           isArchived={isArchived}
                           snapshotPending={isArchiveSnapshotPending}
                         />
-
-                        {/* Attachments preview */}
-                        {(images.length > 0 || textAttachments.length > 0) && (
-                          <div className="flex min-w-0 flex-wrap items-start gap-2 px-2 pb-1 pt-2">
-                            {images.length > 0 && (
-                              <ImageAttachmentsPreview
-                                images={images}
-                                onRemove={removeImage}
-                                className="p-0"
-                              />
-                            )}
-                            {textAttachments.length > 0 && (
-                              <TextAttachmentsPreview
-                                attachments={textAttachments}
-                                onRemove={removeTextAttachment}
-                                className="p-0"
-                              />
-                            )}
-                          </div>
-                        )}
-
-                        {/* Inline question UI for mobile — rendered inside prompt box */}
-                        {showInlineQuestion && inlineQuestion.questionHeaderUI}
-
-                        {/* Textarea area */}
-                        <div className="px-4 pb-2 pt-3">
-                          <textarea
-                            ref={inputRef}
-                            value={input}
-                            placeholder={
-                              showInlineQuestion
-                                ? inlineQuestion.placeholder
-                                : t("assistant.chatContent.inputPlaceholder")
-                            }
-                            rows={1}
-                            onFocus={handleTextareaFocus}
-                            onChange={(e) => {
-                              setInput(e.currentTarget.value);
-                              setCursorPosition(
-                                e.currentTarget.selectionStart ?? 0,
-                              );
+                      }
+                      questionHeader={
+                        showInlineQuestion
+                          ? inlineQuestion.questionHeaderUI
+                          : undefined
+                      }
+                      leadingToolbarContent={
+                        <ContextUsageIndicator
+                          inputTokens={tokenUsage.inputTokens}
+                          conversationInputTokens={
+                            conversationUsage.inputTokens
+                          }
+                          conversationCachedInputTokens={
+                            conversationUsage.cachedInputTokens
+                          }
+                          conversationOutputTokens={
+                            conversationUsage.outputTokens
+                          }
+                          conversationCost={conversationCost}
+                          contextLimit={contextLimit ?? DEFAULT_CONTEXT_LIMIT}
+                        />
+                      }
+                      submitControl={
+                        showInlineQuestion ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              inlineQuestion.handleNext();
                             }}
-                            onKeyDown={(e) => {
-                              // When inline question is active, Enter advances the question
-                              if (
-                                showInlineQuestion &&
-                                e.key === "Enter" &&
-                                !e.shiftKey
-                              ) {
-                                e.preventDefault();
-                                inlineQuestion.handleNext();
-                                return;
-                              }
-                              // Let suggestions handle keyboard events first
-                              if (handleSuggestionsKeyDown(e)) {
-                                return;
-                              }
-                              if (handleSlashKeyDown(e)) {
-                                return;
-                              }
-                              // On iOS, Return should insert a newline (send via submit button)
-                              if (
-                                e.key === "Enter" &&
-                                !e.shiftKey &&
-                                !isIosDevice &&
-                                !isChatInFlight &&
-                                !hasPendingResponse
-                              ) {
-                                e.preventDefault();
-                                if (!isArchived) {
-                                  e.currentTarget.form?.requestSubmit();
-                                }
-                              }
+                            disabled={!inlineQuestion.hasCurrentAnswer}
+                            className="h-8 rounded-full bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
+                          >
+                            <Check className="h-3 w-3" />
+                            <span className="sm:hidden">
+                              {inlineQuestion.compactButtonLabel}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {inlineQuestion.buttonLabel}
+                            </span>
+                          </Button>
+                        ) : isChatInFlight || hasPendingResponse ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            onClick={() => {
+                              stopChatStream();
+                              setHasPendingResponse(false);
+                              setUserStopped(true);
+                              void setChatStreaming(chatInfo.id, false);
                             }}
-                            onKeyUp={(e) => {
-                              setCursorPosition(
-                                e.currentTarget.selectionStart ?? 0,
-                              );
-                            }}
-                            onClick={(e) => {
-                              setCursorPosition(
-                                e.currentTarget.selectionStart ?? 0,
-                              );
-                            }}
-                            onPaste={(e) => {
-                              const items = e.clipboardData?.items;
-                              if (items) {
-                                for (const item of items) {
-                                  if (isValidImageType(item.type)) {
-                                    const file = item.getAsFile();
-                                    if (file) {
-                                      e.preventDefault();
-                                      addImage(file).catch(() => {
-                                        // Silently ignore paste errors - rare edge case
-                                      });
-                                      return;
-                                    }
-                                  }
-                                }
-                              }
-
-                              // Handle large text pastes – convert to file attachment
-                              const pastedText =
-                                e.clipboardData?.getData("text/plain");
-                              if (pastedText && isLargeText(pastedText)) {
-                                e.preventDefault();
-                                addTextAttachment(pastedText);
-                              }
-                            }}
-                            disabled={isArchived}
-                            className="w-full resize-none overflow-y-auto bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
-                            style={{ minHeight: "24px" }}
-                          />
-                        </div>
-
-                        {/* Bottom toolbar */}
-                        <div className="flex items-center justify-between gap-2 px-3 pb-2">
-                          <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={openFilePicker}
-                              disabled={isArchived}
-                              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                            >
-                              <Paperclip className="h-4 w-4" />
-                            </Button>
-                            {chatInfo.modelId && (
-                              <div
-                                className={
-                                  isChatInFlight ||
-                                  isUpdatingModel ||
-                                  modelOptionsLoading
-                                    ? "pointer-events-none opacity-60"
-                                    : undefined
-                                }
-                              >
-                                <ModelSelectorCompact
-                                  value={chatInfo.modelId}
-                                  modelOptions={modelOptions}
-                                  disabled={
-                                    isChatInFlight ||
-                                    isUpdatingModel ||
-                                    modelOptionsLoading
-                                  }
-                                  onCloseAutoFocus={() => {
-                                    window.requestAnimationFrame(() => {
-                                      const textarea = inputRef.current;
-                                      if (!textarea) {
-                                        return;
-                                      }
-
-                                      textarea.focus();
-                                      const nextCursorPosition = Math.min(
-                                        cursorPosition,
-                                        textarea.value.length,
-                                      );
-                                      textarea.setSelectionRange(
-                                        nextCursorPosition,
-                                        nextCursorPosition,
-                                      );
-                                    });
-                                  }}
-                                  onChange={(modelId) => {
-                                    void handleModelChange(modelId);
-                                  }}
-                                />
-                              </div>
-                            )}
-                            <ContextUsageIndicator
-                              inputTokens={tokenUsage.inputTokens}
-                              conversationInputTokens={
-                                conversationUsage.inputTokens
-                              }
-                              conversationCachedInputTokens={
-                                conversationUsage.cachedInputTokens
-                              }
-                              conversationOutputTokens={
-                                conversationUsage.outputTokens
-                              }
-                              conversationCost={conversationCost}
-                              contextLimit={
-                                contextLimit ?? DEFAULT_CONTEXT_LIMIT
-                              }
-                            />
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={handleMicClick}
-                              disabled={
-                                isArchived || recordingState === "processing"
-                              }
-                              className={`relative h-8 w-8 rounded-full ${
-                                recordingState === "recording"
-                                  ? "text-red-500"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              {recordingState === "recording" && (
-                                <span className="absolute inset-0 animate-pulse rounded-full bg-red-500/30" />
-                              )}
-                              {recordingState === "processing" ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                              ) : (
-                                <Mic className="h-5 w-5" />
-                              )}
-                            </Button>
-
-                            {showInlineQuestion ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  inlineQuestion.handleNext();
-                                }}
-                                disabled={!inlineQuestion.hasCurrentAnswer}
-                                className="h-8 rounded-full bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
-                              >
-                                <Check className="h-3 w-3" />
-                                <span className="sm:hidden">
-                                  {inlineQuestion.compactButtonLabel}
-                                </span>
-                                <span className="hidden sm:inline">
-                                  {inlineQuestion.buttonLabel}
-                                </span>
-                              </Button>
-                            ) : isChatInFlight || hasPendingResponse ? (
-                              <Button
-                                type="button"
-                                size="icon"
-                                onClick={() => {
-                                  stopChatStream();
-                                  setHasPendingResponse(false);
-                                  setUserStopped(true);
-                                  void setChatStreaming(chatInfo.id, false);
-                                }}
-                                className="h-8 w-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                style={{ touchAction: "manipulation" }}
-                              >
-                                <Square className="h-3 w-3 fill-current" />
-                              </Button>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span>
-                                    <Button
-                                      type="submit"
-                                      size="icon"
-                                      onTouchEnd={() => {
-                                        // On iOS, tapping submit while the textarea is focused
-                                        // causes the keyboard to briefly flash open then closed.
-                                        // Blur the textarea immediately to prevent this.
-                                        inputRef.current?.blur();
-                                      }}
-                                      disabled={
-                                        isArchived ||
-                                        isChatInFlight ||
-                                        (!input.trim() &&
-                                          images.length === 0 &&
-                                          textAttachments.length === 0) ||
-                                        isUpdatingModel
-                                      }
-                                      className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
-                                    >
-                                      <ArrowUp className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </div>
-                      </form>
-                    </div>
+                            className="h-8 w-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            style={{ touchAction: "manipulation" }}
+                          >
+                            <Square className="h-3 w-3 fill-current" />
+                          </Button>
+                        ) : undefined
+                      }
+                      onTextareaFocus={handleTextareaFocus}
+                      onTextareaKeyDown={(event) => {
+                        if (
+                          showInlineQuestion &&
+                          event.key === "Enter" &&
+                          !event.shiftKey
+                        ) {
+                          event.preventDefault();
+                          inlineQuestion.handleNext();
+                          return;
+                        }
+                        if (handleSuggestionsKeyDown(event)) return;
+                        if (handleSlashKeyDown(event)) return;
+                        if (
+                          event.key === "Enter" &&
+                          !event.shiftKey &&
+                          !isIosDevice &&
+                          !isChatInFlight &&
+                          !hasPendingResponse
+                        ) {
+                          event.preventDefault();
+                          if (!isArchived) {
+                            event.currentTarget.form?.requestSubmit();
+                          }
+                        }
+                      }}
+                      onCursorPositionChange={setCursorPosition}
+                      blurOnSubmitTouch={isIosDevice}
+                    />
 
                     {/* Recording error message */}
                     {recordingError && (
@@ -4446,7 +4292,12 @@ export function SessionChatContent({
           onOpenChange={setRepoDialogOpen}
           session={session}
           hasSandbox={sandboxInfo !== null}
-          onRepoCreated={(result: { cloneUrl: string; owner: string; repoName: string; branch: string }) => {
+          onRepoCreated={(result: {
+            cloneUrl: string;
+            owner: string;
+            repoName: string;
+            branch: string;
+          }) => {
             updateSessionRepo({
               cloneUrl: result.cloneUrl,
               repoOwner: result.owner,

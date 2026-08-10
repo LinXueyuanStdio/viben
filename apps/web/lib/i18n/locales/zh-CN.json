@@ -2735,7 +2735,13 @@
       "loadingBranches": "正在加载分支…"
     },
     "sessionStarter": {
+      "welcomeTitle": "Viben Assistant",
       "newChat": "新聊天",
+      "newSession": "新会话",
+      "openSandboxSettings": "打开沙箱设置",
+      "attachFiles": "添加附件",
+      "voiceInput": "语音输入",
+      "sendMessage": "发送消息",
       "startSessionTab": "开始会话",
       "demoEmptyState": "在托管演示中，你可以无需连接 GitHub 即可开始聊天。",
       "emptyState": "开始新聊天——无需仓库。",
