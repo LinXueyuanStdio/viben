@@ -23,8 +23,145 @@ Viben 已在 `/api/mcp/v1` 提供 Streamable HTTP MCP 服务，其中包含页�
 - 不修改 `/api/mcp` 的 MCP 市场 REST API。
 - 不迁移 `/api/mcp/v1`，也不重新实现其写操作确认或鉴权规则。
 - 不让未登录用户使用页面 Agent。
-- 不为 Page session 提供文件、终端、Git、Diff、Skill、子智能体、Code Editor、自动提交或 PR 能力。
+- 不为 Page session 提供 sandbox 文件工具、终端、Git、Diff、Skill、子智能体、Code Editor、自动提交或 PR 能力；图片和大段文本仍可作为通用模型附件发送。
 - 不重写现有 work session 的消息协议或数据库表。
+
+## 现状调研
+
+### 页面路由与布局树
+
+当前 `/{user_slug}/{page_slug}` 阅读页由 App Router 服务端组件准备页面、权限和社区数据，再交给客户端阅读壳层。与本功能直接相关的组件树如下：
+
+```text
+AppShell
+├── Topbar
+│   ├── 左侧全局 Sidebar 开关
+│   ├── 中间 Page / Side Page / Settings
+│   └── 右侧搜索、创建、通知、用户菜单、ReadDrawer 开关
+├── Sidebar                         # 全局左侧导航，桌面端可收起
+├── main                            # 阅读页打开 Drawer 后增加 margin-right
+│   └── ReadPageServer
+│       └── ReadPageShell
+│           └── ReadPageClient
+│               ├── 页面正文 iframe（srcDoc）
+│               └── ReadDrawer
+└── #viben-drawer-slot              # 桌面端 ReadDrawer 的 portal 目标
+```
+
+服务端页面数据流：
+
+```text
+/{user_slug}/{page_slug}
+        │
+        ▼
+ReadPageServer
+        ├── getCachedPublishedPageContext
+        ├── canReadPage
+        ├── 判断作者或 team page manager
+        ├── 注入页面、社区和用户元数据
+        └── ReadPageClient
+```
+
+### 当前桌面布局
+
+ReadDrawer 不是覆盖正文的浮层。AppShell 为其保留右侧 portal；Drawer 打开时，正文和 Topbar 同时缩短。默认宽度为 `420px`，可拖动范围为 `280px–600px`。
+
+```text
+┌──────────────────────────────────── Topbar ────────────────────────────┬──────────────┐
+│ ☰  面包屑                         Page / Settings       搜索 通知 用户  │              │
+├────────────────────────────────────────────────────────────────────────┤ Drawer Header│
+│                                                                        ├──────────────┤
+│                                                                        │              │
+│                         页面正文 iframe                               │ Drawer Body  │
+│                                                                        │              │
+│                                                                        │              │
+└────────────────────────────────────────────────────────────────────────┴──────────────┘
+                                                                         默认 420px
+```
+
+页面正文 iframe 与 Drawer 是兄弟区域，聊天不需要进入页面 iframe，也不应通过 iframe DOM 获取内容。Agent 通过服务端页面身份和 MCP 获取当前版本。
+
+### 当前移动端布局
+
+移动端不为 Drawer 预留正文宽度，而是使用带背景遮罩的右侧全屏覆盖层：
+
+```text
+关闭状态                         打开状态
+┌────────────────────┐          ┌────────────────────┐
+│ Topbar           ▷ │          │ Tabs             × │
+├────────────────────┤          ├────────────────────┤
+│                    │          │                    │
+│   页面正文 iframe  │    ->    │ Drawer / Chat      │
+│                    │          │ 全屏覆盖内容        │
+│                    │          │                    │
+└────────────────────┘          └────────────────────┘
+```
+
+Page Chat 必须沿用该模式，并使用动态视口高度和底部安全区，避免移动端软键盘遮住输入框。
+
+### 当前 ReadDrawer 结构与限制
+
+现有 ReadDrawer 是两行 Grid：
+
+```text
+ReadDrawer
+├── DrawerHeader                    # 固定导航高度
+│   ├── Read / Comments / Notes
+│   ├── More
+│   └── Close
+└── Content                         # overflow-auto + p-3
+    ├── PageMeta
+    ├── CommentsPanel
+    └── NotesPanel
+```
+
+当前实现会遍历并挂载所有 TabContent，只用 `hidden` 隐藏非激活标签。这对评论和笔记可接受，但 Page Chat 不能照搬，否则用户仅访问页面就可能加载聊天 bundle、模型列表并创建 session。
+
+Page Chat 还不能放在当前统一的 `overflow-auto` 内容容器中，因为这会让输入框随消息一起滚走。助手标签需要自己的固定输入布局，并采用“首次访问后才挂载”的策略。
+
+### 当前 `/assistant` 对话与输入结构
+
+现有 `/assistant/{sessionId}/chats/{chatId}` 的聊天主区域采用纵向 Flex，而不是依赖 `position: sticky`：
+
+```text
+SessionChatContent                  # h-full flex flex-col overflow-hidden
+├── Error Banner                    # 可选
+├── Message View                    # flex-1 overflow-hidden
+│   └── Scroll Container            # h-full overflow-y-auto
+│       └── Transcript              # max-w-4xl px-4 py-8
+│           ├── User Message
+│           ├── Reasoning
+│           ├── Tool Calls
+│           ├── Assistant Message
+│           └── Thinking Indicator
+└── Input Region                    # 消息滚动容器的兄弟节点
+    └── max-w-4xl
+        ├── Error / Overlay
+        ├── Suggestion Dropdowns
+        ├── Todo Panel
+        └── AssistantPromptComposer
+```
+
+因此输入框始终留在底部，只有 Message View 滚动。Page Chat 应复用这一结构，不能把 Composer 放进 Drawer 的滚动内容里。
+
+`AssistantPromptComposer` 当前能力：
+
+| 能力 | 当前行为 | Page Chat |
+| --- | --- | --- |
+| 文本输入 | 自动增高，约三行后内部滚动 | 保留 |
+| 图片附件 | 文件选择、拖放、剪贴板粘贴 | 保留 |
+| 大段文本 | 粘贴后转换为文本附件 | 保留 |
+| 模型选择 | 紧凑模型选择器，支持搜索 | 保留 |
+| 上下文用量 | 展示词元和费用信息 | 保留 |
+| 语音输入 | 录音、转写并填入输入框 | 保留 |
+| 发送/停止 | 生成中将发送按钮替换为停止按钮 | 保留 |
+| Inline Question | work agent 工具交互 | 本期不使用 |
+| `@文件`建议 | 依赖 sandbox 文件列表 | 移除 |
+| Skill 斜杠命令 | 依赖 sandbox skills | 移除 |
+| Pinned Todo | 来自 work agent todo 工具 | 移除 |
+| Sandbox Overlay | 归档、快照和 sandbox 状态 | 移除 |
+
+`useSessionChatRuntime` 已经封装 `/api/chat` transport、stream resume、停止、错误恢复和 chat instance 复用，基本不依赖 sandbox。相反，现有 `SessionChatProvider` 和 `SessionChatContent` 同时加载 sandbox、Git、Diff、Files、Skills 等状态，不能直接整体复用于 Page Chat。
 
 ## 核心决策
 
@@ -62,7 +199,115 @@ Page session 在 `sessions` 表记录：
 
 数据库使用只约束未归档 Page session 的部分唯一索引，避免并发首次打开产生重复 active session。创建接口在唯一键冲突时重新读取已有 session，向客户端返回同一个结果。
 
+### 数据关系图
+
+```mermaid
+erDiagram
+    USERS ||--o{ SESSIONS : owns
+    PUBLISHED_PAGES o|--o{ SESSIONS : contextualizes
+    SESSIONS ||--|{ CHATS : contains
+    CHATS ||--o{ CHAT_MESSAGES : contains
+    USERS ||--o{ CHAT_READS : records
+    CHATS ||--o{ CHAT_READS : has
+
+    SESSIONS {
+        text id PK
+        text user_id FK
+        text agent_type "work | chat"
+        text published_page_id "nullable stable context"
+        text page_user_slug "snapshot"
+        text page_slug "snapshot"
+        text status
+        jsonb sandbox_state "work only"
+    }
+
+    CHATS {
+        text id PK
+        text session_id FK
+        text title
+        text model_id
+        text active_stream_id
+    }
+
+    CHAT_MESSAGES {
+        text id PK
+        text chat_id FK
+        text role
+        jsonb parts
+    }
+```
+
+Page session 状态转换：
+
+```text
+页面首次打开助手
+      │
+      ▼
+创建 active chat session ────────┐
+      │                          │
+      ├── 创建/切换多个 chat     │ 再次进入页面
+      │                          │
+      ├── 页面改名：同步快照 ◄───┘
+      │
+      ├── 页面删除：保留历史，标记上下文不可用
+      │
+      └── session 归档
+              │
+              ▼
+         archived history
+              │
+              └── 再次进入页面 -> 创建新的 active Page session
+```
+
 ## 架构
+
+### 总体架构图
+
+```mermaid
+flowchart LR
+    User[已登录用户] --> Page[阅读页右侧助手]
+    User --> Assistant["/assistant Page session"]
+    Page --> SharedUI[共享 Page Chat UI]
+    Assistant --> SharedUI
+    SharedUI --> ChatAPI["/api/chat"]
+    ChatAPI --> SessionGuard[session / chat 所有权校验]
+    SessionGuard --> Router{agent_type}
+    Router -->|work| WorkRuntime[Sandbox Runtime]
+    WorkRuntime --> WorkAgent[Viben Work Agent]
+    Router -->|chat| PageRuntime[Page Runtime]
+    PageRuntime --> ChatAgent[无 Sandbox Chat Agent]
+    ChatAgent --> ScopedTools[当前页面范围 MCP Tools]
+    ScopedTools --> MCP["/api/mcp/v1"]
+    MCP --> Pages[(published_pages / versions)]
+    ChatAPI --> Messages[(sessions / chats / chat_messages)]
+```
+
+### 目标模块树
+
+```text
+packages/agent
+├── viben-agent.ts                  # 现有 work agent
+├── chat-agent.ts                   # 新的无 sandbox chat agent
+├── models.ts                       # 共用模型网关
+└── context-management              # 共用上下文管理
+
+apps/web
+├── app/api/chat                    # 统一聊天入口
+├── app/workflows
+│   ├── chat.ts                     # 共用 workflow orchestration
+│   ├── chat-sandbox-runtime.ts     # work runtime
+│   └── chat-page-runtime.ts        # page context + MCP runtime
+├── components/assistant
+│   ├── shared-chat-runtime         # stream、model、send/stop
+│   ├── chat-transcript             # 通用消息与 MCP tool result
+│   ├── chat-composer               # AssistantPromptComposer 控制层
+│   ├── session-chat-content        # work 组合层
+│   └── page-session-chat-content   # page 组合层
+└── components/pages
+    ├── read-page-client
+    ├── page-assistant-panel        # Drawer 紧凑布局
+    └── page-preview-panel          # /assistant Preview
+```
 
 ### 共享聊天管线，按运行时分流
 
@@ -91,6 +336,39 @@ workflow 读取 session 后按 `agent_type` 分流：
 ```
 
 消息表、chat 表、UI message 格式和 stream ID 不分叉。这样页面右侧滑栏和 `/assistant` 可以同时消费同一份持久化消息与流状态。
+
+### 请求时序
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant D as Page Drawer
+    participant S as Page Session API
+    participant C as /api/chat
+    participant W as Chat Workflow
+    participant A as Chat Agent
+    participant M as /api/mcp/v1
+    participant DB as Database
+
+    U->>D: 首次打开“助手”标签
+    D->>S: get-or-create(user_slug, page_slug)
+    S->>DB: 校验页面权限并查找 active Page session
+    DB-->>S: session + latest chat
+    S-->>D: session_id + chat_id + initial messages
+    U->>D: 发送消息
+    D->>C: session_id + chat_id + UI messages
+    C->>DB: 校验所有权并持久化用户消息
+    C->>W: 启动或恢复 workflow
+    W->>DB: 读取 agent_type = chat
+    W->>A: 页面上下文 + MCP tools
+    A->>M: get_page / update_page
+    M->>DB: 读取或写入页面版本
+    M-->>A: MCP tool result
+    A-->>W: 流式 assistant parts
+    W-->>C: UI message stream
+    C-->>D: 流式渲染
+    W->>DB: 保存 assistant 消息并清理 active stream
+```
 
 ### 无 sandbox Chat Agent
 
@@ -153,10 +431,105 @@ session 标题使用当前页面标题。chat 标题继续使用现有首条用�
 - 标签内容动态加载，避免未打开助手时加载聊天 bundle、模型列表或创建 session。
 - 首次打开标签时调用页面 session get-or-create 接口，然后恢复最近 chat。
 - 使用 Page Chat 共用视图，包含消息列表、流式状态、模型选择、输入框、停止生成和“新对话”。
-- 不渲染 workspace/sandbox 状态、文件附件能力或 Git 操作。
+- 不渲染 workspace/sandbox 状态、sandbox 文件建议或 Git 操作；图片与大段文本附件继续使用通用输入能力。
 - “新对话”调用现有 session chat 创建逻辑，在当前 Page session 内创建 chat 并切换过去。
 
 桌面端继续使用可调整宽度的右栏；移动端继续使用现有覆盖式 drawer。页面助手不改变 `ReadDrawer` 其他 Read、Comments、Notes 标签的默认行为。
+
+### Drawer 目标线框图
+
+```text
+┌────────────────────────── Page Assistant Drawer ──────────────────────────┐
+│  阅读       评论       笔记       ✦ 助手                         ⋯      × │
+├───────────────────────────────────────────────────────────────────────────┤
+│  总结这个页面 ▾                                      ＋新对话   ↗完整对话 │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  Assistant                                                               │
+│  这个页面主要介绍……                                                       │
+│                                                                           │
+│                                            请总结第三部分的关键观点。      │
+│                                                                           │
+│  MCP · get_page                                                          │
+│  已读取当前页面                                                [查看详情] │
+│                                                                           │
+│  Assistant                                                               │
+│  第三部分包含三个关键观点……                                               │
+│                                                                           │
+│                              ↓                                            │
+├───────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │ 询问、总结或修改这个页面……                                         │  │
+│  │                                                                     │  │
+│  │ 📎  Claude 3.7 ▾  12% context                         🎙      ↑     │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+Drawer 内部布局：
+
+```text
+PageAssistantPanel                 # h-full min-h-0 grid
+├── ConversationToolbar            # auto
+│   ├── 当前 chat 标题 / 历史切换
+│   ├── 新对话
+│   └── 在 /assistant 打开
+├── ChatTranscript                 # minmax(0, 1fr), overflow-y-auto
+└── ChatComposer                   # auto, 不参与消息滚动
+    └── AssistantPromptComposer
+```
+
+ConversationToolbar 不复制完整 Chat Tabs。Drawer 宽度有限，历史 chat 使用下拉列表；`/assistant` 完整页面继续使用横向 Chat Tabs。
+
+空对话根据身份显示快捷入口：
+
+```text
+作者                                      读者
+┌──────────────────────────┐              ┌──────────────────────────┐
+│ 为页面增加多语言支持     │              │ 总结这个页面             │
+│ 改善页面 SEO             │              │ 提取关键观点             │
+│ 检查页面结构和可访问性   │              │ 解释我不理解的部分       │
+└──────────────────────────┘              └──────────────────────────┘
+```
+
+快捷入口只负责填充并发送自然语言，不直接调用写 API。
+
+### Tab 挂载策略
+
+```text
+初始页面加载
+  ├── Read / Comments / Notes：保持现有行为
+  └── Assistant：不下载、不挂载、不创建 session
+
+第一次点击 Assistant
+  ├── 标记 assistant 为 visited
+  ├── 动态加载 PageAssistantPanel
+  ├── get-or-create Page session
+  └── 加载最近 chat / 恢复 active stream
+
+切换到其他 Tab
+  └── 保留已访问的 Assistant 实例和输入草稿，但设为不可见
+```
+
+保留已访问实例可以避免切换到评论再回来时丢失输入、附件或流式渲染；延迟首次挂载可以避免普通页面浏览产生无意义 session。
+
+### Drawer 输入框
+
+Drawer 与 `/assistant` 使用同一个 `ChatComposer` 控制层和 `AssistantPromptComposer` 展示层，只改变外层密度：
+
+| 属性 | `/assistant` | Page Drawer |
+| --- | --- | --- |
+| 最大宽度 | `max-w-4xl` | `w-full` |
+| 外边距 | `p-4 pb-8` | `p-3` + safe area |
+| textarea | 自动增高至约三行 | 相同 |
+| 图片/文本附件 | 保留 | 保留 |
+| 模型选择 | 保留 | 保留 |
+| 上下文用量 | 保留 | 保留，极窄宽度可只显示图标 |
+| 语音 | 保留 | 保留 |
+| 发送/停止 | 保留 | 保留 |
+| 文件建议/Skills/Todo | work 模式可用 | 不显示 |
+
+发送链路完全共用：先清空输入和附件、设置本地 pending、调用 `useSessionChatRuntime.sendMessage`；失败时保留可重试错误并回滚乐观标题。停止按钮继续调用现有 chat stop API，不实现 Page 专属中断协议。
 
 ## `/assistant` 集成
 
@@ -184,6 +557,26 @@ Page header 保留左侧边栏切换和 Chat Tabs，右侧只提供：
 
 Page session 不挂载 Git panel provider 的业务内容，不创建 Code Editor、dev server、Diff、Files 或 PR 控件。
 
+Page session 在 `/assistant` 中的桌面布局：
+
+```text
+┌──── Assistant 左侧栏 ────┬──────────────── Page Chat ────────────────┬──────── Preview ────────┐
+│ ＋ New Chat              │ ☰  对话一  对话二 ＋          Preview  → │                         │
+│                          ├───────────────────────────────────────────┤                         │
+│ Chats                    │                                           │                         │
+│   普通会话 A             │           Page Chat Transcript            │   当前页面正文 iframe   │
+│                          │                                           │                         │
+│ Pages                    │                                           │                         │
+│   当前页面会话  ●        ├───────────────────────────────────────────┤                         │
+│   另一页面会话           │ AssistantPromptComposer                   │                         │
+│                          │ 📎  Model ▾  Context               🎙  ↑  │                         │
+│ repo/name                │                                           │                         │
+│   Work session           │                                           │                         │
+└──────────────────────────┴───────────────────────────────────────────┴─────────────────────────┘
+```
+
+Preview 收起时，Page Chat 占据全部主区域；展开时只压缩 Page Chat，不影响 Assistant 左侧栏。Preview 桌面宽度初始使用约 `320px`，并复用右侧面板 resize 模式扩展到更宽尺寸。
+
 ### Preview
 
 Preview 是 Page session 专属的右侧面板：
@@ -194,6 +587,25 @@ Preview 是 Page session 专属的右侧面板：
 - iframe 不获得访问父页面 DOM 或认证信息的能力。
 - MCP 页面更新成功后，使页面内容缓存失效并重新加载 Preview。
 - 页面不存在或权限失效时显示明确的不可用状态，同时保留聊天历史。
+
+Preview 更新链路：
+
+```mermaid
+sequenceDiagram
+    participant A as Chat Agent
+    participant M as /api/mcp/v1
+    participant E as Page Chat UI
+    participant P as Preview
+    participant R as 当前阅读页
+
+    A->>M: update_page
+    M-->>A: success + page/version
+    A-->>E: tool result
+    E->>E: 识别当前页面 update_page 成功
+    E->>P: 增加 preview revision，重新加载
+    E->>R: 若处于阅读页则 router.refresh()
+    R->>R: 以最新 RSC props 更新 srcDoc iframe
+```
 
 ## 共用 Page Chat 视图
 
@@ -211,6 +623,57 @@ Preview 是 Page session 专属的右侧面板：
 - 在 MCP 页面更新成功后触发 Preview 刷新事件。
 
 页面 drawer 使用紧凑布局，`/assistant` 使用完整布局。两种布局不能复制网络状态机或消息持久化逻辑。
+
+### 共用聊天组件分层
+
+```mermaid
+flowchart TD
+    Work[Work SessionChatContent] --> Core[SharedChatCore]
+    PageFull[Page SessionChatContent] --> Core
+    PageDrawer[Page Assistant Panel] --> Core
+    Core --> Runtime[useSessionChatRuntime]
+    Core --> Transcript[ChatTranscript]
+    Core --> Composer[ChatComposer]
+    Core --> Models[Model state]
+    Work --> Workspace[Workspace / Sandbox extensions]
+    Workspace --> FileMention[File mentions]
+    Workspace --> Skills[Slash skills]
+    Workspace --> Todo[Todo panel]
+    Workspace --> Git[Git / Diff / PR]
+    PageFull --> PageHeader[Preview / External link]
+    PageDrawer --> ConversationToolbar[Chat switcher / New chat]
+```
+
+建议边界：
+
+1. `useSessionChatRuntime`
+   - 继续负责 AI SDK chat instance、`/api/chat` transport、resume、stop 和错误恢复。
+   - 不读取 sandbox。
+2. `SharedChatCore`
+   - 组合 runtime、模型状态、消息动作、附件状态和输入提交。
+   - 通过 feature props 决定是否启用 work 专属扩展。
+3. `ChatTranscript`
+   - 渲染用户消息、assistant Markdown、reasoning、通用 tool call、MCP tool result、thinking 和滚动到底部。
+   - 通过可选回调支持 work 模式打开文件；Page 模式不注入该回调。
+4. `ChatComposer`
+   - 封装 `AssistantPromptComposer` 所需的附件、语音、模型、上下文用量、发送和停止状态。
+   - Page 模式不读取 files、skills、todos 或 sandbox lifecycle。
+5. Work 与 Page 组合层
+   - Work 继续装配现有 workspace 能力。
+   - Page 只装配页面 toolbar、MCP 工具展示和 Preview 刷新。
+
+不得通过在现有 4000 行以上的 `SessionChatContent` 中到处增加 `agent_type === "chat"` 条件来实现。应先抽取真正共用的聊天核心，再让两个组合层分别装配。
+
+### 响应式行为
+
+| 场景 | 消息区 | 输入区 | 对话切换 | Preview |
+| --- | --- | --- | --- | --- |
+| 阅读页桌面 Drawer | Drawer 内独立滚动 | 固定底部，全宽 | 下拉列表 | 不显示；正文已在左侧 |
+| 阅读页移动 Drawer | 全屏独立滚动 | 底部安全区，适配键盘 | 下拉列表 | 不显示 |
+| `/assistant` 桌面 | 主区域独立滚动 | 固定底部，`max-w-4xl` | Chat Tabs | 右侧可折叠栏 |
+| `/assistant` 移动 | 主区域独立滚动 | 底部安全区 | 紧凑 Chat Tabs/菜单 | 覆盖式面板 |
+
+窄 Drawer 中四个顶层标签可能拥挤。Tabs 容器需要横向滚动或在容器宽度不足时使用图标加短标签，More 和 Close 始终固定在右侧且不可被挤出。
 
 ## 权限与安全
 
@@ -277,6 +740,9 @@ Preview 是 Page session 专属的右侧面板：
 
 - 未登录阅读页不显示“助手”标签；登录后显示。
 - Page drawer 恢复最近 chat，并能创建新对话。
+- Page drawer 未访问助手标签前不加载聊天 bundle 或创建 session；访问后切换标签不丢失输入草稿和附件。
+- Page drawer 与 `/assistant` 复用同一 Composer 行为，包括图片/大段文本附件、模型、上下文用量、语音和发送/停止。
+- Page 模式不请求 files、skills、todos 或 sandbox lifecycle API。
 - `/assistant` 正确生成 `Pages`、`Chats` 和仓库分组。
 - Page session header 不显示 work 操作，只显示 Preview 和外链。
 - Preview 在桌面端展开为右栏，在移动端展开为覆盖层。
@@ -303,3 +769,4 @@ Preview 是 Page session 专属的右侧面板：
 8. MCP 更新后 Preview 和后续 Agent 读取获得最新页面内容。
 9. 未登录用户、无阅读权限用户和其他 session 所有者无法访问页面对话。
 10. 现有 work Chats 和 GitHub 仓库 session 的创建、运行、恢复及 UI 行为无回归。
+11. 页面 Drawer 与 `/assistant` 的输入、附件、模型和停止生成体验一致，且 Page 模式不会发起 sandbox 相关请求。
