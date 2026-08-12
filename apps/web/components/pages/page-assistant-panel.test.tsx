@@ -10,6 +10,31 @@ import type { ReactNode } from "react"
 const sharedCoreSpy = vi.hoisted(() => vi.fn())
 const createChat = vi.hoisted(() => vi.fn())
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const labels: Record<string, string> = {
+        "assistant.pageChat.authorPrompts.accessibility": "Check structure and accessibility",
+        "assistant.pageChat.authorPrompts.multilingual": "Add multilingual support",
+        "assistant.pageChat.authorPrompts.seo": "Improve page SEO",
+        "assistant.pageChat.emptyDescription": "Start with a focused question or use a suggested prompt.",
+        "assistant.pageChat.emptyTitle": "Ask about this page",
+        "assistant.pageChat.loadConversationError": "Unable to load this conversation.",
+        "assistant.pageChat.newConversation": "New conversation",
+        "assistant.pageChat.openFullConversation": "Open full conversation",
+        "assistant.pageChat.pageUnavailable": "Page unavailable",
+        "assistant.pageChat.placeholder": "Ask about this page",
+        "assistant.pageChat.readerPrompts.explain": "Explain a difficult section",
+        "assistant.pageChat.readerPrompts.keyPoints": "Extract key points",
+        "assistant.pageChat.readerPrompts.summary": "Summarize this page",
+        "assistant.pageChat.restoreError": "Unable to restore the page assistant.",
+        "assistant.pageChat.retry": "Retry",
+      }
+      return labels[key] ?? key
+    },
+  }),
+}))
+
 vi.mock("@/components/assistant/shared-chat-core", () => ({
   SharedChatCore: (props: object) => {
     sharedCoreSpy(props)

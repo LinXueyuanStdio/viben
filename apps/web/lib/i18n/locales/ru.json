@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Страницы"
+    },
+    "pageChat": {
+      "tab": "Ассистент",
+      "placeholder": "Спросите об этой странице",
+      "newConversation": "Новый разговор",
+      "openFullConversation": "Открыть полный разговор",
+      "preview": "Предпросмотр",
+      "openPage": "Открыть страницу в новой вкладке",
+      "pageUnavailable": "Страница недоступна",
+      "retry": "Повторить",
+      "restoreError": "Не удалось восстановить ассистента страницы.",
+      "loadConversationError": "Не удалось загрузить этот разговор.",
+      "emptyTitle": "Спросите об этой странице",
+      "emptyDescription": "Начните с конкретного вопроса или используйте предложенный запрос.",
+      "authorPrompts": {
+        "multilingual": "Добавить многоязычную поддержку",
+        "seo": "Улучшить SEO страницы",
+        "accessibility": "Проверить структуру и доступность"
+      },
+      "readerPrompts": {
+        "summary": "Кратко пересказать эту страницу",
+        "keyPoints": "Выделить ключевые пункты",
+        "explain": "Объяснить сложный раздел"
+      }
     }
   },
   "legal": {

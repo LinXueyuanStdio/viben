@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, ExternalLink, Plus, RefreshCw } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import type { WebAgentUIMessage } from "@/app/types"
 import {
   PageChatProvider,
@@ -43,15 +44,15 @@ type ChatSnapshot = {
 }
 
 const AUTHOR_SUGGESTIONS = [
-  "Add multilingual support",
-  "Improve page SEO",
-  "Check structure and accessibility",
+  "assistant.pageChat.authorPrompts.multilingual",
+  "assistant.pageChat.authorPrompts.seo",
+  "assistant.pageChat.authorPrompts.accessibility",
 ]
 
 const READER_SUGGESTIONS = [
-  "Summarize this page",
-  "Extract key points",
-  "Explain a difficult section",
+  "assistant.pageChat.readerPrompts.summary",
+  "assistant.pageChat.readerPrompts.keyPoints",
+  "assistant.pageChat.readerPrompts.explain",
 ]
 
 function toSessionChatListItem(chat: Chat): SessionChatListItem {
@@ -140,15 +141,18 @@ function PageAssistantError({
   message: string
   onRetry: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 p-4 text-center">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">Page unavailable</p>
+        <p className="text-sm font-medium text-foreground">
+          {t("assistant.pageChat.pageUnavailable")}
+        </p>
         <p className="max-w-[24rem] text-xs text-muted-foreground">{message}</p>
       </div>
       <Button type="button" size="sm" variant="outline" onClick={onRetry}>
         <RefreshCw className="h-4 w-4" />
-        Retry
+        {t("assistant.pageChat.retry")}
       </Button>
     </div>
   )
@@ -161,12 +165,15 @@ function PageAssistantEmptyState({
   suggestions: string[]
   onUseSuggestion: (suggestion: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-3 px-4 py-8 text-center">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">Ask about this page</p>
+        <p className="text-sm font-medium text-foreground">
+          {t("assistant.pageChat.emptyTitle")}
+        </p>
         <p className="text-xs text-muted-foreground">
-          Start with a focused question or use a suggested prompt.
+          {t("assistant.pageChat.emptyDescription")}
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
@@ -199,6 +206,7 @@ function PageAssistantToolbar({
   onSelectChat: (chatId: string) => void
   onCreateChat: () => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
@@ -235,7 +243,7 @@ function PageAssistantToolbar({
         type="button"
         size="icon"
         variant="ghost"
-        aria-label="New conversation"
+        aria-label={t("assistant.pageChat.newConversation")}
         onClick={onCreateChat}
       >
         <Plus className="h-4 w-4" />
@@ -243,7 +251,7 @@ function PageAssistantToolbar({
       <Button asChild size="icon" variant="ghost">
         <a
           href={`/assistant/${sessionId}/chats/${currentChat.id}`}
-          aria-label="Open full conversation"
+          aria-label={t("assistant.pageChat.openFullConversation")}
         >
           <ExternalLink className="h-4 w-4" />
         </a>
@@ -256,6 +264,7 @@ export function PageAssistantPanel({
   userSlug,
   pageSlug,
 }: PageAssistantPanelProps) {
+  const { t } = useTranslation()
   const pageSession = usePageSession({ userSlug, pageSlug })
   const { modelOptions, loading: modelOptionsLoading } = useModelOptions()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
@@ -330,7 +339,7 @@ export function PageAssistantPanel({
   if (pageSession.error || !pageSession.data) {
     return (
       <PageAssistantError
-        message={pageSession.error?.message ?? "Unable to restore the page assistant."}
+        message={pageSession.error?.message ?? t("assistant.pageChat.restoreError")}
         onRetry={() => void pageSession.retry()}
       />
     )
@@ -343,7 +352,7 @@ export function PageAssistantPanel({
   if (chatSnapshot.error) {
     return (
       <PageAssistantError
-        message={chatSnapshot.error.message || "Unable to load this conversation."}
+        message={chatSnapshot.error.message || t("assistant.pageChat.loadConversationError")}
         onRetry={() => setActiveChatId(currentChat.id)}
       />
     )
@@ -355,9 +364,10 @@ export function PageAssistantPanel({
     activeStreamId:
       chatSnapshot.data?.chat.activeStreamId ?? currentChat.activeStreamId,
   }
-  const suggestions = pageSession.data.page.can_edit
+  const suggestions = (pageSession.data.page.can_edit
     ? AUTHOR_SUGGESTIONS
     : READER_SUGGESTIONS
+  ).map((key) => t(key))
 
   return (
     <PageChatProvider
@@ -393,7 +403,7 @@ export function PageAssistantPanel({
         composerProps={{
           draft,
           onDraftChange: setDraft,
-          placeholder: "Ask about this page",
+          placeholder: t("assistant.pageChat.placeholder"),
         }}
         composerContainerClassName="border-t border-border/60"
       />

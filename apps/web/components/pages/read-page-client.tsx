@@ -297,7 +297,7 @@ export function ReadPageClient({
     ...(isAuthenticated && sessionUserId
       ? [{
           value: "assistant",
-          label: "Assistant",
+          label: t("assistant.pageChat.tab"),
           type: "assistant",
           pageDbId,
           userSlug,

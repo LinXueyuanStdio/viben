@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Pagina’s"
+    },
+    "pageChat": {
+      "tab": "Assistent",
+      "placeholder": "Vraag iets over deze pagina",
+      "newConversation": "Nieuw gesprek",
+      "openFullConversation": "Volledig gesprek openen",
+      "preview": "Voorbeeld",
+      "openPage": "Pagina openen in nieuw tabblad",
+      "pageUnavailable": "Pagina niet beschikbaar",
+      "retry": "Opnieuw proberen",
+      "restoreError": "Kan de pagina-assistent niet herstellen.",
+      "loadConversationError": "Kan dit gesprek niet laden.",
+      "emptyTitle": "Vraag iets over deze pagina",
+      "emptyDescription": "Begin met een gerichte vraag of gebruik een voorgestelde prompt.",
+      "authorPrompts": {
+        "multilingual": "Meertalige ondersteuning toevoegen",
+        "seo": "Pagina-SEO verbeteren",
+        "accessibility": "Structuur en toegankelijkheid controleren"
+      },
+      "readerPrompts": {
+        "summary": "Deze pagina samenvatten",
+        "keyPoints": "Belangrijkste punten ophalen",
+        "explain": "Een moeilijk gedeelte uitleggen"
+      }
     }
   },
   "legal": {

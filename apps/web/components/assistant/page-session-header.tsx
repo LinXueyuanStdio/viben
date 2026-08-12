@@ -68,7 +68,7 @@ export function PageSessionHeader({
           onClick={() => setOpen(!open)}
         >
           <Eye className="h-3.5 w-3.5" />
-          {t("assistant.session.preview")}
+          {t("assistant.pageChat.preview")}
         </Button>
 
         {pageHref && !previewUnavailable ? (
@@ -78,14 +78,14 @@ export function PageSessionHeader({
                 href={pageHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={t("assistant.session.openPage")}
+                aria-label={t("assistant.pageChat.openPage")}
                 className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {t("assistant.session.openPage")}
+              {t("assistant.pageChat.openPage")}
             </TooltipContent>
           </Tooltip>
         ) : null}

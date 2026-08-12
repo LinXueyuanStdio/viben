@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Strony"
+    },
+    "pageChat": {
+      "tab": "Asystent",
+      "placeholder": "Zapytaj o tę stronę",
+      "newConversation": "Nowa rozmowa",
+      "openFullConversation": "Otwórz pełną rozmowę",
+      "preview": "Podgląd",
+      "openPage": "Otwórz stronę w nowej karcie",
+      "pageUnavailable": "Strona niedostępna",
+      "retry": "Spróbuj ponownie",
+      "restoreError": "Nie udało się przywrócić asystenta strony.",
+      "loadConversationError": "Nie udało się wczytać tej rozmowy.",
+      "emptyTitle": "Zapytaj o tę stronę",
+      "emptyDescription": "Zacznij od konkretnego pytania albo użyj sugerowanego promptu.",
+      "authorPrompts": {
+        "multilingual": "Dodaj obsługę wielu języków",
+        "seo": "Ulepsz SEO strony",
+        "accessibility": "Sprawdź strukturę i dostępność"
+      },
+      "readerPrompts": {
+        "summary": "Podsumuj tę stronę",
+        "keyPoints": "Wyodrębnij kluczowe punkty",
+        "explain": "Wyjaśnij trudną sekcję"
+      }
     }
   },
   "legal": {

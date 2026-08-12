@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Halaman"
+    },
+    "pageChat": {
+      "tab": "Asisten",
+      "placeholder": "Tanyakan tentang halaman ini",
+      "newConversation": "Percakapan baru",
+      "openFullConversation": "Buka percakapan lengkap",
+      "preview": "Pratinjau",
+      "openPage": "Buka halaman di tab baru",
+      "pageUnavailable": "Halaman tidak tersedia",
+      "retry": "Coba lagi",
+      "restoreError": "Tidak dapat memulihkan asisten halaman.",
+      "loadConversationError": "Tidak dapat memuat percakapan ini.",
+      "emptyTitle": "Tanyakan tentang halaman ini",
+      "emptyDescription": "Mulai dengan pertanyaan terarah atau gunakan saran prompt.",
+      "authorPrompts": {
+        "multilingual": "Tambahkan dukungan multibahasa",
+        "seo": "Tingkatkan SEO halaman",
+        "accessibility": "Periksa struktur dan aksesibilitas"
+      },
+      "readerPrompts": {
+        "summary": "Ringkas halaman ini",
+        "keyPoints": "Ambil poin utama",
+        "explain": "Jelaskan bagian yang sulit"
+      }
     }
   },
   "legal": {

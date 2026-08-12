@@ -16,6 +16,9 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const labels: Record<string, string> = {
+        "assistant.pageChat.pageUnavailable": "Page unavailable",
+        "assistant.pageChat.preview": "Preview",
+        "assistant.pageChat.retry": "Retry",
         "assistant.session.preview": "Preview",
         "assistant.session.previewUnavailable": "Page unavailable",
         "assistant.session.retryPreview": "Retry",

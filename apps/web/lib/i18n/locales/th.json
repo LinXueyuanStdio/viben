@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "หน้า"
+    },
+    "pageChat": {
+      "tab": "ผู้ช่วย",
+      "placeholder": "ถามเกี่ยวกับหน้านี้",
+      "newConversation": "บทสนทนาใหม่",
+      "openFullConversation": "เปิดบทสนทนาเต็ม",
+      "preview": "ตัวอย่าง",
+      "openPage": "เปิดหน้าในแท็บใหม่",
+      "pageUnavailable": "ไม่สามารถใช้งานหน้านี้ได้",
+      "retry": "ลองอีกครั้ง",
+      "restoreError": "ไม่สามารถกู้คืนผู้ช่วยของหน้านี้ได้",
+      "loadConversationError": "ไม่สามารถโหลดบทสนทนานี้ได้",
+      "emptyTitle": "ถามเกี่ยวกับหน้านี้",
+      "emptyDescription": "เริ่มด้วยคำถามที่ชัดเจนหรือใช้พรอมป์ต์ที่แนะนำ",
+      "authorPrompts": {
+        "multilingual": "เพิ่มการรองรับหลายภาษา",
+        "seo": "ปรับปรุง SEO ของหน้า",
+        "accessibility": "ตรวจสอบโครงสร้างและการเข้าถึง"
+      },
+      "readerPrompts": {
+        "summary": "สรุปหน้านี้",
+        "keyPoints": "ดึงประเด็นสำคัญ",
+        "explain": "อธิบายส่วนที่เข้าใจยาก"
+      }
     }
   },
   "legal": {

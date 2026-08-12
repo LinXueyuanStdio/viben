@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "पृष्ठ"
+    },
+    "pageChat": {
+      "tab": "सहायक",
+      "placeholder": "इस पृष्ठ के बारे में पूछें",
+      "newConversation": "नई बातचीत",
+      "openFullConversation": "पूरी बातचीत खोलें",
+      "preview": "पूर्वावलोकन",
+      "openPage": "पृष्ठ को नए टैब में खोलें",
+      "pageUnavailable": "पृष्ठ उपलब्ध नहीं है",
+      "retry": "फिर कोशिश करें",
+      "restoreError": "पृष्ठ सहायक को पुनर्स्थापित नहीं किया जा सका।",
+      "loadConversationError": "यह बातचीत लोड नहीं हो सकी।",
+      "emptyTitle": "इस पृष्ठ के बारे में पूछें",
+      "emptyDescription": "एक केंद्रित प्रश्न से शुरू करें या सुझाए गए प्रॉम्प्ट का उपयोग करें।",
+      "authorPrompts": {
+        "multilingual": "बहुभाषी समर्थन जोड़ें",
+        "seo": "पृष्ठ SEO सुधारें",
+        "accessibility": "संरचना और पहुंच की जांच करें"
+      },
+      "readerPrompts": {
+        "summary": "इस पृष्ठ का सारांश दें",
+        "keyPoints": "मुख्य बिंदु निकालें",
+        "explain": "किसी कठिन अनुभाग को समझाएं"
+      }
     }
   },
   "legal": {

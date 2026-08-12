@@ -2414,7 +2414,8 @@
       "statusSandboxRunning": "Sandbox running",
       "statusCompleted": "Completed",
       "statusArchived": "Archived",
-      "statusIdle": "Idle"
+      "statusIdle": "Idle",
+      "pages": "Pages"
     },
     "chat": {
       "sessions": "Sessions",
@@ -3117,6 +3118,30 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "pageChat": {
+      "tab": "Assistant",
+      "placeholder": "Ask about this page",
+      "newConversation": "New conversation",
+      "openFullConversation": "Open full conversation",
+      "preview": "Preview",
+      "openPage": "Open page",
+      "pageUnavailable": "Page unavailable",
+      "retry": "Retry",
+      "restoreError": "Unable to restore the page assistant.",
+      "loadConversationError": "Unable to load this conversation.",
+      "emptyTitle": "Ask about this page",
+      "emptyDescription": "Start with a focused question or use a suggested prompt.",
+      "authorPrompts": {
+        "multilingual": "Add multilingual support",
+        "seo": "Improve page SEO",
+        "accessibility": "Check structure and accessibility"
+      },
+      "readerPrompts": {
+        "summary": "Summarize this page",
+        "keyPoints": "Extract key points",
+        "explain": "Explain a difficult section"
+      }
     }
   },
   "homepage": {

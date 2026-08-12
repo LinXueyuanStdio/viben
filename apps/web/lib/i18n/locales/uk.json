@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Сторінки"
+    },
+    "pageChat": {
+      "tab": "Асистент",
+      "placeholder": "Запитайте про цю сторінку",
+      "newConversation": "Нова розмова",
+      "openFullConversation": "Відкрити повну розмову",
+      "preview": "Попередній перегляд",
+      "openPage": "Відкрити сторінку в новій вкладці",
+      "pageUnavailable": "Сторінка недоступна",
+      "retry": "Спробувати ще раз",
+      "restoreError": "Не вдалося відновити асистента сторінки.",
+      "loadConversationError": "Не вдалося завантажити цю розмову.",
+      "emptyTitle": "Запитайте про цю сторінку",
+      "emptyDescription": "Почніть із конкретного запитання або скористайтеся підказкою.",
+      "authorPrompts": {
+        "multilingual": "Додати багатомовну підтримку",
+        "seo": "Покращити SEO сторінки",
+        "accessibility": "Перевірити структуру та доступність"
+      },
+      "readerPrompts": {
+        "summary": "Підсумувати цю сторінку",
+        "keyPoints": "Виділити ключові моменти",
+        "explain": "Пояснити складний розділ"
+      }
     }
   },
   "legal": {

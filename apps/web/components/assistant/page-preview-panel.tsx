@@ -92,7 +92,7 @@ export function PagePreviewPanel({ session }: { session: Session }) {
     <>
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
         <div className="min-w-0 truncate text-sm font-medium">
-          {t("assistant.session.preview")}
+          {t("assistant.pageChat.preview")}
         </div>
         {isMobile ? (
           <Button
@@ -119,14 +119,14 @@ export function PagePreviewPanel({ session }: { session: Session }) {
           <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
             <p className="text-sm font-medium text-foreground">
               {error
-                ? t("assistant.session.previewUnavailable")
-                : t("assistant.session.preview")}
+                ? t("assistant.pageChat.pageUnavailable")
+                : t("assistant.pageChat.preview")}
             </p>
             {isLoading ? (
               <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
             ) : (
               <Button type="button" variant="outline" size="sm" onClick={reload}>
-                {t("assistant.session.retryPreview")}
+                {t("assistant.pageChat.retry")}
               </Button>
             )}
           </div>
@@ -140,7 +140,7 @@ export function PagePreviewPanel({ session }: { session: Session }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t("assistant.session.preview")}
+        aria-label={t("assistant.pageChat.preview")}
         data-testid="page-preview-slot"
         data-layout="mobile"
         className="fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-l border-border bg-background"
@@ -153,7 +153,7 @@ export function PagePreviewPanel({ session }: { session: Session }) {
   return (
     <aside
       role="complementary"
-      aria-label={t("assistant.session.preview")}
+      aria-label={t("assistant.pageChat.preview")}
       data-testid="page-preview-slot"
       data-layout="desktop"
       className="relative flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background shadow-lg sm:shadow-none"

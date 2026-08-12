@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Sayfalar"
+    },
+    "pageChat": {
+      "tab": "Asistan",
+      "placeholder": "Bu sayfa hakkında soru sor",
+      "newConversation": "Yeni konuşma",
+      "openFullConversation": "Tam konuşmayı aç",
+      "preview": "Önizleme",
+      "openPage": "Sayfayı yeni sekmede aç",
+      "pageUnavailable": "Sayfa kullanılamıyor",
+      "retry": "Tekrar dene",
+      "restoreError": "Sayfa asistanı geri yüklenemedi.",
+      "loadConversationError": "Bu konuşma yüklenemedi.",
+      "emptyTitle": "Bu sayfa hakkında soru sor",
+      "emptyDescription": "Odaklı bir soruyla başlayın veya önerilen bir istem kullanın.",
+      "authorPrompts": {
+        "multilingual": "Çok dilli destek ekle",
+        "seo": "Sayfa SEO’sunu iyileştir",
+        "accessibility": "Yapı ve erişilebilirliği kontrol et"
+      },
+      "readerPrompts": {
+        "summary": "Bu sayfayı özetle",
+        "keyPoints": "Temel noktaları çıkar",
+        "explain": "Zor bir bölümü açıkla"
+      }
     }
   },
   "legal": {

@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Trang"
+    },
+    "pageChat": {
+      "tab": "Trợ lý",
+      "placeholder": "Hỏi về trang này",
+      "newConversation": "Cuộc trò chuyện mới",
+      "openFullConversation": "Mở toàn bộ cuộc trò chuyện",
+      "preview": "Xem trước",
+      "openPage": "Mở trang trong tab mới",
+      "pageUnavailable": "Trang không khả dụng",
+      "retry": "Thử lại",
+      "restoreError": "Không thể khôi phục trợ lý trang.",
+      "loadConversationError": "Không thể tải cuộc trò chuyện này.",
+      "emptyTitle": "Hỏi về trang này",
+      "emptyDescription": "Bắt đầu bằng một câu hỏi tập trung hoặc dùng gợi ý.",
+      "authorPrompts": {
+        "multilingual": "Thêm hỗ trợ đa ngôn ngữ",
+        "seo": "Cải thiện SEO của trang",
+        "accessibility": "Kiểm tra cấu trúc và khả năng truy cập"
+      },
+      "readerPrompts": {
+        "summary": "Tóm tắt trang này",
+        "keyPoints": "Trích xuất ý chính",
+        "explain": "Giải thích một phần khó hiểu"
+      }
     }
   },
   "legal": {

@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "ページ"
+    },
+    "pageChat": {
+      "tab": "アシスタント",
+      "placeholder": "このページについて質問する",
+      "newConversation": "新しい会話",
+      "openFullConversation": "会話全体を開く",
+      "preview": "プレビュー",
+      "openPage": "新しいタブでページを開く",
+      "pageUnavailable": "ページを利用できません",
+      "retry": "再試行",
+      "restoreError": "ページアシスタントを復元できませんでした。",
+      "loadConversationError": "この会話を読み込めませんでした。",
+      "emptyTitle": "このページについて質問する",
+      "emptyDescription": "具体的な質問から始めるか、提案プロンプトを使用してください。",
+      "authorPrompts": {
+        "multilingual": "多言語対応を追加",
+        "seo": "ページの SEO を改善",
+        "accessibility": "構造とアクセシビリティを確認"
+      },
+      "readerPrompts": {
+        "summary": "このページを要約",
+        "keyPoints": "重要なポイントを抽出",
+        "explain": "難しいセクションを説明"
+      }
     }
   },
   "legal": {

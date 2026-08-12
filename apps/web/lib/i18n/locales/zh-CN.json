@@ -2439,7 +2439,8 @@
       "statusSandboxRunning": "沙箱运行中",
       "statusCompleted": "已完成",
       "statusArchived": "已归档",
-      "statusIdle": "空闲"
+      "statusIdle": "空闲",
+      "pages": "页面"
     },
     "chat": {
       "sessions": "会话",
@@ -3142,6 +3143,30 @@
       "inputPlaceholder": "请求修改或提问...",
       "somethingWentWrong": "出了点问题",
       "tryAgain": "重试"
+    },
+    "pageChat": {
+      "tab": "助手",
+      "placeholder": "询问这个页面",
+      "newConversation": "新对话",
+      "openFullConversation": "打开完整对话",
+      "preview": "预览",
+      "openPage": "在新标签页打开页面",
+      "pageUnavailable": "页面不可用",
+      "retry": "重试",
+      "restoreError": "无法恢复页面助手。",
+      "loadConversationError": "无法加载此对话。",
+      "emptyTitle": "询问这个页面",
+      "emptyDescription": "从一个聚焦的问题开始，或使用建议提示。",
+      "authorPrompts": {
+        "multilingual": "添加多语言支持",
+        "seo": "改进页面 SEO",
+        "accessibility": "检查结构和可访问性"
+      },
+      "readerPrompts": {
+        "summary": "总结这个页面",
+        "keyPoints": "提取要点",
+        "explain": "解释难懂段落"
+      }
     }
   },
   "homepage": {

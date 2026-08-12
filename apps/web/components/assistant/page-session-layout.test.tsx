@@ -21,6 +21,8 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const labels: Record<string, string> = {
+        "assistant.pageChat.openPage": "Open page",
+        "assistant.pageChat.preview": "Preview",
         "assistant.session.openPage": "Open page",
         "assistant.session.preview": "Preview",
       };

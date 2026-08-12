@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Sidor"
+    },
+    "pageChat": {
+      "tab": "Assistent",
+      "placeholder": "Fråga om den här sidan",
+      "newConversation": "Ny konversation",
+      "openFullConversation": "Öppna hela konversationen",
+      "preview": "Förhandsvisning",
+      "openPage": "Öppna sidan i ny flik",
+      "pageUnavailable": "Sidan är inte tillgänglig",
+      "retry": "Försök igen",
+      "restoreError": "Kunde inte återställa sidassistenten.",
+      "loadConversationError": "Kunde inte läsa in den här konversationen.",
+      "emptyTitle": "Fråga om den här sidan",
+      "emptyDescription": "Börja med en fokuserad fråga eller använd ett föreslaget prompt.",
+      "authorPrompts": {
+        "multilingual": "Lägg till flerspråkigt stöd",
+        "seo": "Förbättra sidans SEO",
+        "accessibility": "Kontrollera struktur och tillgänglighet"
+      },
+      "readerPrompts": {
+        "summary": "Sammanfatta den här sidan",
+        "keyPoints": "Extrahera nyckelpunkter",
+        "explain": "Förklara ett svårt avsnitt"
+      }
     }
   },
   "legal": {

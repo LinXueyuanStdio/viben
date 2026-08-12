@@ -3631,6 +3631,33 @@
       "inputPlaceholder": "Request changes or ask a question...",
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try again"
+    },
+    "sidebar": {
+      "pages": "Halaman"
+    },
+    "pageChat": {
+      "tab": "Pembantu",
+      "placeholder": "Tanya tentang halaman ini",
+      "newConversation": "Perbualan baharu",
+      "openFullConversation": "Buka perbualan penuh",
+      "preview": "Pratonton",
+      "openPage": "Buka halaman dalam tab baharu",
+      "pageUnavailable": "Halaman tidak tersedia",
+      "retry": "Cuba lagi",
+      "restoreError": "Tidak dapat memulihkan pembantu halaman.",
+      "loadConversationError": "Tidak dapat memuatkan perbualan ini.",
+      "emptyTitle": "Tanya tentang halaman ini",
+      "emptyDescription": "Mulakan dengan soalan berfokus atau gunakan cadangan prompt.",
+      "authorPrompts": {
+        "multilingual": "Tambah sokongan berbilang bahasa",
+        "seo": "Tingkatkan SEO halaman",
+        "accessibility": "Semak struktur dan kebolehcapaian"
+      },
+      "readerPrompts": {
+        "summary": "Ringkaskan halaman ini",
+        "keyPoints": "Ekstrak perkara utama",
+        "explain": "Terangkan bahagian yang sukar"
+      }
     }
   },
   "legal": {
