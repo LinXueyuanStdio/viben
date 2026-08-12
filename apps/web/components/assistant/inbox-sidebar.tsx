@@ -341,13 +341,15 @@ function SessionPopoverContent({ session }: { session: SessionWithUnread }) {
   );
 }
 
-type SessionRepoGroup = {
-  id: string;
+export type SessionSidebarGroup = {
+  id: "group:chats" | "group:pages" | `repo:${string}`;
+  labelKey?: "assistant.sidebar.chats" | "assistant.sidebar.pages";
   label: string;
+  kind: "chats" | "pages" | "repo";
   sessions: SessionWithUnread[];
 };
 
-function getRepoGroupId(session: SessionWithUnread): string {
+function getRepoGroupId(session: SessionWithUnread): `repo:${string}` {
   const repoName = session.repoName?.trim();
   const repoOwner = session.repoOwner?.trim();
 
@@ -355,7 +357,7 @@ function getRepoGroupId(session: SessionWithUnread): string {
     return "repo:unscoped";
   }
 
-  return `repo:${repoOwner ?? ""}/${repoName}`.toLowerCase();
+  return `repo:${`${repoOwner ?? ""}/${repoName}`.toLowerCase()}`;
 }
 
 function getRepoGroupLabel(session: SessionWithUnread, t: (key: string) => string): string {
@@ -369,34 +371,57 @@ function getRepoGroupLabel(session: SessionWithUnread, t: (key: string) => strin
   return repoOwner ? `${repoOwner}/${repoName}` : repoName;
 }
 
-function groupSessionsByRepo(
+export function groupAssistantSessions(
   sessions: SessionWithUnread[],
   t: (key: string) => string,
-): SessionRepoGroup[] {
-  const groups = new Map<string, SessionRepoGroup>();
+): SessionSidebarGroup[] {
+  const chatsGroup: SessionSidebarGroup = {
+    id: "group:chats",
+    labelKey: "assistant.sidebar.chats",
+    label: t("assistant.sidebar.chats"),
+    kind: "chats",
+    sessions: [],
+  };
+  const pagesGroup: SessionSidebarGroup = {
+    id: "group:pages",
+    labelKey: "assistant.sidebar.pages",
+    label: t("assistant.sidebar.pages"),
+    kind: "pages",
+    sessions: [],
+  };
+  const repoGroups = new Map<string, SessionSidebarGroup>();
 
   for (const session of sessions) {
+    if (session.agentType === "chat" && session.publishedPageId) {
+      pagesGroup.sessions.push(session);
+      continue;
+    }
+
+    if (!session.repoName?.trim()) {
+      chatsGroup.sessions.push(session);
+      continue;
+    }
+
     const groupId = getRepoGroupId(session);
-    const existingGroup = groups.get(groupId);
+    const existingGroup = repoGroups.get(groupId);
 
     if (existingGroup) {
       existingGroup.sessions.push(session);
       continue;
     }
 
-    groups.set(groupId, {
+    repoGroups.set(groupId, {
       id: groupId,
       label: getRepoGroupLabel(session, t),
+      kind: "repo",
       sessions: [session],
     });
   }
 
-  const result = Array.from(groups.values());
-  const unscopedIndex = result.findIndex((g) => g.id === "repo:unscoped");
-  if (unscopedIndex > 0) {
-    const [unscoped] = result.splice(unscopedIndex, 1);
-    result.unshift(unscoped);
-  }
+  const result: SessionSidebarGroup[] = [];
+  if (chatsGroup.sessions.length > 0) result.push(chatsGroup);
+  if (pagesGroup.sessions.length > 0) result.push(pagesGroup);
+  result.push(...Array.from(repoGroups.values()));
   return result;
 }
 
@@ -763,6 +788,11 @@ function areSessionRowsEqual(
     prev.session.title === next.session.title &&
     prev.session.hasStreaming === next.session.hasStreaming &&
     prev.session.hasUnread === next.session.hasUnread &&
+    prev.session.status === next.session.status &&
+    prev.session.agentType === next.session.agentType &&
+    prev.session.publishedPageId === next.session.publishedPageId &&
+    prev.session.pageUserSlug === next.session.pageUserSlug &&
+    prev.session.pageSlug === next.session.pageSlug &&
     prev.session.repoOwner === next.session.repoOwner &&
     prev.session.repoName === next.session.repoName &&
     prev.session.branch === next.session.branch &&
@@ -770,6 +800,7 @@ function areSessionRowsEqual(
     prev.session.prStatus === next.session.prStatus &&
     prev.session.linesAdded === next.session.linesAdded &&
     prev.session.linesRemoved === next.session.linesRemoved &&
+    prev.session.lifecycleState === next.session.lifecycleState &&
     String(prev.session.lastActivityAt) === String(next.session.lastActivityAt)
   );
 }
@@ -931,7 +962,7 @@ export function InboxSidebar({
     (showArchived && archivedSessionsLoading && archivedSessions.length === 0);
   const sidebarUser = session?.user ?? initialUser;
   const groupedSessions = useMemo(
-    () => groupSessionsByRepo(displayedSessions, t).map((group) => ({
+    () => groupAssistantSessions(displayedSessions, t).map((group) => ({
       ...group,
       sessions: [...group.sessions].sort((a, b) => {
         // Pinned sessions first
@@ -942,7 +973,7 @@ export function InboxSidebar({
         return 0;
       }),
     })),
-    [displayedSessions, pinned],
+    [displayedSessions, pinned, t],
   );
   const activeGroupId = useMemo(
     () =>
@@ -1215,7 +1246,8 @@ export function InboxSidebar({
                 const groupRepoOwner =
                   group.sessions[0]?.repoOwner?.trim() ?? "";
                 const groupRepoName = group.sessions[0]?.repoName?.trim() ?? "";
-                const hasRepo = Boolean(groupRepoOwner && groupRepoName);
+                const hasRepo =
+                  group.kind === "repo" && Boolean(groupRepoOwner && groupRepoName);
 
                 return (
                   <section key={group.id} className="space-y-1.5">

@@ -13,6 +13,10 @@ export type SessionWithUnread = Pick<
   | "id"
   | "title"
   | "status"
+  | "agentType"
+  | "publishedPageId"
+  | "pageUserSlug"
+  | "pageSlug"
   | "repoOwner"
   | "repoName"
   | "branch"
@@ -73,6 +77,10 @@ function mergeSessionWithSummary(
     id: updatedSession.id,
     title: updatedSession.title,
     status: updatedSession.status,
+    agentType: updatedSession.agentType,
+    publishedPageId: updatedSession.publishedPageId,
+    pageUserSlug: updatedSession.pageUserSlug,
+    pageSlug: updatedSession.pageSlug,
     repoOwner: updatedSession.repoOwner,
     repoName: updatedSession.repoName,
     branch: updatedSession.branch,

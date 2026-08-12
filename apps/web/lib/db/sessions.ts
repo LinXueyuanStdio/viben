@@ -288,6 +288,10 @@ type SessionSidebarFields = Pick<
   | "id"
   | "title"
   | "status"
+  | "agentType"
+  | "publishedPageId"
+  | "pageUserSlug"
+  | "pageSlug"
   | "repoOwner"
   | "repoName"
   | "branch"
@@ -336,6 +340,10 @@ export async function getSessionsWithUnreadByUserId(
       id: sessions.id,
       title: sessions.title,
       status: sessions.status,
+      agentType: sessions.agentType,
+      publishedPageId: sessions.publishedPageId,
+      pageUserSlug: sessions.pageUserSlug,
+      pageSlug: sessions.pageSlug,
       repoOwner: sessions.repoOwner,
       repoName: sessions.repoName,
       branch: sessions.branch,
