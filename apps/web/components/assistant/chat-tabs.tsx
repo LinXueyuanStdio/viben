@@ -273,6 +273,204 @@ type ChatTabsProps = {
   variant?: "standalone" | "inline";
 };
 
+export function PageChatTabs({
+  activeChatId,
+  variant = "standalone",
+}: ChatTabsProps) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const params = useParams<{ sessionId?: string }>();
+  const sessionId = params.sessionId ?? "";
+  const { chats, createChat, switchChat, deleteChat, renameChat } =
+    useSessionLayout();
+  const isMobile = useIsMobile();
+
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeChatTabRef = useRef<HTMLDivElement>(null);
+  const prefetchedChatHrefsRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (container.scrollWidth <= container.clientWidth) return;
+
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  useEffect(() => {
+    activeChatTabRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeChatId, chats.length]);
+
+  const prefetchChat = useCallback(
+    (chatId: string) => {
+      if (!sessionId) {
+        return;
+      }
+
+      const href = `/assistant/${sessionId}/chats/${chatId}`;
+      if (prefetchedChatHrefsRef.current.has(href)) {
+        return;
+      }
+
+      prefetchedChatHrefsRef.current.add(href);
+      router.prefetch(href);
+    },
+    [router, sessionId],
+  );
+
+  const handleNewChat = () => {
+    const { chat } = createChat();
+    switchChat(chat.id);
+  };
+
+  const handleStartRename = useCallback(
+    (chatId: string, currentTitle: string) => {
+      setRenamingChatId(chatId);
+      setRenameValue(currentTitle || "");
+    },
+    [],
+  );
+
+  const handleFinishRename = useCallback(async () => {
+    if (!renamingChatId) return;
+    const trimmed = renameValue.trim();
+    if (trimmed) {
+      try {
+        await renameChat(renamingChatId, trimmed);
+      } catch (err) {
+        console.error("Failed to rename chat:", err);
+      }
+    }
+    setRenamingChatId(null);
+  }, [renamingChatId, renameValue, renameChat]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingChatId) return;
+    const idToDelete = deletingChatId;
+    setDeletingChatId(null);
+
+    try {
+      await deleteChat(idToDelete);
+    } catch (err) {
+      console.error("Failed to delete chat:", err);
+    }
+
+    if (idToDelete === activeChatId) {
+      const remaining = chats.filter((c) => c.id !== idToDelete);
+      if (remaining.length > 0) {
+        switchChat(remaining[0].id);
+      }
+    }
+  }, [deletingChatId, activeChatId, chats, deleteChat, switchChat]);
+
+  const canDelete = chats.length > 1;
+  const scrollContent = (
+    <div
+      ref={scrollContainerRef}
+      className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {chats.map((chat) => {
+        const isActive = chat.id === activeChatId;
+        const isRenaming = renamingChatId === chat.id;
+
+        return (
+          <ChatTabItem
+            key={chat.id}
+            chat={chat}
+            isActive={isActive}
+            isRenaming={isRenaming}
+            tabRef={isActive ? activeChatTabRef : undefined}
+            renameValue={renameValue}
+            canDelete={canDelete}
+            isMobile={isMobile}
+            onRenameChange={setRenameValue}
+            onFinishRename={handleFinishRename}
+            onCancelRename={() => setRenamingChatId(null)}
+            onStartRename={() => handleStartRename(chat.id, chat.title || "")}
+            onDelete={() => setDeletingChatId(chat.id)}
+            onClick={() => {
+              if (chat.id !== activeChatId) {
+                switchChat(chat.id);
+              }
+            }}
+            onPrefetch={() => prefetchChat(chat.id)}
+          />
+        );
+      })}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="ml-1 flex shrink-0 items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {t("assistant.chat.newChat")}
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+
+  return (
+    <>
+      {variant === "inline" ? (
+        scrollContent
+      ) : (
+        <div className="flex items-center gap-0 border-b border-border bg-muted/30 px-1">
+          {scrollContent}
+        </div>
+      )}
+
+      <Dialog
+        open={deletingChatId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingChatId(null);
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>{t("assistant.chat.closeChatConfirm")}</DialogTitle>
+            <DialogDescription>
+              {t("assistant.chat.closeChatDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingChatId(null)}>
+              {t("assistant.chat.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleConfirmDelete()}
+            >
+              {t("assistant.chat.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps) {
   const { t } = useTranslation();
   const router = useRouter();

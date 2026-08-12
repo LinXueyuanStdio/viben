@@ -2367,7 +2367,9 @@
     },
     "session": {
       "shareChat": "Share chat",
-      "closeSidebar": "Close right sidebar"
+      "closeSidebar": "Close right sidebar",
+      "preview": "Preview",
+      "openPage": "Open page"
     },
     "sidebar": {
       "newChat": "New Chat",

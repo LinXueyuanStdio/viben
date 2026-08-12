@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { WebAgentUIMessage } from "@/app/types";
 import { DiffsProvider } from "@/components/assistant/diffs-provider";
+import { PageSessionChatContent } from "@/components/assistant/page-session-chat-content";
 import { SessionChatContent } from "@/components/assistant/session-chat-content";
 import { SessionChatProvider } from "@/components/assistant/session-chat-context";
 import {
@@ -202,6 +203,20 @@ export default async function SessionChatPage({
     sessionChats,
     chat.id,
   );
+
+  if (sessionRecord.agentType === "chat") {
+    return (
+      <PageSessionChatContent
+        session={sessionRecord}
+        chat={{ ...chat, modelId: chatModelId }}
+        initialMessages={initialMessages}
+        initialModelOptions={initialModelOptions}
+        messageDurationMap={messageDurationMap}
+        messageStartedAtMap={messageStartedAtMap}
+        lastUserMessageSentAt={lastUserMessageSentAt}
+      />
+    );
+  }
 
   return (
     <DiffsProvider>

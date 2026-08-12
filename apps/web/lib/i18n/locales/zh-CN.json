@@ -2392,7 +2392,9 @@
     },
     "session": {
       "shareChat": "分享对话",
-      "closeSidebar": "关闭右侧栏"
+      "closeSidebar": "关闭右侧栏",
+      "preview": "预览",
+      "openPage": "打开页面"
     },
     "sidebar": {
       "newChat": "新对话",

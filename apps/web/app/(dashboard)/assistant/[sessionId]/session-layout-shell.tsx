@@ -26,6 +26,7 @@ import {
   GitPanelProvider,
   useGitPanel,
 } from "@/components/assistant/git-panel-context";
+import { PageSessionLayout } from "@/components/assistant/page-session-layout";
 import { SessionHeader } from "@/components/assistant/session-header";
 import { SessionLayoutContext, useSessionLayout } from "@/components/assistant/session-layout-context";
 import { useAppShell } from "@/components/layout/app-shell";
@@ -262,11 +263,17 @@ export function SessionLayoutShell({
 
   return (
     <SessionLayoutContext.Provider value={layoutContext}>
-      <GitPanelProvider>
-        <SessionLayoutInner activeChatId={activeChatId}>
+      {initialSession.agentType === "chat" ? (
+        <PageSessionLayout session={initialSession} activeChatId={activeChatId}>
           {children}
-        </SessionLayoutInner>
-      </GitPanelProvider>
+        </PageSessionLayout>
+      ) : (
+        <GitPanelProvider>
+          <SessionLayoutInner activeChatId={activeChatId}>
+            {children}
+          </SessionLayoutInner>
+        </GitPanelProvider>
+      )}
     </SessionLayoutContext.Provider>
   );
 }
