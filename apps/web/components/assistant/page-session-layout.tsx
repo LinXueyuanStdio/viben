@@ -20,7 +20,7 @@ export function PageSessionLayout({
   previewPanel,
 }: PageSessionLayoutProps) {
   return (
-    <PagePreviewProvider>
+    <PagePreviewProvider publishedPageId={session.publishedPageId}>
       <PageSessionLayoutInner
         session={session}
         activeChatId={activeChatId}

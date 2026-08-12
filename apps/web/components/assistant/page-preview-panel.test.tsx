@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { SWRConfig } from "swr";
@@ -8,6 +8,7 @@ import {
 } from "./page-preview-context";
 import { PagePreviewPanel } from "./page-preview-panel";
 import type { Session } from "@/lib/db/schema";
+import { emitPageContentChanged } from "@/lib/page-chat/page-content-events";
 
 let mobile = false;
 
@@ -57,7 +58,7 @@ function OpenPreviewButton() {
 function renderPreview(children?: ReactNode) {
   return render(
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      <PagePreviewProvider>
+      <PagePreviewProvider publishedPageId="page-1">
         <OpenPreviewButton />
         <div>Chat transcript remains mounted</div>
         {children ?? <PagePreviewPanel session={session} />}
@@ -115,7 +116,7 @@ describe("PagePreviewPanel", () => {
 
     const { rerender } = render(
       <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-        <PagePreviewProvider>
+        <PagePreviewProvider publishedPageId="page-1">
           <OpenPreviewButton />
           <PagePreviewPanel session={session} />
         </PagePreviewProvider>
@@ -129,7 +130,7 @@ describe("PagePreviewPanel", () => {
     mobile = true;
     rerender(
       <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-        <PagePreviewProvider>
+        <PagePreviewProvider publishedPageId="page-1">
           <OpenPreviewButton />
           <PagePreviewPanel session={session} />
         </PagePreviewProvider>
@@ -158,5 +159,36 @@ describe("PagePreviewPanel", () => {
 
     await screen.findByTitle("Latest guide");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("reloads only the matching open preview", () => {
+    function RevisionProbe() {
+      const { open, setOpen, revision } = usePagePreview();
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(!open)}>
+            Preview
+          </button>
+          <div data-testid="preview-revision">{revision}</div>
+        </>
+      );
+    }
+
+    render(
+      <PagePreviewProvider publishedPageId="page-1">
+        <RevisionProbe />
+      </PagePreviewProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    act(() => {
+      emitPageContentChanged({ publishedPageId: "page-2", chatId: "chat-1" });
+    });
+    expect(screen.getByTestId("preview-revision")).toHaveTextContent("0");
+
+    act(() => {
+      emitPageContentChanged({ publishedPageId: "page-1", chatId: "chat-1" });
+    });
+    expect(screen.getByTestId("preview-revision")).toHaveTextContent("1");
   });
 });

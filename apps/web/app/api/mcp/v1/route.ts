@@ -1,4 +1,5 @@
 import { createMcpHandler, withMcpAuth, protectedResourceHandler, metadataCorsOptionsRequestHandler } from "mcp-handler";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { AsyncLocalStorage } from "async_hooks";
 import { and, eq, desc, asc, sql } from "drizzle-orm";
@@ -22,6 +23,16 @@ function requireSession(): Session {
     );
   }
   return session;
+}
+
+function revalidatePageCacheTags(input: {
+  publishedPageId: string;
+  userSlug: string;
+  pageSlug: string;
+}) {
+  revalidateTag(`page-ctx-${input.userSlug}-${input.pageSlug}`);
+  revalidateTag(`page-entity-${input.publishedPageId}`);
+  revalidateTag(`profile-${input.userSlug}`);
 }
 
 // ── Token verification for withMcpAuth ──────────────────
@@ -223,6 +234,11 @@ const mcpHandler = createMcpHandler(
           userSlug: session.userSlug, pageId: uid, version: nextVersion,
           eventType, importance: "normal", title, description: description ?? null, visibility,
         });
+        revalidatePageCacheTags({
+          publishedPageId: updatedPage.id,
+          userSlug: session.userSlug,
+          pageSlug: uid,
+        });
 
         return {
           content: [{
@@ -300,6 +316,11 @@ const mcpHandler = createMcpHandler(
           userSlug: session.userSlug, pageId: uid, version: nextVersion,
           eventType: "updated", importance: "normal",
           title: updatedTitle, description: updatedDescription ?? null, visibility: updatedVisibility,
+        });
+        revalidatePageCacheTags({
+          publishedPageId: existing.id,
+          userSlug: session.userSlug,
+          pageSlug: uid,
         });
 
         return {
