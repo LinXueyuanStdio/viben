@@ -4,6 +4,18 @@ import type { ProviderOptionsByProvider } from "./models";
 const createGatewayCalls: Array<Record<string, unknown>> = [];
 
 mock.module("ai", () => {
+  class ToolLoopAgent {
+    readonly tools: Record<string, unknown>;
+
+    constructor(config: { tools?: Record<string, unknown> }) {
+      this.tools = config.tools ?? {};
+    }
+
+    stream() {
+      throw new Error("ToolLoopAgent mock should not stream in models tests");
+    }
+  }
+
   const gateway = (modelId: string) => ({ modelId });
 
   return {
@@ -14,7 +26,24 @@ mock.module("ai", () => {
     defaultSettingsMiddleware: (_settings: unknown) => ({
       kind: "default-settings-middleware",
     }),
+    getToolName: (part: { toolName?: string; type?: string }) => {
+      if (part.toolName) {
+        return part.toolName;
+      }
+      if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+        return part.type.slice(5);
+      }
+      return "";
+    },
     gateway,
+    isToolUIPart: (part: unknown) =>
+      typeof part === "object" &&
+      part !== null &&
+      typeof (part as { type?: unknown }).type === "string" &&
+      (part as { type: string }).type.startsWith("tool-"),
+    stepCountIs: (count: number) => ({ kind: "step-count", count }),
+    tool: <T extends Record<string, unknown>>(definition: T) => definition,
+    ToolLoopAgent,
     wrapLanguageModel: ({ model }: { model: unknown }) => model,
   };
 });

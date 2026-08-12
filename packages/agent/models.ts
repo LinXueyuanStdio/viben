@@ -6,7 +6,7 @@ import {
   type JSONValue,
   type LanguageModel,
 } from "ai";
-import { gatewayInstance } from "./gateway-instance";
+import { createGatewayInstance } from "./gateway-instance";
 import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
 import type { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 
@@ -187,7 +187,7 @@ export function gateway(
         apiKey: config.apiKey,
         headers: attributionHeaders,
       })
-    : gatewayInstance;
+    : createGatewayInstance({ headers: attributionHeaders });
 
   let model: LanguageModel = instance(modelId);
 
