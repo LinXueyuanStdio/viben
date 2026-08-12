@@ -13,7 +13,10 @@ interface ImageAttachmentItemProps {
 function ImageAttachmentItem({ image, onRemove }: ImageAttachmentItemProps) {
   const { t } = useTranslation();
   return (
-    <div className="group relative flex-shrink-0">
+    <div
+      className="group relative flex-shrink-0"
+      data-testid="image-attachment-preview"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element -- Data URLs not supported by next/image */}
       <img
         src={image.dataUrl}

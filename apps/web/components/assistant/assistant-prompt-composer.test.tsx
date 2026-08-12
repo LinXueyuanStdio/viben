@@ -77,6 +77,10 @@ describe("AssistantPromptComposer", () => {
     expect(callbacks.onOpenFilePicker).toHaveBeenCalledOnce();
     expect(callbacks.onMicClick).toHaveBeenCalledOnce();
     expect(callbacks.onSubmit).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("attachment-input")).toHaveAttribute(
+      "type",
+      "file",
+    );
     expect(screen.getByRole("button", { name: /model/i })).toBeInTheDocument();
     expect(screen.getByText("Session mode")).toBeInTheDocument();
   });

@@ -133,6 +133,7 @@ export function AssistantPromptComposer({
     >
       <input
         ref={fileInputRef}
+        data-testid="attachment-input"
         type="file"
         accept={ACCEPT_IMAGE_TYPES}
         multiple

@@ -32,7 +32,10 @@ function TextAttachmentChip({
   });
 
   return (
-    <div className="group relative min-w-0 max-w-full p-1">
+    <div
+      className="group relative min-w-0 max-w-full p-1"
+      data-testid="text-attachment-preview"
+    >
       <button
         type="button"
         onClick={onPreview}

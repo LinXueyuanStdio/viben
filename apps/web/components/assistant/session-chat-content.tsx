@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { nanoid } from "nanoid";
 import {
   useCallback,
   useEffect,
@@ -39,7 +40,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type FormEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import useSWR from "swr";
@@ -90,10 +90,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAudioRecording } from "@/hooks/assistant/use-audio-recording";
 import { useFileSuggestions } from "@/hooks/assistant/use-file-suggestions";
-import { useImageAttachments } from "@/hooks/assistant/use-image-attachments";
-import { useTextAttachments } from "@/hooks/assistant/use-text-attachments";
 import { useScrollToBottom } from "@/hooks/assistant/use-scroll-to-bottom";
 import { useSessionChats } from "@/hooks/assistant/use-session-chats";
 import { useSlashCommands } from "@/hooks/assistant/use-slash-commands";
@@ -118,8 +115,12 @@ import {
 import { getPrDeploymentRefreshInterval } from "@/lib/pr-deployment-polling";
 
 import { LazyStreamdown } from "@/components/assistant/lazy-streamdown";
-import { AssistantPromptComposer } from "@/components/assistant/assistant-prompt-composer";
 import { buildChatMessagePayload } from "@/components/assistant/chat-message-payload";
+import {
+  ChatComposer,
+  type ChatComposerHandle,
+  type ChatComposerSubmit,
+} from "@/components/assistant/chat-composer";
 import { ChatTranscript } from "@/components/assistant/chat-transcript";
 import { deliverStarterMessage } from "@/components/assistant/deliver-starter-message";
 import {
@@ -1110,7 +1111,7 @@ export function SessionChatContent({
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
     );
   }, []);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<ChatComposerHandle>(null);
   const isMountedRef = useRef(true);
   const copyResetTimeoutRef = useRef<number | null>(null);
   const lastActivityPingRef = useRef(0);
@@ -1124,24 +1125,6 @@ export function SessionChatContent({
       }
     };
   }, []);
-  const {
-    state: recordingState,
-    error: recordingError,
-    clearError: clearRecordingError,
-    toggleRecording,
-  } = useAudioRecording();
-
-  const handleMicClick = async () => {
-    clearRecordingError();
-    const transcribedText = await toggleRecording();
-    if (transcribedText) {
-      setInput((prev) =>
-        prev ? `${prev} ${transcribedText}` : transcribedText,
-      );
-      inputRef.current?.focus();
-    }
-  };
-
   const handleCopyAssistantMessage = useCallback(
     async (messageId: string, text: string) => {
       const trimmedText = text.trim();
@@ -1172,24 +1155,6 @@ export function SessionChatContent({
     [],
   );
 
-  const {
-    images,
-    addImage,
-    addImages,
-    removeImage,
-    clearImages,
-    getFileParts,
-    fileInputRef,
-    openFilePicker,
-    addImageAttachments,
-  } = useImageAttachments();
-  const {
-    textAttachments,
-    addTextAttachment,
-    removeTextAttachment,
-    clearTextAttachments,
-    addTextAttachments,
-  } = useTextAttachments();
   const { containerRef, isAtBottom, scrollToBottom } =
     useScrollToBottom<HTMLDivElement>();
   const {
@@ -1825,11 +1790,8 @@ export function SessionChatContent({
     setCursorPosition(newCursorPos);
     // Focus input and set cursor position after React renders
     setTimeout(() => {
-      // Only set cursor if input hasn't changed (user didn't type in between)
-      if (inputRef.current && inputRef.current.value === newInput) {
-        inputRef.current.focus();
-        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
-      }
+      composerRef.current?.focus();
+      composerRef.current?.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
   };
 
@@ -1858,10 +1820,8 @@ export function SessionChatContent({
     const newCursorPos = slashStart + skillName.length + 2; // / + name + space
     setCursorPosition(newCursorPos);
     setTimeout(() => {
-      if (inputRef.current && inputRef.current.value === newInput) {
-        inputRef.current.focus();
-        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
-      }
+      composerRef.current?.focus();
+      composerRef.current?.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
   };
 
@@ -2336,7 +2296,7 @@ export function SessionChatContent({
 
   useEffect(() => {
     if (!isChatInFlight) {
-      inputRef.current?.focus();
+      composerRef.current?.focus();
     }
   }, [isChatInFlight]);
 
@@ -3132,9 +3092,8 @@ export function SessionChatContent({
     pendingOptimisticTitleChatIdRef.current = null;
   }, [clearChatTitle]);
 
-  const handlePromptSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  const handleComposerSubmit = useCallback(
+    async (draft: ChatComposerSubmit) => {
       if (
         showInlineQuestion ||
         isArchived ||
@@ -3144,23 +3103,34 @@ export function SessionChatContent({
         return;
       }
       if (
-        !input.trim() &&
-        images.length === 0 &&
-        textAttachments.length === 0
+        !draft.text.trim() &&
+        draft.images.length === 0 &&
+        draft.textAttachments.length === 0
       ) {
         return;
       }
 
-      const messageText = input;
+      const messageText = draft.text;
       const messagePayload = buildChatMessagePayload({
         text: messageText,
-        files: getFileParts() ?? [],
-        textAttachments,
+        files: draft.images.map((image, index): FileUIPart => {
+          const extension = image.mediaType.split("/")[1] ?? "png";
+          return {
+            type: "file",
+            filename: image.filename ?? `image-${index + 1}.${extension}`,
+            mediaType: image.mediaType,
+            url: image.url,
+          };
+        }),
+        textAttachments: draft.textAttachments.map((attachment) => ({
+          id: nanoid(),
+          filename: attachment.filename,
+          content: attachment.content,
+          lineCount: attachment.content.split("\n").length,
+          byteSize: new Blob([attachment.content]).size,
+        })),
       });
 
-      setInput("");
-      clearImages();
-      clearTextAttachments();
       prepareFirstMessageTitle(messageText);
 
       try {
@@ -3168,22 +3138,17 @@ export function SessionChatContent({
       } catch (error) {
         rollbackOptimisticTitle();
         console.error("Failed to send message:", error);
+        throw error;
       }
     },
     [
-      clearImages,
-      clearTextAttachments,
-      getFileParts,
       hasPendingResponse,
-      images.length,
-      input,
       isArchived,
       isChatInFlight,
       prepareFirstMessageTitle,
       rollbackOptimisticTitle,
       sendMessageWithPendingState,
       showInlineQuestion,
-      textAttachments,
     ],
   );
 
@@ -3231,13 +3196,11 @@ export function SessionChatContent({
       sendDraft: sendStarterDraft,
       restoreDraft: (failedDraft) => {
         setInput(failedDraft.text);
-        addImageAttachments(failedDraft.images);
-        addTextAttachments(failedDraft.textAttachments);
+        composerRef.current?.addImageAttachments(failedDraft.images);
+        composerRef.current?.addTextAttachments(failedDraft.textAttachments);
       },
     });
   }, [
-    addImageAttachments,
-    addTextAttachments,
     chatInfo.id,
     chatInfo.modelId,
     sendStarterDraft,
@@ -3607,203 +3570,158 @@ export function SessionChatContent({
                       </button>
                     </div>
                   )}
-                  <div className="relative">
-                    {showSuggestions && (
-                      <FileSuggestionsDropdown
-                        suggestions={suggestions}
-                        selectedIndex={selectedIndex}
-                        onSelect={(suggestion) => {
-                          if (mentionInfo) {
-                            handleFileSelect(
-                              suggestion.value,
-                              mentionInfo.mentionStart,
-                              cursorPosition,
-                            );
-                          }
-                        }}
-                        isLoading={filesLoading}
+                  <ChatComposer
+                    ref={composerRef}
+                    mode="work"
+                    density="full"
+                    modelId={chatInfo.modelId ?? ""}
+                    modelOptions={modelOptions}
+                    contextUsage={
+                      <ContextUsageIndicator
+                        inputTokens={tokenUsage.inputTokens}
+                        conversationInputTokens={conversationUsage.inputTokens}
+                        conversationCachedInputTokens={
+                          conversationUsage.cachedInputTokens
+                        }
+                        conversationOutputTokens={
+                          conversationUsage.outputTokens
+                        }
+                        conversationCost={conversationCost}
+                        contextLimit={contextLimit ?? DEFAULT_CONTEXT_LIMIT}
                       />
-                    )}
-                    {showSlashCommands && !showSuggestions && (
-                      <SlashCommandDropdown
-                        suggestions={slashSuggestions}
-                        selectedIndex={selectedSlashIndex}
-                        onSelect={(suggestion) => {
-                          if (slashInfo) {
-                            handleSlashCommandSelect(
-                              suggestion.name,
-                              slashInfo.slashStart,
-                              cursorPosition,
-                            );
-                          }
-                        }}
-                        isLoading={skillsLoading}
+                    }
+                    status={effectiveStatus}
+                    disabled={isArchived}
+                    draft={input}
+                    onDraftChange={setInput}
+                    onModelChange={handleModelChange}
+                    onSubmit={handleComposerSubmit}
+                    onStop={() => {
+                      stopChatStream();
+                      setHasPendingResponse(false);
+                      setUserStopped(true);
+                      void setChatStreaming(chatInfo.id, false);
+                    }}
+                    workExtensions={{
+                      fileSuggestions: suggestions,
+                      skillSuggestions: slashSuggestions,
+                      todo: <PinnedTodoPanel todos={latestTodos} />,
+                      overlay: (
+                        <>
+                          {showSuggestions && (
+                            <FileSuggestionsDropdown
+                              suggestions={suggestions}
+                              selectedIndex={selectedIndex}
+                              onSelect={(suggestion) => {
+                                if (mentionInfo) {
+                                  handleFileSelect(
+                                    suggestion.value,
+                                    mentionInfo.mentionStart,
+                                    cursorPosition,
+                                  );
+                                }
+                              }}
+                              isLoading={filesLoading}
+                            />
+                          )}
+                          {showSlashCommands && !showSuggestions && (
+                            <SlashCommandDropdown
+                              suggestions={slashSuggestions}
+                              selectedIndex={selectedSlashIndex}
+                              onSelect={(suggestion) => {
+                                if (slashInfo) {
+                                  handleSlashCommandSelect(
+                                    suggestion.name,
+                                    slashInfo.slashStart,
+                                    cursorPosition,
+                                  );
+                                }
+                              }}
+                              isLoading={skillsLoading}
+                            />
+                          )}
+                        </>
+                      ),
+                    }}
+                    placeholder={
+                      showInlineQuestion
+                        ? inlineQuestion.placeholder
+                        : t("assistant.chatContent.inputPlaceholder")
+                    }
+                    inputOverlay={
+                      <SandboxInputOverlay
+                        isArchived={isArchived}
+                        snapshotPending={isArchiveSnapshotPending}
                       />
-                    )}
-                    <PinnedTodoPanel todos={latestTodos} />
-                    <AssistantPromptComposer
-                      inputRef={inputRef}
-                      fileInputRef={fileInputRef}
-                      value={input}
-                      onValueChange={setInput}
-                      onSubmit={handlePromptSubmit}
-                      placeholder={
-                        showInlineQuestion
-                          ? inlineQuestion.placeholder
-                          : t("assistant.chatContent.inputPlaceholder")
+                    }
+                    questionHeader={
+                      showInlineQuestion
+                        ? inlineQuestion.questionHeaderUI
+                        : undefined
+                    }
+                    submitControl={
+                      showInlineQuestion ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            inlineQuestion.handleNext();
+                          }}
+                          disabled={!inlineQuestion.hasCurrentAnswer}
+                          className="h-8 rounded-full bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
+                        >
+                          <Check className="h-3 w-3" />
+                          <span className="sm:hidden">
+                            {inlineQuestion.compactButtonLabel}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {inlineQuestion.buttonLabel}
+                          </span>
+                        </Button>
+                      ) : undefined
+                    }
+                    modelDisabled={
+                      isChatInFlight || isUpdatingModel || modelOptionsLoading
+                    }
+                    onModelCloseAutoFocus={() => {
+                      window.requestAnimationFrame(() => {
+                        composerRef.current?.focus();
+                        composerRef.current?.setSelectionRange(
+                          cursorPosition,
+                          cursorPosition,
+                        );
+                      });
+                    }}
+                    onTextareaFocus={handleTextareaFocus}
+                    onTextareaKeyDown={(event) => {
+                      if (
+                        showInlineQuestion &&
+                        event.key === "Enter" &&
+                        !event.shiftKey
+                      ) {
+                        event.preventDefault();
+                        inlineQuestion.handleNext();
+                        return;
                       }
-                      images={images}
-                      textAttachments={textAttachments}
-                      onRemoveImage={removeImage}
-                      onRemoveTextAttachment={removeTextAttachment}
-                      onAddImage={addImage}
-                      onAddImages={addImages}
-                      onAddLargeText={(text) => {
-                        addTextAttachment(text);
-                      }}
-                      onOpenFilePicker={openFilePicker}
-                      modelId={chatInfo.modelId}
-                      modelOptions={modelOptions}
-                      onModelChange={(modelId) => {
-                        void handleModelChange(modelId);
-                      }}
-                      onModelCloseAutoFocus={() => {
-                        window.requestAnimationFrame(() => {
-                          const textarea = inputRef.current;
-                          if (!textarea) return;
-                          textarea.focus();
-                          const nextCursorPosition = Math.min(
-                            cursorPosition,
-                            textarea.value.length,
-                          );
-                          textarea.setSelectionRange(
-                            nextCursorPosition,
-                            nextCursorPosition,
-                          );
-                        });
-                      }}
-                      modelDisabled={
-                        isChatInFlight || isUpdatingModel || modelOptionsLoading
-                      }
-                      recordingState={recordingState}
-                      onMicClick={() => {
-                        void handleMicClick();
-                      }}
-                      disabled={isArchived}
-                      submitting={false}
-                      canSubmit={
+                      if (handleSuggestionsKeyDown(event)) return;
+                      if (handleSlashKeyDown(event)) return;
+                      if (
+                        event.key === "Enter" &&
+                        !event.shiftKey &&
+                        !isIosDevice &&
                         !isChatInFlight &&
-                        !hasPendingResponse &&
-                        (Boolean(input.trim()) ||
-                          images.length > 0 ||
-                          textAttachments.length > 0)
-                      }
-                      labels={{
-                        attachFiles: t("assistant.sessionStarter.attachFiles"),
-                        voiceInput: t("assistant.sessionStarter.voiceInput"),
-                        sendMessage: t("assistant.sessionStarter.sendMessage"),
-                      }}
-                      inputOverlay={
-                        <SandboxInputOverlay
-                          isArchived={isArchived}
-                          snapshotPending={isArchiveSnapshotPending}
-                        />
-                      }
-                      questionHeader={
-                        showInlineQuestion
-                          ? inlineQuestion.questionHeaderUI
-                          : undefined
-                      }
-                      leadingToolbarContent={
-                        <ContextUsageIndicator
-                          inputTokens={tokenUsage.inputTokens}
-                          conversationInputTokens={
-                            conversationUsage.inputTokens
-                          }
-                          conversationCachedInputTokens={
-                            conversationUsage.cachedInputTokens
-                          }
-                          conversationOutputTokens={
-                            conversationUsage.outputTokens
-                          }
-                          conversationCost={conversationCost}
-                          contextLimit={contextLimit ?? DEFAULT_CONTEXT_LIMIT}
-                        />
-                      }
-                      submitControl={
-                        showInlineQuestion ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              inlineQuestion.handleNext();
-                            }}
-                            disabled={!inlineQuestion.hasCurrentAnswer}
-                            className="h-8 rounded-full bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
-                          >
-                            <Check className="h-3 w-3" />
-                            <span className="sm:hidden">
-                              {inlineQuestion.compactButtonLabel}
-                            </span>
-                            <span className="hidden sm:inline">
-                              {inlineQuestion.buttonLabel}
-                            </span>
-                          </Button>
-                        ) : isChatInFlight || hasPendingResponse ? (
-                          <Button
-                            type="button"
-                            size="icon"
-                            onClick={() => {
-                              stopChatStream();
-                              setHasPendingResponse(false);
-                              setUserStopped(true);
-                              void setChatStreaming(chatInfo.id, false);
-                            }}
-                            className="h-8 w-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            style={{ touchAction: "manipulation" }}
-                          >
-                            <Square className="h-3 w-3 fill-current" />
-                          </Button>
-                        ) : undefined
-                      }
-                      onTextareaFocus={handleTextareaFocus}
-                      onTextareaKeyDown={(event) => {
-                        if (
-                          showInlineQuestion &&
-                          event.key === "Enter" &&
-                          !event.shiftKey
-                        ) {
-                          event.preventDefault();
-                          inlineQuestion.handleNext();
-                          return;
+                        !hasPendingResponse
+                      ) {
+                        event.preventDefault();
+                        if (!isArchived) {
+                          event.currentTarget.form?.requestSubmit();
                         }
-                        if (handleSuggestionsKeyDown(event)) return;
-                        if (handleSlashKeyDown(event)) return;
-                        if (
-                          event.key === "Enter" &&
-                          !event.shiftKey &&
-                          !isIosDevice &&
-                          !isChatInFlight &&
-                          !hasPendingResponse
-                        ) {
-                          event.preventDefault();
-                          if (!isArchived) {
-                            event.currentTarget.form?.requestSubmit();
-                          }
-                        }
-                      }}
-                      onCursorPositionChange={setCursorPosition}
-                      blurOnSubmitTouch={isIosDevice}
-                    />
-
-                    {/* Recording error message */}
-                    {recordingError && (
-                      <p className="mt-2 text-sm text-destructive">
-                        {recordingError}
-                      </p>
-                    )}
-                  </div>
+                      }
+                    }}
+                    onCursorPositionChange={setCursorPosition}
+                    blurOnSubmitTouch={isIosDevice}
+                  />
                 </div>
               </div>
             </>
@@ -3890,10 +3808,13 @@ export function SessionChatContent({
             parts.push("", `> ${comment}`);
           }
           const basename = filePath.split("/").pop() ?? filePath;
-          addTextAttachment(parts.join("\n"), `comment-on-${basename}`);
+          composerRef.current?.addTextAttachment(
+            parts.join("\n"),
+            `comment-on-${basename}`,
+          );
           // Focus the input after a brief delay (keep file viewer open)
           setTimeout(() => {
-            inputRef.current?.focus();
+            composerRef.current?.focus();
           }, 100);
         }}
       />
