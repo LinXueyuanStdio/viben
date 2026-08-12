@@ -13,6 +13,7 @@ vi.mock("react-i18next", () => ({
         "community.read": "Read",
         "community.comments": "Comments",
         "community.notes": "Notes",
+        "assistant.pageChat.tab": "Assistant",
       }
       return labels[key] ?? key
     },
