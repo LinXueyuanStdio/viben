@@ -45,6 +45,11 @@ const LazyNotesPanel = dynamic(
   { loading: () => loadingSkeleton },
 )
 
+const LazyPageAssistantPanel = dynamic(
+  () => import("@/components/pages/page-assistant-panel").then((m) => ({ default: m.PageAssistantPanel })),
+  { loading: () => loadingSkeleton },
+)
+
 const ReportDialog = dynamic(
   () => import("@/components/content/report-dialog").then(m => ({ default: m.ReportDialog })),
 )
@@ -55,7 +60,7 @@ const FeedbackDialog = dynamic(
 
 // --- Typed tab interfaces ---
 
-interface ReadDrawerMetaTab {
+export interface ReadDrawerMetaTab {
   value: string
   label: string
   badge?: number
@@ -64,7 +69,7 @@ interface ReadDrawerMetaTab {
   currentUserSlug?: string
 }
 
-interface ReadDrawerCommentsTab {
+export interface ReadDrawerCommentsTab {
   value: string
   label: string
   badge?: number
@@ -79,7 +84,7 @@ interface ReadDrawerCommentsTab {
   initialNextCursor: string | null
 }
 
-interface ReadDrawerNotesTab {
+export interface ReadDrawerNotesTab {
   value: string
   label: string
   badge?: number
@@ -88,7 +93,21 @@ interface ReadDrawerNotesTab {
   entityId: string
 }
 
-type ReadDrawerTab = ReadDrawerMetaTab | ReadDrawerCommentsTab | ReadDrawerNotesTab
+export interface ReadDrawerAssistantTab {
+  value: "assistant"
+  label: string
+  badge?: number
+  type: "assistant"
+  pageDbId: string
+  userSlug: string
+  pageSlug: string
+}
+
+export type ReadDrawerTab =
+  | ReadDrawerMetaTab
+  | ReadDrawerCommentsTab
+  | ReadDrawerNotesTab
+  | ReadDrawerAssistantTab
 
 // --- Tab content renderer ---
 
@@ -111,6 +130,14 @@ function TabContent({ tab }: { tab: ReadDrawerTab }) {
       )
     case "notes":
       return <LazyNotesPanel entityType={tab.entityType} entityId={tab.entityId} />
+    case "assistant":
+      return (
+        <LazyPageAssistantPanel
+          pageDbId={tab.pageDbId}
+          userSlug={tab.userSlug}
+          pageSlug={tab.pageSlug}
+        />
+      )
   }
 }
 
@@ -138,10 +165,15 @@ function DrawerHeader({
 
   return (
     <div className="flex items-center gap-2.5 h-[var(--nav-h)] px-3 border-b border-border/52 whitespace-nowrap">
-      <VibenTabs value={activeTab} onValueChange={onTabChange} className="flex-1 h-full">
-        <VibenTabsList variant="underline" className="h-full">
+      <VibenTabs value={activeTab} onValueChange={onTabChange} className="min-w-0 flex-1 h-full overflow-x-auto">
+        <VibenTabsList variant="underline" className="h-full min-w-max">
           {tabs.map((tab) => (
-            <VibenTabsTrigger key={tab.value} value={tab.value} variant="underline">
+            <VibenTabsTrigger
+              key={tab.value}
+              value={tab.value}
+              variant="underline"
+              onClick={() => onTabChange(tab.value)}
+            >
               {tab.label}
               {tab.badge !== undefined && tab.badge > 0 && (
                 <span className="ml-1 text-xs text-muted-foreground">{tab.badge}</span>
@@ -212,6 +244,55 @@ interface ReadDrawerProps {
 export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerProps) {
   const { open, setOpen } = useDrawer()
   const [activeTab, setActiveTab] = React.useState(defaultTab || "comments")
+  const [visitedTabs, setVisitedTabs] = React.useState<Set<string>>(
+    () => new Set(defaultTab === "assistant" ? ["assistant"] : []),
+  )
+
+  const handleTabChange = React.useCallback((value: string) => {
+    setActiveTab(value)
+    if (value === "assistant") {
+      setVisitedTabs((current) => {
+        if (current.has(value)) return current
+        const next = new Set(current)
+        next.add(value)
+        return next
+      })
+    }
+  }, [])
+
+  const drawerBody = (
+    <>
+      <div
+        data-testid="regular-tab-host"
+        className={cn("overflow-auto p-3", activeTab === "assistant" && "hidden")}
+      >
+        {tabs.filter((tab) => tab.type !== "assistant").map((tab) => (
+          <div
+            key={tab.value}
+            className={cn(activeTab === tab.value ? "grid gap-3" : "hidden")}
+          >
+            <TabContent tab={tab} />
+          </div>
+        ))}
+      </div>
+      <div
+        data-testid="assistant-tab-host"
+        className={cn(
+          "min-h-0 overflow-hidden",
+          activeTab === "assistant" ? "block" : "hidden",
+        )}
+      >
+        {tabs.filter((tab) => tab.type === "assistant").map((tab) => (
+          <div
+            key={tab.value}
+            className={cn(activeTab === tab.value ? "h-full min-h-0" : "hidden")}
+          >
+            {visitedTabs.has(tab.value) && <TabContent tab={tab} />}
+          </div>
+        ))}
+      </div>
+    </>
+  )
 
   // Resizable drawer width (desktop only)
   const { handleProps, isDragging } = useResizable({
@@ -255,28 +336,22 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
               ? "translate-x-0 shadow-[-18px_0_36px_rgba(8,91,117,0.14)]"
               : "translate-x-full"
           )}
-          style={{ height: "100vh", willChange: "transform" }}
+          style={{
+            height: "100dvh",
+            paddingBottom: "env(safe-area-inset-bottom)",
+            willChange: "transform",
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <DrawerHeader
             tabs={tabs}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
             isMobile
             pageId={pageId}
           />
 
-          {/* Content */}
-          <div className="overflow-auto p-3">
-            {tabs.map((tab) => (
-              <div
-                key={tab.value}
-                className={cn(activeTab === tab.value ? "grid gap-3" : "hidden")}
-              >
-                <TabContent tab={tab} />
-              </div>
-            ))}
-          </div>
+          {drawerBody}
         </div>
       </>
     )
@@ -307,21 +382,11 @@ export function ReadDrawer({ tabs, defaultTab, pageId, isMobile }: ReadDrawerPro
       <DrawerHeader
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         pageId={pageId}
       />
 
-      {/* Content */}
-      <div className="overflow-auto p-3">
-        {tabs.map((tab) => (
-          <div
-            key={tab.value}
-            className={cn(activeTab === tab.value ? "grid gap-3" : "hidden")}
-          >
-            <TabContent tab={tab} />
-          </div>
-        ))}
-      </div>
+      {drawerBody}
     </div>,
     slot
   )
