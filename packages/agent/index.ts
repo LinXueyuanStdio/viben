@@ -6,6 +6,12 @@ export type {
   VibenAgentCallOptions,
   VibenAgentModelInput,
 } from "./viben-agent";
+export type {
+  ChatAgent,
+  ChatAgentCallOptions,
+  ChatAgentModelInput,
+} from "./chat-agent";
+export { chatAgent, prepareChatAgentCall } from "./chat-agent";
 export { defaultModel, defaultModelLabel, vibenAgent } from "./viben-agent";
 // Skills exports
 export { discoverSkills, parseSkillFrontmatter } from "./skills/discovery";
