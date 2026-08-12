@@ -1,15 +1,17 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 import { User } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { PageMetaData } from "@/components/content/page-meta"
 import type { MiniPageCardData } from "@/components/content/mini-page-card"
-import { ReadDrawer } from "@/components/layout/read-drawer"
+import { ReadDrawer, type ReadDrawerTab } from "@/components/layout/read-drawer"
 import { useAppShell } from "@/components/layout/app-shell"
 import { BreadcrumbDynamicContext } from "@/components/layout/breadcrumb"
 import type { BreadcrumbContextValue } from "@/components/layout/breadcrumb"
+import { subscribePageContentChanged } from "@/lib/page-chat/page-content-events"
 
 // --- Types ---
 
@@ -189,7 +191,16 @@ export function ReadPageClient({
   isAuthor = false,
 }: ReadPageClientProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const { isMobile } = useAppShell()
+
+  useEffect(() => {
+    return subscribePageContentChanged((detail) => {
+      if (detail.publishedPageId === pageDbId) {
+        router.refresh()
+      }
+    })
+  }, [pageDbId, router])
 
   // 包装 pageHtml 为完整 HTML 文档，确保样式和结构正常渲染
   // - 已有 <!DOCTYPE 或 <html 开头的完整文档不重复包装
@@ -279,6 +290,22 @@ export function ReadPageClient({
     },
   }
 
+  const drawerTabs: ReadDrawerTab[] = [
+    { value: "details", label: t("community.read"), type: "meta", pageMeta, currentUserSlug: sessionUserSlug },
+    { value: "comments", label: t("community.comments"), badge: pageCommentCount, type: "comments", communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialNextCursor: initialCommentsNextCursor },
+    { value: "notes", label: t("community.notes"), type: "notes", entityType: "published_page", entityId: pageUid },
+    ...(isAuthenticated && sessionUserId
+      ? [{
+          value: "assistant",
+          label: "Assistant",
+          type: "assistant",
+          pageDbId,
+          userSlug,
+          pageSlug: pageUid,
+        } satisfies ReadDrawerTab]
+      : []),
+  ]
+
   return (
     <BreadcrumbDynamicContext.Provider value={breadcrumbContextValue}>
       <div className="flex h-full">
@@ -339,11 +366,7 @@ export function ReadPageClient({
         )}
 
         <ReadDrawer
-          tabs={[
-            { value: "details", label: t("community.read"), type: "meta" as const, pageMeta, currentUserSlug: sessionUserSlug },
-            { value: "comments", label: t("community.comments"), badge: pageCommentCount, type: "comments" as const, communityEntityId, pageDbId, isAuthenticated, sessionUsername, sessionAvatarUrl, sessionUserId, initialComments, initialNextCursor: initialCommentsNextCursor },
-            { value: "notes", label: t("community.notes"), type: "notes" as const, entityType: "published_page" as const, entityId: pageUid },
-          ]}
+          tabs={drawerTabs}
           defaultTab={activeTab === "settings" && isAuthor ? "details" : "comments"}
           pageId={pageId}
           userSlug={userSlug}
