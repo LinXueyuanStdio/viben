@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WebAgentUIMessage } from "@/app/types";
 import type { Chat, Session } from "@/lib/db/schema";
@@ -20,9 +21,18 @@ vi.mock("@/components/assistant/chat-transcript", () => ({
 
 vi.mock("@/components/assistant/chat-composer", () => ({
   ChatComposer: ({
+    mode,
+    workExtensions,
     onSubmit,
     onStop,
   }: {
+    mode: "work" | "page";
+    workExtensions?: {
+      fileSuggestions: unknown[];
+      skillSuggestions: unknown[];
+      todo: ReactNode;
+      overlay: ReactNode;
+    };
     onSubmit: (draft: {
       text: string;
       images: [];
@@ -32,6 +42,9 @@ vi.mock("@/components/assistant/chat-composer", () => ({
     onStop: () => void;
   }) => (
     <div>
+      <div>mode:{mode}</div>
+      {workExtensions?.overlay}
+      {workExtensions?.todo}
       <button
         type="button"
         onClick={() =>
@@ -130,5 +143,38 @@ describe("SharedChatCore", () => {
         contextLimit: 128_000,
       }),
     );
+  });
+
+  test("work mode forwards work extensions without changing the runtime", () => {
+    const runtimeMock = runtime();
+    vi.mocked(useSessionChatRuntime).mockReturnValue(runtimeMock);
+
+    render(
+      <SharedChatCore
+        session={session}
+        chat={chat}
+        initialMessages={[]}
+        modelOptions={modelOptions}
+        mode="work"
+        density="full"
+        workExtensions={{
+          fileSuggestions: [],
+          skillSuggestions: [],
+          todo: <div>Todo</div>,
+          overlay: (
+            <>
+              <div>File suggestions</div>
+              <div>Skills</div>
+            </>
+          ),
+        }}
+      />,
+    );
+
+    expect(screen.getByText("mode:work")).toBeVisible();
+    expect(screen.getByText("File suggestions")).toBeVisible();
+    expect(screen.getByText("Skills")).toBeVisible();
+    expect(screen.getByText("Todo")).toBeVisible();
+    expect(useSessionChatRuntime).toHaveBeenCalledOnce();
   });
 });

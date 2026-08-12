@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode, type Ref } from "react";
 import { nanoid } from "nanoid";
 import type { FileUIPart } from "ai";
 import type { WebAgentUIMessage } from "@/app/types";
@@ -10,6 +10,7 @@ import {
 } from "@/components/assistant/chat-message-payload";
 import {
   ChatComposer,
+  type ChatComposerHandle,
   type ChatComposerProps,
   type ChatComposerSubmit,
 } from "@/components/assistant/chat-composer";
@@ -36,7 +37,17 @@ export type SharedChatCoreProps = {
   workExtensions?: ChatComposerProps["workExtensions"];
   onPageContentChanged?: (detail: PageContentChangedDetail) => void;
   onChatActivity?: () => void;
+  runtime?: SharedChatRuntime;
+  transcriptProps?: Partial<ChatTranscriptProps>;
+  composerProps?: Partial<ChatComposerProps>;
+  composerRef?: Ref<ChatComposerHandle>;
+  composerHeader?: ReactNode;
+  contextUsage?: ReactNode;
+  composerContainerClassName?: string;
+  composerInnerClassName?: string;
 };
+
+export type SharedChatRuntime = ReturnType<typeof useSessionChatRuntime>;
 
 function getContextLimit(modelOptions: ModelOption[], modelId: string | null) {
   if (!modelId) return null;
@@ -75,7 +86,23 @@ function toMessagePayload(draft: ChatComposerSubmit): ChatMessagePayload {
   });
 }
 
-export function SharedChatCore({
+function SharedChatCoreWithRuntime(props: SharedChatCoreProps) {
+  const contextLimit = useMemo(
+    () => getContextLimit(props.modelOptions, props.chat.modelId),
+    [props.chat.modelId, props.modelOptions],
+  );
+  const runtime = useSessionChatRuntime({
+    sessionId: props.session.id,
+    chatId: props.chat.id,
+    initialMessages: props.initialMessages,
+    initialChatActiveStreamId: props.chat.activeStreamId,
+    contextLimit,
+  });
+
+  return <SharedChatCoreView {...props} runtime={runtime} />;
+}
+
+function SharedChatCoreView({
   session,
   chat,
   initialMessages,
@@ -88,18 +115,15 @@ export function SharedChatCore({
   workExtensions,
   onPageContentChanged,
   onChatActivity,
-}: SharedChatCoreProps) {
-  const contextLimit = useMemo(
-    () => getContextLimit(modelOptions, chat.modelId),
-    [chat.modelId, modelOptions],
-  );
-  const runtime = useSessionChatRuntime({
-    sessionId: session.id,
-    chatId: chat.id,
-    initialMessages,
-    initialChatActiveStreamId: chat.activeStreamId,
-    contextLimit,
-  });
+  runtime,
+  transcriptProps,
+  composerProps,
+  composerRef,
+  composerHeader,
+  contextUsage = null,
+  composerContainerClassName,
+  composerInnerClassName,
+}: SharedChatCoreProps & { runtime: SharedChatRuntime }) {
   const { chat: chatRuntime } = runtime;
 
   const handleSubmit = useCallback(
@@ -128,21 +152,49 @@ export function SharedChatCore({
           messageDurationMap={{}}
           messageStartedAtMap={{}}
           lastUserMessageSentAt={null}
+          {...transcriptProps}
         />
       </div>
-      <ChatComposer
-        mode={mode}
-        density={density}
-        modelId={chat.modelId ?? ""}
-        modelOptions={modelOptions}
-        contextUsage={null}
-        status={chatRuntime.status}
-        onModelChange={async () => undefined}
-        onSubmit={handleSubmit}
-        onStop={runtime.stopChatStream}
-        workExtensions={mode === "work" ? workExtensions : undefined}
-        className={cn(density === "compact" && "border-t border-border/60")}
-      />
+      <div
+        className={cn(
+          density === "compact" ? "p-2" : "p-4 pb-2 sm:pb-8",
+          composerContainerClassName,
+        )}
+      >
+        <div
+          className={cn(
+            density === "compact" ? "space-y-2" : "mx-auto max-w-4xl space-y-2",
+            composerInnerClassName,
+          )}
+        >
+          {composerHeader}
+          <ChatComposer
+            ref={composerRef}
+            mode={mode}
+            density={density}
+            modelId={chat.modelId ?? ""}
+            modelOptions={modelOptions}
+            contextUsage={contextUsage}
+            status={chatRuntime.status}
+            onModelChange={async () => undefined}
+            onSubmit={handleSubmit}
+            onStop={runtime.stopChatStream}
+            workExtensions={mode === "work" ? workExtensions : undefined}
+            className={cn(
+              density === "compact" && "border-t border-border/60",
+            )}
+            {...composerProps}
+          />
+        </div>
+      </div>
     </div>
   );
+}
+
+export function SharedChatCore(props: SharedChatCoreProps) {
+  if (props.runtime) {
+    return <SharedChatCoreView {...props} runtime={props.runtime} />;
+  }
+
+  return <SharedChatCoreWithRuntime {...props} />;
 }
