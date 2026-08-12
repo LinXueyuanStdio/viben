@@ -2394,7 +2394,9 @@
       "shareChat": "分享对话",
       "closeSidebar": "关闭右侧栏",
       "preview": "预览",
-      "openPage": "打开页面"
+      "openPage": "打开页面",
+      "previewUnavailable": "页面不可用",
+      "retryPreview": "重试"
     },
     "sidebar": {
       "newChat": "新对话",

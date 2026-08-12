@@ -2369,7 +2369,9 @@
       "shareChat": "Share chat",
       "closeSidebar": "Close right sidebar",
       "preview": "Preview",
-      "openPage": "Open page"
+      "openPage": "Open page",
+      "previewUnavailable": "Page unavailable",
+      "retryPreview": "Retry"
     },
     "sidebar": {
       "newChat": "New Chat",

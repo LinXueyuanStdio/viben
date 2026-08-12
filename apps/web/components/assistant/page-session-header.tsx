@@ -4,6 +4,7 @@ import { ExternalLink, Eye, PanelLeft } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { PageChatTabs } from "@/components/assistant/chat-tabs";
+import { usePagePreview } from "@/components/assistant/page-preview-context";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -16,8 +17,6 @@ import type { Session } from "@/lib/db/schema";
 export type PageSessionHeaderProps = {
   session: Session;
   activeChatId: string;
-  previewOpen: boolean;
-  onPreviewOpenChange: (open: boolean) => void;
 };
 
 function getPageHref(session: Session) {
@@ -31,12 +30,12 @@ function getPageHref(session: Session) {
 export function PageSessionHeader({
   session,
   activeChatId,
-  previewOpen,
-  onPreviewOpenChange,
 }: PageSessionHeaderProps) {
   const { t } = useTranslation();
   const { toggleSidebar } = useSidebar();
-  const pageHref = useMemo(() => getPageHref(session), [session]);
+  const { open, setOpen, previewData, previewUnavailable } = usePagePreview();
+  const fallbackPageHref = useMemo(() => getPageHref(session), [session]);
+  const pageHref = previewData?.url ?? fallbackPageHref;
 
   return (
     <header className="flex min-h-10 items-center gap-2 border-b border-border px-2">
@@ -63,16 +62,16 @@ export function PageSessionHeader({
       <div className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
-          variant={previewOpen ? "secondary" : "ghost"}
+          variant={open ? "secondary" : "ghost"}
           size="sm"
           className="h-7 gap-1.5 px-2"
-          onClick={() => onPreviewOpenChange(!previewOpen)}
+          onClick={() => setOpen(!open)}
         >
           <Eye className="h-3.5 w-3.5" />
           {t("assistant.session.preview")}
         </Button>
 
-        {pageHref ? (
+        {pageHref && !previewUnavailable ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <a
