@@ -8,9 +8,10 @@ import {
   pruneMessages,
   type UIMessageChunk,
 } from "ai";
-import type { VibenAgentCallOptions } from "@viben/agent";
+import type { AgentModelSelection, VibenAgentCallOptions } from "@viben/agent";
 import { getWorkflowMetadata, getWritable } from "workflow";
 import { getRun } from "workflow/api";
+import { workAgent } from "@/app/config";
 import { assistantFileLinkPrompt } from "@/lib/assistant-file-links";
 import { addLanguageModelUsage } from "./usage-utils";
 import { extractGatewayCost } from "./gateway-metadata";
@@ -50,11 +51,13 @@ import {
 import { getAllVariants } from "@/lib/model-variants";
 import { APP_DEFAULT_MODEL_ID } from "@/lib/models";
 import type { Session as AuthSession } from "@/lib/session/types";
+import type { SessionAgentType } from "@/lib/db/schema";
 import type {
   WorkflowRunStatus,
   WorkflowRunStepTiming,
 } from "@/lib/db/workflow-runs";
 import { resolveChatModelSelection } from "../api/chat/_lib/model-selection";
+import { runPageAgentStep } from "./chat-page-runtime";
 import { resolveChatSandboxRuntime } from "./chat-sandbox-runtime";
 
 type AuthSessionContext = Pick<AuthSession, "authProvider" | "user"> | null;
@@ -77,8 +80,10 @@ type Options = {
 };
 
 type ChatModelRuntime = {
+  agentType: SessionAgentType;
   selectedModelId: string;
   modelId: string;
+  mainModelSelection: AgentModelSelection;
   agentOptions: Omit<VibenAgentCallOptions, "sandbox" | "skills">;
   autoCommitEnabled: boolean;
   autoCreatePrEnabled: boolean;
@@ -114,13 +119,12 @@ const convertMessages = async (
   messages: WebAgentUIMessage[],
 ): Promise<ModelMessage[]> => {
   "use step";
-  const { webAgent } = await import("@/app/config");
   const dedupedMessages = messages.map(dedupeMessageReasoning);
   const modelMessages = await convertToModelMessages<WebAgentUIMessage>(
     dedupedMessages,
     {
       ignoreIncompleteToolCalls: true,
-      tools: webAgent.tools,
+      tools: workAgent.tools,
       convertDataPart: (part) => {
         if (part.type === "data-snippet") {
           const { filename, content } = part.data;
@@ -216,8 +220,10 @@ async function resolveChatModelRuntime(params: {
     (sessionRecord.autoCreatePrOverride ?? preferences?.autoCreatePr ?? false);
 
   return {
+    agentType: sessionRecord.agentType,
     selectedModelId: selectedModelId ?? mainModelSelection.id,
     modelId: mainModelSelection.id,
+    mainModelSelection,
     agentOptions: {
       model: mainModelSelection,
       ...(subagentModelSelection
@@ -618,10 +624,6 @@ export async function runAgentWorkflow(options: Options) {
     requestUrl: options.requestUrl,
     authSession: options.authSession,
   });
-  const runtimePromise = resolveChatSandboxRuntime({
-    userId: options.userId,
-    sessionId: options.sessionId,
-  });
 
   // Self-register this workflow's runId onto the chat as the very first step.
   // The HTTP POST handler also writes this (via compareAndSetChatActiveStreamId
@@ -642,7 +644,6 @@ export async function runAgentWorkflow(options: Options) {
     // Exit before emitting chunks or persisting messages so only the owning
     // workflow can mutate this chat.
     await Promise.allSettled([
-      runtimePromise,
       modelMessagesPromise,
       inputMessagesPersistPromise,
       modelRuntimePromise,
@@ -687,11 +688,13 @@ export async function runAgentWorkflow(options: Options) {
   let caughtError: unknown;
   let sandboxState: VibenAgentCallOptions["sandbox"]["state"] | undefined;
   let shouldRefreshCachedDiff = false;
+  let repoOwner: string | undefined;
+  let repoName: string | undefined;
+  let sessionTitle: string | undefined;
 
   try {
-    const [, runtime, modelRuntime, modelMessages] = await Promise.all([
+    const [, modelRuntime, modelMessages] = await Promise.all([
       activeStreamClaimPromise,
-      runtimePromise,
       modelRuntimePromise,
       modelMessagesPromise,
       inputMessagesPersistPromise,
@@ -707,40 +710,69 @@ export async function runAgentWorkflow(options: Options) {
       ),
     };
 
-    const agentOptions: VibenAgentCallOptions = {
-      ...modelRuntime.agentOptions,
-      ...options.agentOptions,
-      sandbox: {
-        state: runtime.sandboxState,
-        workingDirectory: runtime.workingDirectory,
-        currentBranch: runtime.currentBranch,
-        environmentDetails: runtime.environmentDetails,
-      },
-      ...(runtime.skills.length > 0 ? { skills: runtime.skills } : {}),
-    };
-    sandboxState = runtime.sandboxState;
+    let agentOptions: VibenAgentCallOptions | undefined;
+    if (modelRuntime.agentType === "work") {
+      const runtime = await resolveChatSandboxRuntime({
+        userId: options.userId,
+        sessionId: options.sessionId,
+      });
+      agentOptions = {
+        ...modelRuntime.agentOptions,
+        ...options.agentOptions,
+        sandbox: {
+          state: runtime.sandboxState,
+          workingDirectory: runtime.workingDirectory,
+          currentBranch: runtime.currentBranch,
+          environmentDetails: runtime.environmentDetails,
+        },
+        ...(runtime.skills.length > 0 ? { skills: runtime.skills } : {}),
+      };
+      sandboxState = runtime.sandboxState;
+      repoOwner = runtime.repoOwner;
+      repoName = runtime.repoName;
+      sessionTitle = runtime.sessionTitle;
+    }
 
     for (
       let step = 0;
       options.maxSteps === undefined || step < options.maxSteps;
       step++
     ) {
-      let result: Awaited<ReturnType<typeof runAgentStep>>;
+      let result:
+        | Awaited<ReturnType<typeof runAgentStep>>
+        | Awaited<ReturnType<typeof runPageAgentStep>>;
 
       try {
-        result = await runAgentStep(
-          modelMessages,
-          originalMessagesForStep,
-          assistantId,
-          writable,
-          workflowRunId,
-          options.chatId,
-          options.sessionId,
-          selectedModelId,
-          modelId,
-          agentOptions,
-          step + 1,
-        );
+        result =
+          modelRuntime.agentType === "chat"
+            ? await runPageAgentStep({
+                messages: modelMessages,
+                originalMessages: originalMessagesForStep,
+                messageId: assistantId,
+                writable,
+                workflowRunId,
+                chatId: options.chatId,
+                sessionId: options.sessionId,
+                userId: options.userId,
+                requestUrl: options.requestUrl,
+                selectedModelId,
+                modelId,
+                model: modelRuntime.mainModelSelection,
+                stepNumber: step + 1,
+              })
+            : await runAgentStep(
+                modelMessages,
+                originalMessagesForStep,
+                assistantId,
+                writable,
+                workflowRunId,
+                options.chatId,
+                options.sessionId,
+                selectedModelId,
+                modelId,
+                agentOptions!,
+                step + 1,
+              );
       } catch (error) {
         if (isStepTimingError(error)) {
           stepTimings.push(error.stepTiming);
@@ -752,10 +784,11 @@ export async function runAgentWorkflow(options: Options) {
       pendingAssistantResponse =
         result.responseMessage ?? pendingAssistantResponse;
       shouldRefreshCachedDiff =
-        shouldRefreshCachedDiff ||
-        shouldRefreshDiffCacheForParts(pendingAssistantResponse.parts);
+        modelRuntime.agentType === "work" &&
+        (shouldRefreshCachedDiff ||
+          shouldRefreshDiffCacheForParts(pendingAssistantResponse.parts));
       originalMessagesForStep = [pendingAssistantResponse];
-      modelMessages.push(...result.responseMessages);
+      modelMessages.push(...(result.responseMessages as ModelMessage[]));
       wasAborted = wasAborted || result.stepWasAborted;
       finalFinishReason = result.finishReason;
 
@@ -810,23 +843,23 @@ export async function runAgentWorkflow(options: Options) {
       finalFinishReason !== "tool-calls";
     const commitPartId = `${assistantId}:commit`;
     const prPartId = `${assistantId}:pr`;
-    const repoOwner = runtime.repoOwner;
-    const repoName = runtime.repoName;
     let didUpdateGitData = false;
 
     let autoCommitResult: Awaited<ReturnType<typeof runAutoCommitStep>> | null =
       null;
 
-    const canAutoCommit =
+    const autoCommitContext =
       finishedNaturally &&
       (options.autoCommitEnabled ?? modelRuntime.autoCommitEnabled) &&
       sandboxState != null &&
       repoOwner != null &&
-      repoName != null;
+      repoName != null
+        ? { sandboxState, repoOwner, repoName }
+        : null;
 
-    if (canAutoCommit) {
+    if (autoCommitContext) {
       const hasAutoCommitChanges = await hasAutoCommitChangesStep({
-        sandboxState,
+        sandboxState: autoCommitContext.sandboxState,
       });
 
       if (hasAutoCommitChanges) {
@@ -843,16 +876,20 @@ export async function runAgentWorkflow(options: Options) {
         autoCommitResult = await runAutoCommitStep({
           userId: options.userId,
           sessionId: options.sessionId,
-          sessionTitle: runtime.sessionTitle,
-          repoOwner,
-          repoName,
-          sandboxState,
+          sessionTitle: sessionTitle ?? pendingAssistantResponse.id,
+          repoOwner: autoCommitContext.repoOwner,
+          repoName: autoCommitContext.repoName,
+          sandboxState: autoCommitContext.sandboxState,
         });
 
         const resolvedCommitPart: WebAgentCommitDataPart = {
           type: "data-commit",
           id: commitPartId,
-          data: buildCommitData(autoCommitResult, repoOwner, repoName),
+          data: buildCommitData(
+            autoCommitResult,
+            autoCommitContext.repoOwner,
+            autoCommitContext.repoName,
+          ),
         };
         pendingAssistantResponse = upsertAssistantDataPart(
           pendingAssistantResponse,
@@ -875,7 +912,7 @@ export async function runAgentWorkflow(options: Options) {
       (autoCommitResult.pushed || !autoCommitResult.committed);
 
     if (
-      canAutoCommit &&
+      autoCommitContext &&
       (options.autoCreatePrEnabled ?? modelRuntime.autoCreatePrEnabled)
     ) {
       if (canAutoCreatePr) {
@@ -892,10 +929,10 @@ export async function runAgentWorkflow(options: Options) {
         const autoPrResult = await runAutoCreatePrStep({
           userId: options.userId,
           sessionId: options.sessionId,
-          sessionTitle: runtime.sessionTitle,
-          repoOwner,
-          repoName,
-          sandboxState,
+          sessionTitle: sessionTitle ?? pendingAssistantResponse.id,
+          repoOwner: autoCommitContext.repoOwner,
+          repoName: autoCommitContext.repoName,
+          sandboxState: autoCommitContext.sandboxState,
         });
 
         const resolvedPrPart: WebAgentPrDataPart = {
@@ -1014,7 +1051,6 @@ const runAgentStep = async (
   "use step";
 
   const stepStartedAt = new Date();
-  const { webAgent } = await import("@/app/config");
 
   const abortController = new AbortController();
   const stopMonitor = startStopMonitor(workflowRunId, abortController);
@@ -1040,7 +1076,7 @@ const runAgentStep = async (
     let totalMessageUsage = existingTotalMessageUsage;
     let totalMessageCost = existingTotalMessageCost;
 
-    const result = await webAgent.stream({
+    const result = await workAgent.stream({
       messages,
       options: agentOptions,
       abortSignal: abortController.signal,

@@ -105,11 +105,36 @@ const spies = {
       prUrl: "https://github.com/acme/repo/pull/42",
     }),
   ),
+  runPageAgentStep: mock(() =>
+    Promise.resolve({
+      responseMessage: {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [{ type: "text", text: "Page answer" }],
+        metadata: {},
+      },
+      responseMessages: [],
+      finishReason: "stop",
+      rawFinishReason: "provider_stop",
+      stepUsage: agentTotalUsage,
+      stepCost: undefined,
+      stepWasAborted: false,
+      stepTiming: {
+        stepNumber: 1,
+        startedAt: "2026-01-01T00:00:00.000Z",
+        finishedAt: "2026-01-01T00:00:01.000Z",
+        durationMs: 1000,
+        finishReason: "stop",
+        rawFinishReason: "provider_stop",
+      },
+    }),
+  ),
 };
 
 let testSessionRecord: {
   id: string;
   userId: string;
+  agentType: "work" | "chat";
   autoCommitPushOverride: boolean | null;
   autoCreatePrOverride: boolean | null;
   repoOwner: string | null;
@@ -217,77 +242,79 @@ mock.module("workflow/api", () => ({
 
 mock.module("./chat-post-finish", () => spies);
 
+const testWorkAgent = {
+  tools: {},
+  stream: async ({ messages }: { messages: unknown }) => {
+    agentInputMessages = messages;
+    return {
+      toUIMessageStream: (opts: {
+        sendStart?: boolean;
+        sendFinish?: boolean;
+        originalMessages?: Array<Record<string, unknown>>;
+        messageMetadata?: (args: {
+          part: Record<string, unknown>;
+        }) => unknown;
+        onFinish?: (args: { responseMessage: unknown }) => void;
+      }) => {
+        const priorAssistantMessage = opts.originalMessages?.at(-1);
+        const assistantMessage = (
+          priorAssistantMessage?.role === "assistant"
+            ? structuredClone(priorAssistantMessage)
+            : {
+                id: "assistant-1",
+                role: "assistant",
+                parts: agentAssistantParts ?? [{ type: "text", text: "Hello!" }],
+                metadata: {},
+              }
+        ) as {
+          id: string;
+          role: "assistant";
+          parts: Array<Record<string, unknown>>;
+          metadata?: unknown;
+        };
+
+        streamOnFinishCallback = opts.onFinish;
+        // Return an async iterable that yields parts and calls onFinish
+        return {
+          async *[Symbol.asyncIterator]() {
+            for (const part of agentStreamParts) {
+              yield part;
+
+              const metadata = opts.messageMetadata?.({ part });
+              if (metadata) {
+                assistantMessage.metadata = Object.assign(
+                  {},
+                  assistantMessage.metadata as Record<string, unknown> | undefined,
+                  metadata as Record<string, unknown>,
+                );
+                yield {
+                  type: "message-metadata",
+                  messageMetadata: metadata,
+                };
+              }
+            }
+            if (streamOnFinishCallback) {
+              streamOnFinishCallback({
+                responseMessage: assistantMessage,
+              });
+            }
+          },
+        };
+      },
+      totalUsage: Promise.resolve(agentTotalUsage),
+      finishReason: Promise.resolve(agentFinishReason),
+      rawFinishReason: Promise.resolve(agentRawFinishReason),
+      response: Promise.resolve(agentResponse),
+      steps: Promise.resolve(buildAgentSteps()),
+    };
+  },
+};
+
 mock.module("@/app/config", () => ({
-  webAgent: {
+  workAgent: testWorkAgent,
+  webAgent: testWorkAgent,
+  pageAgent: {
     tools: {},
-    stream: async ({ messages }: { messages: unknown }) => {
-      agentInputMessages = messages;
-      return {
-        toUIMessageStream: (opts: {
-          sendStart?: boolean;
-          sendFinish?: boolean;
-          originalMessages?: Array<Record<string, unknown>>;
-          messageMetadata?: (args: {
-            part: Record<string, unknown>;
-          }) => unknown;
-          onFinish?: (args: { responseMessage: unknown }) => void;
-        }) => {
-          const priorAssistantMessage = opts.originalMessages?.at(-1);
-          const assistantMessage = (
-            priorAssistantMessage?.role === "assistant"
-              ? structuredClone(priorAssistantMessage)
-              : {
-                  id: "assistant-1",
-                  role: "assistant",
-                  parts: agentAssistantParts ?? [
-                    { type: "text", text: "Hello!" },
-                  ],
-                  metadata: {},
-                }
-          ) as {
-            id: string;
-            role: "assistant";
-            parts: Array<Record<string, unknown>>;
-            metadata?: unknown;
-          };
-
-          streamOnFinishCallback = opts.onFinish;
-          // Return an async iterable that yields parts and calls onFinish
-          return {
-            async *[Symbol.asyncIterator]() {
-              for (const part of agentStreamParts) {
-                yield part;
-
-                const metadata = opts.messageMetadata?.({ part });
-                if (metadata) {
-                  assistantMessage.metadata = Object.assign(
-                    {},
-                    assistantMessage.metadata as
-                      | Record<string, unknown>
-                      | undefined,
-                    metadata as Record<string, unknown>,
-                  );
-                  yield {
-                    type: "message-metadata",
-                    messageMetadata: metadata,
-                  };
-                }
-              }
-              if (streamOnFinishCallback) {
-                streamOnFinishCallback({
-                  responseMessage: assistantMessage,
-                });
-              }
-            },
-          };
-        },
-        totalUsage: Promise.resolve(agentTotalUsage),
-        finishReason: Promise.resolve(agentFinishReason),
-        rawFinishReason: Promise.resolve(agentRawFinishReason),
-        response: Promise.resolve(agentResponse),
-        steps: Promise.resolve(buildAgentSteps()),
-      };
-    },
   },
 }));
 
@@ -351,6 +378,10 @@ mock.module("./chat-sandbox-runtime", () => ({
   resolveChatSandboxRuntime: spies.resolveChatSandboxRuntime,
 }));
 
+mock.module("./chat-page-runtime", () => ({
+  runPageAgentStep: spies.runPageAgentStep,
+}));
+
 const { runAgentWorkflow } = await import("./chat");
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -407,6 +438,7 @@ beforeEach(() => {
   testSessionRecord = {
     id: "session-1",
     userId: "user-1",
+    agentType: "work",
     autoCommitPushOverride: null,
     autoCreatePrOverride: null,
     repoOwner: "acme",
@@ -484,6 +516,56 @@ describe("runAgentWorkflow", () => {
     expect(types[0]).toBe("start");
     expect(types[types.length - 1]).toBe("finish");
     expect(spies.persistAssistantMessage).toHaveBeenCalledTimes(1);
+  });
+
+  test("work sessions keep sandbox runtime and work post-finish steps", async () => {
+    testSessionRecord.agentType = "work";
+
+    await runAgentWorkflow(
+      makeOptions({
+        autoCommitEnabled: true,
+        autoCreatePrEnabled: true,
+      }),
+    );
+
+    expect(spies.resolveChatSandboxRuntime).toHaveBeenCalledTimes(1);
+    expect(spies.runPageAgentStep).not.toHaveBeenCalled();
+    expect(spies.refreshLifecycleActivity).toHaveBeenCalledTimes(1);
+    expect(spies.persistSandboxState).toHaveBeenCalledTimes(1);
+    expect(spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
+    expect(spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
+  });
+
+  test("chat sessions execute page runtime without sandbox or git steps", async () => {
+    testSessionRecord.agentType = "chat";
+
+    await runAgentWorkflow(makeOptions());
+
+    expect(spies.runPageAgentStep).toHaveBeenCalledTimes(1);
+    expect(spies.resolveChatSandboxRuntime).not.toHaveBeenCalled();
+    expect(spies.persistSandboxState).not.toHaveBeenCalled();
+    expect(spies.refreshDiffCache).not.toHaveBeenCalled();
+    expect(spies.refreshLifecycleActivity).not.toHaveBeenCalled();
+    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(spies.runAutoCreatePrStep).not.toHaveBeenCalled();
+    expect(spies.persistAssistantMessage).toHaveBeenCalled();
+    expect(spies.recordWorkflowUsage).toHaveBeenCalled();
+    expect(spies.clearActiveStream).toHaveBeenCalled();
+  });
+
+  test("page runtime failure persists a retryable assistant error and clears stream", async () => {
+    testSessionRecord.agentType = "chat";
+    spies.runPageAgentStep.mockImplementationOnce(() =>
+      Promise.reject(new Error("Page unavailable")),
+    );
+
+    await expect(runAgentWorkflow(makeOptions())).rejects.toThrow(
+      "Page unavailable",
+    );
+
+    expect(spies.resolveChatSandboxRuntime).not.toHaveBeenCalled();
+    expect(spies.persistAssistantMessage).toHaveBeenCalled();
+    expect(spies.clearActiveStream).toHaveBeenCalled();
   });
 
   test("sends start and finish chunks to writable", async () => {
