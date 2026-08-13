@@ -21,7 +21,6 @@ import {
 import { useSessionChatRuntime } from "@/hooks/assistant/chat/use-session-chat-runtime";
 import type { Chat, Session } from "@/lib/db/schema";
 import type { ModelOption } from "@/lib/model-options";
-import type { PageContentChangedDetail } from "@/lib/page-chat/page-content-events";
 import { cn } from "@/lib/utils";
 
 export type SharedChatCoreProps = {
@@ -35,7 +34,6 @@ export type SharedChatCoreProps = {
   toolbar?: ReactNode;
   transcriptActions?: Pick<ChatTranscriptProps, "onForkMessage" | "onOpenFile">;
   workExtensions?: ChatComposerProps["workExtensions"];
-  onPageContentChanged?: (detail: PageContentChangedDetail) => void;
   onChatActivity?: () => void;
   runtime?: SharedChatRuntime;
   transcriptProps?: Partial<ChatTranscriptProps>;
@@ -113,7 +111,6 @@ function SharedChatCoreView({
   toolbar,
   transcriptActions,
   workExtensions,
-  onPageContentChanged,
   onChatActivity,
   runtime,
   transcriptProps,
@@ -137,7 +134,7 @@ function SharedChatCoreView({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {toolbar ? <div className="shrink-0">{toolbar}</div> : null}
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         <ChatTranscript
           messages={chatRuntime.messages}
           status={chatRuntime.status}
@@ -145,10 +142,11 @@ function SharedChatCoreView({
           compact={density === "compact"}
           emptyState={emptyState}
           onCopyMessage={() => undefined}
-          onRetryMessage={() => runtime.retryChatStream()}
+          onRetryMessage={
+            mode === "work" ? () => runtime.retryChatStream() : undefined
+          }
           onForkMessage={transcriptActions?.onForkMessage}
           onOpenFile={transcriptActions?.onOpenFile}
-          onPageContentChanged={onPageContentChanged}
           messageDurationMap={{}}
           messageStartedAtMap={{}}
           lastUserMessageSentAt={null}

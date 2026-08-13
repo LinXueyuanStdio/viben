@@ -56,10 +56,6 @@ import {
   shouldRenderGitDataPart,
 } from "@/lib/chat-streaming-state";
 import type { ModelOption } from "@/lib/model-options";
-import {
-  type PageContentChangedDetail,
-  emitPageContentChanged,
-} from "@/lib/page-chat/page-content-events";
 import { cn } from "@/lib/utils";
 
 type ReasoningMessagePart = Extract<
@@ -94,13 +90,12 @@ export type ChatTranscriptProps = {
   compact?: boolean;
   emptyState?: ReactNode;
   onCopyMessage: (message: WebAgentUIMessage) => void;
-  onRetryMessage: (message: WebAgentUIMessage) => void;
+  onRetryMessage?: (message: WebAgentUIMessage) => void;
   onForkMessage?: (message: WebAgentUIMessage) => void;
   onOpenFile?: (path: string) => void;
   onDeleteMessage?: (message: WebAgentUIMessage) => void;
   onApproveTool?: (id: string) => void;
   onDenyTool?: (id: string, reason?: string) => void;
-  onPageContentChanged?: (detail: PageContentChangedDetail) => void;
   messageDurationMap: Record<string, number>;
   messageStartedAtMap: Record<string, string>;
   lastUserMessageSentAt: string | null;
@@ -156,65 +151,6 @@ function getAssistantText(message: WebAgentUIMessage): string {
     )
     .map((part) => part.text)
     .join("");
-}
-
-function parseToolOutput(output: unknown): Record<string, unknown> | null {
-  if (typeof output === "string") {
-    try {
-      const parsed = JSON.parse(output);
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : null;
-    } catch {
-      return null;
-    }
-  }
-
-  if (output && typeof output === "object" && !Array.isArray(output)) {
-    return output as Record<string, unknown>;
-  }
-
-  return null;
-}
-
-function getPageContentChangedDetail(
-  part: WebAgentUIMessagePart,
-): PageContentChangedDetail | null {
-  if (!isToolUIPart(part)) {
-    return null;
-  }
-
-  const toolName =
-    "toolName" in part && typeof part.toolName === "string"
-      ? part.toolName
-      : part.type.replace(/^tool-/, "");
-  if (toolName !== "update_page" || part.state !== "output-available") {
-    return null;
-  }
-
-  const output = "output" in part ? parseToolOutput(part.output) : null;
-  if (!output || output.success !== true) {
-    return null;
-  }
-
-  const publishedPageId =
-    typeof output.published_page_id === "string"
-      ? output.published_page_id
-      : typeof output.publishedPageId === "string"
-        ? output.publishedPageId
-        : null;
-  const chatId =
-    typeof output.chat_id === "string"
-      ? output.chat_id
-      : typeof output.chatId === "string"
-        ? output.chatId
-        : null;
-
-  if (!publishedPageId || !chatId) {
-    return null;
-  }
-
-  return { publishedPageId, chatId };
 }
 
 function GitDataPartCard({
@@ -359,7 +295,6 @@ export function ChatTranscript({
   onDeleteMessage,
   onApproveTool,
   onDenyTool,
-  onPageContentChanged,
   messageDurationMap,
   messageStartedAtMap,
   lastUserMessageSentAt,
@@ -378,7 +313,6 @@ export function ChatTranscript({
     string | null
   >(null);
   const copyResetTimeoutRef = useRef<number | null>(null);
-  const notifiedToolCallsRef = useRef<Set<string>>(new Set());
   const { containerRef, isAtBottom, scrollToBottom } =
     useScrollToBottom<HTMLDivElement>();
 
@@ -392,34 +326,6 @@ export function ChatTranscript({
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!onPageContentChanged) {
-      return;
-    }
-
-    for (const message of messages) {
-      if (message.role !== "assistant") {
-        continue;
-      }
-      for (const part of message.parts) {
-        if (!isToolUIPart(part)) {
-          continue;
-        }
-        const toolCallId = part.toolCallId;
-        if (!toolCallId || notifiedToolCallsRef.current.has(toolCallId)) {
-          continue;
-        }
-        const detail = getPageContentChangedDetail(part);
-        if (!detail) {
-          continue;
-        }
-        notifiedToolCallsRef.current.add(toolCallId);
-        onPageContentChanged(detail);
-        emitPageContentChanged(detail);
-      }
-    }
-  }, [messages, onPageContentChanged]);
 
   const groupedRenderMessages = useMemo<GroupedRenderMessage[]>(() => {
     return messages.map((message, messageIndex) => {

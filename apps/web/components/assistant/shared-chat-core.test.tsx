@@ -15,8 +15,15 @@ vi.mock("@/hooks/assistant/chat/use-session-chat-runtime", () => ({
   useSessionChatRuntime: vi.fn(),
 }));
 
+const transcriptState = vi.hoisted(() => ({
+  props: {} as Record<string, unknown>,
+}));
+
 vi.mock("@/components/assistant/chat-transcript", () => ({
-  ChatTranscript: () => <div data-testid="chat-transcript" />,
+  ChatTranscript: (props: Record<string, unknown>) => {
+    transcriptState.props = props;
+    return <div data-testid="chat-transcript" />;
+  },
 }));
 
 vi.mock("@/components/assistant/chat-composer", () => ({
@@ -176,5 +183,36 @@ describe("SharedChatCore", () => {
     expect(screen.getByText("Skills")).toBeVisible();
     expect(screen.getByText("Todo")).toBeVisible();
     expect(useSessionChatRuntime).toHaveBeenCalledOnce();
+  });
+
+  test("page mode omits retry action while work mode provides it", () => {
+    const runtimeMock = runtime();
+    vi.mocked(useSessionChatRuntime).mockReturnValue(runtimeMock);
+
+    const { rerender } = render(
+      <SharedChatCore
+        session={session}
+        chat={chat}
+        initialMessages={[]}
+        modelOptions={modelOptions}
+        mode="page"
+        density="full"
+      />,
+    );
+
+    expect(transcriptState.props.onRetryMessage).toBeUndefined();
+
+    rerender(
+      <SharedChatCore
+        session={session}
+        chat={chat}
+        initialMessages={[]}
+        modelOptions={modelOptions}
+        mode="work"
+        density="full"
+      />,
+    );
+
+    expect(transcriptState.props.onRetryMessage).toBeTypeOf("function");
   });
 });

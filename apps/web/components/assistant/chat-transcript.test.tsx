@@ -130,8 +130,7 @@ describe("ChatTranscript", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("reports a successful update_page result once", () => {
-    const onPageContentChanged = vi.fn();
+  test("does not emit page updates from update_page tool output", () => {
     const messages = [
       {
         id: "assistant-1",
@@ -154,25 +153,23 @@ describe("ChatTranscript", () => {
       } as WebAgentUIMessage,
     ];
 
-    const { rerender } = render(
+    render(<ChatTranscript {...baseProps} messages={messages} />);
+
+    expect(screen.getByTestId("tool-call")).toHaveTextContent("update_page");
+    expect(screen.getByTestId("assistant-text")).toHaveTextContent("Updated.");
+  });
+
+  test("omits user retry action when onRetryMessage is absent", () => {
+    render(
       <ChatTranscript
         {...baseProps}
-        messages={messages}
-        onPageContentChanged={onPageContentChanged}
-      />,
-    );
-    rerender(
-      <ChatTranscript
-        {...baseProps}
-        messages={messages}
-        onPageContentChanged={onPageContentChanged}
+        onRetryMessage={undefined}
+        messages={[textMessage("user-1", "user", "Prompt")]}
       />,
     );
 
-    expect(onPageContentChanged).toHaveBeenCalledOnce();
-    expect(onPageContentChanged).toHaveBeenCalledWith({
-      publishedPageId: "page-1",
-      chatId: "chat-1",
-    });
+    expect(
+      screen.queryByRole("button", { name: /retry|resend/i }),
+    ).not.toBeInTheDocument();
   });
 });
