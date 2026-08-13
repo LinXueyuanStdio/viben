@@ -1,8 +1,13 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { ResourceUpdatedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { dynamicTool, type ToolSet } from "ai";
 import { z } from "zod";
 import type { PageChatContext } from "./page-chat-context";
+import {
+  buildPublishedPageContentResourceUri,
+  parsePageResourceUri,
+} from "./page-resource-uri";
 
 type McpToolResult = Awaited<ReturnType<Client["callTool"]>>;
 
@@ -37,10 +42,42 @@ async function callScopedTool(
   return result;
 }
 
+async function subscribePageContentResource(input: {
+  client: Client;
+  uri: string;
+  publishedPageId: string;
+  onUpdated?: (publishedPageId: string) => void | Promise<void>;
+}): Promise<() => Promise<void>> {
+  input.client.setNotificationHandler(
+    ResourceUpdatedNotificationSchema,
+    async (notification) => {
+      const parsed = parsePageResourceUri(notification.params.uri);
+      if (
+        parsed?.type !== "published_page_content" ||
+        parsed.publishedPageId !== input.publishedPageId
+      ) {
+        return;
+      }
+      await input.onUpdated?.(parsed.publishedPageId);
+    },
+  );
+
+  await input.client.subscribeResource({ uri: input.uri });
+
+  return async () => {
+    try {
+      await input.client.unsubscribeResource({ uri: input.uri });
+    } catch {
+      // Best-effort cleanup. Closing the client is still required.
+    }
+  };
+}
+
 export async function createPageMcpTools(input: {
   endpoint: URL;
   bearerToken: string;
   page: PageChatContext;
+  onPageResourceUpdated?: (publishedPageId: string) => void | Promise<void>;
 }): Promise<PageMcpToolRuntime> {
   const transport = new StreamableHTTPClientTransport(input.endpoint, {
     requestInit: {
@@ -49,6 +86,16 @@ export async function createPageMcpTools(input: {
   });
   const client = new Client({ name: "viben-page-chat", version: "1.0.0" });
   await client.connect(transport);
+
+  const pageResourceUri = buildPublishedPageContentResourceUri(
+    input.page.publishedPageId,
+  );
+  const unsubscribePageResource = await subscribePageContentResource({
+    client,
+    uri: pageResourceUri,
+    publishedPageId: input.page.publishedPageId,
+    onUpdated: input.onPageResourceUpdated,
+  });
 
   const tools: ToolSet = {
     get_page: dynamicTool({
@@ -86,7 +133,10 @@ export async function createPageMcpTools(input: {
 
   return {
     tools,
-    close: () => client.close(),
+    close: async () => {
+      await unsubscribePageResource();
+      await client.close();
+    },
   };
 }
 

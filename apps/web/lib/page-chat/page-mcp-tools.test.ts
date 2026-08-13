@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
   clientConnect: vi.fn(),
   clientCallTool: vi.fn(),
   clientClose: vi.fn(),
+  clientSubscribeResource: vi.fn(),
+  clientUnsubscribeResource: vi.fn(),
+  clientSetNotificationHandler: vi.fn(),
+  notificationHandlers: new Map<string, (notification: Record<string, any>) => unknown>(),
   transportInputs: [] as Array<Record<string, any>>,
 }));
 
@@ -54,6 +58,19 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
     async callTool(input: Record<string, unknown>) {
       mocks.clientCallTool(input);
       return mocks.callToolResult;
+    }
+
+    setNotificationHandler(schema: Record<string, any>, handler: (notification: Record<string, any>) => unknown) {
+      mocks.clientSetNotificationHandler(schema);
+      mocks.notificationHandlers.set("notifications/resources/updated", handler);
+    }
+
+    async subscribeResource(input: Record<string, unknown>) {
+      mocks.clientSubscribeResource(input);
+    }
+
+    async unsubscribeResource(input: Record<string, unknown>) {
+      mocks.clientUnsubscribeResource(input);
     }
 
     async close() {
@@ -125,6 +142,10 @@ describe("page chat MCP tools", () => {
     mocks.clientConnect.mockClear();
     mocks.clientCallTool.mockClear();
     mocks.clientClose.mockClear();
+    mocks.clientSubscribeResource.mockClear();
+    mocks.clientUnsubscribeResource.mockClear();
+    mocks.clientSetNotificationHandler.mockClear();
+    mocks.notificationHandlers.clear();
     mocks.transportInputs.length = 0;
   });
 
@@ -280,6 +301,61 @@ describe("page chat MCP tools", () => {
     await expect(
       runtime.tools.get_page.execute?.({}, {} as never),
     ).rejects.toMatchObject({ cause: mocks.callToolResult });
+  });
+
+  test("subscribes to current page content resource and unsubscribes on close", async () => {
+    const { createPageMcpTools } = await toolsModulePromise;
+    const runtime = await createPageMcpTools({
+      endpoint: new URL("http://localhost/api/mcp/v1"),
+      bearerToken: "test-jwe-token",
+      page: {
+        publishedPageId: "page-1",
+        userSlug: "alice",
+        pageSlug: "guide",
+        title: "Guide",
+        canEdit: true,
+        url: "/alice/guide?tab=read",
+      },
+    });
+
+    expect(mocks.clientSubscribeResource).toHaveBeenCalledWith({
+      uri: "viben://api/pages/page-1/content",
+    });
+
+    await runtime.close();
+
+    expect(mocks.clientUnsubscribeResource).toHaveBeenCalledWith({
+      uri: "viben://api/pages/page-1/content",
+    });
+    expect(mocks.clientClose).toHaveBeenCalledOnce();
+  });
+
+  test("calls onPageResourceUpdated only for matching page content notifications", async () => {
+    const { createPageMcpTools } = await toolsModulePromise;
+    const onPageResourceUpdated = vi.fn();
+    await createPageMcpTools({
+      endpoint: new URL("http://localhost/api/mcp/v1"),
+      bearerToken: "test-jwe-token",
+      page: {
+        publishedPageId: "page-1",
+        userSlug: "alice",
+        pageSlug: "guide",
+        title: "Guide",
+        canEdit: true,
+        url: "/alice/guide?tab=read",
+      },
+      onPageResourceUpdated,
+    });
+
+    const handler = mocks.notificationHandlers.get("notifications/resources/updated");
+    expect(handler).toBeDefined();
+
+    await handler?.({ method: "notifications/resources/updated", params: { uri: "viben://api/pages/page-2/content" } });
+    await handler?.({ method: "notifications/resources/updated", params: { uri: "viben://api/pages/page-1/metadata" } });
+    expect(onPageResourceUpdated).not.toHaveBeenCalled();
+
+    await handler?.({ method: "notifications/resources/updated", params: { uri: "viben://api/pages/page-1/content" } });
+    expect(onPageResourceUpdated).toHaveBeenCalledWith("page-1");
   });
 
   test("builds page-bounded instructions for untrusted html", async () => {
