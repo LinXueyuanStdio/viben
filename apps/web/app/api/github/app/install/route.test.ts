@@ -77,7 +77,7 @@ describe("GET /api/github/app/install", () => {
     });
   });
 
-  test("redirects to get-started and preserves next when github not linked", async () => {
+  test("redirects to github install when github not linked", async () => {
     hasLinkedGitHub = false;
     installations = [];
     const { GET } = await routeModulePromise;
@@ -92,8 +92,8 @@ describe("GET /api/github/app/install", () => {
     const location = response.headers.get("location");
     expect(location).toBeTruthy();
     const redirectUrl = new URL(location as string);
-    expect(redirectUrl.pathname).toBe("/get-started");
-    expect(redirectUrl.searchParams.get("next")).toBe("/settings/connections");
+    expect(redirectUrl.origin).toBe("https://github.com");
+    expect(redirectUrl.pathname).toContain("viben-agent");
   });
 
   test("redirects to github install when linked but no installations", async () => {
