@@ -2,10 +2,10 @@ import { generateState } from "arctic";
 import { NextResponse, type NextRequest } from "next/server";
 import { getInstallationsByUserId } from "@/lib/db/installations";
 import { syncUserInstallations } from "@/lib/github/sync";
-import { getGithubOAuthToken } from "@/lib/github/token";
+import { getGitHubRepoOAuthToken } from "@/lib/github/token";
 import {
   getGitHubAccountId,
-  getGitHubUsername,
+  getGitHubUsernameForToken,
   hasGitHubAccount,
 } from "@/lib/github/users";
 import { isManagedTemplateTrialUser } from "@/lib/managed-template-trial";
@@ -95,8 +95,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     const linked = await hasGitHubAccount(session.user.id);
     if (linked) {
       try {
-        const token = await getGithubOAuthToken(session.user.id);
-        const username = await getGitHubUsername(session.user.id);
+        const token = await getGitHubRepoOAuthToken(session.user.id);
+        const username = token
+          ? await getGitHubUsernameForToken(token)
+          : null;
         if (token && username) {
           await syncUserInstallations(session.user.id, token, username);
           installations = await getInstallationsByUserId(session.user.id);

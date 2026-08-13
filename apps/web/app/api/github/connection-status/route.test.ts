@@ -22,13 +22,11 @@ mock.module("@/lib/session/get-server-session", () => ({
 }));
 
 mock.module("@/lib/github/token", () => ({
-  getGithubOAuthToken: async () => userToken,
+  getGitHubRepoOAuthToken: async () => userToken,
 }));
 
 mock.module("@/lib/github/users", () => ({
-  hasGitHubAccount: async () => hasLinkedGitHub,
-  getGitHubUsername: async () => githubUsername,
-  getGitHubAccountId: async () => null,
+  getGitHubUsernameForToken: async () => githubUsername,
 }));
 
 mock.module("@/lib/db/installations", () => ({

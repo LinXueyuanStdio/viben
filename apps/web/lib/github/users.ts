@@ -22,10 +22,9 @@ export async function hasGitHubAccount(userId: string): Promise<boolean> {
   return ghConn !== undefined || oauthConn !== undefined;
 }
 
-export async function getGitHubUsername(userId: string): Promise<string | null> {
-  const token = await getGithubOAuthToken(userId);
-  if (!token) return null;
-
+export async function getGitHubUsernameForToken(
+  token: string,
+): Promise<string | null> {
   try {
     const res = await fetch("https://api.github.com/user", {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" },
@@ -34,6 +33,12 @@ export async function getGitHubUsername(userId: string): Promise<string | null> 
     const user = (await res.json()) as { login?: string };
     return user.login ?? null;
   } catch { return null; }
+}
+
+export async function getGitHubUsername(userId: string): Promise<string | null> {
+  const token = await getGithubOAuthToken(userId);
+  if (!token) return null;
+  return getGitHubUsernameForToken(token);
 }
 
 export async function getGitHubUserProfile(userId: string): Promise<GitHubUserProfile | null> {

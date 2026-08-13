@@ -5,8 +5,8 @@ import {
   isGitHubInstallationsAuthError,
   syncUserInstallations,
 } from "@/lib/github/sync";
-import { getGithubOAuthToken } from "@/lib/github/token";
-import { getGitHubUsername } from "@/lib/github/users";
+import { getGitHubRepoOAuthToken } from "@/lib/github/token";
+import { getGitHubUsernameForToken } from "@/lib/github/users";
 import { getServerSession } from "@/lib/session/get-server-session";
 
 export async function GET() {
@@ -16,12 +16,12 @@ export async function GET() {
   }
 
   const installations = await getInstallationsByUserId(session.user.id);
-  const token = await getGithubOAuthToken(session.user.id);
+  const token = await getGitHubRepoOAuthToken(session.user.id);
 
-  // Try sync via OAuth token (only works with repo-scoped tokens)
+  // Try sync via the repo-scoped OAuth token
   if (token) {
     try {
-      const username = await getGitHubUsername(session.user.id);
+      const username = await getGitHubUsernameForToken(token);
       if (username) {
         const count = await syncUserInstallations(session.user.id, token, username);
         return NextResponse.json({
