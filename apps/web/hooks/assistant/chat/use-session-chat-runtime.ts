@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import type {
+  WebAgentPageContentChangedData,
   WebAgentUIMessage,
   WebAgentWorkspaceStatusData,
 } from "@/app/types";
@@ -19,6 +20,7 @@ import {
   getOrCreateChatInstance,
 } from "@/lib/chat-instance-manager";
 import { cleanupChatRouteOnUnmount } from "@/lib/chat-route-cleanup";
+import { emitPageContentChanged } from "@/lib/page-chat/page-content-events";
 import {
   clearChatWorkspaceStatus,
   getChatWorkspaceStatusSnapshot,
@@ -89,6 +91,19 @@ function shouldAutoSubmit({
   );
 }
 
+function isPageContentChangedData(
+  data: unknown,
+): data is WebAgentPageContentChangedData {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "publishedPageId" in data &&
+    "chatId" in data &&
+    typeof data.publishedPageId === "string" &&
+    typeof data.chatId === "string"
+  );
+}
+
 export function useSessionChatRuntime({
   sessionId,
   chatId,
@@ -144,6 +159,14 @@ export function useSessionChatRuntime({
         onData: (dataPart) => {
           if (dataPart.type === "data-workspace-status") {
             setChatWorkspaceStatus(chatId, dataPart.data as WebAgentWorkspaceStatusData);
+            return;
+          }
+
+          if (
+            dataPart.type === "data-page-content-changed" &&
+            isPageContentChangedData(dataPart.data)
+          ) {
+            emitPageContentChanged(dataPart.data);
           }
         },
         sendAutomaticallyWhen: shouldAutoSubmit,
