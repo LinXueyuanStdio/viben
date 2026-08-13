@@ -41,7 +41,12 @@ export function parsePageResourceUri(uri: string): PageResourceUri | null {
     return null;
   }
 
-  const publishedPageId = decodeURIComponent(segments[1] ?? "");
+  let publishedPageId: string;
+  try {
+    publishedPageId = decodeURIComponent(segments[1] ?? "");
+  } catch {
+    return null;
+  }
   if (!publishedPageId || publishedPageId.includes("/")) {
     return null;
   }

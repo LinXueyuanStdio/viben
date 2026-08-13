@@ -265,7 +265,8 @@ function PageAssistantToolbar({
 }
 
 function isPageUnavailableMessage(message: string): boolean {
-  return message === "Page not found" || message === "Page unavailable"
+  const normalized = message.trim().toLowerCase()
+  return normalized === "page not found" || normalized === "page unavailable"
 }
 
 export function PageAssistantPanel({

@@ -112,23 +112,18 @@ function isAbortError(error: unknown) {
 }
 
 async function sendPageContentChangedPart(input: {
-  writable: Writable;
+  writer: WritableStreamDefaultWriter<UIMessageChunk>;
   publishedPageId: string;
   chatId: string;
 }): Promise<void> {
-  const writer = input.writable.getWriter();
-  try {
-    await writer.write({
-      type: "data-page-content-changed",
-      id: `${input.chatId}:page-content-changed:${input.publishedPageId}`,
-      data: {
-        publishedPageId: input.publishedPageId,
-        chatId: input.chatId,
-      },
-    });
-  } finally {
-    writer.releaseLock();
-  }
+  await input.writer.write({
+    type: "data-page-content-changed",
+    id: `${input.chatId}:page-content-changed:${input.publishedPageId}`,
+    data: {
+      publishedPageId: input.publishedPageId,
+      chatId: input.chatId,
+    },
+  });
 }
 
 export async function runPageAgentStep(input: {
@@ -155,22 +150,30 @@ export async function runPageAgentStep(input: {
     sessionId: input.sessionId,
     userId: input.userId,
   });
-  const runtime = await createPageMcpTools({
-    endpoint: new URL("/api/mcp/v1", input.requestUrl),
-    bearerToken,
-    page,
-    onPageResourceUpdated: async (publishedPageId) => {
-      try {
-        await sendPageContentChangedPart({
-          writable: input.writable,
-          publishedPageId,
-          chatId: input.chatId,
-        });
-      } catch (error) {
-        console.error("Failed to send page content changed part", error);
-      }
-    },
-  });
+
+  const writer = input.writable.getWriter();
+  let runtime: Awaited<ReturnType<typeof createPageMcpTools>>;
+  try {
+    runtime = await createPageMcpTools({
+      endpoint: new URL("/api/mcp/v1", input.requestUrl),
+      bearerToken,
+      page,
+      onPageResourceUpdated: async (publishedPageId) => {
+        try {
+          await sendPageContentChangedPart({
+            writer,
+            publishedPageId,
+            chatId: input.chatId,
+          });
+        } catch (error) {
+          console.error("Failed to send page content changed part", error);
+        }
+      },
+    });
+  } catch (error) {
+    writer.releaseLock();
+    throw error;
+  }
 
   try {
     let responseMessage: WebAgentUIMessage | undefined;
@@ -246,9 +249,7 @@ export async function runPageAgentStep(input: {
         responseMessage = finishedResponseMessage;
       },
     })) {
-      const writer = input.writable.getWriter();
       await writer.write(part);
-      writer.releaseLock();
     }
 
     if (responseMessage == null) {
@@ -359,5 +360,6 @@ export async function runPageAgentStep(input: {
   } finally {
     stopMonitor.stop();
     await Promise.allSettled([stopMonitor.done, runtime.close()]);
+    writer.releaseLock();
   }
 }

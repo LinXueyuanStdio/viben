@@ -27,6 +27,10 @@ describe("page resource URI", () => {
     expect(parsePageResourceUri("viben-page://published/page-1")).toBeNull();
   });
 
+  test("rejects malformed percent-encoding without throwing", () => {
+    expect(parsePageResourceUri("viben://api/pages/%zz/content")).toBeNull();
+  });
+
   test("rejects unsafe page ids when building", () => {
     expect(() => buildPublishedPageContentResourceUri("")).toThrow(
       "publishedPageId is required",

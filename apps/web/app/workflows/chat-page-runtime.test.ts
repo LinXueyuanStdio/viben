@@ -93,6 +93,7 @@ describe("runPageAgentStep page content changed bridge", () => {
         onFinish?: (args: { responseMessage: unknown }) => void;
       }) => ({
         async *[Symbol.asyncIterator]() {
+          await mocks.onPageResourceUpdated?.("page-1");
           opts.onFinish?.({
             responseMessage: {
               id: "assistant-1",
@@ -115,7 +116,6 @@ describe("runPageAgentStep page content changed bridge", () => {
     await runPageAgentStep(makeInput());
 
     expect(mocks.onPageResourceUpdated).toBeTypeOf("function");
-    await mocks.onPageResourceUpdated?.("page-1");
 
     expect(writtenChunks).toContainEqual({
       type: "data-page-content-changed",

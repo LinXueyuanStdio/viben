@@ -378,12 +378,16 @@ const mcpHandler = createMcpHandler(
           userSlug: session.userSlug,
           pageSlug: uid,
         });
-        await extra.sendNotification({
-          method: "notifications/resources/updated",
-          params: {
-            uri: buildPublishedPageContentResourceUri(existing.id),
-          },
-        });
+        try {
+          await extra.sendNotification({
+            method: "notifications/resources/updated",
+            params: {
+              uri: buildPublishedPageContentResourceUri(existing.id),
+            },
+          });
+        } catch (error) {
+          console.error("Failed to send resource updated notification", error);
+        }
 
         return {
           content: [{
