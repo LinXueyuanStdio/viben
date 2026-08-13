@@ -174,8 +174,10 @@ function ChatTabItem({
   const actionButtons = (
     <div
       className={cn(
-        "flex items-center gap-0.5 pr-1 transition-opacity",
-        isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        "flex items-center gap-0.5 transition-opacity",
+        isMobile
+          ? "pr-1 opacity-100"
+          : "absolute right-1 top-1/2 -translate-y-1/2 rounded-md bg-background pl-1 opacity-0 group-hover:opacity-100",
       )}
     >
       <button
@@ -675,8 +677,10 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
           type="button"
           onClick={handleCloseChanges}
           className={cn(
-            "mr-1 rounded p-0.5 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground",
-            isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            "rounded p-0.5 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground",
+            isMobile
+              ? "mr-1 opacity-100"
+              : "absolute right-1 top-1/2 -translate-y-1/2 bg-background opacity-0 group-hover:opacity-100",
           )}
         >
           <X className="h-3 w-3" />
@@ -706,8 +710,10 @@ export function ChatTabs({ activeChatId, variant = "standalone" }: ChatTabsProps
           type="button"
           onClick={handleCloseFile}
           className={cn(
-            "mr-1 rounded p-0.5 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground",
-            isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            "rounded p-0.5 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground",
+            isMobile
+              ? "mr-1 opacity-100"
+              : "absolute right-1 top-1/2 -translate-y-1/2 bg-background opacity-0 group-hover:opacity-100",
           )}
         >
           <X className="h-3 w-3" />
