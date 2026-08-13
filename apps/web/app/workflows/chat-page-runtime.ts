@@ -111,6 +111,26 @@ function isAbortError(error: unknown) {
   return error instanceof Error && error.name === "AbortError";
 }
 
+async function sendPageContentChangedPart(input: {
+  writable: Writable;
+  publishedPageId: string;
+  chatId: string;
+}): Promise<void> {
+  const writer = input.writable.getWriter();
+  try {
+    await writer.write({
+      type: "data-page-content-changed",
+      id: `${input.chatId}:page-content-changed:${input.publishedPageId}`,
+      data: {
+        publishedPageId: input.publishedPageId,
+        chatId: input.chatId,
+      },
+    });
+  } finally {
+    writer.releaseLock();
+  }
+}
+
 export async function runPageAgentStep(input: {
   messages: ModelMessage[];
   originalMessages: WebAgentUIMessage[];
@@ -139,6 +159,17 @@ export async function runPageAgentStep(input: {
     endpoint: new URL("/api/mcp/v1", input.requestUrl),
     bearerToken,
     page,
+    onPageResourceUpdated: async (publishedPageId) => {
+      try {
+        await sendPageContentChangedPart({
+          writable: input.writable,
+          publishedPageId,
+          chatId: input.chatId,
+        });
+      } catch (error) {
+        console.error("Failed to send page content changed part", error);
+      }
+    },
   });
 
   try {

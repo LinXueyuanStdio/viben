@@ -65,11 +65,17 @@ export type WebAgentWorkspaceStatusData = {
   message: string;
 };
 
+export type WebAgentPageContentChangedData = {
+  publishedPageId: string;
+  chatId: string;
+};
+
 export type WebAgentDataParts = {
   commit: WebAgentCommitData;
   pr: WebAgentPrData;
   snippet: WebAgentSnippetData;
   "workspace-status": WebAgentWorkspaceStatusData;
+  "page-content-changed": WebAgentPageContentChangedData;
 };
 
 // All types derived from the agent
