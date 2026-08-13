@@ -221,6 +221,21 @@ function getSessionStatusLabel(
   prNumber: number | null;
 } {
   if (session.hasStreaming) return { text: t("assistant.sidebar.statusWorking"), prNumber: null };
+
+  // Page chat has no sandbox, PR, or branch — show a generic lifecycle
+  // status instead of sandbox wording.
+  if (session.agentType === "chat") {
+    if (session.status === "running")
+      return { text: t("assistant.sidebar.statusWorking"), prNumber: null };
+    if (session.status === "completed")
+      return { text: t("assistant.sidebar.statusCompleted"), prNumber: null };
+    if (session.status === "failed")
+      return { text: t("assistant.sidebar.statusFailed"), prNumber: null };
+    if (session.status === "archived")
+      return { text: t("assistant.sidebar.statusArchived"), prNumber: null };
+    return { text: t("assistant.sidebar.statusIdle"), prNumber: null };
+  }
+
   if (session.prNumber && session.prStatus === "merged")
     return { text: `PR #${session.prNumber}`, prNumber: session.prNumber };
   if (session.prNumber && session.prStatus === "open")
