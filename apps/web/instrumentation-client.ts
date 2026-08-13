@@ -12,6 +12,7 @@ export const botIdProtectedRoutes = [
   { path: "/api/sandbox", method: "DELETE" },
   { path: "/api/sandbox/*", method: "POST" },
   { path: "/api/sessions", method: "POST" },
+  { path: "/api/page-sessions", method: "POST" },
   { path: "/api/transcribe", method: "POST" },
 ];
 

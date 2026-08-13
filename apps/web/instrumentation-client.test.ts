@@ -16,6 +16,10 @@ describe("BotID client instrumentation", () => {
       path: "/api/sessions",
       method: "POST",
     });
+    expect(botIdProtectedRoutes).toContainEqual({
+      path: "/api/page-sessions",
+      method: "POST",
+    });
     expect(initBotIdCalls).toContainEqual({
       protect: botIdProtectedRoutes,
     });
