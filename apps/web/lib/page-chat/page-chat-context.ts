@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { encryptSession } from "@/lib/auth/jwe";
 import type { Session as AuthSession } from "@/lib/auth/types";
-import { findEditablePage } from "@/lib/db/page-auth";
 import { publishedPages, sessions, users } from "@/lib/db/schema";
 import { canReadPage } from "@/lib/services/community";
 
@@ -87,10 +86,7 @@ export async function resolvePageChatContext(input: {
     throw new PageUnavailableError();
   }
 
-  const editablePage = await findEditablePage(page.uid, input.userId, {
-    publishedPageId: page.id,
-  });
-  const canEdit = page.userId === input.userId || editablePage?.id === page.id;
+  const canEdit = page.userId === input.userId;
   const currentUserSlug = page.authorSlug;
   const currentPageSlug = page.uid;
   const bearerToken = await encryptSession({

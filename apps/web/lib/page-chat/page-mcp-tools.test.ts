@@ -172,6 +172,26 @@ describe("page chat MCP tools", () => {
     expect(JSON.stringify(result.page)).not.toContain("test-jwe-token");
   });
 
+  test("resolves canEdit true only for the page author", async () => {
+    const { resolvePageChatContext } = await contextModulePromise;
+
+    mocks.pageRecord = { ...pageRecord, userId: "user-1" };
+    mocks.editablePage = null;
+    await expect(
+      resolvePageChatContext({ sessionId: "session-chat", userId: "user-1" }),
+    ).resolves.toMatchObject({
+      page: { canEdit: true },
+    });
+
+    mocks.pageRecord = { ...pageRecord, userId: "author-1" };
+    mocks.editablePage = { ...pageRecord, id: "page-1" };
+    await expect(
+      resolvePageChatContext({ sessionId: "session-chat", userId: "user-1" }),
+    ).resolves.toMatchObject({
+      page: { canEdit: false },
+    });
+  });
+
   test("locks get_page to the server-resolved page", async () => {
     const { createPageMcpTools } = await toolsModulePromise;
 

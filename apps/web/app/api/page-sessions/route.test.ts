@@ -294,27 +294,38 @@ describe("POST /api/page-sessions", () => {
     );
   });
 
-  test("reports can_edit for a team page manager using the shared permission helper", async () => {
-    mocks.editablePage = { ...mocks.pageContext?.page };
+  test("reports can_edit true only for the page author", async () => {
     const { POST } = await routeModulePromise;
 
-    const body = await json(POST(pageSessionRequest("alice", "guide")));
-
+    mocks.pageContext = {
+      ...mocks.pageContext,
+      page: { ...mocks.pageContext?.page, userId: "user-1" },
+    };
+    let body = await json(POST(pageSessionRequest("alice", "guide")));
     expect(body.page.can_edit).toBe(true);
-    expect(mocks.findEditablePage).toHaveBeenCalledWith(
-      "guide",
-      "user-1",
-      { publishedPageId: "page-1" },
-    );
+
+    mocks.pageContext = {
+      ...mocks.pageContext,
+      page: { ...mocks.pageContext?.page, userId: "author-1" },
+    };
+    mocks.editablePage = { ...mocks.pageContext?.page, id: "page-1" };
+    body = await json(POST(pageSessionRequest("alice", "guide")));
+    expect(body.page.can_edit).toBe(false);
+    expect(mocks.findEditablePage).not.toHaveBeenCalled();
   });
 
-  test("does not grant can_edit when the permission helper resolves a different page", async () => {
-    mocks.editablePage = { ...mocks.pageContext?.page, id: "page-other" };
+  test("does not grant can_edit for non-authors", async () => {
     const { POST } = await routeModulePromise;
+
+    mocks.pageContext = {
+      ...mocks.pageContext,
+      page: { ...mocks.pageContext?.page, userId: "author-1" },
+    };
 
     const body = await json(POST(pageSessionRequest("alice", "guide")));
 
     expect(body.page.can_edit).toBe(false);
+    expect(mocks.findEditablePage).not.toHaveBeenCalled();
   });
 
   test("re-reads the winning active session after a 23505 race", async () => {

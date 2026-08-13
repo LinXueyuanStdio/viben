@@ -6,7 +6,6 @@ import {
   getLatestChatBySessionId,
   syncPageSessionSnapshot,
 } from "@/lib/db/sessions";
-import { findEditablePage } from "@/lib/db/page-auth";
 import { getUserPreferences } from "@/lib/db/user-preferences";
 import { sanitizeUserPreferencesForSession } from "@/lib/model-access";
 import {
@@ -148,11 +147,7 @@ export async function getOrCreatePageSession(
 
   const currentUserSlug = context.page.authorSlug;
   const currentPageSlug = context.page.uid;
-  const editablePage = await findEditablePage(context.page.uid, input.userId, {
-    publishedPageId: context.page.id,
-  });
-  const canEdit =
-    context.page.userId === input.userId || editablePage?.id === context.page.id;
+  const canEdit = context.page.userId === input.userId;
   return {
     session: result.session,
     chat: result.chat,
