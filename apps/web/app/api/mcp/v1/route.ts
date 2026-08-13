@@ -404,6 +404,17 @@ const mcpHandler = createMcpHandler(
     );
 
     // ── Page content resource protocol ─────────────────
+    // Declare the `resources` capability (specifically `subscribe`) before
+    // registering the resource handlers. The page-chat client calls
+    // `client.subscribeResource(...)`, and the SDK throws
+    // "Server does not support resource subscriptions" unless the server's
+    // `initialize` response advertises `resources.subscribe: true`. Without
+    // this, `createPageMcpTools` fails during setup and the page-chat
+    // workflow never produces output.
+    server.server.registerCapabilities({
+      resources: { subscribe: true },
+    });
+
     server.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       const parsed = parsePageResourceUri(request.params.uri);
       if (!parsed || parsed.type !== "published_page_content") {

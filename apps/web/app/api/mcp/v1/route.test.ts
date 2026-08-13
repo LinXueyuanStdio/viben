@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   return {
     tools,
     requestHandlers,
+    registerCapabilities: vi.fn(),
     authUserId: "user-1" as string | null,
     canReadPage: true,
     isPublicPage: true,
@@ -56,6 +57,7 @@ vi.mock("mcp-handler", () => ({
         mocks.tools.set(name, execute);
       },
       server: {
+        registerCapabilities: mocks.registerCapabilities,
         setRequestHandler: (
           schema: { shape?: { method?: { value?: string } } },
           handler: (request: Record<string, unknown>) => unknown,
@@ -217,6 +219,14 @@ describe("/api/mcp/v1 page cache invalidation", () => {
     dbMock.query.publishedPages.findFirst.mockClear();
     dbMock.insert.mockClear();
     dbMock.update.mockClear();
+  });
+
+  test("declares the resources capability so page-chat subscriptions work", async () => {
+    await routeModulePromise;
+
+    expect(mocks.registerCapabilities).toHaveBeenCalledWith({
+      resources: { subscribe: true },
+    });
   });
 
   test("update_page invalidates all current page cache tags", async () => {
