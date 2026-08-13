@@ -568,6 +568,42 @@ describe("runAgentWorkflow", () => {
     expect(spies.clearActiveStream).toHaveBeenCalled();
   });
 
+  test("page runtime failure emits page-chat setup message instead of workspace wording", async () => {
+    testSessionRecord.agentType = "chat";
+    spies.runPageAgentStep.mockImplementationOnce(() =>
+      Promise.reject(new Error("Page unavailable")),
+    );
+
+    await expect(runAgentWorkflow(makeOptions())).rejects.toThrow(
+      "Page unavailable",
+    );
+
+    const deltas = writtenChunks
+      .filter((chunk) => chunk.type === "text-delta")
+      .map((chunk) => chunk.delta);
+    expect(deltas).toContain("Page unavailable. Try again in a moment.");
+    expect(deltas.join(" ")).not.toContain("Workspace setup failed");
+  });
+
+  test("generic page runtime failure emits a page-chat setup message", async () => {
+    testSessionRecord.agentType = "chat";
+    spies.runPageAgentStep.mockImplementationOnce(() =>
+      Promise.reject(new Error("Server does not support resource subscriptions")),
+    );
+
+    await expect(runAgentWorkflow(makeOptions())).rejects.toThrow(
+      "Server does not support resource subscriptions",
+    );
+
+    const deltas = writtenChunks
+      .filter((chunk) => chunk.type === "text-delta")
+      .map((chunk) => chunk.delta);
+    expect(deltas).toContain(
+      "Unable to start the page assistant. Try again in a moment.",
+    );
+    expect(deltas.join(" ")).not.toContain("Workspace setup failed");
+  });
+
   test("sends start and finish chunks to writable", async () => {
     await runAgentWorkflow(makeOptions());
 

@@ -282,20 +282,27 @@ function withModelMetadata(
   };
 }
 
-function getSetupErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return "Workspace setup failed. Try again in a moment.";
+function getSetupErrorMessage(
+  error: unknown,
+  agentType: SessionAgentType,
+): string {
+  const isPageChat = agentType === "chat";
+
+  if (error instanceof Error) {
+    if (error.message === "Session is archived") {
+      return "This session is archived. Unarchive it to continue.";
+    }
+    if (error.message === "Page unavailable") {
+      return "Page unavailable. Try again in a moment.";
+    }
+    if (!isPageChat && error.message.includes("Connect GitHub")) {
+      return "Connect GitHub to access this repository, then try again.";
+    }
   }
 
-  if (error.message.includes("Connect GitHub")) {
-    return "Connect GitHub to access this repository, then try again.";
-  }
-
-  if (error.message === "Session is archived") {
-    return "This session is archived. Unarchive it to continue.";
-  }
-
-  return "Workspace setup failed. Try again in a moment.";
+  return isPageChat
+    ? "Unable to start the page assistant. Try again in a moment."
+    : "Workspace setup failed. Try again in a moment.";
 }
 
 function isStepTimingError(
@@ -686,6 +693,7 @@ export async function runAgentWorkflow(options: Options) {
   let streamClosed = false;
   let workflowStatus: WorkflowRunStatus = "completed";
   let caughtError: unknown;
+  let agentType: SessionAgentType | undefined;
   let sandboxState: VibenAgentCallOptions["sandbox"]["state"] | undefined;
   let shouldRefreshCachedDiff = false;
   let repoOwner: string | undefined;
@@ -701,6 +709,7 @@ export async function runAgentWorkflow(options: Options) {
     ]);
     selectedModelId = options.selectedModelId ?? modelRuntime.selectedModelId;
     modelId = options.modelId ?? modelRuntime.modelId;
+    agentType = modelRuntime.agentType;
     pendingAssistantResponse = {
       ...pendingAssistantResponse,
       metadata: withModelMetadata(
@@ -990,7 +999,7 @@ export async function runAgentWorkflow(options: Options) {
     caughtError = error;
 
     if (pendingAssistantResponse.parts.length === 0 && !streamClosed) {
-      const errorText = getSetupErrorMessage(error);
+      const errorText = getSetupErrorMessage(error, agentType ?? "work");
       pendingAssistantResponse = {
         ...pendingAssistantResponse,
         parts: [{ type: "text", text: errorText }],
