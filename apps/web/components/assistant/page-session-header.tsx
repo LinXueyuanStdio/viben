@@ -1,9 +1,10 @@
 "use client";
 
-import { ExternalLink, Eye, PanelLeft } from "lucide-react";
+import { ExternalLink, Eye, PanelLeft, Share2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { PageChatTabs } from "@/components/assistant/chat-tabs";
+import { ChatShareDialog } from "@/components/assistant/chat-share-dialog";
 import { usePagePreview } from "@/components/assistant/page-preview-context";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -60,6 +61,23 @@ export function PageSessionHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        <ChatShareDialog
+          sessionId={session.id}
+          chatId={activeChatId}
+          initialShareId={null}
+          trigger={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label={t("assistant.chatContent.share")}
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          }
+        />
+
         <Button
           type="button"
           variant={open ? "secondary" : "ghost"}

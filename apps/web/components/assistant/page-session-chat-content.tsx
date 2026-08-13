@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { WebAgentUIMessage } from "@/app/types";
 import { PageChatProvider } from "@/components/assistant/page-chat-provider";
 import { SharedChatCore } from "@/components/assistant/shared-chat-core";
@@ -25,6 +26,14 @@ export function PageSessionChatContent({
   messageStartedAtMap,
   lastUserMessageSentAt,
 }: PageSessionChatContentProps) {
+  // Mark the chat as read so the sidebar's unread indicator clears. Page chat
+  // previously never marked chats read, leaving the red dot stuck forever.
+  useEffect(() => {
+    void fetch(`/api/sessions/${session.id}/chats/${chat.id}/read`, {
+      method: "POST",
+    }).catch(() => undefined);
+  }, [session.id, chat.id]);
+
   return (
     <PageChatProvider
       session={session}
