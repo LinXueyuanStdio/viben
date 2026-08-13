@@ -1,9 +1,18 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  const tools = new Map<string, (args: Record<string, unknown>) => unknown>();
+  const tools = new Map<string, (args: Record<string, unknown>, extra?: Record<string, unknown>) => unknown>();
+  const requestHandlers = new Map<string, (request: Record<string, unknown>, extra?: Record<string, unknown>) => unknown>();
   return {
     tools,
+    requestHandlers,
+    authUserId: "user-1" as string | null,
+    canReadPage: true,
+    isPublicPage: true,
+    sentNotifications: [] as Record<string, unknown>[],
+    sendNotification: vi.fn(async (notification: Record<string, unknown>) => {
+      mocks.sentNotifications.push(notification);
+    }),
     revalidateTag: vi.fn(),
     recordPageUpdateAndNotify: vi.fn(async () => undefined),
     ensurePublishedPagesTable: vi.fn(async () => undefined),
@@ -42,9 +51,26 @@ vi.mock("mcp-handler", () => ({
         name: string,
         _description: string,
         _schema: unknown,
-        execute: (args: Record<string, unknown>) => unknown,
+        execute: (args: Record<string, unknown>, extra?: Record<string, unknown>) => unknown,
       ) => {
         mocks.tools.set(name, execute);
+      },
+      server: {
+        setRequestHandler: (
+          schema: { shape?: { method?: { value?: string } } },
+          handler: (request: Record<string, unknown>) => unknown,
+        ) => {
+          const method = schema.shape?.method?.value;
+          if (typeof method === "string") {
+            mocks.requestHandlers.set(method, handler);
+          }
+        },
+        sendResourceUpdated: vi.fn(async (params: Record<string, unknown>) => {
+          await mocks.sendNotification({
+            method: "notifications/resources/updated",
+            params,
+          });
+        }),
       },
     });
 
@@ -54,7 +80,9 @@ vi.mock("mcp-handler", () => ({
       if (!execute) {
         return Response.json({ error: "unknown tool" }, { status: 404 });
       }
-      return Response.json(await execute(body.args ?? {}));
+      return Response.json(
+        await execute(body.args ?? {}, { sendNotification: mocks.sendNotification }),
+      );
     };
   },
   metadataCorsOptionsRequestHandler: () => () => new Response(null),
@@ -63,7 +91,9 @@ vi.mock("mcp-handler", () => ({
     (handler: (request: Request) => Promise<Response>) => async (
       request: Request,
     ) => {
-      Object.assign(request, { auth: { userId: "user-1" } });
+      if (mocks.authUserId) {
+        Object.assign(request, { auth: { userId: mocks.authUserId } });
+      }
       return handler(request);
     },
 }));
@@ -86,6 +116,8 @@ vi.mock("@/lib/auth/oauth", () => ({
 
 vi.mock("@/lib/services/community", () => ({
   recordPageUpdateAndNotify: mocks.recordPageUpdateAndNotify,
+  canReadPage: () => mocks.canReadPage,
+  isPublicPage: () => mocks.isPublicPage,
 }));
 
 function insertBuilder() {
@@ -176,6 +208,11 @@ describe("/api/mcp/v1 page cache invalidation", () => {
     mocks.revalidateTag.mockClear();
     mocks.recordPageUpdateAndNotify.mockClear();
     mocks.ensurePublishedPagesTable.mockClear();
+    mocks.sendNotification.mockClear();
+    mocks.sentNotifications.length = 0;
+    mocks.authUserId = "user-1";
+    mocks.canReadPage = true;
+    mocks.isPublicPage = true;
     mocks.updatedPage = null;
     dbMock.query.publishedPages.findFirst.mockClear();
     dbMock.insert.mockClear();
@@ -214,5 +251,73 @@ describe("/api/mcp/v1 page cache invalidation", () => {
     );
     expect(mocks.revalidateTag).toHaveBeenCalledWith("page-entity-page-2");
     expect(mocks.revalidateTag).toHaveBeenCalledWith("profile-alice");
+  });
+
+  test("anonymous get_page only reads public approved pages", async () => {
+    const { POST } = await routeModulePromise;
+
+    mocks.authUserId = null;
+    mocks.isPublicPage = false;
+    mocks.existingPage = {
+      ...mocks.existingPage,
+      visibility: "private",
+      moderationStatus: "approved",
+    };
+
+    const denied = await POST(toolRequest("get_page", {
+      author_slug: "alice",
+      page_uid: "guide",
+    }));
+    await expect(denied.json()).resolves.toMatchObject({ isError: true });
+
+    mocks.isPublicPage = true;
+    mocks.existingPage = {
+      ...mocks.existingPage,
+      visibility: "public",
+      moderationStatus: "approved",
+    };
+
+    const allowed = await POST(toolRequest("get_page", {
+      author_slug: "alice",
+      page_uid: "guide",
+    }));
+    const body = await allowed.json();
+    expect(body.isError).not.toBe(true);
+    expect(body.content[0].text).toContain("\"html\":\"<main>old</main>\"");
+  });
+
+  test("authenticated get_page uses canReadPage", async () => {
+    const { POST } = await routeModulePromise;
+
+    mocks.authUserId = "user-1";
+    mocks.canReadPage = false;
+
+    const denied = await POST(toolRequest("get_page", {
+      author_slug: "alice",
+      page_uid: "guide",
+    }));
+    await expect(denied.json()).resolves.toMatchObject({ isError: true });
+
+    mocks.canReadPage = true;
+    const allowed = await POST(toolRequest("get_page", {
+      author_slug: "alice",
+      page_uid: "guide",
+    }));
+    const body = await allowed.json();
+    expect(body.isError).not.toBe(true);
+  });
+
+  test("update_page emits resource updated notification for page content URI", async () => {
+    const { POST } = await routeModulePromise;
+
+    await POST(toolRequest("update_page", {
+      uid: "guide",
+      html: "<main>latest</main>",
+    }));
+
+    expect(mocks.sendNotification).toHaveBeenCalledWith({
+      method: "notifications/resources/updated",
+      params: { uri: "viben://api/pages/page-1/content" },
+    });
   });
 });

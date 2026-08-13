@@ -3,12 +3,21 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { AsyncLocalStorage } from "async_hooks";
 import { and, eq, desc, asc, sql } from "drizzle-orm";
+import {
+  ReadResourceRequestSchema,
+  SubscribeRequestSchema,
+  UnsubscribeRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { db, publishedPages, publishedPageVersions, publishedPageRecords, users } from "@/lib/db";
 import { ensurePublishedPagesTable } from "@/lib/db/published-pages";
 import { validateApiKey } from "@/lib/auth/api-key";
 import { decryptSession } from "@/lib/auth/jwe";
 import { verifyAccessToken } from "@/lib/auth/oauth";
-import { recordPageUpdateAndNotify } from "@/lib/services/community";
+import { canReadPage, isPublicPage, recordPageUpdateAndNotify } from "@/lib/services/community";
+import {
+  buildPublishedPageContentResourceUri,
+  parsePageResourceUri,
+} from "@/lib/page-chat/page-resource-uri";
 import type { Session } from "@/lib/auth/types";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -33,6 +42,61 @@ function revalidatePageCacheTags(input: {
   revalidateTag(`page-ctx-${input.userSlug}-${input.pageSlug}`);
   revalidateTag(`page-entity-${input.publishedPageId}`);
   revalidateTag(`profile-${input.userSlug}`);
+}
+
+type PublishedPage = typeof publishedPages.$inferSelect;
+
+async function findReadablePageForMcp(input: {
+  authorSlug?: string;
+  pageUid?: string;
+  publishedPageId?: string;
+  session: Session | null;
+}): Promise<PublishedPage | null> {
+  const page = input.publishedPageId
+    ? await db.query.publishedPages.findFirst({
+        where: eq(publishedPages.id, input.publishedPageId),
+      })
+    : await db.query.publishedPages.findFirst({
+        where: and(
+          eq(publishedPages.authorSlug, input.authorSlug ?? ""),
+          eq(publishedPages.uid, input.pageUid ?? ""),
+        ),
+      });
+
+  if (!page) return null;
+  if (!input.session) {
+    return isPublicPage(page) ? page : null;
+  }
+  return canReadPage(page, input.session) ? page : null;
+}
+
+function buildPagePayload(page: PublishedPage) {
+  return {
+    resource_kind: "published_page_content" as const,
+    resource_version: "v1" as const,
+    published_page_id: page.id,
+    uid: page.uid,
+    title: page.title,
+    html: page.html,
+    description: page.description,
+    tags: page.tags,
+    visibility: page.visibility,
+    moderation_status: page.moderationStatus,
+    current_version: page.currentVersion,
+    updated_at: page.updatedAt?.toISOString?.() ?? null,
+    author: {
+      display_name: page.authorDisplayName,
+      avatar_url: page.authorAvatarUrl,
+      slug: page.authorSlug,
+    },
+  };
+}
+
+function pageNotFoundToolResult() {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify({ error: "Page not found" }) }],
+    isError: true,
+  };
 }
 
 // ── Token verification for withMcpAuth ──────────────────
@@ -134,22 +198,14 @@ const mcpHandler = createMcpHandler(
         page_uid: z.string().min(1).describe("页面唯一标识符"),
       },
       async ({ author_slug, page_uid }) => {
-        const page = await db.query.publishedPages.findFirst({
-          where: and(eq(publishedPages.authorSlug, author_slug), eq(publishedPages.uid, page_uid)),
+        const page = await findReadablePageForMcp({
+          authorSlug: author_slug,
+          pageUid: page_uid,
+          session: sessionStore.getStore() ?? null,
         });
-        if (!page) {
-          return { content: [{ type: "text" as const, text: JSON.stringify({ error: "Page not found" }) }], isError: true };
-        }
+        if (!page) return pageNotFoundToolResult();
         return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              uid: page.uid, title: page.title, html: page.html,
-              description: page.description, tags: page.tags, visibility: page.visibility,
-              cover_url: page.coverUrl, published_at: page.publishedAt, version: page.currentVersion,
-              author: { display_name: page.authorDisplayName, avatar_url: page.authorAvatarUrl, slug: page.authorSlug },
-            }),
-          }],
+          content: [{ type: "text" as const, text: JSON.stringify(buildPagePayload(page)) }],
         };
       },
     );
@@ -266,7 +322,7 @@ const mcpHandler = createMcpHandler(
         visibility: z.enum(["public", "unlisted", "private"]).optional().describe("新可见性设置"),
         cover_url: z.string().optional().describe("新封面图片 URL"),
       },
-      async ({ uid, title, html, description, tags, visibility, cover_url }) => {
+      async ({ uid, title, html, description, tags, visibility, cover_url }, extra) => {
         const session = requireSession();
         await ensurePublishedPagesTable();
 
@@ -322,6 +378,12 @@ const mcpHandler = createMcpHandler(
           userSlug: session.userSlug,
           pageSlug: uid,
         });
+        await extra.sendNotification({
+          method: "notifications/resources/updated",
+          params: {
+            uri: buildPublishedPageContentResourceUri(existing.id),
+          },
+        });
 
         return {
           content: [{
@@ -336,6 +398,44 @@ const mcpHandler = createMcpHandler(
         };
       },
     );
+
+    // ── Page content resource protocol ─────────────────
+    server.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const parsed = parsePageResourceUri(request.params.uri);
+      if (!parsed || parsed.type !== "published_page_content") {
+        throw new Error("Resource not found");
+      }
+      const page = await findReadablePageForMcp({
+        publishedPageId: parsed.publishedPageId,
+        session: sessionStore.getStore() ?? null,
+      });
+      if (!page) {
+        throw new Error("Resource not found");
+      }
+      return {
+        contents: [{
+          uri: request.params.uri,
+          mimeType: "application/json",
+          text: JSON.stringify(buildPagePayload(page)),
+        }],
+      };
+    });
+
+    server.server.setRequestHandler(SubscribeRequestSchema, async (request) => {
+      const parsed = parsePageResourceUri(request.params.uri);
+      if (!parsed || parsed.type !== "published_page_content") {
+        throw new Error("Resource not found");
+      }
+      return {};
+    });
+
+    server.server.setRequestHandler(UnsubscribeRequestSchema, async (request) => {
+      const parsed = parsePageResourceUri(request.params.uri);
+      if (!parsed || parsed.type !== "published_page_content") {
+        throw new Error("Resource not found");
+      }
+      return {};
+    });
   },
   {
     serverInfo: { name: "viben", version: "1.0.0" },
