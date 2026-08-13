@@ -74,7 +74,11 @@ function dedupeChats(chats: Chat[]): Chat[] {
   return result
 }
 
-function useChatSnapshot(sessionId: string | null, chatId: string | null) {
+function useChatSnapshot(
+  sessionId: string | null,
+  chatId: string | null,
+  reloadKey: number,
+) {
   const [data, setData] = useState<ChatSnapshot>()
   const [error, setError] = useState<Error>()
   const [isLoading, setIsLoading] = useState(false)
@@ -119,7 +123,7 @@ function useChatSnapshot(sessionId: string | null, chatId: string | null) {
 
     void loadSnapshot()
     return () => controller.abort()
-  }, [chatId, sessionId])
+  }, [chatId, reloadKey, sessionId])
 
   return { data, error, isLoading }
 }
@@ -260,6 +264,10 @@ function PageAssistantToolbar({
   )
 }
 
+function isPageUnavailableMessage(message: string): boolean {
+  return message === "Page not found" || message === "Page unavailable"
+}
+
 export function PageAssistantPanel({
   userSlug,
   pageSlug,
@@ -270,6 +278,7 @@ export function PageAssistantPanel({
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [localChats, setLocalChats] = useState<Chat[]>([])
   const [draft, setDraft] = useState("")
+  const [snapshotReloadKey, setSnapshotReloadKey] = useState(0)
   const composerRef = useRef<ChatComposerHandle>(null)
 
   const initialChatsData = useMemo(() => {
@@ -310,6 +319,7 @@ export function PageAssistantPanel({
   const chatSnapshot = useChatSnapshot(
     pageSession.data?.session.id ?? null,
     currentChat?.id ?? null,
+    snapshotReloadKey,
   )
 
   const handleCreateChat = useCallback(() => {
@@ -337,9 +347,14 @@ export function PageAssistantPanel({
   }
 
   if (pageSession.error || !pageSession.data) {
+    const message = pageSession.error?.message
+    const detail =
+      message && !isPageUnavailableMessage(message)
+        ? message
+        : t("assistant.pageChat.restoreError")
     return (
       <PageAssistantError
-        message={pageSession.error?.message ?? t("assistant.pageChat.restoreError")}
+        message={detail}
         onRetry={() => void pageSession.retry()}
       />
     )
@@ -353,7 +368,7 @@ export function PageAssistantPanel({
     return (
       <PageAssistantError
         message={chatSnapshot.error.message || t("assistant.pageChat.loadConversationError")}
-        onRetry={() => setActiveChatId(currentChat.id)}
+        onRetry={() => setSnapshotReloadKey((key) => key + 1)}
       />
     )
   }

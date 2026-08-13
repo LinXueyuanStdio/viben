@@ -155,6 +155,7 @@ function makeChat(id: string, title: string): Chat {
 
 let pageSessionResponse: PageSessionResponse | Response
 let fetchMock: ReturnType<typeof vi.fn>
+let snapshotFailsOnce = false
 
 function successPageSession(canEdit = true): PageSessionResponse {
   return {
@@ -191,6 +192,7 @@ describe("PageAssistantPanel", () => {
     const latestChat = makeChat("latest-chat", "Current conversation")
     setChats(latestChat, makeChat("older-chat", "Older chat"))
     pageSessionResponse = successPageSession(true)
+    snapshotFailsOnce = false
     createChat.mockReturnValue({
       chat: makeChat("chat-2", "New conversation"),
       persisted: Promise.resolve(makeChat("chat-2", "New conversation")),
@@ -208,6 +210,13 @@ describe("PageAssistantPanel", () => {
         })
       }
       if (href.includes("/api/sessions/session-1/chats/")) {
+        if (snapshotFailsOnce) {
+          snapshotFailsOnce = false
+          return new Response(
+            JSON.stringify({ error: "Snapshot unavailable" }),
+            { status: 500, headers: { "Content-Type": "application/json" } },
+          )
+        }
         return new Response(
           JSON.stringify({
             chat: {
@@ -311,5 +320,24 @@ describe("PageAssistantPanel", () => {
     expect(await screen.findByRole("button", { name: "Retry" })).toBeVisible()
     const urls = fetchMock.mock.calls.map(([url]) => String(url))
     expect(urls.some((url) => /sandbox|files|skills|diff/.test(url))).toBe(false)
+  })
+
+  test("retries the snapshot fetch after a transient failure", async () => {
+    snapshotFailsOnce = true
+
+    renderPanel()
+
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeVisible()
+
+    const snapshotCalls = () =>
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes("/api/sessions/session-1/chats/"),
+      )
+
+    expect(snapshotCalls()).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+
+    await waitFor(() => expect(snapshotCalls()).toHaveLength(2))
   })
 })

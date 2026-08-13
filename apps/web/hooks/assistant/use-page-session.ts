@@ -41,9 +41,16 @@ export function usePageSession(input: {
       })
 
       if (!response.ok) {
-        const message = await response.text()
+        const raw = await response.text()
+        let message = raw
+        try {
+          const parsed = JSON.parse(raw) as { error?: string; code?: string }
+          message = parsed.error ?? parsed.code ?? raw
+        } catch {
+          message = raw
+        }
         throw new PageSessionRequestError(
-          message || "Failed to restore page session",
+          message || "Page session unavailable",
           response.status,
         )
       }

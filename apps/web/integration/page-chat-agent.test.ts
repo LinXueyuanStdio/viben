@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { createElement, useEffect, type ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { UIMessageChunk } from "ai";
 import type { WebAgentUIMessage } from "@/app/types";
 import type { Chat, Session } from "@/lib/db/schema";
+import { emitPageContentChanged } from "@/lib/page-chat/page-content-events";
 
 class ResizeObserverMock {
   observe() {}
@@ -269,6 +270,12 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
       };
     }
 
+    setNotificationHandler(_schema: unknown, _handler: unknown) {}
+
+    async subscribeResource(_input: Record<string, unknown>) {}
+
+    async unsubscribeResource(_input: Record<string, unknown>) {}
+
     async close() {
       state.clientClose();
     }
@@ -469,7 +476,6 @@ const previewRoutePromise = import("@/app/api/page-sessions/[sessionId]/preview/
 const workflowPromise = import("@/app/workflows/chat");
 const readPageClientPromise = import("@/components/pages/read-page-client");
 const previewContextPromise = import("@/components/assistant/page-preview-context");
-const chatTranscriptPromise = import("@/components/assistant/chat-transcript");
 
 function resetPageContext() {
   state.pageContext = {
@@ -657,7 +663,6 @@ describe("Page Chat Agent integration", () => {
 
     const { ReadPageClient } = await readPageClientPromise;
     const { PagePreviewProvider, usePagePreview } = await previewContextPromise;
-    const { ChatTranscript } = await chatTranscriptPromise;
 
     function OpenPreviewProbe() {
       const { setOpen, revision } = usePagePreview();
@@ -684,43 +689,13 @@ describe("Page Chat Agent integration", () => {
       expect(screen.getByTestId("preview-revision")).toHaveTextContent("0"),
     );
 
-    const transcriptMessages = [
-      {
-        id: "assistant-1",
-        role: "assistant",
-        parts: [
-          {
-            type: "tool-update_page",
-            toolCallId: "tool-update-1",
-            toolName: "update_page",
-            state: "output-available",
-            input: {},
-            output: {
-              success: true,
-              published_page_id: "page-1",
-              chat_id: pageChat.chat.id,
-            },
-          },
-          { type: "text", text: "Updated." },
-        ],
-      },
-    ] as WebAgentUIMessage[];
+    expect(state.refreshSpy).not.toHaveBeenCalled();
 
     act(() => {
-      render(
-        createElement(ChatTranscript, {
-          messages: transcriptMessages,
-          status: "ready",
-          error: undefined,
-          compact: true,
-          onCopyMessage: () => undefined,
-          onRetryMessage: () => undefined,
-          onPageContentChanged: () => undefined,
-          messageDurationMap: {},
-          messageStartedAtMap: {},
-          lastUserMessageSentAt: null,
-        }),
-      );
+      emitPageContentChanged({
+        publishedPageId: "page-1",
+        chatId: pageChat.chat.id,
+      });
     });
 
     await waitFor(() => expect(state.refreshSpy).toHaveBeenCalledOnce());
