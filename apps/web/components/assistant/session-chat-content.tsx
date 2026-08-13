@@ -4,19 +4,16 @@ import { useTranslation } from "react-i18next";
 import type { AskUserQuestionInput } from "@viben/agent";
 import { formatTokens } from "@viben/shared";
 import {
-  isReasoningUIPart,
   isToolUIPart,
   type FileUIPart,
   type LanguageModelUsage,
 } from "ai";
 import {
   Archive,
-  ArrowDown,
   Check,
   Code2,
   Copy,
   ExternalLink,
-  GitBranch,
   GitCommitHorizontal,
   GitPullRequest,
   Globe,
@@ -24,10 +21,8 @@ import {
   Loader2,
   Play,
   RefreshCw,
-  RotateCcw,
   Share2,
   Square,
-  Trash2,
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -56,23 +51,12 @@ import type {
   WebAgentSnippetDataPart,
   WebAgentUIMessage,
   WebAgentUIMessagePart,
-  WebAgentUIToolPart,
 } from "@/app/types";
-import {
-  AssistantFileLink,
-  type AssistantFileLinkProps,
-} from "@/components/assistant/assistant-file-link";
 import { useInlineQuestion } from "@/components/assistant/inline-question-input";
-import { SnippetChip } from "@/components/assistant/snippet-chip";
-import { AssistantMessageGroups } from "@/components/assistant/assistant-message-groups";
-import { MessageModelPill } from "@/components/assistant/message-model-pill";
 import {
   PinnedTodoPanel,
   getLatestTodos,
 } from "@/components/assistant/pinned-todo-panel";
-import { ThinkingBlock } from "@/components/assistant/thinking-block";
-import { ToolCall } from "@/components/assistant/tool-call";
-import { OpenFileProvider } from "@/components/assistant/tool-call/open-file-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -99,9 +83,6 @@ import {
   getGitFinalizationState,
   hasRenderableAssistantPart,
   isChatInFlight as isChatInFlightStatus,
-  isGitDataPart,
-  shouldKeepCollapsedReasoningStreaming,
-  shouldRenderGitDataPart,
   shouldShowThinkingIndicator,
   shouldUseChatListStreamingState,
 } from "@/lib/chat-streaming-state";
@@ -114,7 +95,6 @@ import {
 } from "@/lib/models";
 import { getPrDeploymentRefreshInterval } from "@/lib/pr-deployment-polling";
 
-import { LazyStreamdown } from "@/components/assistant/lazy-streamdown";
 import { buildChatMessagePayload } from "@/components/assistant/chat-message-payload";
 import {
   type ChatComposerHandle,
@@ -223,65 +203,7 @@ function useHasMounted() {
   );
 }
 
-type ReasoningMessagePart = Extract<
-  WebAgentUIMessagePart,
-  { type: "reasoning" }
->;
-
 type SandboxReadinessResult = "connected" | "no_sandbox" | "failed";
-
-type MessageRenderGroup =
-  | {
-      type: "part";
-      part: WebAgentUIMessagePart;
-      index: number;
-      renderKey: string;
-    }
-  | {
-      type: "reasoning-group";
-      parts: ReasoningMessagePart[];
-      startIndex: number;
-      renderKey: string;
-    };
-
-interface GroupedRenderMessage {
-  message: WebAgentUIMessage;
-  groups: MessageRenderGroup[];
-  isStreaming: boolean;
-}
-
-function getPartIdentity(part: WebAgentUIMessagePart): string {
-  if (isToolUIPart(part)) {
-    return part.toolCallId ? `tool:${part.toolCallId}` : `tool:${part.type}`;
-  }
-
-  if (isReasoningUIPart(part)) {
-    return "reasoning";
-  }
-
-  if (part.type === "text") {
-    return "text";
-  }
-
-  if (part.type === "file") {
-    if (part.url) return `file:${part.url}`;
-    if (part.filename) return `file:${part.filename}`;
-    return "file";
-  }
-
-  if (isGitDataPart(part)) {
-    return part.id ? `data:${part.type}:${part.id}` : `data:${part.type}`;
-  }
-
-  return `part:${part.type}`;
-}
-
-function getReasoningGroupText(parts: ReasoningMessagePart[]): string {
-  return parts
-    .map((part) => part.text)
-    .filter((text) => text.trim().length > 0)
-    .join("\n\n");
-}
 
 function GitDataPartCard({
   part,
@@ -1082,9 +1004,6 @@ export function SessionChatContent({
   const [mobileArchiveDialogOpen, setMobileArchiveDialogOpen] = useState(false);
   const [mobileShareOpen, setMobileShareOpen] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [copiedAssistantMessageId, setCopiedAssistantMessageId] = useState<
-    string | null
-  >(null);
   const [forkingAssistantMessageId, setForkingAssistantMessageId] = useState<
     string | null
   >(null);
@@ -1115,49 +1034,16 @@ export function SessionChatContent({
   }, []);
   const composerRef = useRef<ChatComposerHandle>(null);
   const isMountedRef = useRef(true);
-  const copyResetTimeoutRef = useRef<number | null>(null);
   const lastActivityPingRef = useRef(0);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (copyResetTimeoutRef.current !== null) {
-        window.clearTimeout(copyResetTimeoutRef.current);
-      }
     };
   }, []);
-  const handleCopyAssistantMessage = useCallback(
-    async (messageId: string, text: string) => {
-      const trimmedText = text.trim();
-      if (trimmedText.length === 0) {
-        return;
-      }
 
-      if (typeof navigator === "undefined" || !navigator.clipboard) {
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(trimmedText);
-        setCopiedAssistantMessageId(messageId);
-        if (copyResetTimeoutRef.current !== null) {
-          window.clearTimeout(copyResetTimeoutRef.current);
-        }
-        copyResetTimeoutRef.current = window.setTimeout(() => {
-          setCopiedAssistantMessageId((currentMessageId) =>
-            currentMessageId === messageId ? null : currentMessageId,
-          );
-          copyResetTimeoutRef.current = null;
-        }, 2000);
-      } catch (copyError) {
-        console.error("Failed to copy assistant message:", copyError);
-      }
-    },
-    [],
-  );
-
-  const { containerRef, isAtBottom, scrollToBottom } =
+  const { isAtBottom, scrollToBottom } =
     useScrollToBottom<HTMLDivElement>();
   const {
     session,
@@ -1478,79 +1364,6 @@ export function SessionChatContent({
     isChatInFlight,
   ]);
   const latestTodos = useMemo(() => getLatestTodos(messages), [messages]);
-
-  const groupedRenderMessages = useMemo<GroupedRenderMessage[]>(() => {
-    return renderMessages.map((message, messageIndex) => {
-      const groups: MessageRenderGroup[] = [];
-      let currentReasoningGroup: ReasoningMessagePart[] = [];
-      let reasoningGroupStartIndex = 0;
-      const partIdentityCounts = new Map<string, number>();
-
-      const getStablePartRenderKey = (part: WebAgentUIMessagePart): string => {
-        const identity = getPartIdentity(part);
-
-        if (isToolUIPart(part) && part.toolCallId) {
-          return identity;
-        }
-
-        const count = partIdentityCounts.get(identity) ?? 0;
-        partIdentityCounts.set(identity, count + 1);
-        return `${identity}:${count}`;
-      };
-
-      const flushReasoningGroup = () => {
-        if (currentReasoningGroup.length === 0) return;
-
-        groups.push({
-          type: "reasoning-group",
-          parts: currentReasoningGroup,
-          startIndex: reasoningGroupStartIndex,
-          renderKey: `reasoning-group:${getStablePartRenderKey(currentReasoningGroup[0])}`,
-        });
-        currentReasoningGroup = [];
-      };
-
-      message.parts.forEach((part, index) => {
-        if (isReasoningUIPart(part)) {
-          if (currentReasoningGroup.length === 0) {
-            reasoningGroupStartIndex = index;
-          }
-          currentReasoningGroup.push(part);
-          return;
-        }
-
-        flushReasoningGroup();
-        groups.push({
-          type: "part",
-          part,
-          index,
-          renderKey: getStablePartRenderKey(part),
-        });
-      });
-
-      flushReasoningGroup();
-
-      return {
-        message,
-        groups,
-        isStreaming:
-          isChatInFlight && messageIndex === renderMessages.length - 1,
-      };
-    });
-  }, [renderMessages, isChatInFlight]);
-  const streamdownComponents = useMemo(
-    () => ({
-      a: (props: AssistantFileLinkProps) => (
-        <AssistantFileLink
-          {...props}
-          onOpenFile={(filePath) => {
-            setSelectedWorkspaceFile(filePath);
-          }}
-        />
-      ),
-    }),
-    [],
-  );
   const [isUpdatingModel, setIsUpdatingModel] = useState(false);
   const lastStatusSyncAtRef = useRef(0);
   const statusSyncInFlightRef = useRef(false);
