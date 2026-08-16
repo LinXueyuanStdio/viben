@@ -7,6 +7,7 @@ import {
   syncPageSessionSnapshot,
 } from "@/lib/db/sessions";
 import { getUserPreferences } from "@/lib/db/user-preferences";
+import { getTranslator } from "@/lib/i18n/server-translate";
 import { sanitizeUserPreferencesForSession } from "@/lib/model-access";
 import {
   isManagedTemplateTrialUser,
@@ -28,6 +29,7 @@ export type GetOrCreatePageSessionInput = {
   requestUrl: string;
   pageUserSlug: string;
   pageSlug: string;
+  language: string;
 };
 
 export class PageNotFoundError extends Error {
@@ -124,6 +126,9 @@ export async function getOrCreatePageSession(
       input.requestUrl,
     );
 
+    // 语言由 route 显式传入，service 不直接读取请求头
+    const { t } = await getTranslator(input.language);
+
     try {
       result = await createPageSessionWithInitialChat({
         userId: input.userId,
@@ -132,7 +137,7 @@ export async function getOrCreatePageSession(
         pageSlug: context.page.uid,
         title: context.page.title,
         chatId: nanoid(),
-        chatTitle: "New chat",
+        chatTitle: t("assistant.chat.newChat"),
         modelId: preferences.defaultModelId,
       });
     } catch (error) {

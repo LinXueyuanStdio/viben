@@ -245,7 +245,9 @@ describe("PageAssistantPanel", () => {
         "/api/page-sessions",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ user_slug: "alice", page_slug: "guide" }),
+          body: expect.stringMatching(
+            /^\{"user_slug":"alice","page_slug":"guide","language":"[a-zA-Z-]+"\}$/,
+          ),
         }),
       ),
     )

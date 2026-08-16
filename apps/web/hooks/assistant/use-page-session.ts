@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { getCurrentLanguage } from "@/lib/i18n"
 import type { PageSessionResponse } from "@/lib/page-chat/types"
 
 export class PageSessionRequestError extends Error {
@@ -37,6 +38,7 @@ export function usePageSession(input: {
         body: JSON.stringify({
           user_slug: input.userSlug,
           page_slug: input.pageSlug,
+          language: getCurrentLanguage(),
         }),
       })
 

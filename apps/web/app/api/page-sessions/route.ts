@@ -1,4 +1,5 @@
 import { checkBotProtection } from "@/lib/botid";
+import { getTranslator } from "@/lib/i18n/server-translate";
 import {
   getOrCreatePageSession,
   PageNotFoundError,
@@ -10,6 +11,7 @@ import { getServerSession } from "@/lib/session/get-server-session";
 type PageSessionRequest = {
   user_slug: string;
   page_slug: string;
+  language?: string;
 };
 
 function isValidRequestBody(body: unknown): body is PageSessionRequest {
@@ -61,6 +63,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 显式解析语言后以具体字符串传入 service，避免 service 内部读取请求头
+    const { language } = await getTranslator(
+      typeof body.language === "string" ? body.language : undefined,
+    );
     const result = await getOrCreatePageSession({
       userId: session.user.id,
       userSlug: session.user.username,
@@ -68,6 +74,7 @@ export async function POST(request: Request) {
       requestUrl: request.url,
       pageUserSlug: body.user_slug.trim(),
       pageSlug: body.page_slug.trim(),
+      language,
     });
     return Response.json(result);
   } catch (error) {

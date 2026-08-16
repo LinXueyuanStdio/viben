@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import type { Chat, Session } from "@/lib/db/schema";
+import { getCurrentLanguage } from "@/lib/i18n";
 import type { VercelProjectSelection } from "@/lib/vercel/types";
 import { fetcher } from "@/lib/swr";
 
@@ -149,6 +150,7 @@ export function useSessions(options?: {
       const resolvedInput = {
         ...input,
         title: input.title?.trim() || t("assistant.newSession"),
+        language: getCurrentLanguage(),
       };
 
       const res = await fetch("/api/sessions", {

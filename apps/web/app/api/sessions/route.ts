@@ -17,6 +17,7 @@ import {
   isValidGitHubRepoOwner,
   parseGitHubHttpsUrl,
 } from "@/lib/github/urls";
+import { getTranslator } from "@/lib/i18n/server-translate";
 import { checkRateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { kickSandboxProvisioningWorkflow } from "@/lib/sandbox/provisioning-kick";
 import { getServerSession } from "@/lib/session/get-server-session";
@@ -38,6 +39,7 @@ import {
 
 interface CreateSessionRequest {
   title?: string;
+  language?: string;
   repoOwner?: string;
   repoName?: string;
   branch?: string;
@@ -65,8 +67,11 @@ function generateBranchName(username: string, name?: string | null): string {
   return `${initials}/${randomSuffix}`;
 }
 
-function resolveSessionTitle(input: CreateSessionRequest): string {
-  return input.title?.trim() || "New Session";
+function resolveSessionTitle(
+  input: CreateSessionRequest,
+  newSessionLabel: string,
+): string {
+  return input.title?.trim() || newSessionLabel;
 }
 
 const DEFAULT_ARCHIVED_SESSIONS_LIMIT = 50;
@@ -303,7 +308,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const title = resolveSessionTitle(body);
+    // 客户端在请求体显式传入应用内语言，缺失时回退到 getTranslator 自动检测
+    const { t } = await getTranslator(
+      typeof body.language === "string" ? body.language : undefined,
+    );
+    const title = resolveSessionTitle(body, t("assistant.newSession"));
     const rawPreferences = await getUserPreferences(session.user.id);
 
     let resolvedVercelProject: VercelProjectSelection | null = null;
@@ -388,7 +397,7 @@ export async function POST(req: Request) {
       },
       initialChat: {
         id: nanoid(),
-        title: "New chat",
+        title: t("assistant.chat.newChat"),
         modelId: preferences.defaultModelId,
       },
     });
