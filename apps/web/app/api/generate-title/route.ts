@@ -1,4 +1,5 @@
 import { checkBotProtection } from "@/lib/botid";
+import { getLanguageByCode } from "@/lib/i18n/languages";
 import { gateway } from "@viben/agent";
 import { generateText } from "ai";
 import { z } from "zod";
@@ -41,29 +42,6 @@ ${trimmed}`,
     return null;
   }
 }
-
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: "English",
-  "zh-CN": "Simplified Chinese",
-  ja: "Japanese",
-  ko: "Korean",
-  de: "German",
-  fr: "French",
-  es: "Spanish",
-  pt: "Portuguese",
-  it: "Italian",
-  nl: "Dutch",
-  pl: "Polish",
-  ru: "Russian",
-  tr: "Turkish",
-  vi: "Vietnamese",
-  th: "Thai",
-  id: "Indonesian",
-  ms: "Malay",
-  hi: "Hindi",
-  uk: "Ukrainian",
-  sv: "Swedish",
-};
 
 const generateTitleRequestSchema = z.object({
   message: z.string().trim().min(1),
@@ -108,7 +86,7 @@ export async function POST(req: Request) {
 
   const { message, language } = parsedBody.data;
 
-  const langName = language ? LANGUAGE_NAMES[language] : undefined;
+  const langName = language ? getLanguageByCode(language)?.name : undefined;
   const title = await generateSessionTitle(message, langName);
 
   if (!title) {
