@@ -130,6 +130,39 @@ Icons without `.Color` (use default): OpenAI, Ollama, Groq, Anthropic
 - `ChatInput` - Simple chat input with attachment support (used in task panels, debug panels)
 - `AgentChatInput` - Full-featured agent chat input with model selector, parameters, token usage (used in workspace chat)
 
+### 选中态 / 侧栏列表项
+
+侧栏（如 assistant 的 session/chat 列表）选中项复用 ghost 按钮的语义化 accent 色彩：`bg-accent` + `text-accent-foreground`（亮色深底白字、暗色亮底深字），与 New Chat 等 ghost 按钮的 hover 效果一致。
+
+深色背景上的**所有子元素**都要适配浅色（标题、时间戳、状态图标、more/rename/delete 操作按钮），选中时统一用 `text-accent-foreground`。
+
+图标颜色**不要**用 `[&_svg]:text-*` 这种 CSS specificity hack，而是给渲染函数加 `isActive` 参数，选中时返回正确颜色的图标：
+
+```tsx
+function getStatusIcon(session: Session, isActive = false) {
+  const iconColor = (base: string) =>
+    isActive ? "text-accent-foreground" : base;
+  return <Icon className={cn("h-3.5 w-3.5", iconColor("text-muted-foreground"))} />;
+}
+```
+
+### 侧栏 / 面板底部固定
+
+要让 footer（如侧栏底部的升级/设置入口）固定在底部而非跟随列表滚动，容器需要 `flex flex-col`，列表区用 `flex-1 overflow-y-auto`：
+
+```tsx
+// header + list(flex-1 滚动) + footer 垂直分布，footer 固定在底部
+<aside className="flex flex-col ...">
+  <Header />
+  <div className="min-h-0 flex-1 overflow-y-auto">...</div>
+  <Footer />
+</aside>
+```
+
+### Button ghost 的 hover 语义
+
+`Button variant="ghost"` 的 hover 是 `hover:bg-accent hover:text-accent-foreground`（深青绿底 + 白字）。侧栏里的 ghost 图标按钮（如设置图标）默认 `text-muted-foreground`，hover 自动变深底白字，无需额外覆盖 hover 颜色。
+
 ## Tailwind v4 注意事项
 
 项目使用 **Tailwind v4**（`@import "tailwindcss"`，非 v3 的 `@tailwind` 指令）。
@@ -171,6 +204,8 @@ className="bg-popover text-foreground border-border"
 ```
 
 **例外**: `--info`, `--warning`, `--error`, `--success` 及 `--cyan-500` 等 Kanban 颜色变量是 HSL 分量格式（如 `210 70% 50%`），可以用 `hsl(var(--info))`。
+
+**自定义颜色 token**：`bg-*` / `text-*` 等 utility 只有在 `@theme` 里定义了对应的 `--color-*` 变量才会生成 CSS。若 `bg-sidebar-active` 类没有对应变量，会被静默忽略（无背景）。优先复用已有语义 token（`--color-accent` 等），而不是新造一次性变量。
 
 ## Desktop App Development
 

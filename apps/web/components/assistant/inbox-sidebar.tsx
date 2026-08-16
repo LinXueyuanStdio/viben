@@ -1518,22 +1518,23 @@ export function InboxSidebar({
               </PopoverContent>
             </Popover>
           ) : (
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => router.push("/settings/subscription")}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+              className="min-w-0 flex-1 justify-start gap-2 text-sm font-medium"
             >
               <Sparkles className="h-4 w-4 shrink-0" />
               <span className="truncate">
                 {t("assistant.sidebar.upgradeToPro")}
               </span>
-            </button>
+            </Button>
           )}
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            className="shrink-0 text-muted-foreground"
             onClick={() => router.push("/settings")}
             aria-label={t("assistant.sidebar.openSettings")}
           >

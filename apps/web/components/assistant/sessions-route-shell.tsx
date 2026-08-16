@@ -75,7 +75,7 @@ function SessionsRouteInner({
     <>
       <aside
         className={cn(
-          "shrink-0 border-r border-border overflow-y-auto bg-muted/20 transition-[width] duration-100 ease-out",
+          "flex shrink-0 flex-col border-r border-border bg-muted/20 transition-[width] duration-100 ease-out",
           collapsed ? "w-0 border-r-0 overflow-hidden" : "w-[var(--sidebar-width)]",
         )}
       >
