@@ -2373,6 +2373,19 @@
       "previewUnavailable": "Page unavailable",
       "retryPreview": "Retry"
     },
+    "usage": {
+      "title": "Assistant Usage",
+      "free": "Free",
+      "pro": "Pro",
+      "description": "Track how close you are to your plan's limits. Usage resets on a rolling window, meaning you will regain your usage over time instead of all at once.",
+      "thisSession": "This session",
+      "thisWeek": "This week",
+      "resetsIn": "Resets in {{time}}",
+      "used": "used",
+      "needMore": "Need more usage?",
+      "upgradePro": "Upgrade to Pro for higher limits and premium model access.",
+      "showPlans": "Show plans"
+    },
     "sidebar": {
       "newChat": "New Chat",
       "active": "Active",
@@ -2415,7 +2428,8 @@
       "statusCompleted": "Completed",
       "statusArchived": "Archived",
       "statusIdle": "Idle",
-      "pages": "Pages"
+      "pages": "Pages",
+      "upgradeToPro": "Upgrade to Pro"
     },
     "chat": {
       "sessions": "Sessions",

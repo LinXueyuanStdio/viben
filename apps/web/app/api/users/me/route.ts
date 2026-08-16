@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
           websiteUrl: true,
           githubUsername: true,
           role: true,
+          plan: true,
           emailVerified: true,
           createdAt: true,
         },
@@ -106,6 +107,7 @@ export async function PATCH(request: NextRequest) {
         websiteUrl: true,
         githubUsername: true,
         role: true,
+        plan: true,
       },
     });
 

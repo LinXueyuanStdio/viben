@@ -14,6 +14,7 @@ interface VibenUserResponse {
     email: string;
     avatarUrl?: string;
     role: string;
+    plan: "free" | "pro";
     githubUsername?: string;
   };
 }
@@ -38,6 +39,7 @@ export function useSession() {
           email: vibenUser.email ?? undefined,
           avatar: vibenUser.avatarUrl ?? "",
           name: vibenUser.displayName,
+          plan: vibenUser.plan,
         },
         authProvider: "github",
         isAdmin: vibenUser.role === "admin" || vibenUser.role === "super_admin",

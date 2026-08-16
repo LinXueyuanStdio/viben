@@ -7,6 +7,7 @@ export interface Session {
     email: string | undefined;
     avatar: string;
     name?: string;
+    plan?: "free" | "pro";
   };
 }
 

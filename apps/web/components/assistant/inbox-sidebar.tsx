@@ -18,17 +18,18 @@ import {
   Plus,
   Settings,
   Share2,
+  Sparkles,
   Trash2,
   TriangleAlert,
+  Zap,
   MoreHorizontal,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AssistantUsageCard } from "@/components/assistant/assistant-usage-card";
 import { BranchPickerDialog } from "@/components/assistant/branch-picker-dialog";
 import { getValidRenameTitle } from "@/components/assistant/inbox-sidebar-rename";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,13 +59,12 @@ import {
 import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/assistant/use-mobile";
 import { useTranslation } from "react-i18next";
-import { useLeaderboardRank } from "@/hooks/assistant/use-leaderboard-rank";
 import { useSession } from "@/hooks/assistant/use-session";
+import { useUsageSummary } from "@/hooks/assistant/use-usage-summary";
 import type { SessionWithUnread } from "@/hooks/assistant/use-sessions";
 import type { Session as AuthSession } from "@/lib/session/types";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/format-relative-time";
-import { getUsageLeaderboardDomain } from "@/lib/usage/leaderboard-domain";
 
 type InboxSidebarProps = {
   sessions: SessionWithUnread[];
@@ -104,21 +104,6 @@ const sessionRowPerformanceStyle: CSSProperties = {
   contentVisibility: "auto",
   containIntrinsicSize: "2.25rem",
 };
-
-function formatDomainOrg(domain: string): string {
-  const dotIndex = domain.indexOf(".");
-  const name = dotIndex > 0 ? domain.slice(0, dotIndex) : domain;
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
-function getAvatarFallback(username: string): string {
-  const normalized = username.trim();
-  if (!normalized) {
-    return "?";
-  }
-
-  return normalized.slice(0, 2).toUpperCase();
-}
 
 function DiffStats({
   added,
@@ -985,8 +970,8 @@ export function InboxSidebar({
   const router = useRouter();
   const { t } = useTranslation();
   const { session } = useSession();
-  const { rank: leaderboardRank, loading: leaderboardLoading } =
-    useLeaderboardRank();
+  const { windows: usageWindows, loading: usageLoading } = useUsageSummary();
+  const plan = session?.user?.plan ?? "free";
   const { isMobile, setOpenMobile } = useSidebar();
   const [pinned, togglePin] = usePinnedSessions();
   const [showArchived, setShowArchived] = useState(false);
@@ -1084,7 +1069,6 @@ export function InboxSidebar({
   const showLoadingSkeleton =
     (!showArchived && sessionsLoading && sessions.length === 0) ||
     (showArchived && archivedSessionsLoading && archivedSessions.length === 0);
-  const sidebarUser = session?.user ?? initialUser;
   const groupedSessions = useMemo(
     () => groupAssistantSessions(displayedSessions, t).map((group) => ({
       ...group,
@@ -1509,57 +1493,54 @@ export function InboxSidebar({
         )}
       </div>
 
-      {sidebarUser ? (
-        <div className="border-t border-border p-3">
-          <div className="flex items-center gap-2 rounded-lg p-2">
-            <Avatar className="h-9 w-9 shrink-0">
-              {sidebarUser.avatar ? (
-                <AvatarImage
-                  src={sidebarUser.avatar}
-                  alt={sidebarUser.username}
-                />
-              ) : null}
-              <AvatarFallback>
-                {getAvatarFallback(sidebarUser.username)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold leading-none text-foreground">
-                {sidebarUser.username}
-              </p>
-              {sidebarUser.email ? (
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {sidebarUser.email}
-                </p>
-              ) : null}
-              {leaderboardRank ? (
-                <Link
-                  href="/settings/leaderboard"
-                  className="mt-1 block truncate text-xs text-muted-foreground hover:text-foreground"
+      <div className="border-t border-border p-3">
+        <div className="flex items-center gap-1.5">
+          {plan === "pro" ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/50"
                 >
-                  <span className="font-semibold tabular-nums text-foreground/70">
-                    #{leaderboardRank.rank}
-                  </span>{" "}
-                  in {formatDomainOrg(leaderboardRank.domain)}
-                </Link>
-              ) : leaderboardLoading &&
-                getUsageLeaderboardDomain(sidebarUser.email) ? (
-                <span className="mt-1 block h-4 w-24 animate-pulse rounded bg-muted" />
-              ) : null}
-            </div>
-            <Button
+                  <Zap className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {usageWindows.week.percent}% {t("assistant.usage.used")}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-80 p-0">
+                <AssistantUsageCard
+                  plan={plan}
+                  windows={usageWindows}
+                  loading={usageLoading}
+                  onShowPlans={() => router.push("/settings/subscription")}
+                />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <button
               type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-              onClick={() => router.push("/settings")}
-              aria-label={t("assistant.sidebar.openSettings")}
+              onClick={() => router.push("/settings/subscription")}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
             >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
+              <Sparkles className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                {t("assistant.sidebar.upgradeToPro")}
+              </span>
+            </button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => router.push("/settings")}
+            aria-label={t("assistant.sidebar.openSettings")}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
-      ) : null}
+      </div>
 
       {branchPickerRepo ? (
         <BranchPickerDialog

@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { parseUsageQueryRange } from "./_lib/query-range";
 import { getUsageDomainLeaderboard } from "@/lib/db/usage-domain-leaderboard";
 import { getUsageInsights } from "@/lib/db/usage-insights";
-import { getUsageHistory } from "@/lib/db/usage";
+import { getUsageHistory, getUsageHistoryHourly } from "@/lib/db/usage";
 import { getSessionFromReq } from "@/lib/session/server";
 
 /**
@@ -24,12 +24,16 @@ export async function GET(req: NextRequest) {
     const queryOptions = rangeResult.range
       ? { range: rangeResult.range }
       : undefined;
-    const [usage, insights, domainLeaderboard] = await Promise.all([
+    const granularity = req.nextUrl.searchParams.get("granularity");
+    const [usage, insights, domainLeaderboard, hourlyUsage] = await Promise.all([
       getUsageHistory(session.user.id, queryOptions),
       getUsageInsights(session.user.id, queryOptions),
       getUsageDomainLeaderboard(session.user.email, queryOptions),
+      granularity === "hour"
+        ? getUsageHistoryHourly(session.user.id)
+        : Promise.resolve(null),
     ]);
-    return Response.json({ usage, insights, domainLeaderboard });
+    return Response.json({ usage, insights, domainLeaderboard, hourlyUsage });
   } catch (error) {
     console.error("Failed to get usage history:", error);
     return Response.json(

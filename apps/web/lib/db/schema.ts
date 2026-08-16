@@ -47,6 +47,11 @@ export const users = pgTable(
     type: text('type', {
       enum: ['user', 'team'],
     }).default('user').notNull(),
+
+    // Billing plan - free vs pro (affects usage limits)
+    plan: text('plan', {
+      enum: ['free', 'pro'],
+    }).default('free').notNull(),
     followersCount: integer('followers_count').default(0).notNull(),
     pageCount: integer('page_count').default(0),
 

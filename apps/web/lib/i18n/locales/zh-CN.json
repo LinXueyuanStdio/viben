@@ -2398,6 +2398,19 @@
       "previewUnavailable": "页面不可用",
       "retryPreview": "重试"
     },
+    "usage": {
+      "title": "助手用量",
+      "free": "免费版",
+      "pro": "Pro",
+      "description": "追踪你距计划限额的进度。用量按滚动窗口重置，会随时间逐步恢复，而非一次性归零。",
+      "thisSession": "本次会话",
+      "thisWeek": "本周",
+      "resetsIn": "将于 {{time}} 后重置",
+      "used": "已用",
+      "needMore": "需要更多用量？",
+      "upgradePro": "升级到 Pro，获得更高限额与高级模型访问。",
+      "showPlans": "查看套餐"
+    },
     "sidebar": {
       "newChat": "新对话",
       "active": "活跃",
@@ -2440,7 +2453,8 @@
       "statusCompleted": "已完成",
       "statusArchived": "已归档",
       "statusIdle": "空闲",
-      "pages": "页面"
+      "pages": "页面",
+      "upgradeToPro": "升级到 Pro"
     },
     "chat": {
       "sessions": "会话",

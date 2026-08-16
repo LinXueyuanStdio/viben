@@ -117,3 +117,42 @@ export async function getUsageHistory(
 
   return rows;
 }
+
+export interface HourlyUsage {
+  hourMs: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+}
+
+/**
+ * Returns usage aggregated by hour for the most recent `hours` (default 24h).
+ * Unlike `getUsageHistory` (day granularity), this keeps hour-level precision
+ * so the client can compute a 5h rolling session window and its reset time.
+ */
+export async function getUsageHistoryHourly(
+  userId: string,
+  hours = 24,
+): Promise<HourlyUsage[]> {
+  const since = new Date(Date.now() - hours * 3600 * 1000);
+  const rows = await db
+    .select({
+      hourMs: sql<number>`extract(epoch from date_trunc('hour', ${usageEvents.createdAt})) * 1000`,
+      inputTokens: sql<number>`coalesce(sum(${usageEvents.inputTokens}), 0)::double precision`,
+      cachedInputTokens: sql<number>`coalesce(sum(${usageEvents.cachedInputTokens}), 0)::double precision`,
+      outputTokens: sql<number>`coalesce(sum(${usageEvents.outputTokens}), 0)::double precision`,
+    })
+    .from(usageEvents)
+    .where(
+      sql`${usageEvents.userId} = ${userId} and ${usageEvents.createdAt} >= ${since.toISOString()}`,
+    )
+    .groupBy(sql`date_trunc('hour', ${usageEvents.createdAt})`)
+    .orderBy(sql`date_trunc('hour', ${usageEvents.createdAt})`);
+
+  return rows.map((r) => ({
+    hourMs: Number(r.hourMs),
+    inputTokens: Number(r.inputTokens),
+    cachedInputTokens: Number(r.cachedInputTokens),
+    outputTokens: Number(r.outputTokens),
+  }));
+}
