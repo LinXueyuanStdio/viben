@@ -55,13 +55,26 @@ interface AppShellWrapperProps {
 
 export function AppShellWrapper({ children, isLoggedIn }: AppShellWrapperProps) {
   const [session, setSession] = useState<Session | null>(() => {
+    // 后端明确未登录时，不读本地缓存，避免显示 stale 的「已登录」头像
+    if (isLoggedIn === false) return null;
     const cached = readCache();
     return cached?.session ?? null;
   });
-  const [ready, setReady] = useState(() => !!readCache());
+  const [ready, setReady] = useState(() =>
+    isLoggedIn === false ? true : !!readCache(),
+  );
 
   useEffect(() => {
     if (isLoggedIn === false) {
+      // 后端读不到 session cookie（未登录）：清掉 stale 的本地缓存，
+      // 保持前端 UI 与后端登录态一致，避免「已登录却被踢回首页」。
+      __sessionCache = null;
+      try {
+        localStorage.removeItem(SESSION_CACHE_KEY);
+      } catch {
+        // ignore
+      }
+      setSession(null);
       setReady(true);
       return;
     }

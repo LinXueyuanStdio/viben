@@ -6,8 +6,8 @@ const enc = 'A256GCM';
 
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-async function getSecret(): Promise<Uint8Array> {
-  const jweSecret = process.env.JWE_SECRET;
+async function getSecret(secretOverride?: string): Promise<Uint8Array> {
+  const jweSecret = secretOverride ?? process.env.JWE_SECRET;
   if (!jweSecret) {
     throw new Error('JWE_SECRET environment variable is not set');
   }
@@ -34,9 +34,12 @@ async function getSecret(): Promise<Uint8Array> {
   return encoded.slice(0, 32);
 }
 
-export async function encryptSession(session: Omit<Session, 'expiresAt'>): Promise<string> {
+export async function encryptSession(
+  session: Omit<Session, 'expiresAt'>,
+  secretOverride?: string,
+): Promise<string> {
   const expiresAt = Date.now() + SESSION_DURATION;
-  const secret = await getSecret();
+  const secret = await getSecret(secretOverride);
 
   const jwt = await new EncryptJWT({ session: { ...session, expiresAt } })
     .setProtectedHeader({ alg, enc })
@@ -47,9 +50,12 @@ export async function encryptSession(session: Omit<Session, 'expiresAt'>): Promi
   return jwt;
 }
 
-export async function decryptSession(token: string): Promise<Session | null> {
+export async function decryptSession(
+  token: string,
+  secretOverride?: string,
+): Promise<Session | null> {
   try {
-    const secret = await getSecret();
+    const secret = await getSecret(secretOverride);
     const { payload } = await jwtDecrypt(token, secret);
     const { session } = payload as unknown as SessionPayload;
 
