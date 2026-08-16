@@ -1,6 +1,7 @@
-import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { kickSandboxLifecycleWorkflow } from "./lifecycle-kick";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 type TestSessionRecord = {
   id: string;
@@ -20,85 +21,90 @@ type TestSessionRecord = {
   lifecycleRunId: string | null;
 };
 
-let sessionRecord: TestSessionRecord | null = null;
-const scheduledCallbacks: Array<() => Promise<void>> = [];
+const state = vi.hoisted(() => {
+  const s = {
+    sessionRecord: null as TestSessionRecord | null,
+    sandboxLifecycleWorkflow: Symbol("sandboxLifecycleWorkflow"),
+    spies: {
+      start: vi.fn(async () => ({ runId: "workflow-run-1" })),
+      claimSessionLifecycleRunId: vi.fn(
+        async (sessionId: string, runId: string) => {
+          if (
+            !s.sessionRecord ||
+            s.sessionRecord.id !== sessionId ||
+            s.sessionRecord.lifecycleRunId !== null
+          ) {
+            return false;
+          }
 
-const spies = {
-  start: mock(async () => ({ runId: "workflow-run-1" })),
-  claimSessionLifecycleRunId: mock(async (sessionId: string, runId: string) => {
-    if (
-      !sessionRecord ||
-      sessionRecord.id !== sessionId ||
-      sessionRecord.lifecycleRunId !== null
-    ) {
-      return false;
-    }
+          s.sessionRecord = {
+            ...s.sessionRecord,
+            lifecycleRunId: runId,
+          };
+          return true;
+        },
+      ),
+      getSessionById: vi.fn(async () =>
+        s.sessionRecord
+          ? {
+              ...s.sessionRecord,
+              sandboxState: s.sessionRecord.sandboxState
+                ? { ...s.sessionRecord.sandboxState }
+                : null,
+            }
+          : null,
+      ),
+      updateSession: vi.fn(
+        async (_sessionId: string, patch: Record<string, unknown>) => {
+          if (!s.sessionRecord) {
+            return null;
+          }
 
-    sessionRecord = {
-      ...sessionRecord,
-      lifecycleRunId: runId,
-    };
-    return true;
-  }),
-  getSessionById: mock(async () =>
-    sessionRecord
-      ? {
-          ...sessionRecord,
-          sandboxState: sessionRecord.sandboxState
-            ? { ...sessionRecord.sandboxState }
-            : null,
-        }
-      : null,
-  ),
-  updateSession: mock(
-    async (_sessionId: string, patch: Record<string, unknown>) => {
-      if (!sessionRecord) {
-        return null;
-      }
-
-      sessionRecord = {
-        ...sessionRecord,
-        ...patch,
-      } as TestSessionRecord;
-      return sessionRecord;
+          s.sessionRecord = {
+            ...s.sessionRecord,
+            ...patch,
+          } as TestSessionRecord;
+          return s.sessionRecord;
+        },
+      ),
+      evaluateSandboxLifecycle: vi.fn(async () => ({ action: "skipped" as const })),
+      getLifecycleDueAtMs: vi.fn(() => Date.now()),
+      canOperateOnSandbox: vi.fn(() => true),
     },
-  ),
-  evaluateSandboxLifecycle: mock(async () => ({ action: "skipped" as const })),
-  getLifecycleDueAtMs: mock(() => Date.now()),
-  canOperateOnSandbox: mock(() => true),
-};
+  };
 
-const sandboxLifecycleWorkflow = Symbol("sandboxLifecycleWorkflow");
+  return s;
+});
 
-mock.module("workflow/api", () => ({
-  start: spies.start,
+vi.mock("workflow/api", () => ({
+  start: state.spies.start,
 }));
 
-mock.module("@/app/workflows/sandbox-lifecycle", () => ({
-  sandboxLifecycleWorkflow,
+vi.mock("@/app/workflows/sandbox-lifecycle", () => ({
+  sandboxLifecycleWorkflow: state.sandboxLifecycleWorkflow,
 }));
 
-mock.module("@/lib/db/sessions", () => ({
-  claimSessionLifecycleRunId: spies.claimSessionLifecycleRunId,
-  getSessionById: spies.getSessionById,
-  updateSession: spies.updateSession,
+vi.mock("@/lib/db/sessions", () => ({
+  claimSessionLifecycleRunId: state.spies.claimSessionLifecycleRunId,
+  getSessionById: state.spies.getSessionById,
+  updateSession: state.spies.updateSession,
 }));
 
-mock.module("./lifecycle", () => ({
-  evaluateSandboxLifecycle: spies.evaluateSandboxLifecycle,
-  getLifecycleDueAtMs: spies.getLifecycleDueAtMs,
+vi.mock("./lifecycle", () => ({
+  evaluateSandboxLifecycle: state.spies.evaluateSandboxLifecycle,
+  getLifecycleDueAtMs: state.spies.getLifecycleDueAtMs,
 }));
 
-mock.module("./utils", () => ({
-  canOperateOnSandbox: spies.canOperateOnSandbox,
+vi.mock("./utils", () => ({
+  canOperateOnSandbox: state.spies.canOperateOnSandbox,
 }));
 
-const lifecycleKickModulePromise = import("./lifecycle-kick");
+const scheduledCallbacks: Array<() => Promise<void>> = [];
 
 const originalConsoleError = console.error;
 const originalConsoleLog = console.log;
-const consoleErrorSpy = mock(() => {});
-const consoleLogSpy = mock(() => {});
+const consoleErrorSpy = vi.fn(() => {});
+const consoleLogSpy = vi.fn(() => {});
 
 afterAll(() => {
   console.error = originalConsoleError;
@@ -107,7 +113,7 @@ afterAll(() => {
 
 describe("kickSandboxLifecycleWorkflow", () => {
   beforeEach(() => {
-    sessionRecord = {
+    state.sessionRecord = {
       id: "session-1",
       status: "running",
       lifecycleState: "active",
@@ -118,7 +124,7 @@ describe("kickSandboxLifecycleWorkflow", () => {
       lifecycleRunId: null,
     };
     scheduledCallbacks.length = 0;
-    Object.values(spies).forEach((spy) => spy.mockClear());
+    Object.values(state.spies).forEach((spy) => spy.mockClear());
     consoleErrorSpy.mockClear();
     consoleLogSpy.mockClear();
     console.error = consoleErrorSpy as typeof console.error;
@@ -126,8 +132,6 @@ describe("kickSandboxLifecycleWorkflow", () => {
   });
 
   test("claims the lifecycle lease before starting so overlapping kicks only start one workflow", async () => {
-    const { kickSandboxLifecycleWorkflow } = await lifecycleKickModulePromise;
-
     const scheduleBackgroundWork = (callback: () => Promise<void>) => {
       scheduledCallbacks.push(callback);
     };
@@ -147,26 +151,24 @@ describe("kickSandboxLifecycleWorkflow", () => {
 
     await Promise.all(scheduledCallbacks.map((callback) => callback()));
 
-    expect(spies.claimSessionLifecycleRunId).toHaveBeenCalledTimes(2);
-    expect(spies.start).toHaveBeenCalledTimes(1);
-    expect(spies.evaluateSandboxLifecycle).not.toHaveBeenCalled();
+    expect(state.spies.claimSessionLifecycleRunId).toHaveBeenCalledTimes(2);
+    expect(state.spies.start).toHaveBeenCalledTimes(1);
+    expect(state.spies.evaluateSandboxLifecycle).not.toHaveBeenCalled();
 
-    const startCalls = spies.start.mock.calls as unknown as Array<
+    const startCalls = state.spies.start.mock.calls as unknown as Array<
       [unknown, [string, string, string]]
     >;
     const startArgs = startCalls[0];
-    expect(startArgs?.[0]).toBe(sandboxLifecycleWorkflow);
+    expect(startArgs?.[0]).toBe(state.sandboxLifecycleWorkflow);
     expect(startArgs?.[1]?.[0]).toBe("session-1");
     expect(startArgs?.[1]?.[1]).toBe("status-check-overdue");
-    expect(sessionRecord?.lifecycleRunId).not.toBeNull();
+    expect(state.sessionRecord?.lifecycleRunId).not.toBeNull();
   });
 
   test("releases the claimed lease and falls back inline when workflow start fails", async () => {
-    spies.start.mockImplementationOnce(async () => {
+    state.spies.start.mockImplementationOnce(async () => {
       throw new Error("workflow start failed");
     });
-
-    const { kickSandboxLifecycleWorkflow } = await lifecycleKickModulePromise;
 
     kickSandboxLifecycleWorkflow({
       sessionId: "session-1",
@@ -180,11 +182,11 @@ describe("kickSandboxLifecycleWorkflow", () => {
 
     await scheduledCallbacks[0]?.();
 
-    expect(spies.start).toHaveBeenCalledTimes(1);
-    expect(spies.evaluateSandboxLifecycle).toHaveBeenCalledTimes(1);
-    expect(spies.updateSession).toHaveBeenCalledWith("session-1", {
+    expect(state.spies.start).toHaveBeenCalledTimes(1);
+    expect(state.spies.evaluateSandboxLifecycle).toHaveBeenCalledTimes(1);
+    expect(state.spies.updateSession).toHaveBeenCalledWith("session-1", {
       lifecycleRunId: null,
     });
-    expect(sessionRecord?.lifecycleRunId).toBeNull();
+    expect(state.sessionRecord?.lifecycleRunId).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import {
   MERGE_READINESS_TRANSIENT_MAX_POLLS,
   shouldIncrementMergeReadinessTransientPollCount,

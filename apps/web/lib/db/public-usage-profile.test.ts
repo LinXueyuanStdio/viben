@@ -1,50 +1,56 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  buildPublicUsageProfileData,
+  getPublicUsageProfile,
+} from "./public-usage-profile";
 
 type MockPublicUser = {
   id: string;
   username: string;
-  name: string | null;
+  displayName: string | null;
   avatarUrl: string | null;
   lastLoginAt: Date | null;
   publicUsageEnabled: boolean | null;
 };
 
-const findPublicUsersByUsernameMock = mock(
-  async (): Promise<MockPublicUser[]> => [],
-);
-const getUsageHistoryMock = mock(async () => []);
-const getUsageInsightsMock = mock(async () => ({
-  lookbackDays: 0,
-  pr: {
-    trackedPrCount: 0,
-    sessionsWithPrCount: 0,
-    openPrCount: 0,
-    mergedPrCount: 0,
-    closedPrCount: 0,
-    mergeRate: 0,
-  },
-  efficiency: {
-    mainAssistantTurnCount: 0,
-    averageTokensPerMainTurn: 0,
-    largestMainTurnTokens: 0,
-    toolCallsPerMainTurn: 0,
-    cacheReadRatio: 0,
-  },
-  code: {
-    linesAdded: 0,
-    linesRemoved: 0,
-    totalLinesChanged: 0,
-  },
-  topRepositories: [],
+const state = vi.hoisted(() => ({
+  findPublicUsersByUsernameMock: vi.fn(
+    async (): Promise<MockPublicUser[]> => [],
+  ),
+  getUsageHistoryMock: vi.fn(async () => []),
+  getUsageInsightsMock: vi.fn(async () => ({
+    lookbackDays: 0,
+    pr: {
+      trackedPrCount: 0,
+      sessionsWithPrCount: 0,
+      openPrCount: 0,
+      mergedPrCount: 0,
+      closedPrCount: 0,
+      mergeRate: 0,
+    },
+    efficiency: {
+      mainAssistantTurnCount: 0,
+      averageTokensPerMainTurn: 0,
+      largestMainTurnTokens: 0,
+      toolCallsPerMainTurn: 0,
+      cacheReadRatio: 0,
+    },
+    code: {
+      linesAdded: 0,
+      linesRemoved: 0,
+      totalLinesChanged: 0,
+    },
+    topRepositories: [],
+  })),
 }));
 
-mock.module("./client", () => ({
+vi.mock("./client", () => ({
   db: {
     select: () => ({
       from: () => ({
         leftJoin: () => ({
           where: () => ({
-            limit: findPublicUsersByUsernameMock,
+            limit: state.findPublicUsersByUsernameMock,
           }),
         }),
       }),
@@ -52,24 +58,22 @@ mock.module("./client", () => ({
   },
 }));
 
-mock.module("./usage", () => ({
-  getUsageHistory: getUsageHistoryMock,
+vi.mock("./usage", () => ({
+  getUsageHistory: state.getUsageHistoryMock,
 }));
 
-mock.module("./usage-insights", () => ({
-  getUsageInsights: getUsageInsightsMock,
+vi.mock("./usage-insights", () => ({
+  getUsageInsights: state.getUsageInsightsMock,
 }));
-
-const publicUsageProfileModulePromise = import("./public-usage-profile");
 
 beforeEach(() => {
-  findPublicUsersByUsernameMock.mockClear();
-  getUsageHistoryMock.mockClear();
-  getUsageInsightsMock.mockClear();
+  state.findPublicUsersByUsernameMock.mockClear();
+  state.getUsageHistoryMock.mockClear();
+  state.getUsageInsightsMock.mockClear();
 
-  findPublicUsersByUsernameMock.mockImplementation(async () => []);
-  getUsageHistoryMock.mockImplementation(async () => []);
-  getUsageInsightsMock.mockImplementation(async () => ({
+  state.findPublicUsersByUsernameMock.mockImplementation(async () => []);
+  state.getUsageHistoryMock.mockImplementation(async () => []);
+  state.getUsageInsightsMock.mockImplementation(async () => ({
     lookbackDays: 0,
     pr: {
       trackedPrCount: 0,
@@ -97,9 +101,6 @@ beforeEach(() => {
 
 describe("buildPublicUsageProfileData", () => {
   test("aggregates totals, agent split, and top models", async () => {
-    const { buildPublicUsageProfileData } =
-      await publicUsageProfileModulePromise;
-
     const result = buildPublicUsageProfileData({
       usage: [
         {
@@ -251,13 +252,10 @@ describe("buildPublicUsageProfileData", () => {
   });
 
   test("returns empty state when usage is empty", async () => {
-    const { buildPublicUsageProfileData } =
-      await publicUsageProfileModulePromise;
-
     expect(
       buildPublicUsageProfileData({
         usage: [],
-        insights: await getUsageInsightsMock(),
+        insights: await state.getUsageInsightsMock(),
       }),
     ).toEqual({
       totals: {
@@ -282,23 +280,19 @@ describe("buildPublicUsageProfileData", () => {
 
 describe("getPublicUsageProfile", () => {
   test("returns null when the user does not exist", async () => {
-    const { getPublicUsageProfile } = await publicUsageProfileModulePromise;
-
-    findPublicUsersByUsernameMock.mockImplementation(async () => []);
+    state.findPublicUsersByUsernameMock.mockImplementation(async () => []);
 
     expect(await getPublicUsageProfile("missing-user", null)).toBeNull();
-    expect(getUsageHistoryMock).not.toHaveBeenCalled();
-    expect(getUsageInsightsMock).not.toHaveBeenCalled();
+    expect(state.getUsageHistoryMock).not.toHaveBeenCalled();
+    expect(state.getUsageInsightsMock).not.toHaveBeenCalled();
   });
 
   test("returns null when public usage is disabled", async () => {
-    const { getPublicUsageProfile } = await publicUsageProfileModulePromise;
-
-    findPublicUsersByUsernameMock.mockImplementation(async () => [
+    state.findPublicUsersByUsernameMock.mockImplementation(async () => [
       {
         id: "user-1",
         username: "private-user",
-        name: "Private User",
+        displayName: "Private User",
         avatarUrl: null,
         lastLoginAt: new Date("2026-01-01T00:00:00.000Z"),
         publicUsageEnabled: false,
@@ -306,18 +300,16 @@ describe("getPublicUsageProfile", () => {
     ]);
 
     expect(await getPublicUsageProfile("private-user", null)).toBeNull();
-    expect(getUsageHistoryMock).not.toHaveBeenCalled();
-    expect(getUsageInsightsMock).not.toHaveBeenCalled();
+    expect(state.getUsageHistoryMock).not.toHaveBeenCalled();
+    expect(state.getUsageInsightsMock).not.toHaveBeenCalled();
   });
 
   test("uses all-time queries when no valid date is provided", async () => {
-    const { getPublicUsageProfile } = await publicUsageProfileModulePromise;
-
-    findPublicUsersByUsernameMock.mockImplementation(async () => [
+    state.findPublicUsersByUsernameMock.mockImplementation(async () => [
       {
         id: "user-2",
         username: "all-time-user",
-        name: null,
+        displayName: null,
         avatarUrl: null,
         lastLoginAt: new Date("2026-01-02T00:00:00.000Z"),
         publicUsageEnabled: true,
@@ -333,22 +325,20 @@ describe("getPublicUsageProfile", () => {
       range: null,
     });
     expect(profile?.invalidDateError).toBeTruthy();
-    expect(getUsageHistoryMock).toHaveBeenCalledWith("user-2", {
+    expect(state.getUsageHistoryMock).toHaveBeenCalledWith("user-2", {
       allTime: true,
     });
-    expect(getUsageInsightsMock).toHaveBeenCalledWith("user-2", {
+    expect(state.getUsageInsightsMock).toHaveBeenCalledWith("user-2", {
       allTime: true,
     });
   });
 
   test("prefers an enabled case-insensitive match", async () => {
-    const { getPublicUsageProfile } = await publicUsageProfileModulePromise;
-
-    findPublicUsersByUsernameMock.mockImplementation(async () => [
+    state.findPublicUsersByUsernameMock.mockImplementation(async () => [
       {
         id: "user-disabled",
         username: "range-user",
-        name: "Disabled User",
+        displayName: "Disabled User",
         avatarUrl: null,
         lastLoginAt: new Date("2026-01-01T00:00:00.000Z"),
         publicUsageEnabled: false,
@@ -356,7 +346,7 @@ describe("getPublicUsageProfile", () => {
       {
         id: "user-3",
         username: "Range-User",
-        name: "Range User",
+        displayName: "Range User",
         avatarUrl: null,
         lastLoginAt: new Date("2026-01-03T00:00:00.000Z"),
         publicUsageEnabled: true,
@@ -371,7 +361,7 @@ describe("getPublicUsageProfile", () => {
     expect(profile?.user).toEqual({
       id: "user-3",
       username: "Range-User",
-      name: "Range User",
+      displayName: "Range User",
       avatarUrl: null,
     });
     expect(profile?.dateSelection).toEqual({
@@ -383,13 +373,13 @@ describe("getPublicUsageProfile", () => {
         to: "2026-01-31",
       },
     });
-    expect(getUsageHistoryMock).toHaveBeenCalledWith("user-3", {
+    expect(state.getUsageHistoryMock).toHaveBeenCalledWith("user-3", {
       range: {
         from: "2026-01-01",
         to: "2026-01-31",
       },
     });
-    expect(getUsageInsightsMock).toHaveBeenCalledWith("user-3", {
+    expect(state.getUsageInsightsMock).toHaveBeenCalledWith("user-3", {
       range: {
         from: "2026-01-01",
         to: "2026-01-31",

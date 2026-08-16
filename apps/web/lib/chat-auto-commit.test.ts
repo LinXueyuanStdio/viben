@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { runAutoCommitInBackground } from "./chat-auto-commit";
 
 interface MockFetchResponse {
@@ -49,7 +49,7 @@ describe("runAutoCommitInBackground", () => {
   });
 
   test("uses the repository default branch and refreshes cached diff", async () => {
-    const fetchImpl = mock((input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       fetchCalls.push({ input, init });
 
       switch (fetchCalls.length) {
@@ -106,7 +106,7 @@ describe("runAutoCommitInBackground", () => {
   });
 
   test("falls back to main when default branch lookup fails", async () => {
-    const fetchImpl = mock((input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       fetchCalls.push({ input, init });
 
       switch (fetchCalls.length) {
@@ -144,7 +144,7 @@ describe("runAutoCommitInBackground", () => {
   });
 
   test("logs commit failures and skips cached diff refresh", async () => {
-    const fetchImpl = mock((input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       fetchCalls.push({ input, init });
 
       switch (fetchCalls.length) {

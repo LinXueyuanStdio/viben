@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { archiveSession } from "./archive-session";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 interface TestSessionRecord {
   id: string;
@@ -61,82 +62,85 @@ type MockFindPullRequestResult =
       error?: string;
     };
 
-let sessionRecord: TestSessionRecord | null = null;
-let sandboxQueue: MockSandbox[] = [];
+const state = vi.hoisted(() => {
+  const s = {
+    sessionRecord: null as TestSessionRecord | null,
+    sandboxQueue: [] as MockSandbox[],
+    spies: {
+      getSessionById: vi.fn(async (_sessionId: string) => {
+        if (!s.sessionRecord) {
+          return null;
+        }
 
-const spies = {
-  getSessionById: mock(async (_sessionId: string) => {
-    if (!sessionRecord) {
-      return null;
-    }
+        return {
+          ...s.sessionRecord,
+          sandboxState: s.sessionRecord.sandboxState
+            ? { ...s.sessionRecord.sandboxState }
+            : null,
+        };
+      }),
+      updateSession: vi.fn(
+        async (_sessionId: string, patch: Record<string, unknown>) => {
+          if (!s.sessionRecord) {
+            return null;
+          }
 
-    return {
-      ...sessionRecord,
-      sandboxState: sessionRecord.sandboxState
-        ? { ...sessionRecord.sandboxState }
-        : null,
-    };
-  }),
-  updateSession: mock(
-    async (_sessionId: string, patch: Record<string, unknown>) => {
-      if (!sessionRecord) {
-        return null;
-      }
+          s.sessionRecord = {
+            ...s.sessionRecord,
+            ...(patch as Partial<TestSessionRecord>),
+          };
 
-      sessionRecord = {
-        ...sessionRecord,
-        ...(patch as Partial<TestSessionRecord>),
-      };
+          return {
+            ...s.sessionRecord,
+            sandboxState: s.sessionRecord.sandboxState
+              ? { ...s.sessionRecord.sandboxState }
+              : null,
+          };
+        },
+      ),
+      connectSandbox: vi.fn(async () => {
+        const sandbox = s.sandboxQueue.shift();
+        if (!sandbox) {
+          throw new Error("sandbox connection failed");
+        }
 
-      return {
-        ...sessionRecord,
-        sandboxState: sessionRecord.sandboxState
-          ? { ...sessionRecord.sandboxState }
-          : null,
-      };
+        return sandbox;
+      }),
+      getGitHubRepoOAuthToken: vi.fn(async () => "repo-token"),
+      getPullRequestStatus: vi.fn(
+        async (): Promise<MockPullRequestStatusResult> => ({
+          success: false,
+          error: "Failed to get PR status",
+        }),
+      ),
+      findPullRequest: vi.fn(
+        async (): Promise<MockFindPullRequestResult> => ({
+          found: false,
+        }),
+      ),
     },
-  ),
-  connectSandbox: mock(async () => {
-    const sandbox = sandboxQueue.shift();
-    if (!sandbox) {
-      throw new Error("sandbox connection failed");
-    }
+  };
 
-    return sandbox;
-  }),
-  getGithubOAuthToken: mock(async () => "repo-token"),
-  getPullRequestStatus: mock(
-    async (): Promise<MockPullRequestStatusResult> => ({
-      success: false,
-      error: "Failed to get PR status",
-    }),
-  ),
-  findPullRequest: mock(
-    async (): Promise<MockFindPullRequestResult> => ({
-      found: false,
-    }),
-  ),
-};
+  return s;
+});
 
-mock.module("@/lib/db/sessions", () => ({
-  getSessionById: spies.getSessionById,
-  updateSession: spies.updateSession,
+vi.mock("@/lib/db/sessions", () => ({
+  getSessionById: state.spies.getSessionById,
+  updateSession: state.spies.updateSession,
 }));
 
-mock.module("@viben/sandbox", () => ({
-  connectSandbox: spies.connectSandbox,
+vi.mock("@viben/sandbox", () => ({
+  connectSandbox: state.spies.connectSandbox,
 }));
 
-mock.module("@/lib/github/token", () => ({
-  getGithubOAuthToken: spies.getGithubOAuthToken,
+vi.mock("@/lib/github/token", () => ({
+  getGitHubRepoOAuthToken: state.spies.getGitHubRepoOAuthToken,
 }));
 
-mock.module("@/lib/github/pulls", () => ({
-  getPullRequestStatus: spies.getPullRequestStatus,
-  findPullRequest: spies.findPullRequest,
+vi.mock("@/lib/github/pulls", () => ({
+  getPullRequestStatus: state.spies.getPullRequestStatus,
+  findPullRequest: state.spies.findPullRequest,
 }));
-
-const archiveSessionModulePromise = import("./archive-session");
 
 function makeSessionRecord(
   overrides: Partial<TestSessionRecord> = {},
@@ -175,24 +179,22 @@ function createMockSandbox(overrides: Partial<MockSandbox> = {}): MockSandbox {
 }
 
 beforeEach(() => {
-  sessionRecord = makeSessionRecord();
-  sandboxQueue = [];
-  Object.values(spies).forEach((spy) => spy.mockClear());
+  state.sessionRecord = makeSessionRecord();
+  state.sandboxQueue = [];
+  Object.values(state.spies).forEach((spy) => spy.mockClear());
 
-  spies.getGithubOAuthToken.mockImplementation(async () => "repo-token");
-  spies.getPullRequestStatus.mockImplementation(async () => ({
+  state.spies.getGitHubRepoOAuthToken.mockImplementation(async () => "repo-token");
+  state.spies.getPullRequestStatus.mockImplementation(async () => ({
     success: false,
     error: "Failed to get PR status",
   }));
-  spies.findPullRequest.mockImplementation(async () => ({
+  state.spies.findPullRequest.mockImplementation(async () => ({
     found: false,
   }));
 });
 
 describe("archiveSession", () => {
   test("clears runtime sandbox state when archive finalization fails without a snapshot", async () => {
-    const { archiveSession } = await archiveSessionModulePromise;
-
     let backgroundTask: Promise<void> | null = null;
 
     const result = await archiveSession("session-1", {
@@ -208,7 +210,7 @@ describe("archiveSession", () => {
     }
     await backgroundTask;
 
-    const updateCalls = spies.updateSession.mock.calls as Array<
+    const updateCalls = state.spies.updateSession.mock.calls as Array<
       [string, Record<string, unknown>]
     >;
 
@@ -226,16 +228,14 @@ describe("archiveSession", () => {
       },
     });
 
-    expect(sessionRecord?.sandboxState).toEqual({
+    expect(state.sessionRecord?.sandboxState).toEqual({
       type: "vercel",
       sandboxName: "session_session-1",
     });
   });
 
   test("preserves runtime sandbox state when archive finalization fails but snapshot already exists", async () => {
-    const { archiveSession } = await archiveSessionModulePromise;
-
-    sessionRecord = makeSessionRecord({ snapshotUrl: "snapshot-existing" });
+    state.sessionRecord = makeSessionRecord({ snapshotUrl: "snapshot-existing" });
 
     let backgroundTask: Promise<void> | null = null;
 
@@ -252,7 +252,7 @@ describe("archiveSession", () => {
     }
     await backgroundTask;
 
-    const updateCalls = spies.updateSession.mock.calls as Array<
+    const updateCalls = state.spies.updateSession.mock.calls as Array<
       [string, Record<string, unknown>]
     >;
 
@@ -263,7 +263,7 @@ describe("archiveSession", () => {
       "Archive finalization failed: sandbox connection failed",
     );
     expect(recoveryPatch?.sandboxState).toBeUndefined();
-    expect(sessionRecord?.sandboxState).toEqual(
+    expect(state.sessionRecord?.sandboxState).toEqual(
       expect.objectContaining({
         type: "vercel",
         sandboxName: "session_session-1",
@@ -272,10 +272,8 @@ describe("archiveSession", () => {
   });
 
   test("refreshes merged PR status before archiving", async () => {
-    const { archiveSession } = await archiveSessionModulePromise;
-
-    sandboxQueue = [createMockSandbox(), createMockSandbox()];
-    spies.getPullRequestStatus.mockImplementation(async () => ({
+    state.sandboxQueue = [createMockSandbox(), createMockSandbox()];
+    state.spies.getPullRequestStatus.mockImplementation(async () => ({
       success: true,
       status: "merged",
     }));
@@ -295,7 +293,7 @@ describe("archiveSession", () => {
     }
     await backgroundTask;
 
-    const updateCalls = spies.updateSession.mock.calls as Array<
+    const updateCalls = state.spies.updateSession.mock.calls as Array<
       [string, Record<string, unknown>]
     >;
 
@@ -303,7 +301,7 @@ describe("archiveSession", () => {
       status: "archived",
       prStatus: "merged",
     });
-    expect(spies.findPullRequest).not.toHaveBeenCalled();
-    expect(sessionRecord?.prStatus).toBe("merged");
+    expect(state.spies.findPullRequest).not.toHaveBeenCalled();
+    expect(state.sessionRecord?.prStatus).toBe("merged");
   });
 });

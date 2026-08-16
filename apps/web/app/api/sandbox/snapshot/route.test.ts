@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
-
-mock.module("server-only", () => ({}));
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { POST, PUT } from "./route";
 
 type TestSandboxState = {
   type: "vercel";
@@ -21,30 +20,36 @@ type TestSessionRecord = {
   lastActivityAt: Date | null;
 };
 
-const connectCalls: Array<{
-  state: Record<string, unknown>;
-  options: Record<string, unknown> | undefined;
-}> = [];
-const updateCalls: Array<Record<string, unknown>> = [];
-const kickCalls: Array<{ sessionId: string; reason: string }> = [];
+const state = vi.hoisted(() => ({
+  connectCalls: [] as Array<{
+    state: Record<string, unknown>;
+    options: Record<string, unknown> | undefined;
+  }>,
+  updateCalls: [] as Array<Record<string, unknown>>,
+  kickCalls: [] as Array<{ sessionId: string; reason: string }>,
+  stopCallCount: 0,
+  connectSandboxResumeError: null as Error | null,
+  sessionRecord: undefined as TestSessionRecord | undefined,
+}));
 
-let stopCallCount = 0;
-let connectSandboxResumeError: Error | null = null;
-let sessionRecord: TestSessionRecord;
+vi.mock("server-only", () => ({}));
 
-mock.module("@/app/api/sessions/_lib/session-context", () => ({
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
   requireAuthenticatedUser: async () => ({
     ok: true as const,
     userId: "user-1",
   }),
-  requireOwnedSession: async () => ({ ok: true as const, sessionRecord }),
+  requireOwnedSession: async () => ({
+    ok: true as const,
+    sessionRecord: state.sessionRecord,
+  }),
   requireOwnedSessionWithSandboxGuard: async ({
     sandboxGuard,
   }: {
     sandboxGuard: (state: TestSandboxState | null) => boolean;
   }) =>
-    sandboxGuard(sessionRecord.sandboxState)
-      ? ({ ok: true as const, sessionRecord } as const)
+    sandboxGuard(state.sessionRecord!.sandboxState)
+      ? ({ ok: true as const, sessionRecord: state.sessionRecord } as const)
       : ({
           ok: false as const,
           response: Response.json(
@@ -54,54 +59,54 @@ mock.module("@/app/api/sessions/_lib/session-context", () => ({
         } as const),
 }));
 
-mock.module("@/lib/db/sessions", () => ({
+vi.mock("@/lib/db/sessions", () => ({
   getChatsBySessionId: async () => [],
-  getSessionById: async () => sessionRecord,
+  getSessionById: async () => state.sessionRecord,
   updateSession: async (_sessionId: string, patch: Record<string, unknown>) => {
-    updateCalls.push(patch);
-    sessionRecord = {
-      ...sessionRecord,
+    state.updateCalls.push(patch);
+    state.sessionRecord = {
+      ...state.sessionRecord,
       ...(patch as Partial<TestSessionRecord>),
     };
-    return sessionRecord;
+    return state.sessionRecord;
   },
 }));
 
-mock.module("@/lib/sandbox/lifecycle-kick", () => ({
+vi.mock("@/lib/sandbox/lifecycle-kick", () => ({
   kickSandboxLifecycleWorkflow: (input: {
     sessionId: string;
     reason: string;
   }) => {
-    kickCalls.push(input);
+    state.kickCalls.push(input);
   },
 }));
 
-mock.module("@viben/sandbox", () => ({
+vi.mock("@viben/sandbox", () => ({
   connectSandbox: async (
-    state: Record<string, unknown>,
+    sandboxState: Record<string, unknown>,
     options?: Record<string, unknown>,
   ) => {
-    connectCalls.push({ state, options });
+    state.connectCalls.push({ state: sandboxState, options });
 
     if (
-      connectSandboxResumeError &&
+      state.connectSandboxResumeError &&
       options?.resume === true &&
-      typeof state.sandboxName === "string" &&
-      state.snapshotId === undefined
+      typeof sandboxState.sandboxName === "string" &&
+      sandboxState.snapshotId === undefined
     ) {
-      throw connectSandboxResumeError;
+      throw state.connectSandboxResumeError;
     }
 
     const sandboxName =
-      typeof state.sandboxName === "string"
-        ? state.sandboxName
+      typeof sandboxState.sandboxName === "string"
+        ? sandboxState.sandboxName
         : "session_session-1";
     return {
       id: "runtime-1",
       expiresAt: Date.now() + 120_000,
       workingDirectory: "/vercel/sandbox",
       stop: async () => {
-        stopCallCount += 1;
+        state.stopCallCount += 1;
       },
       getState: () => ({
         type: "vercel" as const,
@@ -111,8 +116,6 @@ mock.module("@viben/sandbox", () => ({
     };
   },
 }));
-
-const routeModulePromise = import("./route");
 
 function makeSessionRecord(
   overrides: Partial<TestSessionRecord> = {},
@@ -138,17 +141,15 @@ function makeSessionRecord(
 
 describe("/api/sandbox/snapshot", () => {
   beforeEach(() => {
-    connectCalls.length = 0;
-    updateCalls.length = 0;
-    kickCalls.length = 0;
-    stopCallCount = 0;
-    connectSandboxResumeError = null;
-    sessionRecord = makeSessionRecord();
+    state.connectCalls.length = 0;
+    state.updateCalls.length = 0;
+    state.kickCalls.length = 0;
+    state.stopCallCount = 0;
+    state.connectSandboxResumeError = null;
+    state.sessionRecord = makeSessionRecord();
   });
 
   test("POST pauses a named persistent sandbox without writing a legacy snapshot", async () => {
-    const { POST } = await routeModulePromise;
-
     const response = await POST(
       new Request("http://localhost/api/sandbox/snapshot", {
         method: "POST",
@@ -161,15 +162,15 @@ describe("/api/sandbox/snapshot", () => {
     };
 
     expect(response.ok).toBe(true);
-    expect(stopCallCount).toBe(1);
+    expect(state.stopCallCount).toBe(1);
     expect(payload.snapshotId).toBe("session_session-1");
-    expect(connectCalls[0]).toMatchObject({
+    expect(state.connectCalls[0]).toMatchObject({
       state: {
         type: "vercel",
         sandboxName: "session_session-1",
       },
     });
-    expect(updateCalls[0]).toEqual(
+    expect(state.updateCalls[0]).toEqual(
       expect.objectContaining({
         snapshotUrl: null,
         snapshotCreatedAt: null,
@@ -184,9 +185,7 @@ describe("/api/sandbox/snapshot", () => {
   });
 
   test("PUT resumes an existing named persistent sandbox", async () => {
-    const { PUT } = await routeModulePromise;
-
-    sessionRecord = makeSessionRecord({
+    state.sessionRecord = makeSessionRecord({
       sandboxState: {
         type: "vercel",
         sandboxName: "session_session-1",
@@ -205,7 +204,7 @@ describe("/api/sandbox/snapshot", () => {
     );
 
     expect(response.ok).toBe(true);
-    expect(connectCalls[0]).toMatchObject({
+    expect(state.connectCalls[0]).toMatchObject({
       state: {
         type: "vercel",
         sandboxName: "session_session-1",
@@ -214,7 +213,7 @@ describe("/api/sandbox/snapshot", () => {
         resume: true,
       },
     });
-    expect(updateCalls[0]).toEqual(
+    expect(state.updateCalls[0]).toEqual(
       expect.objectContaining({
         sandboxState: expect.objectContaining({
           type: "vercel",
@@ -225,15 +224,13 @@ describe("/api/sandbox/snapshot", () => {
         lifecycleVersion: 3,
       }),
     );
-    expect(kickCalls).toEqual([
+    expect(state.kickCalls).toEqual([
       { sessionId: "session-1", reason: "snapshot-restored" },
     ]);
   });
 
   test("PUT clears a broken persistent sandbox handle after a 404", async () => {
-    const { PUT } = await routeModulePromise;
-
-    sessionRecord = makeSessionRecord({
+    state.sessionRecord = makeSessionRecord({
       sandboxState: {
         type: "vercel",
         sandboxName: "session_session-1",
@@ -243,7 +240,7 @@ describe("/api/sandbox/snapshot", () => {
       sandboxExpiresAt: null,
       hibernateAfter: null,
     });
-    connectSandboxResumeError = new Error("Status code 404 is not ok");
+    state.connectSandboxResumeError = new Error("Status code 404 is not ok");
 
     const response = await PUT(
       new Request("http://localhost/api/sandbox/snapshot", {
@@ -256,7 +253,7 @@ describe("/api/sandbox/snapshot", () => {
 
     expect(response.status).toBe(404);
     expect(payload.error).toContain("Saved sandbox is no longer available");
-    expect(updateCalls[0]).toEqual(
+    expect(state.updateCalls[0]).toEqual(
       expect.objectContaining({
         sandboxState: {
           type: "vercel",
@@ -267,9 +264,7 @@ describe("/api/sandbox/snapshot", () => {
   });
 
   test("PUT lazily migrates a legacy snapshot-backed session on first resume", async () => {
-    const { PUT } = await routeModulePromise;
-
-    sessionRecord = makeSessionRecord({
+    state.sessionRecord = makeSessionRecord({
       sandboxState: { type: "vercel" },
       snapshotUrl: "snap-legacy-1",
       lifecycleState: "hibernated",
@@ -286,7 +281,7 @@ describe("/api/sandbox/snapshot", () => {
     );
 
     expect(response.ok).toBe(true);
-    expect(connectCalls[0]).toMatchObject({
+    expect(state.connectCalls[0]).toMatchObject({
       state: {
         type: "vercel",
         sandboxName: "session_session-1",
@@ -298,7 +293,7 @@ describe("/api/sandbox/snapshot", () => {
         persistent: true,
       },
     });
-    expect(updateCalls[0]).toEqual(
+    expect(state.updateCalls[0]).toEqual(
       expect.objectContaining({
         sandboxState: expect.objectContaining({
           type: "vercel",
@@ -309,7 +304,7 @@ describe("/api/sandbox/snapshot", () => {
         lifecycleVersion: 3,
       }),
     );
-    expect(kickCalls).toEqual([
+    expect(state.kickCalls).toEqual([
       { sessionId: "session-1", reason: "snapshot-restored" },
     ]);
   });

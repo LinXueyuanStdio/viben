@@ -1,55 +1,62 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
-
-mock.module("server-only", () => ({}));
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { GET } from "./route";
 
 interface KickCall {
   sessionId: string;
   reason: string;
 }
 
-const kickCalls: KickCall[] = [];
-const updateCalls: Array<{
-  sessionId: string;
-  patch: Record<string, unknown>;
-}> = [];
-
-let sessionRecord: {
-  id: string;
-  userId: string;
-  sandboxState: {
-    type: "vercel";
-    sandboxName: string;
-    expiresAt: number;
-  };
-  lifecycleState: "active" | "failed";
-  lifecycleError: string | null;
-  lifecycleVersion: number;
-  hibernateAfter: Date | null;
-  sandboxExpiresAt: Date | null;
-  snapshotUrl: string | null;
-  lastActivityAt: Date | null;
-  updatedAt: Date;
-};
-
-mock.module("@/app/api/sessions/_lib/session-context", () => ({
-  requireAuthenticatedUser: async () => ({ ok: true, userId: "user-1" }),
-  requireOwnedSession: async () => ({ ok: true, sessionRecord }),
+const state = vi.hoisted(() => ({
+  kickCalls: [] as KickCall[],
+  updateCalls: [] as Array<{
+    sessionId: string;
+    patch: Record<string, unknown>;
+  }>,
+  sessionRecord: undefined as
+    | {
+        id: string;
+        userId: string;
+        sandboxState: {
+          type: "vercel";
+          sandboxName: string;
+          expiresAt: number;
+        };
+        lifecycleState: "active" | "failed";
+        lifecycleError: string | null;
+        lifecycleVersion: number;
+        hibernateAfter: Date | null;
+        sandboxExpiresAt: Date | null;
+        snapshotUrl: string | null;
+        lastActivityAt: Date | null;
+        updatedAt: Date;
+      }
+    | undefined,
 }));
 
-mock.module("@/lib/db/sessions", () => ({
+vi.mock("server-only", () => ({}));
+
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
+  requireAuthenticatedUser: async () => ({ ok: true, userId: "user-1" }),
+  requireOwnedSession: async () => ({
+    ok: true,
+    sessionRecord: state.sessionRecord,
+  }),
+}));
+
+vi.mock("@/lib/db/sessions", () => ({
   getChatsBySessionId: async () => [],
-  getSessionById: async () => sessionRecord,
+  getSessionById: async () => state.sessionRecord,
   updateSession: async (sessionId: string, patch: Record<string, unknown>) => {
-    updateCalls.push({ sessionId, patch });
-    sessionRecord = {
-      ...sessionRecord,
+    state.updateCalls.push({ sessionId, patch });
+    state.sessionRecord = {
+      ...state.sessionRecord,
       ...patch,
-    } as typeof sessionRecord;
-    return sessionRecord;
+    } as typeof state.sessionRecord;
+    return state.sessionRecord;
   },
 }));
 
-mock.module("@/lib/sandbox/lifecycle", () => ({
+vi.mock("@/lib/sandbox/lifecycle", () => ({
   getLifecycleDueAtMs: (source: {
     hibernateAfter: Date | null;
     lastActivityAt: Date | null;
@@ -62,25 +69,25 @@ mock.module("@/lib/sandbox/lifecycle", () => ({
     return source.updatedAt.getTime();
   },
   getSandboxExpiresAtDate: (
-    state: { expiresAt?: unknown } | null | undefined,
+    sandboxState: { expiresAt?: unknown } | null | undefined,
   ) =>
-    typeof state?.expiresAt === "number" ? new Date(state.expiresAt) : null,
+    typeof sandboxState?.expiresAt === "number"
+      ? new Date(sandboxState.expiresAt)
+      : null,
 }));
 
-mock.module("@/lib/sandbox/lifecycle-kick", () => ({
+vi.mock("@/lib/sandbox/lifecycle-kick", () => ({
   kickSandboxLifecycleWorkflow: (input: KickCall) => {
-    kickCalls.push(input);
+    state.kickCalls.push(input);
   },
 }));
 
-const routeModulePromise = import("./route");
-
 describe("/api/sandbox/status lifecycle safety net", () => {
   beforeEach(() => {
-    kickCalls.length = 0;
-    updateCalls.length = 0;
+    state.kickCalls.length = 0;
+    state.updateCalls.length = 0;
 
-    sessionRecord = {
+    state.sessionRecord = {
       id: "session-1",
       userId: "user-1",
       sandboxState: {
@@ -100,8 +107,6 @@ describe("/api/sandbox/status lifecycle safety net", () => {
   });
 
   test("kicks overdue lifecycle immediately", async () => {
-    const { GET } = await routeModulePromise;
-
     const response = await GET(
       new Request("http://localhost/api/sandbox/status?sessionId=session-1"),
     );
@@ -113,20 +118,18 @@ describe("/api/sandbox/status lifecycle safety net", () => {
     expect(response.ok).toBe(true);
     expect(payload.status).toBe("active");
     expect(payload.hasSnapshot).toBe(false);
-    expect(kickCalls.length).toBe(1);
-    expect(kickCalls[0]).toEqual({
+    expect(state.kickCalls.length).toBe(1);
+    expect(state.kickCalls[0]).toEqual({
       sessionId: "session-1",
       reason: "status-check-overdue",
     });
-    expect(updateCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(0);
   });
 
   test("recovers failed lifecycle state when runtime sandbox is still active", async () => {
-    const { GET } = await routeModulePromise;
-
-    sessionRecord.lifecycleState = "failed";
-    sessionRecord.lifecycleError = "snapshot failed";
-    sessionRecord.hibernateAfter = new Date(Date.now() + 30_000);
+    state.sessionRecord!.lifecycleState = "failed";
+    state.sessionRecord!.lifecycleError = "snapshot failed";
+    state.sessionRecord!.hibernateAfter = new Date(Date.now() + 30_000);
 
     const response = await GET(
       new Request("http://localhost/api/sandbox/status?sessionId=session-1"),
@@ -141,10 +144,10 @@ describe("/api/sandbox/status lifecycle safety net", () => {
     expect(payload.status).toBe("active");
     expect(payload.hasSnapshot).toBe(false);
     expect(payload.lifecycle.state).toBe("active");
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]?.sessionId).toBe("session-1");
-    expect(updateCalls[0]?.patch.lifecycleState).toBe("active");
-    expect(updateCalls[0]?.patch.lifecycleError).toBeNull();
-    expect(kickCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]?.sessionId).toBe("session-1");
+    expect(state.updateCalls[0]?.patch.lifecycleState).toBe("active");
+    expect(state.updateCalls[0]?.patch.lifecycleError).toBeNull();
+    expect(state.kickCalls).toHaveLength(0);
   });
 });

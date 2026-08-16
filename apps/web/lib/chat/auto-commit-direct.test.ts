@@ -1,72 +1,75 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { performAutoCommit } from "./auto-commit-direct";
 
-// ── spy state ──────────────────────────────────────────────────────
-
-let hasChanges = true;
-let stageFails = false;
-let stagedDiff = "diff --git a/file.ts...";
-let changedFiles = [
-  {
-    path: "file.ts",
-    status: "modified" as const,
-    content: "export const x = 1;",
-    encoding: "utf-8" as const,
-  },
-];
-let verifyResult:
+type VerifyResult =
   | {
       ok: true;
       installationId: number;
       repositoryId: number;
       defaultBranch: string;
     }
-  | { ok: false; reason: string } = {
-  ok: true,
-  installationId: 999,
-  repositoryId: 123,
-  defaultBranch: "main",
-};
-let coAuthorResult: { name: string; email: string } | null = {
-  name: "octocat",
-  email: "12345+octocat@users.noreply.github.com",
-};
-let apiCommitResult:
-  | { ok: true; commitSha: string }
-  | { ok: false; error: string } = {
-  ok: true,
-  commitSha: "abc123def456",
-};
-let generateTextResult = { text: "feat: implement new feature" };
-let syncPreservingChangesCalls = 0;
+  | { ok: false; reason: string };
+
+// ── spy state ──────────────────────────────────────────────────────
+
+const state = vi.hoisted(() => ({
+  hasChanges: true,
+  stageFails: false,
+  stagedDiff: "diff --git a/file.ts...",
+  changedFiles: [
+    {
+      path: "file.ts",
+      status: "modified" as const,
+      content: "export const x = 1;",
+      encoding: "utf-8" as const,
+    },
+  ],
+  verifyResult: {
+    ok: true,
+    installationId: 999,
+    repositoryId: 123,
+    defaultBranch: "main",
+  } as VerifyResult,
+  coAuthorResult: {
+    name: "octocat",
+    email: "12345+octocat@users.noreply.github.com",
+  } as { name: string; email: string } | null,
+  apiCommitResult: {
+    ok: true,
+    commitSha: "abc123def456",
+  } as { ok: true; commitSha: string } | { ok: false; error: string },
+  generateTextResult: { text: "feat: implement new feature" },
+  syncPreservingChangesCalls: 0,
+}));
 
 // ── module mocks ───────────────────────────────────────────────────
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
-mock.module("ai", () => ({
-  generateText: async () => generateTextResult,
+vi.mock("ai", () => ({
+  generateText: async () => state.generateTextResult,
 }));
 
-mock.module("@viben/agent", () => ({
+vi.mock("@viben/agent", () => ({
   gateway: () => "mock-model",
 }));
 
-mock.module("@viben/sandbox", () => ({
+vi.mock("@viben/sandbox", () => ({
   connectSandbox: async () => ({}),
-  hasUncommittedChanges: async () => hasChanges,
+  hasUncommittedChanges: async () => state.hasChanges,
   stageAll: async () => {
-    if (stageFails) throw new Error("staging failed");
+    if (state.stageFails) throw new Error("staging failed");
   },
-  getStagedDiff: async () => stagedDiff,
+  getStagedDiff: async () => state.stagedDiff,
   getChangedFiles: async () =>
-    changedFiles.map(({ path, status }) => ({ path, status })),
+    state.changedFiles.map(({ path, status }) => ({ path, status })),
   detectBinaryFiles: async () => new Set<string>(),
   getFileModes: async () => new Map([["file.ts", "100644"]]),
   getHeadSha: async () => "base-sha",
   getCurrentBranch: async () => "feature-branch",
   syncToRemote: async () => {},
   syncToRemotePreservingChanges: async () => {
-    syncPreservingChangesCalls += 1;
+    state.syncPreservingChangesCalls += 1;
   },
   withTemporaryGitHubAuth: async (
     _sandbox: unknown,
@@ -75,20 +78,20 @@ mock.module("@viben/sandbox", () => ({
   ) => operation(),
 }));
 
-mock.module("@/lib/db/sessions", () => ({
+vi.mock("@/lib/db/sessions", () => ({
   getChatsBySessionId: async () => [],
   getSessionById: async () => null,
   updateSession: async () => {},
 }));
 
-mock.module("@/lib/github/access", () => ({
-  verifyRepoAccess: async () => verifyResult,
+vi.mock("@/lib/github/access", () => ({
+  verifyRepoAccess: async () => state.verifyResult,
   getRepoAccessErrorMessage: () => "Access denied",
 }));
 
-mock.module("@/lib/github/commit", () => ({
-  createCommit: async () => apiCommitResult,
-  buildCoAuthor: async () => coAuthorResult,
+vi.mock("@/lib/github/commit", () => ({
+  createCommit: async () => state.apiCommitResult,
+  buildCoAuthor: async () => state.coAuthorResult,
   buildCommitMessageWithCoAuthor: (
     message: string,
     coAuthor?: { name: string; email: string },
@@ -98,7 +101,7 @@ mock.module("@/lib/github/commit", () => ({
       : message,
 }));
 
-mock.module("@/lib/github/app", () => ({
+vi.mock("@/lib/github/app", () => ({
   withScopedInstallationOctokit: async ({
     operation,
   }: {
@@ -114,16 +117,14 @@ mock.module("@/lib/github/app", () => ({
   revokeInstallationToken: async () => {},
 }));
 
-const { performAutoCommit } = await import("./auto-commit-direct");
-
 // ── helpers ────────────────────────────────────────────────────────
 
 function makeParams() {
   return {
     sandbox: {
       workingDirectory: "/sandbox",
-      readFile: async () => changedFiles[0]?.content ?? "",
-      readFileBuffer: async () => Buffer.from(changedFiles[0]?.content ?? ""),
+      readFile: async () => state.changedFiles[0]?.content ?? "",
+      readFileBuffer: async () => Buffer.from(state.changedFiles[0]?.content ?? ""),
       exec: async () => ({ success: true, stdout: "" }),
     } as never,
     userId: "user-1",
@@ -137,10 +138,10 @@ function makeParams() {
 // ── tests ──────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  hasChanges = true;
-  stageFails = false;
-  stagedDiff = "diff --git a/file.ts...";
-  changedFiles = [
+  state.hasChanges = true;
+  state.stageFails = false;
+  state.stagedDiff = "diff --git a/file.ts...";
+  state.changedFiles = [
     {
       path: "file.ts",
       status: "modified",
@@ -148,24 +149,24 @@ beforeEach(() => {
       encoding: "utf-8",
     },
   ];
-  verifyResult = {
+  state.verifyResult = {
     ok: true,
     installationId: 999,
     repositoryId: 123,
     defaultBranch: "main",
   };
-  coAuthorResult = {
+  state.coAuthorResult = {
     name: "octocat",
     email: "12345+octocat@users.noreply.github.com",
   };
-  apiCommitResult = { ok: true, commitSha: "abc123def456" };
-  generateTextResult = { text: "feat: implement new feature" };
-  syncPreservingChangesCalls = 0;
+  state.apiCommitResult = { ok: true, commitSha: "abc123def456" };
+  state.generateTextResult = { text: "feat: implement new feature" };
+  state.syncPreservingChangesCalls = 0;
 });
 
 describe("performAutoCommit", () => {
   test("returns early with no commit when no changes", async () => {
-    hasChanges = false;
+    state.hasChanges = false;
 
     const result = await performAutoCommit(makeParams());
 
@@ -173,7 +174,7 @@ describe("performAutoCommit", () => {
   });
 
   test("returns error when staging fails", async () => {
-    stageFails = true;
+    state.stageFails = true;
 
     const result = await performAutoCommit(makeParams());
 
@@ -185,7 +186,7 @@ describe("performAutoCommit", () => {
   });
 
   test("returns error when repo access verification fails", async () => {
-    verifyResult = { ok: false, reason: "no_installation" };
+    state.verifyResult = { ok: false, reason: "no_installation" };
 
     const result = await performAutoCommit(makeParams());
 
@@ -194,7 +195,7 @@ describe("performAutoCommit", () => {
   });
 
   test("returns error when api commit fails", async () => {
-    apiCommitResult = { ok: false, error: "Concurrent push detected" };
+    state.apiCommitResult = { ok: false, error: "Concurrent push detected" };
 
     const result = await performAutoCommit(makeParams());
 
@@ -210,11 +211,11 @@ describe("performAutoCommit", () => {
     expect(result.commitMessage).toBeDefined();
     expect(result.commitSha).toBe("abc123def456");
     expect(result.error).toBeUndefined();
-    expect(syncPreservingChangesCalls).toBe(1);
+    expect(state.syncPreservingChangesCalls).toBe(1);
   });
 
   test("uses fallback commit message when diff is empty", async () => {
-    stagedDiff = "";
+    state.stagedDiff = "";
 
     const result = await performAutoCommit(makeParams());
 
@@ -223,7 +224,7 @@ describe("performAutoCommit", () => {
   });
 
   test("truncates generated commit message to 72 chars", async () => {
-    generateTextResult = { text: "A".repeat(100) };
+    state.generateTextResult = { text: "A".repeat(100) };
 
     const result = await performAutoCommit(makeParams());
 
@@ -232,7 +233,7 @@ describe("performAutoCommit", () => {
   });
 
   test("returns early when no changed files after staging", async () => {
-    changedFiles = [];
+    state.changedFiles = [];
 
     const result = await performAutoCommit(makeParams());
 

@@ -1,12 +1,5 @@
-import { describe, expect, mock, test } from "bun:test";
-
-mock.module("ai", () => ({
-  isToolUIPart: (part: { type?: unknown }) =>
-    typeof part.type === "string" && part.type.startsWith("tool-"),
-  isReasoningUIPart: (part: { type?: unknown }) => part.type === "reasoning",
-}));
-
-const {
+import { describe, expect, test, vi } from "vitest";
+import {
   getGitFinalizationState,
   getNavbarGitActionState,
   hasRenderableAssistantPart,
@@ -16,7 +9,13 @@ const {
   shouldRenderGitDataPart,
   shouldShowThinkingIndicator,
   shouldUseChatListStreamingState,
-} = await import("./chat-streaming-state");
+} from "./chat-streaming-state";
+
+vi.mock("ai", () => ({
+  isToolUIPart: (part: { type?: unknown }) =>
+    typeof part.type === "string" && part.type.startsWith("tool-"),
+  isReasoningUIPart: (part: { type?: unknown }) => part.type === "reasoning",
+}));
 
 type ChatMessage = Parameters<typeof getNavbarGitActionState>[0][number];
 

@@ -1,46 +1,51 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 type RedisOptions = Record<string, unknown>;
 type RedisTransactionResult = [Error | null, unknown];
 type RedisExecResults = RedisTransactionResult[] | null;
 
-const redisInstances: MockRedis[] = [];
-const redisState: {
-  execResults: RedisExecResults | Promise<RedisExecResults>;
-  ttl: number;
-} = {
-  execResults: [
-    [null, 1],
-    [null, 1],
-  ],
-  ttl: 60_000,
-};
-
-function createMockPipeline() {
-  const pipeline = {
-    incr: mock((_key: string) => pipeline),
-    pexpire: mock((_key: string, _windowMs: number, _mode: string) => pipeline),
-    exec: mock(async () => redisState.execResults),
+const state = vi.hoisted(() => {
+  const redisState: {
+    execResults: RedisExecResults | Promise<RedisExecResults>;
+    ttl: number;
+  } = {
+    execResults: [
+      [null, 1],
+      [null, 1],
+    ],
+    ttl: 60_000,
   };
 
-  return pipeline;
-}
+  function createMockPipeline() {
+    const pipeline = {
+      incr: vi.fn((_key: string) => pipeline),
+      pexpire: vi.fn((_key: string, _windowMs: number, _mode: string) => pipeline),
+      exec: vi.fn(async () => redisState.execResults),
+    };
 
-class MockRedis {
-  options: RedisOptions;
-  on = mock((_event: string, _handler: (error: Error) => void) => this);
-  disconnect = mock(() => undefined);
-  pttl = mock(async (_key: string) => redisState.ttl);
-  multi = mock(() => createMockPipeline());
-
-  constructor(options: RedisOptions) {
-    this.options = options;
-    redisInstances.push(this);
+    return pipeline;
   }
-}
 
-mock.module("ioredis", () => ({
-  default: MockRedis,
+  class MockRedis {
+    options: RedisOptions;
+    on = vi.fn((_event: string, _handler: (error: Error) => void) => this);
+    disconnect = vi.fn(() => undefined);
+    pttl = vi.fn(async (_key: string) => redisState.ttl);
+    multi = vi.fn(() => createMockPipeline());
+
+    constructor(options: RedisOptions) {
+      this.options = options;
+      redisInstances.push(this);
+    }
+  }
+
+  const redisInstances: MockRedis[] = [];
+
+  return { redisInstances, redisState, MockRedis };
+});
+
+vi.mock("ioredis", () => ({
+  default: state.MockRedis,
 }));
 
 const originalRedisUrl = process.env.REDIS_URL;
@@ -56,12 +61,12 @@ async function loadRateLimitModule() {
 }
 
 beforeEach(() => {
-  redisInstances.length = 0;
-  redisState.execResults = [
+  state.redisInstances.length = 0;
+  state.redisState.execResults = [
     [null, 1],
     [null, 1],
   ];
-  redisState.ttl = 60_000;
+  state.redisState.ttl = 60_000;
 });
 
 afterEach(() => {
@@ -134,17 +139,17 @@ describe("checkRateLimit", () => {
       }),
     ).resolves.toBeNull();
 
-    expect(redisInstances).toHaveLength(1);
-    expect(redisInstances[0]?.options.enableOfflineQueue).toBeUndefined();
+    expect(state.redisInstances).toHaveLength(1);
+    expect(state.redisInstances[0]?.options.enableOfflineQueue).toBeUndefined();
   });
 
   test("fails closed when the Redis expiry command fails", async () => {
     const originalConsoleError = console.error;
-    console.error = mock(() => undefined) as unknown as typeof console.error;
+    console.error = vi.fn(() => undefined) as unknown as typeof console.error;
     try {
       process.env.REDIS_URL = "redis://localhost:6379";
       process.env[nodeEnvKey] = "production";
-      redisState.execResults = [
+      state.redisState.execResults = [
         [null, 1],
         [new Error("ERR syntax error"), null],
       ];
@@ -158,7 +163,7 @@ describe("checkRateLimit", () => {
 
       expect(response?.status).toBe(503);
       expect(response?.headers.get("Retry-After")).toBe("30");
-      expect(redisInstances[0]?.disconnect).toHaveBeenCalledTimes(1);
+      expect(state.redisInstances[0]?.disconnect).toHaveBeenCalledTimes(1);
     } finally {
       console.error = originalConsoleError;
     }
@@ -167,11 +172,11 @@ describe("checkRateLimit", () => {
   test("returns a retry response when the Redis count exceeds the limit", async () => {
     process.env.REDIS_URL = "redis://localhost:6379";
     process.env[nodeEnvKey] = "production";
-    redisState.execResults = [
+    state.redisState.execResults = [
       [null, 3],
       [null, 0],
     ];
-    redisState.ttl = 12_345;
+    state.redisState.ttl = 12_345;
     const { checkRateLimit } = await loadRateLimitModule();
 
     const response = await checkRateLimit({
@@ -186,12 +191,12 @@ describe("checkRateLimit", () => {
 
   test("fails closed when the Redis check times out", async () => {
     const originalConsoleError = console.error;
-    console.error = mock(() => undefined) as unknown as typeof console.error;
+    console.error = vi.fn(() => undefined) as unknown as typeof console.error;
     try {
       process.env.REDIS_URL = "redis://localhost:6379";
       process.env.RATE_LIMIT_TIMEOUT_MS = "1";
       process.env[nodeEnvKey] = "production";
-      redisState.execResults = new Promise<RedisExecResults>(() => undefined);
+      state.redisState.execResults = new Promise<RedisExecResults>(() => undefined);
       const { checkRateLimit } = await loadRateLimitModule();
 
       const response = await checkRateLimit({
@@ -202,7 +207,7 @@ describe("checkRateLimit", () => {
 
       expect(response?.status).toBe(503);
       expect(response?.headers.get("Retry-After")).toBe("30");
-      expect(redisInstances[0]?.disconnect).toHaveBeenCalledTimes(1);
+      expect(state.redisInstances[0]?.disconnect).toHaveBeenCalledTimes(1);
     } finally {
       console.error = originalConsoleError;
     }

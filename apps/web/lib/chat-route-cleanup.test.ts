@@ -1,34 +1,32 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
-const spies = {
-  abortChatInstanceTransport: mock((_chatId: string) => {}),
-  removeChatInstance: mock((_chatId: string) => {}),
-  clearChatWorkspaceStatus: mock((_chatId: string) => {}),
-};
+const spies = vi.hoisted(() => ({
+  abortChatInstanceTransport: vi.fn((_chatId: string) => {}),
+  removeChatInstance: vi.fn((_chatId: string) => {}),
+  clearChatWorkspaceStatus: vi.fn((_chatId: string) => {}),
+}));
 
-mock.module("@/lib/chat-instance-manager", () => ({
+vi.mock("@/lib/chat-instance-manager", () => ({
   abortChatInstanceTransport: spies.abortChatInstanceTransport,
   removeChatInstance: spies.removeChatInstance,
 }));
 
-mock.module("@/lib/workspace-status-store", () => ({
+vi.mock("@/lib/workspace-status-store", () => ({
   clearChatWorkspaceStatus: spies.clearChatWorkspaceStatus,
 }));
 
-const cleanupModulePromise = import("./chat-route-cleanup");
+import { cleanupChatRouteOnUnmount } from "./chat-route-cleanup";
 
 describe("cleanupChatRouteOnUnmount", () => {
-  test("aborts local transport and removes chat instance", async () => {
-    const { cleanupChatRouteOnUnmount } = await cleanupModulePromise;
-
+  test("aborts local transport and removes chat instance", () => {
     const calls: string[] = [];
-    const abortTransport = mock((chatId: string) => {
+    const abortTransport = vi.fn((chatId: string) => {
       calls.push(`abort:${chatId}`);
     });
-    const removeInstance = mock((chatId: string) => {
+    const removeInstance = vi.fn((chatId: string) => {
       calls.push(`remove:${chatId}`);
     });
-    const clearWorkspaceStatus = mock((chatId: string) => {
+    const clearWorkspaceStatus = vi.fn((chatId: string) => {
       calls.push(`clear:${chatId}`);
     });
 
@@ -48,20 +46,16 @@ describe("cleanupChatRouteOnUnmount", () => {
     ]);
   });
 
-  test("clears workspace status with default dependencies", async () => {
-    const { cleanupChatRouteOnUnmount } = await cleanupModulePromise;
-
+  test("clears workspace status with default dependencies", () => {
     cleanupChatRouteOnUnmount("chat-789");
 
     expect(spies.clearChatWorkspaceStatus).toHaveBeenCalledWith("chat-789");
   });
 
-  test("never issues a server stop signal during route teardown", async () => {
-    const { cleanupChatRouteOnUnmount } = await cleanupModulePromise;
-
-    const abortTransport = mock((_chatId: string) => {});
-    const removeInstance = mock((_chatId: string) => {});
-    const stopStream = mock((_chatId: string) => {});
+  test("never issues a server stop signal during route teardown", () => {
+    const abortTransport = vi.fn((_chatId: string) => {});
+    const removeInstance = vi.fn((_chatId: string) => {});
+    const stopStream = vi.fn((_chatId: string) => {});
 
     cleanupChatRouteOnUnmount("chat-456", {
       abortTransport,

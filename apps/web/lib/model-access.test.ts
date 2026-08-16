@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { UserPreferencesData } from "@/lib/db/user-preferences";
 import type { ModelVariant } from "@/lib/model-variants";
 import {

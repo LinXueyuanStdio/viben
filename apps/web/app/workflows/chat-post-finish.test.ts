@@ -1,108 +1,114 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WebAgentUIMessage } from "@/app/types";
 
 // ── Mutable spy state ──────────────────────────────────────────────
 
-let createChatMessageIfNotExistsResult: unknown = { id: "msg-1" };
-let isFirstChatMessageResult = false;
-let upsertChatMessageScopedResult: { status: string } = {
-  status: "inserted",
-};
+const state = vi.hoisted(() => {
+  const s = {
+    createChatMessageIfNotExistsResult: { id: "msg-1" } as unknown,
+    isFirstChatMessageResult: false,
+    upsertChatMessageScopedResult: { status: "inserted" } as {
+      status: string;
+    },
+  };
 
-const sandboxExec = mock(() =>
-  Promise.resolve({ success: true, stdout: " M file.ts\n" }),
-);
+  const sandboxExec = vi.fn(() =>
+    Promise.resolve({ success: true, stdout: " M file.ts\n" }),
+  );
 
-const spies = {
-  claimChatActiveStreamId: mock(() => Promise.resolve(true)),
-  compareAndSetChatActiveStreamId: mock(() => Promise.resolve(true)),
-  createChatMessageIfNotExists: mock(
-    () =>
-      Promise.resolve(createChatMessageIfNotExistsResult) as Promise<unknown>,
-  ),
-  isFirstChatMessage: mock(
-    () => Promise.resolve(isFirstChatMessageResult) as Promise<boolean>,
-  ),
-  touchChat: mock(() => Promise.resolve()),
-  updateChat: mock((_chatId: string, _patch: Record<string, unknown>) =>
-    Promise.resolve(),
-  ),
-  updateChatAssistantActivity: mock(() => Promise.resolve()),
-  updateSession: mock((_sessionId: string, _patch: Record<string, unknown>) =>
-    Promise.resolve(),
-  ),
-  upsertChatMessageScoped: mock(() =>
-    Promise.resolve(upsertChatMessageScopedResult),
-  ),
-  recordUsage: mock(() => Promise.resolve()),
-  buildActiveLifecycleUpdate: mock(() => ({})),
-  buildLifecycleActivityUpdate: mock(() => ({})),
-  connectSandbox: mock(() =>
-    Promise.resolve({
-      workingDirectory: "/vercel/sandbox",
-      exec: sandboxExec,
-      getState: () => ({ type: "vercel", sandboxId: "sb-1" }),
-    }),
-  ),
-  computeAndCacheDiff: mock(() => Promise.resolve()),
-  performAutoCommit: mock(() =>
-    Promise.resolve({ committed: true, pushed: true }),
-  ),
-  performAutoCreatePr: mock(() =>
-    Promise.resolve({ created: true, syncedExisting: false, skipped: false }),
-  ),
-};
+  const spies = {
+    claimChatActiveStreamId: vi.fn(() => Promise.resolve(true)),
+    compareAndSetChatActiveStreamId: vi.fn(() => Promise.resolve(true)),
+    createChatMessageIfNotExists: vi.fn(
+      () =>
+        Promise.resolve(s.createChatMessageIfNotExistsResult) as Promise<unknown>,
+    ),
+    isFirstChatMessage: vi.fn(
+      () => Promise.resolve(s.isFirstChatMessageResult) as Promise<boolean>,
+    ),
+    touchChat: vi.fn(() => Promise.resolve()),
+    updateChat: vi.fn((_chatId: string, _patch: Record<string, unknown>) =>
+      Promise.resolve(),
+    ),
+    updateChatAssistantActivity: vi.fn(() => Promise.resolve()),
+    updateSession: vi.fn((_sessionId: string, _patch: Record<string, unknown>) =>
+      Promise.resolve(),
+    ),
+    upsertChatMessageScoped: vi.fn(() =>
+      Promise.resolve(s.upsertChatMessageScopedResult),
+    ),
+    recordUsage: vi.fn(() => Promise.resolve()),
+    buildActiveLifecycleUpdate: vi.fn(() => ({})),
+    buildLifecycleActivityUpdate: vi.fn(() => ({})),
+    connectSandbox: vi.fn(() =>
+      Promise.resolve({
+        workingDirectory: "/vercel/sandbox",
+        exec: sandboxExec,
+        getState: () => ({ type: "vercel", sandboxId: "sb-1" }),
+      }),
+    ),
+    computeAndCacheDiff: vi.fn(() => Promise.resolve()),
+    performAutoCommit: vi.fn(() =>
+      Promise.resolve({ committed: true, pushed: true }),
+    ),
+    performAutoCreatePr: vi.fn(() =>
+      Promise.resolve({ created: true, syncedExisting: false, skipped: false }),
+    ),
+  };
+
+  return Object.assign(s, { sandboxExec, spies });
+});
 
 // ── Module mocks (must appear before the module-under-test import) ──
 
-mock.module("@/lib/db/sessions", () => ({
-  claimChatActiveStreamId: spies.claimChatActiveStreamId,
-  compareAndSetChatActiveStreamId: spies.compareAndSetChatActiveStreamId,
-  createChatMessageIfNotExists: spies.createChatMessageIfNotExists,
-  isFirstChatMessage: spies.isFirstChatMessage,
-  touchChat: spies.touchChat,
-  updateChat: spies.updateChat,
-  updateChatAssistantActivity: spies.updateChatAssistantActivity,
-  updateSession: spies.updateSession,
-  upsertChatMessageScoped: spies.upsertChatMessageScoped,
+vi.mock("@/lib/db/sessions", () => ({
+  claimChatActiveStreamId: state.spies.claimChatActiveStreamId,
+  compareAndSetChatActiveStreamId: state.spies.compareAndSetChatActiveStreamId,
+  createChatMessageIfNotExists: state.spies.createChatMessageIfNotExists,
+  isFirstChatMessage: state.spies.isFirstChatMessage,
+  touchChat: state.spies.touchChat,
+  updateChat: state.spies.updateChat,
+  updateChatAssistantActivity: state.spies.updateChatAssistantActivity,
+  updateSession: state.spies.updateSession,
+  upsertChatMessageScoped: state.spies.upsertChatMessageScoped,
 }));
 
-mock.module("@/lib/db/usage", () => ({
-  recordUsage: spies.recordUsage,
+vi.mock("@/lib/db/usage", () => ({
+  recordUsage: state.spies.recordUsage,
 }));
 
-mock.module("@/lib/sandbox/lifecycle", () => ({
-  buildActiveLifecycleUpdate: spies.buildActiveLifecycleUpdate,
-  buildLifecycleActivityUpdate: spies.buildLifecycleActivityUpdate,
+vi.mock("@/lib/sandbox/lifecycle", () => ({
+  buildActiveLifecycleUpdate: state.spies.buildActiveLifecycleUpdate,
+  buildLifecycleActivityUpdate: state.spies.buildLifecycleActivityUpdate,
 }));
 
-mock.module("@viben/sandbox", () => ({
-  connectSandbox: spies.connectSandbox,
+vi.mock("@viben/sandbox", () => ({
+  connectSandbox: state.spies.connectSandbox,
 }));
 
-mock.module("@/lib/diff/compute-diff", () => ({
-  computeAndCacheDiff: spies.computeAndCacheDiff,
+vi.mock("@/lib/diff/compute-diff", () => ({
+  computeAndCacheDiff: state.spies.computeAndCacheDiff,
 }));
 
-mock.module("@/lib/chat/auto-commit-direct", () => ({
-  performAutoCommit: spies.performAutoCommit,
+vi.mock("@/lib/chat/auto-commit-direct", () => ({
+  performAutoCommit: state.spies.performAutoCommit,
 }));
 
-mock.module("@/lib/chat/auto-pr-direct", () => ({
-  performAutoCreatePr: spies.performAutoCreatePr,
+vi.mock("@/lib/chat/auto-pr-direct", () => ({
+  performAutoCreatePr: state.spies.performAutoCreatePr,
 }));
 
-const {
-  persistUserMessage,
-  persistAssistantMessage,
-  refreshLifecycleActivity,
-  persistSandboxState,
+import {
   clearActiveStream,
-  refreshDiffCache,
   hasAutoCommitChangesStep,
+  persistAssistantMessage,
+  persistSandboxState,
+  persistUserMessage,
+  refreshDiffCache,
+  refreshLifecycleActivity,
   runAutoCommitStep,
   runAutoCreatePrStep,
-} = await import("./chat-post-finish");
+} from "./chat-post-finish";
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -131,14 +137,14 @@ function makeAssistantMessage(
 // ── Tests ──────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  sandboxExec.mockClear();
-  sandboxExec.mockImplementation(() =>
+  state.sandboxExec.mockClear();
+  state.sandboxExec.mockImplementation(() =>
     Promise.resolve({ success: true, stdout: " M file.ts\n" }),
   );
-  Object.values(spies).forEach((s) => s.mockClear());
-  createChatMessageIfNotExistsResult = { id: "msg-1" };
-  isFirstChatMessageResult = false;
-  upsertChatMessageScopedResult = { status: "inserted" };
+  Object.values(state.spies).forEach((spy) => spy.mockClear());
+  state.createChatMessageIfNotExistsResult = { id: "msg-1" };
+  state.isFirstChatMessageResult = false;
+  state.upsertChatMessageScopedResult = { status: "inserted" };
 });
 
 // ─── persistUserMessage ────────────────────────────────────────────
@@ -146,38 +152,38 @@ beforeEach(() => {
 describe("persistUserMessage", () => {
   test("skips non-user messages", async () => {
     await persistUserMessage("chat-1", makeAssistantMessage());
-    expect(spies.createChatMessageIfNotExists).not.toHaveBeenCalled();
+    expect(state.spies.createChatMessageIfNotExists).not.toHaveBeenCalled();
   });
 
   test("creates message and touches chat", async () => {
     await persistUserMessage("chat-1", makeUserMessage());
 
-    expect(spies.createChatMessageIfNotExists).toHaveBeenCalledTimes(1);
-    expect(spies.touchChat).toHaveBeenCalledWith("chat-1");
+    expect(state.spies.createChatMessageIfNotExists).toHaveBeenCalledTimes(1);
+    expect(state.spies.touchChat).toHaveBeenCalledWith("chat-1");
   });
 
   test("returns early when message already exists", async () => {
-    createChatMessageIfNotExistsResult = undefined;
+    state.createChatMessageIfNotExistsResult = undefined;
     await persistUserMessage("chat-1", makeUserMessage());
 
-    expect(spies.touchChat).not.toHaveBeenCalled();
+    expect(state.spies.touchChat).not.toHaveBeenCalled();
   });
 
   test("sets title when first message with short text", async () => {
-    isFirstChatMessageResult = true;
+    state.isFirstChatMessageResult = true;
     const msg = makeUserMessage({
       parts: [{ type: "text", text: "Fix bug" }],
     });
 
     await persistUserMessage("chat-1", msg);
 
-    expect(spies.updateChat).toHaveBeenCalledWith("chat-1", {
+    expect(state.spies.updateChat).toHaveBeenCalledWith("chat-1", {
       title: "Fix bug",
     });
   });
 
   test("truncates title when text exceeds 80 chars", async () => {
-    isFirstChatMessageResult = true;
+    state.isFirstChatMessageResult = true;
     const longText = "A".repeat(100);
     const msg = makeUserMessage({
       parts: [{ type: "text", text: longText }],
@@ -185,13 +191,13 @@ describe("persistUserMessage", () => {
 
     await persistUserMessage("chat-1", msg);
 
-    expect(spies.updateChat).toHaveBeenCalledWith("chat-1", {
+    expect(state.spies.updateChat).toHaveBeenCalledWith("chat-1", {
       title: `${"A".repeat(80)}...`,
     });
   });
 
   test("skips title when no text parts", async () => {
-    isFirstChatMessageResult = true;
+    state.isFirstChatMessageResult = true;
     const msg = makeUserMessage({
       parts: [{ type: "tool-invocation" as unknown as "text", text: "" }],
     });
@@ -199,11 +205,11 @@ describe("persistUserMessage", () => {
     await persistUserMessage("chat-1", msg);
 
     // updateChat should not be called since text extraction yields ""
-    expect(spies.updateChat).not.toHaveBeenCalled();
+    expect(state.spies.updateChat).not.toHaveBeenCalled();
   });
 
   test("does not throw on db error", async () => {
-    spies.createChatMessageIfNotExists.mockImplementationOnce(() =>
+    state.spies.createChatMessageIfNotExists.mockImplementationOnce(() =>
       Promise.reject(new Error("DB down")),
     );
 
@@ -216,33 +222,33 @@ describe("persistUserMessage", () => {
 
 describe("persistAssistantMessage", () => {
   test("upserts assistant message and updates activity on insert", async () => {
-    upsertChatMessageScopedResult = { status: "inserted" };
+    state.upsertChatMessageScopedResult = { status: "inserted" };
 
     await persistAssistantMessage("chat-1", makeAssistantMessage());
 
-    expect(spies.upsertChatMessageScoped).toHaveBeenCalledTimes(1);
-    expect(spies.updateChatAssistantActivity).toHaveBeenCalledTimes(1);
+    expect(state.spies.upsertChatMessageScoped).toHaveBeenCalledTimes(1);
+    expect(state.spies.updateChatAssistantActivity).toHaveBeenCalledTimes(1);
   });
 
   test("skips activity update on conflict", async () => {
-    upsertChatMessageScopedResult = { status: "conflict" };
+    state.upsertChatMessageScopedResult = { status: "conflict" };
 
     await persistAssistantMessage("chat-1", makeAssistantMessage());
 
-    expect(spies.upsertChatMessageScoped).toHaveBeenCalledTimes(1);
-    expect(spies.updateChatAssistantActivity).not.toHaveBeenCalled();
+    expect(state.spies.upsertChatMessageScoped).toHaveBeenCalledTimes(1);
+    expect(state.spies.updateChatAssistantActivity).not.toHaveBeenCalled();
   });
 
   test("skips activity update on update status", async () => {
-    upsertChatMessageScopedResult = { status: "updated" };
+    state.upsertChatMessageScopedResult = { status: "updated" };
 
     await persistAssistantMessage("chat-1", makeAssistantMessage());
 
-    expect(spies.updateChatAssistantActivity).not.toHaveBeenCalled();
+    expect(state.spies.updateChatAssistantActivity).not.toHaveBeenCalled();
   });
 
   test("does not throw on db error", async () => {
-    spies.upsertChatMessageScoped.mockImplementationOnce(() =>
+    state.spies.upsertChatMessageScoped.mockImplementationOnce(() =>
       Promise.reject(new Error("DB down")),
     );
 
@@ -256,13 +262,13 @@ describe("refreshLifecycleActivity", () => {
   test("updates session lifecycle timing", async () => {
     await refreshLifecycleActivity("session-1");
 
-    expect(spies.buildLifecycleActivityUpdate).toHaveBeenCalledTimes(1);
-    expect(spies.updateSession).toHaveBeenCalledTimes(1);
-    expect(spies.updateSession).toHaveBeenCalledWith("session-1", {});
+    expect(state.spies.buildLifecycleActivityUpdate).toHaveBeenCalledTimes(1);
+    expect(state.spies.updateSession).toHaveBeenCalledTimes(1);
+    expect(state.spies.updateSession).toHaveBeenCalledWith("session-1", {});
   });
 
   test("does not throw on update error", async () => {
-    spies.updateSession.mockImplementationOnce(() =>
+    state.spies.updateSession.mockImplementationOnce(() =>
       Promise.reject(new Error("DB down")),
     );
 
@@ -276,22 +282,22 @@ describe("persistSandboxState", () => {
   test("connects to sandbox and updates session", async () => {
     await persistSandboxState("session-1", { type: "vercel" } as never);
 
-    expect(spies.connectSandbox).toHaveBeenCalledTimes(1);
-    expect(spies.updateSession).toHaveBeenCalledTimes(1);
+    expect(state.spies.connectSandbox).toHaveBeenCalledTimes(1);
+    expect(state.spies.updateSession).toHaveBeenCalledTimes(1);
   });
 
   test("skips update when getState returns undefined", async () => {
-    spies.connectSandbox.mockImplementationOnce(
+    state.spies.connectSandbox.mockImplementationOnce(
       () => Promise.resolve({ getState: () => undefined }) as never,
     );
 
     await persistSandboxState("session-1", { type: "vercel" } as never);
 
-    expect(spies.updateSession).not.toHaveBeenCalled();
+    expect(state.spies.updateSession).not.toHaveBeenCalled();
   });
 
   test("does not throw on connection error", async () => {
-    spies.connectSandbox.mockImplementationOnce(() =>
+    state.spies.connectSandbox.mockImplementationOnce(() =>
       Promise.reject(new Error("Sandbox unavailable")),
     );
 
@@ -305,7 +311,7 @@ describe("clearActiveStream", () => {
   test("calls compareAndSet with correct args", async () => {
     await clearActiveStream("chat-1", "wrun_abc");
 
-    expect(spies.compareAndSetChatActiveStreamId).toHaveBeenCalledWith(
+    expect(state.spies.compareAndSetChatActiveStreamId).toHaveBeenCalledWith(
       "chat-1",
       "wrun_abc",
       null,
@@ -313,15 +319,15 @@ describe("clearActiveStream", () => {
   });
 
   test("retries transient db errors before succeeding", async () => {
-    spies.compareAndSetChatActiveStreamId
+    state.spies.compareAndSetChatActiveStreamId
       .mockImplementationOnce(() => Promise.reject(new Error("DB down")))
       .mockImplementationOnce(() => Promise.reject(new Error("DB still down")));
 
     await clearActiveStream("chat-1", "wrun_abc");
 
-    expect(spies.compareAndSetChatActiveStreamId).toHaveBeenCalledTimes(3);
+    expect(state.spies.compareAndSetChatActiveStreamId).toHaveBeenCalledTimes(3);
 
-    const compareAndSetCalls = spies.compareAndSetChatActiveStreamId.mock
+    const compareAndSetCalls = state.spies.compareAndSetChatActiveStreamId.mock
       .calls as unknown[][];
     expect(compareAndSetCalls).toEqual([
       ["chat-1", "wrun_abc", null],
@@ -331,7 +337,7 @@ describe("clearActiveStream", () => {
   });
 
   test("does not throw after retry budget is exhausted", async () => {
-    spies.compareAndSetChatActiveStreamId
+    state.spies.compareAndSetChatActiveStreamId
       .mockImplementationOnce(() => Promise.reject(new Error("DB down")))
       .mockImplementationOnce(() => Promise.reject(new Error("DB still down")))
       .mockImplementationOnce(() =>
@@ -340,7 +346,7 @@ describe("clearActiveStream", () => {
 
     await clearActiveStream("chat-1", "wrun_abc");
 
-    expect(spies.compareAndSetChatActiveStreamId).toHaveBeenCalledTimes(3);
+    expect(state.spies.compareAndSetChatActiveStreamId).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -350,12 +356,12 @@ describe("refreshDiffCache", () => {
   test("connects sandbox and computes diff", async () => {
     await refreshDiffCache("session-1", { type: "vercel" } as never);
 
-    expect(spies.connectSandbox).toHaveBeenCalledTimes(1);
-    expect(spies.computeAndCacheDiff).toHaveBeenCalledTimes(1);
+    expect(state.spies.connectSandbox).toHaveBeenCalledTimes(1);
+    expect(state.spies.computeAndCacheDiff).toHaveBeenCalledTimes(1);
   });
 
   test("does not throw on error", async () => {
-    spies.connectSandbox.mockImplementationOnce(() =>
+    state.spies.connectSandbox.mockImplementationOnce(() =>
       Promise.reject(new Error("Sandbox unavailable")),
     );
 
@@ -367,7 +373,7 @@ describe("refreshDiffCache", () => {
 
 describe("hasAutoCommitChangesStep", () => {
   test("returns false when git status is clean", async () => {
-    sandboxExec.mockImplementationOnce(() =>
+    state.sandboxExec.mockImplementationOnce(() =>
       Promise.resolve({ success: true, stdout: "" }),
     );
 
@@ -379,7 +385,7 @@ describe("hasAutoCommitChangesStep", () => {
   });
 
   test("falls back to true when preflight fails", async () => {
-    sandboxExec.mockImplementationOnce(() =>
+    state.sandboxExec.mockImplementationOnce(() =>
       Promise.resolve({ success: false, stdout: "" }),
     );
 
@@ -404,9 +410,9 @@ describe("runAutoCommitStep", () => {
       sandboxState: { type: "vercel" } as never,
     });
 
-    expect(spies.connectSandbox).toHaveBeenCalledTimes(1);
-    expect(spies.performAutoCommit).toHaveBeenCalledTimes(1);
-    expect(spies.performAutoCommit).toHaveBeenCalledWith(
+    expect(state.spies.connectSandbox).toHaveBeenCalledTimes(1);
+    expect(state.spies.performAutoCommit).toHaveBeenCalledTimes(1);
+    expect(state.spies.performAutoCommit).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         sessionId: "session-1",
@@ -418,7 +424,7 @@ describe("runAutoCommitStep", () => {
   });
 
   test("does not throw on error", async () => {
-    spies.performAutoCommit.mockImplementationOnce(() =>
+    state.spies.performAutoCommit.mockImplementationOnce(() =>
       Promise.reject(new Error("Git error")),
     );
 
@@ -444,9 +450,9 @@ describe("runAutoCreatePrStep", () => {
       sandboxState: { type: "vercel" } as never,
     });
 
-    expect(spies.connectSandbox).toHaveBeenCalledTimes(1);
-    expect(spies.performAutoCreatePr).toHaveBeenCalledTimes(1);
-    expect(spies.performAutoCreatePr).toHaveBeenCalledWith(
+    expect(state.spies.connectSandbox).toHaveBeenCalledTimes(1);
+    expect(state.spies.performAutoCreatePr).toHaveBeenCalledTimes(1);
+    expect(state.spies.performAutoCreatePr).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         sessionId: "session-1",
@@ -458,7 +464,7 @@ describe("runAutoCreatePrStep", () => {
   });
 
   test("does not throw on error", async () => {
-    spies.performAutoCreatePr.mockImplementationOnce(() =>
+    state.spies.performAutoCreatePr.mockImplementationOnce(() =>
       Promise.reject(new Error("GitHub error")),
     );
 

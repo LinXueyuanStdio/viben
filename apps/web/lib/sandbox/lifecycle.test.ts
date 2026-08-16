@@ -1,17 +1,12 @@
-import { beforeAll, describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   SANDBOX_EXPIRES_BUFFER_MS,
   SANDBOX_INACTIVITY_TIMEOUT_MS,
 } from "./config";
+import * as lifecycleModule from "./lifecycle";
 
-mock.module("server-only", () => ({}));
-
-let lifecycleModule: typeof import("./lifecycle");
-
-beforeAll(async () => {
-  lifecycleModule = await import("./lifecycle");
-});
+vi.mock("server-only", () => ({}));
 
 describe("getLifecycleDueAtMs", () => {
   test("prefers hibernateAfter when earlier than expiry", () => {

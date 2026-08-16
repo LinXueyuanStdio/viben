@@ -1,11 +1,41 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  appendPullRequestContextSection,
+  resolvePullRequestAppBaseUrl,
+  resolvePullRequestContextSection,
+} from "./pr-content";
 
-mock.module("server-only", () => ({}));
+const state = vi.hoisted(() => ({
+  sessionRecord: null as { userId: string } | null,
+  chats: [] as Array<{ id: string }>,
+  userRecord: null as { displayName: string | null; username: string | null } | null,
+  githubProfile: null as { username: string; externalUserId: string } | null,
+}));
 
-let sessionRecord: { userId: string } | null = null;
-let chats: Array<{ id: string }> = [];
-let userRecord: { name: string | null; username: string | null } | null = null;
-let githubProfile: { username: string; externalUserId: string } | null = null;
+vi.mock("server-only", () => ({}));
+
+vi.mock("@/app/api/generate-pr/_lib/generate-pr-helpers", () => ({
+  getConversationContext: async () => "",
+}));
+
+vi.mock("@/lib/db/sessions", () => ({
+  getSessionById: async () => state.sessionRecord,
+  getChatsBySessionId: async () => state.chats,
+}));
+
+vi.mock("@/lib/github/users", () => ({
+  getGitHubUserProfile: async () => state.githubProfile,
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  db: {
+    query: {
+      users: {
+        findFirst: async () => state.userRecord,
+      },
+    },
+  },
+}));
 
 const originalVercelUrl = process.env.VERCEL_URL;
 const originalVercelEnv = process.env.VERCEL_ENV;
@@ -33,37 +63,12 @@ function restoreEnv() {
   }
 }
 
-mock.module("@/app/api/generate-pr/_lib/generate-pr-helpers", () => ({
-  getConversationContext: async () => "",
-}));
-
-mock.module("@/lib/db/sessions", () => ({
-  getSessionById: async () => sessionRecord,
-  getChatsBySessionId: async () => chats,
-}));
-
-mock.module("@/lib/github/users", () => ({
-  getGitHubUserProfile: async () => githubProfile,
-}));
-
-mock.module("@/lib/db/client", () => ({
-  db: {
-    query: {
-      users: {
-        findFirst: async () => userRecord,
-      },
-    },
-  },
-}));
-
-const prContentModulePromise = import("./pr-content");
-
 describe("pr-content", () => {
   beforeEach(() => {
-    sessionRecord = null;
-    chats = [];
-    userRecord = null;
-    githubProfile = null;
+    state.sessionRecord = null;
+    state.chats = [];
+    state.userRecord = null;
+    state.githubProfile = null;
     restoreEnv();
   });
 
@@ -72,12 +77,10 @@ describe("pr-content", () => {
   });
 
   test("resolvePullRequestContextSection returns a single-line footer with chat link and attribution", async () => {
-    const { resolvePullRequestContextSection } = await prContentModulePromise;
-
-    sessionRecord = { userId: "user-1" };
-    chats = [{ id: "chat-2" }, { id: "chat-1" }];
-    userRecord = { name: "Nico Albanese", username: "nico" };
-    githubProfile = { username: "nicoalbanese10", externalUserId: "12345" };
+    state.sessionRecord = { userId: "user-1" };
+    state.chats = [{ id: "chat-2" }, { id: "chat-1" }];
+    state.userRecord = { displayName: "Nico Albanese", username: "nico" };
+    state.githubProfile = { username: "nicoalbanese10", externalUserId: "12345" };
 
     const section = await resolvePullRequestContextSection({
       sessionId: "session-1",
@@ -90,10 +93,8 @@ describe("pr-content", () => {
   });
 
   test("resolvePullRequestContextSection falls back to plain-text attribution when no GitHub account exists", async () => {
-    const { resolvePullRequestContextSection } = await prContentModulePromise;
-
-    sessionRecord = { userId: "user-1" };
-    userRecord = { name: null, username: "nico" };
+    state.sessionRecord = { userId: "user-1" };
+    state.userRecord = { displayName: null, username: "nico" };
 
     const section = await resolvePullRequestContextSection({
       sessionId: "session-1",
@@ -103,8 +104,6 @@ describe("pr-content", () => {
   });
 
   test("resolvePullRequestAppBaseUrl prefers the active deployment url", async () => {
-    const { resolvePullRequestAppBaseUrl } = await prContentModulePromise;
-
     process.env.VERCEL_URL = "preview-openharness.vercel.app";
     process.env.VERCEL_ENV = "preview";
     process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL = "openharness.dev";
@@ -120,8 +119,6 @@ describe("pr-content", () => {
   });
 
   test("appendPullRequestContextSection appends the footer after a horizontal rule", async () => {
-    const { appendPullRequestContextSection } = await prContentModulePromise;
-
     expect(
       appendPullRequestContextSection(
         "## Summary\n\nInitial body\n",

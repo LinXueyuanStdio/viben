@@ -1,15 +1,12 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
+import { toUserPreferencesData } from "./user-preferences";
 
-mock.module("./client", () => ({
+vi.mock("./client", () => ({
   db: {},
 }));
 
-const userPreferencesModulePromise = import("./user-preferences");
-
 describe("toUserPreferencesData", () => {
-  test("returns defaults when row is undefined", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("returns defaults when row is undefined", () => {
     expect(toUserPreferencesData()).toEqual({
       defaultModelId: "openai/gpt-5.4",
       defaultSubagentModelId: null,
@@ -26,9 +23,7 @@ describe("toUserPreferencesData", () => {
     });
   });
 
-  test("normalizes invalid sandbox and diff mode values to defaults", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("normalizes invalid sandbox and diff mode values to defaults", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: "openai/gpt-5-mini",
@@ -48,9 +43,7 @@ describe("toUserPreferencesData", () => {
     expect(result.defaultDiffMode).toBe("unified");
   });
 
-  test("normalizes legacy hybrid sandbox types to vercel", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("normalizes legacy hybrid sandbox types to vercel", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: null,
@@ -70,9 +63,7 @@ describe("toUserPreferencesData", () => {
     expect(result.defaultDiffMode).toBe("unified");
   });
 
-  test("drops invalid globalSkillRefs payloads", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("drops invalid globalSkillRefs payloads", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: null,
@@ -93,9 +84,7 @@ describe("toUserPreferencesData", () => {
     expect(result.globalSkillRefs).toEqual([]);
   });
 
-  test("keeps valid globalSkillRefs payloads", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("keeps valid globalSkillRefs payloads", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: null,
@@ -119,9 +108,7 @@ describe("toUserPreferencesData", () => {
     ]);
   });
 
-  test("drops invalid modelVariants payloads", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("drops invalid modelVariants payloads", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: null,
@@ -140,9 +127,7 @@ describe("toUserPreferencesData", () => {
     expect(result.modelVariants).toEqual([]);
   });
 
-  test("keeps valid modelVariants payloads", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("keeps valid modelVariants payloads", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: null,
@@ -188,9 +173,7 @@ describe("toUserPreferencesData", () => {
     });
   });
 
-  test("keeps publicUsageEnabled when provided", async () => {
-    const { toUserPreferencesData } = await userPreferencesModulePromise;
-
+  test("keeps publicUsageEnabled when provided", () => {
     const result = toUserPreferencesData({
       defaultModelId: "openai/gpt-5",
       defaultSubagentModelId: null,

@@ -1,10 +1,36 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { UIMessageChunk } from "ai";
 
-// ── Spy state ──────────────────────────────────────────────────────
+type TestSessionRecord = {
+  id: string;
+  userId: string;
+  agentType: "work" | "chat";
+  autoCommitPushOverride: boolean | null;
+  autoCreatePrOverride: boolean | null;
+  repoOwner: string | null;
+  repoName: string | null;
+};
 
-const writtenChunks: UIMessageChunk[] = [];
-let runStatus: string = "running";
+type TestChatRecord = {
+  id: string;
+  sessionId: string;
+  modelId: string | null;
+};
+
+type TestPreferences = {
+  defaultModelId: string;
+  defaultSubagentModelId: string | null;
+  defaultSandboxType: "vercel";
+  defaultDiffMode: "unified";
+  autoCommitPush: boolean;
+  autoCreatePr: boolean;
+  alertsEnabled: boolean;
+  alertSoundEnabled: boolean;
+  publicUsageEnabled: boolean;
+  globalSkillRefs: never[];
+  modelVariants: never[];
+  enabledModelIds: string[];
+};
 
 type TestResolvedChatSandboxRuntime = {
   sandboxState: {
@@ -22,303 +48,297 @@ type TestResolvedChatSandboxRuntime = {
   repoName?: string;
 };
 
-function createResolvedChatSandboxRuntime(
-  overrides: Partial<TestResolvedChatSandboxRuntime> = {},
-): TestResolvedChatSandboxRuntime {
-  return {
-    sandboxState: {
-      type: "vercel",
-      sandboxName: "session_session-1",
-      expiresAt: Date.now() + 60_000,
-    },
-    workingDirectory: "/vercel/sandbox",
-    currentBranch: "main",
-    environmentDetails: "test sandbox",
-    skills: [],
-    didSetupWorkspace: false,
-    sessionTitle: "Session title",
-    repoOwner: "acme",
-    repoName: "repo",
-    ...overrides,
-  };
-}
+// ── Spy state ──────────────────────────────────────────────────────
 
-const spies = {
-  persistUserMessage: mock(() => Promise.resolve()),
-  persistAssistantMessageWithToolResults: mock(() => Promise.resolve()),
-  persistAssistantMessage: mock((_chatId?: unknown, _message?: unknown) =>
-    Promise.resolve(),
-  ),
-  persistSandboxState: mock((_sessionId?: unknown, _sandboxState?: unknown) =>
-    Promise.resolve(),
-  ),
-  resolveChatSandboxRuntime: mock((_params: { assistantId?: string }) => {
-    return Promise.resolve(createResolvedChatSandboxRuntime());
-  }),
-  claimActiveStream: mock(
-    async (
-      _chatId?: unknown,
-      _workflowRunId?: unknown,
-      writable?: WritableStream<UIMessageChunk>,
-      messageId?: string,
-    ) => {
-      if (writable && messageId) {
-        const writer = writable.getWriter();
-        try {
-          await writer.write({ type: "start", messageId });
-        } finally {
-          writer.releaseLock();
-        }
-      }
-      return "claimed";
-    },
-  ),
-  closeStream: mock((writable: WritableStream<UIMessageChunk>) =>
-    writable.close(),
-  ),
-  clearActiveStream: mock((_chatId?: unknown, _workflowRunId?: unknown) =>
-    Promise.resolve(),
-  ),
-  sendFinish: mock(async (writable: WritableStream<UIMessageChunk>) => {
-    const writer = writable.getWriter();
-    try {
-      await writer.write({ type: "finish", finishReason: "stop" });
-    } finally {
-      writer.releaseLock();
-    }
-  }),
-  recordWorkflowUsage: mock(() => Promise.resolve()),
-  refreshDiffCache: mock((_sessionId?: unknown, _sandboxState?: unknown) =>
-    Promise.resolve(),
-  ),
-  refreshLifecycleActivity: mock(() => Promise.resolve()),
-  hasAutoCommitChangesStep: mock(() => Promise.resolve(true)),
-  runAutoCommitStep: mock(() =>
-    Promise.resolve({ committed: false, pushed: false }),
-  ),
-  runAutoCreatePrStep: mock(() =>
-    Promise.resolve({
-      created: true,
-      syncedExisting: false,
-      skipped: false,
-      prNumber: 42,
-      prUrl: "https://github.com/acme/repo/pull/42",
-    }),
-  ),
-  runPageAgentStep: mock(() =>
-    Promise.resolve({
-      responseMessage: {
-        id: "assistant-1",
-        role: "assistant",
-        parts: [{ type: "text", text: "Page answer" }],
-        metadata: {},
+const state = vi.hoisted(() => {
+  const s = {
+    writtenChunks: [] as UIMessageChunk[],
+    runStatus: "running",
+    throwOnAgentStream: false,
+    agentStreamParts: [] as Array<Record<string, unknown>>,
+    agentAssistantParts: undefined as Array<Record<string, unknown>> | undefined,
+    agentFinishReason: "stop",
+    agentRawFinishReason: "provider_stop" as string | undefined,
+    agentTotalUsage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+    agentResponseMessages: [] as unknown[],
+    agentResponse: {} as Record<string, unknown>,
+    streamOnFinishCallback: undefined as
+      | ((args: { responseMessage: unknown }) => void)
+      | undefined,
+    agentWarnings: undefined as unknown[] | undefined,
+    agentRequestBody: undefined as unknown,
+    agentResponseHeaders: undefined as Record<string, string> | undefined,
+    agentResponseBody: undefined as unknown,
+    agentProviderMetadata: undefined as Record<string, unknown> | undefined,
+    agentInputMessages: undefined as unknown,
+    testSessionRecord: {} as TestSessionRecord,
+    testChatRecord: {} as TestChatRecord,
+    testPreferences: {} as TestPreferences,
+  };
+
+  s.agentResponse = { messages: s.agentResponseMessages };
+
+  function createResolvedChatSandboxRuntime(
+    overrides: Partial<TestResolvedChatSandboxRuntime> = {},
+  ): TestResolvedChatSandboxRuntime {
+    return {
+      sandboxState: {
+        type: "vercel",
+        sandboxName: "session_session-1",
+        expiresAt: Date.now() + 60_000,
       },
-      responseMessages: [],
-      finishReason: "stop",
-      rawFinishReason: "provider_stop",
-      stepUsage: agentTotalUsage,
-      stepCost: undefined,
-      stepWasAborted: false,
-      stepTiming: {
-        stepNumber: 1,
-        startedAt: "2026-01-01T00:00:00.000Z",
-        finishedAt: "2026-01-01T00:00:01.000Z",
-        durationMs: 1000,
+      workingDirectory: "/vercel/sandbox",
+      currentBranch: "main",
+      environmentDetails: "test sandbox",
+      skills: [],
+      didSetupWorkspace: false,
+      sessionTitle: "Session title",
+      repoOwner: "acme",
+      repoName: "repo",
+      ...overrides,
+    };
+  }
+
+  function buildAgentSteps() {
+    return [
+      {
+        stepNumber: 0,
+        model: {
+          provider: "openai",
+          modelId:
+            typeof s.agentResponse.modelId === "string"
+              ? s.agentResponse.modelId
+              : "test-model",
+        },
+        finishReason: s.agentFinishReason,
+        rawFinishReason: s.agentRawFinishReason,
+        usage: s.agentTotalUsage,
+        warnings: s.agentWarnings,
+        content: [{ type: "text" }],
+        toolCalls: [],
+        toolResults: [],
+        request: { body: s.agentRequestBody },
+        response: {
+          id:
+            typeof s.agentResponse.id === "string"
+              ? s.agentResponse.id
+              : "response-1",
+          modelId:
+            typeof s.agentResponse.modelId === "string"
+              ? s.agentResponse.modelId
+              : "test-model",
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          headers: s.agentResponseHeaders,
+          body: s.agentResponseBody,
+          messages: s.agentResponseMessages,
+        },
+        providerMetadata: s.agentProviderMetadata,
+      },
+    ];
+  }
+
+  const testWorkAgent = {
+    tools: {},
+    stream: async ({ messages }: { messages: unknown }) => {
+      if (s.throwOnAgentStream) {
+        throw new Error("Agent failed");
+      }
+      s.agentInputMessages = messages;
+      return {
+        toUIMessageStream: (opts: {
+          sendStart?: boolean;
+          sendFinish?: boolean;
+          originalMessages?: Array<Record<string, unknown>>;
+          messageMetadata?: (args: {
+            part: Record<string, unknown>;
+          }) => unknown;
+          onFinish?: (args: { responseMessage: unknown }) => void;
+        }) => {
+          const priorAssistantMessage = opts.originalMessages?.at(-1);
+          const assistantMessage = (
+            priorAssistantMessage?.role === "assistant"
+              ? structuredClone(priorAssistantMessage)
+              : {
+                  id: "assistant-1",
+                  role: "assistant",
+                  parts: s.agentAssistantParts ?? [{ type: "text", text: "Hello!" }],
+                  metadata: {},
+                }
+          ) as {
+            id: string;
+            role: "assistant";
+            parts: Array<Record<string, unknown>>;
+            metadata?: unknown;
+          };
+
+          s.streamOnFinishCallback = opts.onFinish;
+          // Return an async iterable that yields parts and calls onFinish
+          return {
+            async *[Symbol.asyncIterator]() {
+              for (const part of s.agentStreamParts) {
+                yield part;
+
+                const metadata = opts.messageMetadata?.({ part });
+                if (metadata) {
+                  assistantMessage.metadata = Object.assign(
+                    {},
+                    assistantMessage.metadata as
+                      | Record<string, unknown>
+                      | undefined,
+                    metadata as Record<string, unknown>,
+                  );
+                  yield {
+                    type: "message-metadata",
+                    messageMetadata: metadata,
+                  };
+                }
+              }
+              if (s.streamOnFinishCallback) {
+                s.streamOnFinishCallback({
+                  responseMessage: assistantMessage,
+                });
+              }
+            },
+          };
+        },
+        totalUsage: Promise.resolve(s.agentTotalUsage),
+        finishReason: Promise.resolve(s.agentFinishReason),
+        rawFinishReason: Promise.resolve(s.agentRawFinishReason),
+        response: Promise.resolve(s.agentResponse),
+        steps: Promise.resolve(buildAgentSteps()),
+      };
+    },
+  };
+
+  const spies = {
+    persistUserMessage: vi.fn(() => Promise.resolve()),
+    persistAssistantMessageWithToolResults: vi.fn(() => Promise.resolve()),
+    persistAssistantMessage: vi.fn((_chatId?: unknown, _message?: unknown) =>
+      Promise.resolve(),
+    ),
+    persistSandboxState: vi.fn(
+      (_sessionId?: unknown, _sandboxState?: unknown) => Promise.resolve(),
+    ),
+    resolveChatSandboxRuntime: vi.fn((_params: { assistantId?: string }) => {
+      return Promise.resolve(createResolvedChatSandboxRuntime());
+    }),
+    claimActiveStream: vi.fn(
+      async (
+        _chatId?: unknown,
+        _workflowRunId?: unknown,
+        writable?: WritableStream<UIMessageChunk>,
+        messageId?: string,
+      ) => {
+        if (writable && messageId) {
+          const writer = writable.getWriter();
+          try {
+            await writer.write({ type: "start", messageId });
+          } finally {
+            writer.releaseLock();
+          }
+        }
+        return "claimed";
+      },
+    ),
+    closeStream: vi.fn((writable: WritableStream<UIMessageChunk>) =>
+      writable.close(),
+    ),
+    clearActiveStream: vi.fn(
+      (_chatId?: unknown, _workflowRunId?: unknown) => Promise.resolve(),
+    ),
+    sendFinish: vi.fn(async (writable: WritableStream<UIMessageChunk>) => {
+      const writer = writable.getWriter();
+      try {
+        await writer.write({ type: "finish", finishReason: "stop" });
+      } finally {
+        writer.releaseLock();
+      }
+    }),
+    recordWorkflowUsage: vi.fn(() => Promise.resolve()),
+    refreshDiffCache: vi.fn(
+      (_sessionId?: unknown, _sandboxState?: unknown) => Promise.resolve(),
+    ),
+    refreshLifecycleActivity: vi.fn(() => Promise.resolve()),
+    hasAutoCommitChangesStep: vi.fn(() => Promise.resolve(true)),
+    runAutoCommitStep: vi.fn(() =>
+      Promise.resolve({ committed: false, pushed: false }),
+    ),
+    runAutoCreatePrStep: vi.fn(() =>
+      Promise.resolve({
+        created: true,
+        syncedExisting: false,
+        skipped: false,
+        prNumber: 42,
+        prUrl: "https://github.com/acme/repo/pull/42",
+      }),
+    ),
+    runPageAgentStep: vi.fn(() =>
+      Promise.resolve({
+        responseMessage: {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [{ type: "text", text: "Page answer" }],
+          metadata: {},
+        },
+        responseMessages: [],
         finishReason: "stop",
         rawFinishReason: "provider_stop",
-      },
-    }),
-  ),
-};
+        stepUsage: s.agentTotalUsage,
+        stepCost: undefined,
+        stepWasAborted: false,
+        stepTiming: {
+          stepNumber: 1,
+          startedAt: "2026-01-01T00:00:00.000Z",
+          finishedAt: "2026-01-01T00:00:01.000Z",
+          durationMs: 1000,
+          finishReason: "stop",
+          rawFinishReason: "provider_stop",
+        },
+      }),
+    ),
+  };
 
-let testSessionRecord: {
-  id: string;
-  userId: string;
-  agentType: "work" | "chat";
-  autoCommitPushOverride: boolean | null;
-  autoCreatePrOverride: boolean | null;
-  repoOwner: string | null;
-  repoName: string | null;
-};
-let testChatRecord: {
-  id: string;
-  sessionId: string;
-  modelId: string | null;
-};
-let testPreferences: {
-  defaultModelId: string;
-  defaultSubagentModelId: string | null;
-  defaultSandboxType: "vercel";
-  defaultDiffMode: "unified";
-  autoCommitPush: boolean;
-  autoCreatePr: boolean;
-  alertsEnabled: boolean;
-  alertSoundEnabled: boolean;
-  publicUsageEnabled: boolean;
-  globalSkillRefs: never[];
-  modelVariants: never[];
-  enabledModelIds: string[];
-};
-
-// Track what the agent stream yields
-let agentStreamParts: Array<Record<string, unknown>> = [];
-let agentAssistantParts: Array<Record<string, unknown>> | undefined;
-let agentFinishReason = "stop";
-let agentRawFinishReason: string | undefined = "provider_stop";
-let agentTotalUsage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
-let agentResponseMessages: unknown[] = [];
-let agentResponse: Record<string, unknown> = {
-  messages: agentResponseMessages,
-};
-let streamOnFinishCallback:
-  | ((args: { responseMessage: unknown }) => void)
-  | undefined;
-let agentWarnings: unknown[] | undefined;
-let agentRequestBody: unknown;
-let agentResponseHeaders: Record<string, string> | undefined;
-let agentResponseBody: unknown;
-let agentProviderMetadata: Record<string, unknown> | undefined;
-let agentInputMessages: unknown;
-
-function buildAgentSteps() {
-  return [
-    {
-      stepNumber: 0,
-      model: {
-        provider: "openai",
-        modelId:
-          typeof agentResponse.modelId === "string"
-            ? agentResponse.modelId
-            : "test-model",
-      },
-      finishReason: agentFinishReason,
-      rawFinishReason: agentRawFinishReason,
-      usage: agentTotalUsage,
-      warnings: agentWarnings,
-      content: [{ type: "text" }],
-      toolCalls: [],
-      toolResults: [],
-      request: { body: agentRequestBody },
-      response: {
-        id:
-          typeof agentResponse.id === "string"
-            ? agentResponse.id
-            : "response-1",
-        modelId:
-          typeof agentResponse.modelId === "string"
-            ? agentResponse.modelId
-            : "test-model",
-        timestamp: new Date("2026-01-01T00:00:00.000Z"),
-        headers: agentResponseHeaders,
-        body: agentResponseBody,
-        messages: agentResponseMessages,
-      },
-      providerMetadata: agentProviderMetadata,
-    },
-  ];
-}
+  return Object.assign(s, {
+    createResolvedChatSandboxRuntime,
+    buildAgentSteps,
+    testWorkAgent,
+    spies,
+  });
+});
 
 // ── Module mocks ───────────────────────────────────────────────────
 
-mock.module("workflow", () => ({
+vi.mock("workflow", () => ({
   getWorkflowMetadata: () => ({ workflowRunId: "wrun_test-123" }),
   getWritable: () => {
     const writable = new WritableStream<UIMessageChunk>({
       write(chunk) {
-        writtenChunks.push(chunk);
+        state.writtenChunks.push(chunk);
       },
     });
     return writable;
   },
 }));
 
-mock.module("workflow/api", () => ({
+vi.mock("workflow/api", () => ({
   getRun: () => ({
     get status() {
-      return Promise.resolve(runStatus);
+      return Promise.resolve(state.runStatus);
     },
   }),
 }));
 
-mock.module("./chat-post-finish", () => spies);
+vi.mock("./chat-post-finish", () => state.spies);
 
-const testWorkAgent = {
-  tools: {},
-  stream: async ({ messages }: { messages: unknown }) => {
-    agentInputMessages = messages;
-    return {
-      toUIMessageStream: (opts: {
-        sendStart?: boolean;
-        sendFinish?: boolean;
-        originalMessages?: Array<Record<string, unknown>>;
-        messageMetadata?: (args: {
-          part: Record<string, unknown>;
-        }) => unknown;
-        onFinish?: (args: { responseMessage: unknown }) => void;
-      }) => {
-        const priorAssistantMessage = opts.originalMessages?.at(-1);
-        const assistantMessage = (
-          priorAssistantMessage?.role === "assistant"
-            ? structuredClone(priorAssistantMessage)
-            : {
-                id: "assistant-1",
-                role: "assistant",
-                parts: agentAssistantParts ?? [{ type: "text", text: "Hello!" }],
-                metadata: {},
-              }
-        ) as {
-          id: string;
-          role: "assistant";
-          parts: Array<Record<string, unknown>>;
-          metadata?: unknown;
-        };
-
-        streamOnFinishCallback = opts.onFinish;
-        // Return an async iterable that yields parts and calls onFinish
-        return {
-          async *[Symbol.asyncIterator]() {
-            for (const part of agentStreamParts) {
-              yield part;
-
-              const metadata = opts.messageMetadata?.({ part });
-              if (metadata) {
-                assistantMessage.metadata = Object.assign(
-                  {},
-                  assistantMessage.metadata as Record<string, unknown> | undefined,
-                  metadata as Record<string, unknown>,
-                );
-                yield {
-                  type: "message-metadata",
-                  messageMetadata: metadata,
-                };
-              }
-            }
-            if (streamOnFinishCallback) {
-              streamOnFinishCallback({
-                responseMessage: assistantMessage,
-              });
-            }
-          },
-        };
-      },
-      totalUsage: Promise.resolve(agentTotalUsage),
-      finishReason: Promise.resolve(agentFinishReason),
-      rawFinishReason: Promise.resolve(agentRawFinishReason),
-      response: Promise.resolve(agentResponse),
-      steps: Promise.resolve(buildAgentSteps()),
-    };
-  },
-};
-
-mock.module("@/app/config", () => ({
-  workAgent: testWorkAgent,
-  webAgent: testWorkAgent,
+vi.mock("@/app/config", () => ({
+  workAgent: state.testWorkAgent,
+  webAgent: state.testWorkAgent,
   pageAgent: {
     tools: {},
   },
 }));
 
-mock.module("ai", () => ({
+vi.mock("ai", () => ({
   convertToModelMessages: async (
     msgs: Array<Record<string, unknown>>,
     options?: { convertDataPart?: (part: Record<string, unknown>) => unknown },
@@ -363,26 +383,26 @@ mock.module("ai", () => ({
     }),
 }));
 
-mock.module("@viben/agent", () => ({}));
+vi.mock("@viben/agent", () => ({}));
 
-mock.module("@/lib/db/sessions", () => ({
-  getChatById: async () => testChatRecord,
-  getSessionById: async () => testSessionRecord,
+vi.mock("@/lib/db/sessions", () => ({
+  getChatById: async () => state.testChatRecord,
+  getSessionById: async () => state.testSessionRecord,
 }));
 
-mock.module("@/lib/db/user-preferences", () => ({
-  getUserPreferences: async () => testPreferences,
+vi.mock("@/lib/db/user-preferences", () => ({
+  getUserPreferences: async () => state.testPreferences,
 }));
 
-mock.module("./chat-sandbox-runtime", () => ({
-  resolveChatSandboxRuntime: spies.resolveChatSandboxRuntime,
+vi.mock("./chat-sandbox-runtime", () => ({
+  resolveChatSandboxRuntime: state.spies.resolveChatSandboxRuntime,
 }));
 
-mock.module("./chat-page-runtime", () => ({
-  runPageAgentStep: spies.runPageAgentStep,
+vi.mock("./chat-page-runtime", () => ({
+  runPageAgentStep: state.spies.runPageAgentStep,
 }));
 
-const { runAgentWorkflow } = await import("./chat");
+import { runAgentWorkflow } from "./chat";
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -419,23 +439,24 @@ function makeOptions(overrides?: Record<string, unknown>) {
 // ── Tests ──────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  writtenChunks.length = 0;
-  runStatus = "running";
-  agentStreamParts = [{ type: "text-delta", textDelta: "Hi" }];
-  agentAssistantParts = undefined;
-  agentFinishReason = "stop";
-  agentRawFinishReason = "provider_stop";
-  agentTotalUsage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
-  agentResponseMessages = [];
-  agentResponse = { messages: agentResponseMessages };
-  agentWarnings = undefined;
-  agentRequestBody = undefined;
-  agentResponseHeaders = undefined;
-  agentResponseBody = undefined;
-  agentProviderMetadata = undefined;
-  agentInputMessages = undefined;
-  streamOnFinishCallback = undefined;
-  testSessionRecord = {
+  state.writtenChunks.length = 0;
+  state.runStatus = "running";
+  state.throwOnAgentStream = false;
+  state.agentStreamParts = [{ type: "text-delta", textDelta: "Hi" }];
+  state.agentAssistantParts = undefined;
+  state.agentFinishReason = "stop";
+  state.agentRawFinishReason = "provider_stop";
+  state.agentTotalUsage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+  state.agentResponseMessages = [];
+  state.agentResponse = { messages: state.agentResponseMessages };
+  state.agentWarnings = undefined;
+  state.agentRequestBody = undefined;
+  state.agentResponseHeaders = undefined;
+  state.agentResponseBody = undefined;
+  state.agentProviderMetadata = undefined;
+  state.agentInputMessages = undefined;
+  state.streamOnFinishCallback = undefined;
+  state.testSessionRecord = {
     id: "session-1",
     userId: "user-1",
     agentType: "work",
@@ -444,12 +465,12 @@ beforeEach(() => {
     repoOwner: "acme",
     repoName: "repo",
   };
-  testChatRecord = {
+  state.testChatRecord = {
     id: "chat-1",
     sessionId: "session-1",
     modelId: null,
   };
-  testPreferences = {
+  state.testPreferences = {
     defaultModelId: "anthropic/claude-haiku-4.5",
     defaultSubagentModelId: null,
     defaultSandboxType: "vercel",
@@ -463,7 +484,7 @@ beforeEach(() => {
     modelVariants: [],
     enabledModelIds: [],
   };
-  Object.values(spies).forEach((s) => s.mockClear());
+  Object.values(state.spies).forEach((s) => s.mockClear());
 });
 
 describe("runAgentWorkflow", () => {
@@ -477,21 +498,21 @@ describe("runAgentWorkflow", () => {
   });
 
   test("exits before side effects when another workflow owns the stream slot", async () => {
-    spies.claimActiveStream.mockImplementationOnce(() =>
+    state.spies.claimActiveStream.mockImplementationOnce(() =>
       Promise.resolve("conflict"),
     );
 
     await runAgentWorkflow(makeOptions());
 
-    expect(writtenChunks).toEqual([]);
-    expect(agentInputMessages).toBeUndefined();
-    expect(spies.persistAssistantMessage).not.toHaveBeenCalled();
-    expect(spies.clearActiveStream).not.toHaveBeenCalled();
-    expect(spies.recordWorkflowUsage).not.toHaveBeenCalled();
+    expect(state.writtenChunks).toEqual([]);
+    expect(state.agentInputMessages).toBeUndefined();
+    expect(state.spies.persistAssistantMessage).not.toHaveBeenCalled();
+    expect(state.spies.clearActiveStream).not.toHaveBeenCalled();
+    expect(state.spies.recordWorkflowUsage).not.toHaveBeenCalled();
   });
 
   test("continues when claiming the stream errors", async () => {
-    spies.claimActiveStream.mockImplementationOnce(
+    state.spies.claimActiveStream.mockImplementationOnce(
       async (
         _chatId?: unknown,
         _workflowRunId?: unknown,
@@ -512,14 +533,14 @@ describe("runAgentWorkflow", () => {
 
     await runAgentWorkflow(makeOptions());
 
-    const types = writtenChunks.map((chunk) => chunk.type);
+    const types = state.writtenChunks.map((chunk) => chunk.type);
     expect(types[0]).toBe("start");
     expect(types[types.length - 1]).toBe("finish");
-    expect(spies.persistAssistantMessage).toHaveBeenCalledTimes(1);
+    expect(state.spies.persistAssistantMessage).toHaveBeenCalledTimes(1);
   });
 
   test("work sessions keep sandbox runtime and work post-finish steps", async () => {
-    testSessionRecord.agentType = "work";
+    state.testSessionRecord.agentType = "work";
 
     await runAgentWorkflow(
       makeOptions({
@@ -528,34 +549,34 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.resolveChatSandboxRuntime).toHaveBeenCalledTimes(1);
-    expect(spies.runPageAgentStep).not.toHaveBeenCalled();
-    expect(spies.refreshLifecycleActivity).toHaveBeenCalledTimes(1);
-    expect(spies.persistSandboxState).toHaveBeenCalledTimes(1);
-    expect(spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
-    expect(spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.resolveChatSandboxRuntime).toHaveBeenCalledTimes(1);
+    expect(state.spies.runPageAgentStep).not.toHaveBeenCalled();
+    expect(state.spies.refreshLifecycleActivity).toHaveBeenCalledTimes(1);
+    expect(state.spies.persistSandboxState).toHaveBeenCalledTimes(1);
+    expect(state.spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
   });
 
   test("chat sessions execute page runtime without sandbox or git steps", async () => {
-    testSessionRecord.agentType = "chat";
+    state.testSessionRecord.agentType = "chat";
 
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.runPageAgentStep).toHaveBeenCalledTimes(1);
-    expect(spies.resolveChatSandboxRuntime).not.toHaveBeenCalled();
-    expect(spies.persistSandboxState).not.toHaveBeenCalled();
-    expect(spies.refreshDiffCache).not.toHaveBeenCalled();
-    expect(spies.refreshLifecycleActivity).not.toHaveBeenCalled();
-    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
-    expect(spies.runAutoCreatePrStep).not.toHaveBeenCalled();
-    expect(spies.persistAssistantMessage).toHaveBeenCalled();
-    expect(spies.recordWorkflowUsage).toHaveBeenCalled();
-    expect(spies.clearActiveStream).toHaveBeenCalled();
+    expect(state.spies.runPageAgentStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.resolveChatSandboxRuntime).not.toHaveBeenCalled();
+    expect(state.spies.persistSandboxState).not.toHaveBeenCalled();
+    expect(state.spies.refreshDiffCache).not.toHaveBeenCalled();
+    expect(state.spies.refreshLifecycleActivity).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCreatePrStep).not.toHaveBeenCalled();
+    expect(state.spies.persistAssistantMessage).toHaveBeenCalled();
+    expect(state.spies.recordWorkflowUsage).toHaveBeenCalled();
+    expect(state.spies.clearActiveStream).toHaveBeenCalled();
   });
 
   test("page runtime failure persists a retryable assistant error and clears stream", async () => {
-    testSessionRecord.agentType = "chat";
-    spies.runPageAgentStep.mockImplementationOnce(() =>
+    state.testSessionRecord.agentType = "chat";
+    state.spies.runPageAgentStep.mockImplementationOnce(() =>
       Promise.reject(new Error("Page unavailable")),
     );
 
@@ -563,14 +584,14 @@ describe("runAgentWorkflow", () => {
       "Page unavailable",
     );
 
-    expect(spies.resolveChatSandboxRuntime).not.toHaveBeenCalled();
-    expect(spies.persistAssistantMessage).toHaveBeenCalled();
-    expect(spies.clearActiveStream).toHaveBeenCalled();
+    expect(state.spies.resolveChatSandboxRuntime).not.toHaveBeenCalled();
+    expect(state.spies.persistAssistantMessage).toHaveBeenCalled();
+    expect(state.spies.clearActiveStream).toHaveBeenCalled();
   });
 
   test("page runtime failure emits page-chat setup message instead of workspace wording", async () => {
-    testSessionRecord.agentType = "chat";
-    spies.runPageAgentStep.mockImplementationOnce(() =>
+    state.testSessionRecord.agentType = "chat";
+    state.spies.runPageAgentStep.mockImplementationOnce(() =>
       Promise.reject(new Error("Page unavailable")),
     );
 
@@ -578,7 +599,7 @@ describe("runAgentWorkflow", () => {
       "Page unavailable",
     );
 
-    const deltas = writtenChunks
+    const deltas = state.writtenChunks
       .filter((chunk) => chunk.type === "text-delta")
       .map((chunk) => chunk.delta);
     expect(deltas).toContain("Page unavailable. Try again in a moment.");
@@ -586,8 +607,8 @@ describe("runAgentWorkflow", () => {
   });
 
   test("generic page runtime failure emits a page-chat setup message", async () => {
-    testSessionRecord.agentType = "chat";
-    spies.runPageAgentStep.mockImplementationOnce(() =>
+    state.testSessionRecord.agentType = "chat";
+    state.spies.runPageAgentStep.mockImplementationOnce(() =>
       Promise.reject(new Error("Server does not support resource subscriptions")),
     );
 
@@ -595,7 +616,7 @@ describe("runAgentWorkflow", () => {
       "Server does not support resource subscriptions",
     );
 
-    const deltas = writtenChunks
+    const deltas = state.writtenChunks
       .filter((chunk) => chunk.type === "text-delta")
       .map((chunk) => chunk.delta);
     expect(deltas).toContain(
@@ -607,28 +628,31 @@ describe("runAgentWorkflow", () => {
   test("sends start and finish chunks to writable", async () => {
     await runAgentWorkflow(makeOptions());
 
-    const types = writtenChunks.map((c) => c.type);
+    const types = state.writtenChunks.map((c) => c.type);
     expect(types[0]).toBe("start");
     expect(types[types.length - 1]).toBe("finish");
   });
 
   test("does not stream transient workspace setup status from runtime prep", async () => {
-    spies.resolveChatSandboxRuntime.mockImplementationOnce(async () => {
-      return createResolvedChatSandboxRuntime({
+    state.spies.resolveChatSandboxRuntime.mockImplementationOnce(async () => {
+      return state.createResolvedChatSandboxRuntime({
         didSetupWorkspace: true,
       });
     });
 
     await runAgentWorkflow(makeOptions());
 
-    expect(writtenChunks[0]).toEqual({ type: "start", messageId: "gen-id-1" });
+    expect(state.writtenChunks[0]).toEqual({
+      type: "start",
+      messageId: "gen-id-1",
+    });
     expect(
-      writtenChunks.some((chunk) => chunk.type === "data-workspace-status"),
+      state.writtenChunks.some((chunk) => chunk.type === "data-workspace-status"),
     ).toBe(false);
   });
 
   test("streams a user-visible message when workspace setup fails", async () => {
-    spies.resolveChatSandboxRuntime.mockImplementationOnce(async () => {
+    state.spies.resolveChatSandboxRuntime.mockImplementationOnce(async () => {
       throw new Error("Connect GitHub to access repositories");
     });
 
@@ -636,7 +660,7 @@ describe("runAgentWorkflow", () => {
       "Connect GitHub to access repositories",
     );
 
-    expect(writtenChunks).toEqual(
+    expect(state.writtenChunks).toEqual(
       expect.arrayContaining([
         { type: "start", messageId: "gen-id-1" },
         { type: "text-start", id: "setup-error" },
@@ -648,7 +672,7 @@ describe("runAgentWorkflow", () => {
         { type: "text-end", id: "setup-error" },
       ]),
     );
-    expect(spies.persistAssistantMessage).toHaveBeenCalledWith(
+    expect(state.spies.persistAssistantMessage).toHaveBeenCalledWith(
       "chat-1",
       expect.objectContaining({
         id: "gen-id-1",
@@ -664,7 +688,7 @@ describe("runAgentWorkflow", () => {
   });
 
   test("streams an archived-session setup message when runtime rejects", async () => {
-    spies.resolveChatSandboxRuntime.mockImplementationOnce(async () => {
+    state.spies.resolveChatSandboxRuntime.mockImplementationOnce(async () => {
       throw new Error("Session is archived");
     });
 
@@ -672,7 +696,7 @@ describe("runAgentWorkflow", () => {
       "Session is archived",
     );
 
-    expect(writtenChunks).toEqual(
+    expect(state.writtenChunks).toEqual(
       expect.arrayContaining([
         {
           type: "text-delta",
@@ -686,19 +710,19 @@ describe("runAgentWorkflow", () => {
   test("persists assistant message after run", async () => {
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.persistAssistantMessage).toHaveBeenCalledTimes(1);
-    const paCalls = spies.persistAssistantMessage.mock.calls as unknown[][];
+    expect(state.spies.persistAssistantMessage).toHaveBeenCalledTimes(1);
+    const paCalls = state.spies.persistAssistantMessage.mock.calls as unknown[][];
     expect(paCalls[0][0]).toBe("chat-1");
   });
 
   test("persists incoming messages during workflow startup", async () => {
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.persistUserMessage).toHaveBeenCalledWith(
+    expect(state.spies.persistUserMessage).toHaveBeenCalledWith(
       "chat-1",
       expect.objectContaining({ id: "user-1", role: "user" }),
     );
-    expect(spies.persistAssistantMessageWithToolResults).toHaveBeenCalledWith(
+    expect(state.spies.persistAssistantMessageWithToolResults).toHaveBeenCalledWith(
       "chat-1",
       expect.objectContaining({ id: "user-1", role: "user" }),
     );
@@ -707,8 +731,8 @@ describe("runAgentWorkflow", () => {
   test("records usage after run", async () => {
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.recordWorkflowUsage).toHaveBeenCalledTimes(1);
-    const rwCalls = spies.recordWorkflowUsage.mock.calls as unknown[][];
+    expect(state.spies.recordWorkflowUsage).toHaveBeenCalledTimes(1);
+    const rwCalls = state.spies.recordWorkflowUsage.mock.calls as unknown[][];
     expect(rwCalls[0][0]).toBe("user-1");
     expect(rwCalls[0][1]).toBe("gpt-4");
   });
@@ -721,7 +745,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -737,12 +761,12 @@ describe("runAgentWorkflow", () => {
   });
 
   test("streams model metadata in finish-step chunks", async () => {
-    agentStreamParts = [
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "stop",
         rawFinishReason: "provider_stop",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
       },
     ];
 
@@ -753,7 +777,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const metadataChunks = writtenChunks.filter(
+    const metadataChunks = state.writtenChunks.filter(
       (
         chunk,
       ): chunk is UIMessageChunk & {
@@ -770,7 +794,7 @@ describe("runAgentWorkflow", () => {
       modelId: "openai/gpt-5.4",
     });
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -786,12 +810,12 @@ describe("runAgentWorkflow", () => {
   });
 
   test("overwrites model metadata when resuming an assistant message", async () => {
-    agentStreamParts = [
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "stop",
         rawFinishReason: "provider_stop",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
       },
     ];
 
@@ -813,7 +837,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -829,8 +853,8 @@ describe("runAgentWorkflow", () => {
   });
 
   test("marks workflow run as failed when maxSteps is exhausted", async () => {
-    agentFinishReason = "tool-calls";
-    agentRawFinishReason = "provider_tool_use";
+    state.agentFinishReason = "tool-calls";
+    state.agentRawFinishReason = "provider_tool_use";
 
     await runAgentWorkflow(
       makeOptions({
@@ -838,7 +862,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const rwCalls = spies.recordWorkflowUsage.mock.calls as unknown[][];
+    const rwCalls = state.spies.recordWorkflowUsage.mock.calls as unknown[][];
     const workflowRun = rwCalls[0][5] as {
       workflowRunId: string;
       status: string;
@@ -869,22 +893,22 @@ describe("runAgentWorkflow", () => {
   });
 
   test("logs full step diagnostics when the agent finishes with reason other", async () => {
-    agentFinishReason = "other";
-    agentRawFinishReason = "provider_other";
-    agentResponseMessages = [{ role: "assistant" }];
-    agentResponse = {
+    state.agentFinishReason = "other";
+    state.agentRawFinishReason = "provider_other";
+    state.agentResponseMessages = [{ role: "assistant" }];
+    state.agentResponse = {
       id: "response-1",
-      messages: agentResponseMessages,
+      messages: state.agentResponseMessages,
       modelId: "test-model",
     };
-    agentWarnings = [
+    state.agentWarnings = [
       {
         type: "unsupported-setting",
         setting: "text.verbosity",
         details: "Provider ignored the requested verbosity.",
       },
     ];
-    agentRequestBody = {
+    state.agentRequestBody = {
       model: "openai/gpt-5",
       store: false,
       max_output_tokens: 512,
@@ -897,8 +921,8 @@ describe("runAgentWorkflow", () => {
       ],
       tools: [{ type: "function", name: "read" }],
     };
-    agentResponseHeaders = { "x-request-id": "req-123" };
-    agentResponseBody = {
+    state.agentResponseHeaders = { "x-request-id": "req-123" };
+    state.agentResponseBody = {
       id: "response-body-1",
       status: "incomplete",
       incomplete_details: { reason: "max_output_tokens" },
@@ -914,7 +938,7 @@ describe("runAgentWorkflow", () => {
       usage: { total_tokens: 15 },
       service_tier: "default",
     };
-    agentProviderMetadata = {
+    state.agentProviderMetadata = {
       openai: { responseId: "response-1", serviceTier: "default" },
     };
 
@@ -931,9 +955,11 @@ describe("runAgentWorkflow", () => {
       expect(warnings[0]).toHaveLength(1);
       const warning = warnings[0]?.[0];
       expect(typeof warning).toBe("string");
-      expect(warning).toStartWith(
-        "[workflow] Agent step finished with reason 'other':\n",
-      );
+      expect(
+        (warning as string).startsWith(
+          "[workflow] Agent step finished with reason 'other':\n",
+        ),
+      ).toBe(true);
 
       const payload = JSON.parse(
         (warning as string).replace(
@@ -950,14 +976,14 @@ describe("runAgentWorkflow", () => {
         selectedModelId: "gpt-4",
         finishReason: "other",
         rawFinishReason: "provider_other",
-        response: agentResponse,
+        response: state.agentResponse,
         stepDiagnostics: [
           {
             stepNumber: 0,
             model: { provider: "openai", modelId: "test-model" },
             finishReason: "other",
             rawFinishReason: "provider_other",
-            warnings: agentWarnings,
+            warnings: state.agentWarnings,
             request: {
               body: {
                 model: "openai/gpt-5",
@@ -992,14 +1018,14 @@ describe("runAgentWorkflow", () => {
   });
 
   test("persists raw finish reasons for each agent step in message metadata", async () => {
-    agentFinishReason = "tool-calls";
-    agentStreamParts = [
+    state.agentFinishReason = "tool-calls";
+    state.agentStreamParts = [
       { type: "text-delta", textDelta: "Hi" },
       {
         type: "finish-step",
         finishReason: "tool-calls",
         rawFinishReason: "provider_tool_use",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
       },
     ];
 
@@ -1009,7 +1035,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -1039,13 +1065,13 @@ describe("runAgentWorkflow", () => {
   });
 
   test("streams and persists cumulative total message usage", async () => {
-    agentFinishReason = "tool-calls";
-    agentStreamParts = [
+    state.agentFinishReason = "tool-calls";
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "tool-calls",
         rawFinishReason: "provider_tool_use",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
       },
     ];
 
@@ -1055,7 +1081,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const metadataChunks = writtenChunks.filter(
+    const metadataChunks = state.writtenChunks.filter(
       (
         chunk,
       ): chunk is UIMessageChunk & {
@@ -1081,7 +1107,7 @@ describe("runAgentWorkflow", () => {
       { inputTokens: 20, outputTokens: 10, totalTokens: 30 },
     ]);
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -1105,19 +1131,19 @@ describe("runAgentWorkflow", () => {
   });
 
   test("streams and persists cumulative gateway cost", async () => {
-    agentFinishReason = "tool-calls";
-    agentStreamParts = [
+    state.agentFinishReason = "tool-calls";
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "tool-calls",
         rawFinishReason: "provider_tool_use",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
         providerMetadata: {
           gateway: { cost: "0.0025" },
         },
       },
     ];
-    agentProviderMetadata = {
+    state.agentProviderMetadata = {
       gateway: { cost: "0.0025" },
     };
 
@@ -1127,7 +1153,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const metadataChunks = writtenChunks.filter(
+    const metadataChunks = state.writtenChunks.filter(
       (
         chunk,
       ): chunk is UIMessageChunk & {
@@ -1149,7 +1175,7 @@ describe("runAgentWorkflow", () => {
       { lastStepCost: 0.0025, totalMessageCost: 0.005 },
     ]);
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -1167,18 +1193,18 @@ describe("runAgentWorkflow", () => {
     const resumedStepCost = 0.001;
     const expectedTotalMessageCost = existingTotalMessageCost + resumedStepCost;
 
-    agentStreamParts = [
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "stop",
         rawFinishReason: "provider_stop",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
         providerMetadata: {
           gateway: { cost: String(resumedStepCost) },
         },
       },
     ];
-    agentProviderMetadata = {
+    state.agentProviderMetadata = {
       gateway: { cost: String(resumedStepCost) },
     };
 
@@ -1197,7 +1223,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    const metadataChunks = writtenChunks.filter(
+    const metadataChunks = state.writtenChunks.filter(
       (
         chunk,
       ): chunk is UIMessageChunk & {
@@ -1212,12 +1238,11 @@ describe("runAgentWorkflow", () => {
     expect(metadataChunks.at(-1)?.messageMetadata.lastStepCost).toBe(
       resumedStepCost,
     );
-    expect(metadataChunks.at(-1)?.messageMetadata.totalMessageCost).toBeCloseTo(
-      expectedTotalMessageCost,
-      10,
-    );
+    expect(
+      metadataChunks.at(-1)?.messageMetadata.totalMessageCost,
+    ).toBeCloseTo(expectedTotalMessageCost, 10);
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -1234,18 +1259,18 @@ describe("runAgentWorkflow", () => {
   });
 
   test("omits cost metadata when provider does not report gateway cost", async () => {
-    agentStreamParts = [
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "stop",
         rawFinishReason: "provider_stop",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
       },
     ];
 
     await runAgentWorkflow(makeOptions());
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       metadata?: {
@@ -1260,29 +1285,29 @@ describe("runAgentWorkflow", () => {
 
   test("refreshes lifecycle activity before clearing the active stream", async () => {
     const callOrder: string[] = [];
-    spies.refreshLifecycleActivity.mockImplementationOnce(async () => {
+    state.spies.refreshLifecycleActivity.mockImplementationOnce(async () => {
       callOrder.push("refresh-lifecycle");
     });
-    spies.clearActiveStream.mockImplementationOnce(async () => {
+    state.spies.clearActiveStream.mockImplementationOnce(async () => {
       callOrder.push("clear-stream");
     });
 
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.refreshLifecycleActivity).toHaveBeenCalledTimes(1);
+    expect(state.spies.refreshLifecycleActivity).toHaveBeenCalledTimes(1);
     expect(callOrder).toEqual(["refresh-lifecycle", "clear-stream"]);
   });
 
   test("persists sandbox state when sandbox is present", async () => {
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.persistSandboxState).toHaveBeenCalledTimes(1);
+    expect(state.spies.persistSandboxState).toHaveBeenCalledTimes(1);
   });
 
   test("clears active stream in finally block", async () => {
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.clearActiveStream).toHaveBeenCalledWith(
+    expect(state.spies.clearActiveStream).toHaveBeenCalledWith(
       "chat-1",
       "wrun_test-123",
     );
@@ -1291,14 +1316,14 @@ describe("runAgentWorkflow", () => {
   test("skips diff cache refresh when no file-changing tools ran", async () => {
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.refreshDiffCache).not.toHaveBeenCalled();
+    expect(state.spies.refreshDiffCache).not.toHaveBeenCalled();
   });
 
   test("refreshes diff cache after a write tool runs", async () => {
-    agentStreamParts = [];
-    agentResponseMessages = [];
-    agentResponse = { messages: agentResponseMessages };
-    streamOnFinishCallback = undefined;
+    state.agentStreamParts = [];
+    state.agentResponseMessages = [];
+    state.agentResponse = { messages: state.agentResponseMessages };
+    state.streamOnFinishCallback = undefined;
     const writeToolPart = {
       type: "tool-write",
       toolCallId: "write-1",
@@ -1306,11 +1331,11 @@ describe("runAgentWorkflow", () => {
       input: { filePath: "app/page.tsx" },
       output: { success: true },
     };
-    agentAssistantParts = [writeToolPart];
+    state.agentAssistantParts = [writeToolPart];
 
     await runAgentWorkflow(makeOptions());
 
-    expect(spies.refreshDiffCache).toHaveBeenCalledTimes(1);
+    expect(state.spies.refreshDiffCache).toHaveBeenCalledTimes(1);
   });
 
   test("runs auto-commit when enabled and not aborted", async () => {
@@ -1323,8 +1348,8 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
-    expect(spies.runAutoCommitStep).toHaveBeenCalledWith(
+    expect(state.spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.runAutoCommitStep).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         repoOwner: "acme",
@@ -1344,8 +1369,8 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
-    expect(spies.runAutoCreatePrStep).toHaveBeenCalledWith(
+    expect(state.spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.runAutoCreatePrStep).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         repoOwner: "acme",
@@ -1355,7 +1380,7 @@ describe("runAgentWorkflow", () => {
   });
 
   test("skips optimistic commit streaming when preflight finds no changes", async () => {
-    spies.hasAutoCommitChangesStep.mockImplementationOnce(() =>
+    state.spies.hasAutoCommitChangesStep.mockImplementationOnce(() =>
       Promise.resolve(false),
     );
 
@@ -1368,15 +1393,15 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
-    expect(spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCreatePrStep).toHaveBeenCalledTimes(1);
     expect(
-      writtenChunks.filter((chunk) => chunk.type === "data-commit"),
+      state.writtenChunks.filter((chunk) => chunk.type === "data-commit"),
     ).toEqual([]);
   });
 
   test("streams and persists resolved git data parts", async () => {
-    spies.runAutoCommitStep.mockImplementationOnce(() =>
+    state.spies.runAutoCommitStep.mockImplementationOnce(() =>
       Promise.resolve({
         committed: true,
         pushed: true,
@@ -1384,7 +1409,7 @@ describe("runAgentWorkflow", () => {
         commitSha: "abc123",
       }),
     );
-    spies.runAutoCreatePrStep.mockImplementationOnce(() =>
+    state.spies.runAutoCreatePrStep.mockImplementationOnce(() =>
       Promise.resolve({
         created: true,
         syncedExisting: false,
@@ -1404,7 +1429,7 @@ describe("runAgentWorkflow", () => {
     );
 
     expect(
-      writtenChunks.filter((chunk) => chunk.type === "data-commit"),
+      state.writtenChunks.filter((chunk) => chunk.type === "data-commit"),
     ).toEqual([
       {
         type: "data-commit",
@@ -1424,26 +1449,28 @@ describe("runAgentWorkflow", () => {
         },
       },
     ]);
-    expect(writtenChunks.filter((chunk) => chunk.type === "data-pr")).toEqual([
-      {
-        type: "data-pr",
-        id: "gen-id-1:pr",
-        data: { status: "pending" },
-      },
-      {
-        type: "data-pr",
-        id: "gen-id-1:pr",
-        data: {
-          status: "success",
-          created: true,
-          syncedExisting: false,
-          prNumber: 101,
-          url: "https://github.com/acme/repo/pull/101",
+    expect(state.writtenChunks.filter((chunk) => chunk.type === "data-pr")).toEqual(
+      [
+        {
+          type: "data-pr",
+          id: "gen-id-1:pr",
+          data: { status: "pending" },
         },
-      },
-    ]);
+        {
+          type: "data-pr",
+          id: "gen-id-1:pr",
+          data: {
+            status: "success",
+            created: true,
+            syncedExisting: false,
+            prNumber: 101,
+            url: "https://github.com/acme/repo/pull/101",
+          },
+        },
+      ],
+    );
 
-    const persistCalls = spies.persistAssistantMessage.mock
+    const persistCalls = state.spies.persistAssistantMessage.mock
       .calls as unknown[][];
     const persistedMessage = persistCalls.at(-1)?.[1] as {
       parts: Array<Record<string, unknown>>;
@@ -1508,7 +1535,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(agentInputMessages).toEqual([
+    expect(state.agentInputMessages).toEqual([
       {
         role: "user",
         content: [{ type: "text", text: "Hello" }],
@@ -1521,7 +1548,7 @@ describe("runAgentWorkflow", () => {
   });
 
   test("skips auto PR creation when auto-commit does not push the latest commit", async () => {
-    spies.runAutoCommitStep.mockImplementationOnce(() =>
+    state.spies.runAutoCommitStep.mockImplementationOnce(() =>
       Promise.resolve({
         committed: true,
         pushed: false,
@@ -1538,19 +1565,19 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
-    expect(spies.runAutoCreatePrStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCommitStep).toHaveBeenCalledTimes(1);
+    expect(state.spies.runAutoCreatePrStep).not.toHaveBeenCalled();
   });
 
   test("skips post-finish automation when the agent pauses for tool input", async () => {
-    agentFinishReason = "tool-calls";
-    agentRawFinishReason = "provider_tool_use";
-    agentStreamParts = [
+    state.agentFinishReason = "tool-calls";
+    state.agentRawFinishReason = "provider_tool_use";
+    state.agentStreamParts = [
       {
         type: "finish-step",
         finishReason: "tool-calls",
         rawFinishReason: "provider_tool_use",
-        usage: agentTotalUsage,
+        usage: state.agentTotalUsage,
       },
     ];
 
@@ -1576,8 +1603,8 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
-    expect(spies.runAutoCreatePrStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCreatePrStep).not.toHaveBeenCalled();
   });
 
   test("skips auto PR creation when not enabled", async () => {
@@ -1590,7 +1617,7 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCreatePrStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCreatePrStep).not.toHaveBeenCalled();
   });
 
   test("skips auto-commit when not enabled", async () => {
@@ -1600,13 +1627,13 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCommitStep).not.toHaveBeenCalled();
   });
 
   test("skips auto-commit when repoOwner is missing", async () => {
-    spies.resolveChatSandboxRuntime.mockImplementationOnce(() =>
+    state.spies.resolveChatSandboxRuntime.mockImplementationOnce(() =>
       Promise.resolve(
-        createResolvedChatSandboxRuntime({
+        state.createResolvedChatSandboxRuntime({
           repoOwner: undefined,
           repoName: "repo",
         }),
@@ -1619,13 +1646,13 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCommitStep).not.toHaveBeenCalled();
   });
 
   test("skips auto-commit when repoName is missing", async () => {
-    spies.resolveChatSandboxRuntime.mockImplementationOnce(() =>
+    state.spies.resolveChatSandboxRuntime.mockImplementationOnce(() =>
       Promise.resolve(
-        createResolvedChatSandboxRuntime({
+        state.createResolvedChatSandboxRuntime({
           repoOwner: "acme",
           repoName: undefined,
         }),
@@ -1638,30 +1665,19 @@ describe("runAgentWorkflow", () => {
       }),
     );
 
-    expect(spies.runAutoCommitStep).not.toHaveBeenCalled();
+    expect(state.spies.runAutoCommitStep).not.toHaveBeenCalled();
   });
 
   test("still clears stream and sends finish even on step error", async () => {
-    // Mock the agent to throw
-    mock.module("@/app/config", () => ({
-      webAgent: {
-        tools: {},
-        stream: async () => {
-          throw new Error("Agent failed");
-        },
-      },
-    }));
-
-    // Re-import to pick up new mock
-    const { runAgentWorkflow: reloadedRun } = await import("./chat");
+    state.throwOnAgentStream = true;
 
     try {
-      await reloadedRun(makeOptions());
+      await runAgentWorkflow(makeOptions());
     } catch {
       // Expected to throw
     }
 
     // The finally block should still fire
-    expect(spies.clearActiveStream).toHaveBeenCalled();
+    expect(state.spies.clearActiveStream).toHaveBeenCalled();
   });
 });

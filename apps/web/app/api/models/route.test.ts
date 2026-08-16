@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 interface MockGatewayModel extends Record<string, unknown> {
   id: string;
@@ -8,15 +8,19 @@ interface MockGatewayModel extends Record<string, unknown> {
   context_window?: number;
 }
 
-const gatewayModels: MockGatewayModel[] = [];
-const requestedUrls: string[] = [];
-
-let gatewayError: unknown = null;
-let modelsDevApiData: unknown = {};
-let currentSession: {
-  authProvider?: "vercel" | "github";
-  user: { id: string; email?: string; username?: string; avatar?: string };
-} | null = null;
+const state = vi.hoisted(() => {
+  const s = {
+    gatewayModels: [] as MockGatewayModel[],
+    requestedUrls: [] as string[],
+    gatewayError: null as unknown,
+    modelsDevApiData: {} as unknown,
+    currentSession: null as {
+      authProvider?: "vercel" | "github";
+      user: { id: string; email?: string; username?: string; avatar?: string };
+    } | null,
+  };
+  return s;
+});
 
 const originalFetch = globalThis.fetch;
 
@@ -30,25 +34,25 @@ function getRequestUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
-mock.module("ai", () => ({
-  gateway: {
+vi.mock("@viben/agent", () => ({
+  gatewayInstance: {
     getAvailableModels: async () => {
-      if (gatewayError) {
-        throw gatewayError;
+      if (state.gatewayError) {
+        throw state.gatewayError;
       }
 
-      return { models: gatewayModels };
+      return { models: state.gatewayModels };
     },
   },
 }));
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => currentSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.currentSession,
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
@@ -56,16 +60,16 @@ afterEach(() => {
 
 describe("/api/models context window enrichment", () => {
   beforeEach(() => {
-    gatewayModels.length = 0;
-    requestedUrls.length = 0;
-    gatewayError = null;
-    modelsDevApiData = {};
-    currentSession = null;
+    state.gatewayModels.length = 0;
+    state.requestedUrls.length = 0;
+    state.gatewayError = null;
+    state.modelsDevApiData = {};
+    state.currentSession = null;
 
-    globalThis.fetch = mock((input: RequestInfo | URL, _init?: RequestInit) => {
-      requestedUrls.push(getRequestUrl(input));
+    globalThis.fetch = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      state.requestedUrls.push(getRequestUrl(input));
       return Promise.resolve(
-        new Response(JSON.stringify(modelsDevApiData), {
+        new Response(JSON.stringify(state.modelsDevApiData), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -74,7 +78,7 @@ describe("/api/models context window enrichment", () => {
   });
 
   test("overrides gateway context windows from models.dev", async () => {
-    gatewayModels.push(
+    state.gatewayModels.push(
       {
         id: "openai/gpt-5.3-codex",
         modelType: "language",
@@ -97,7 +101,7 @@ describe("/api/models context window enrichment", () => {
       },
     );
 
-    modelsDevApiData = {
+    state.modelsDevApiData = {
       openai: {
         models: {
           "gpt-5.3-codex": {
@@ -114,7 +118,7 @@ describe("/api/models context window enrichment", () => {
       },
     };
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(new Request("http://localhost/api/models"));
 
     expect(response.ok).toBe(true);
@@ -130,11 +134,11 @@ describe("/api/models context window enrichment", () => {
     expect(contextById.get("anthropic/claude-opus-4.6")).toBe(1_000_000);
     expect(contextById.get("openai/gpt-4o-mini")).toBe(128_000);
     expect(contextById.has("openai/image-gen")).toBe(false);
-    expect(requestedUrls).toContain("https://models.dev/api.json");
+    expect(state.requestedUrls).toContain("https://models.dev/api.json");
   });
 
   test("hides Claude Opus models for managed trial users", async () => {
-    gatewayModels.push(
+    state.gatewayModels.push(
       {
         id: "anthropic/claude-opus-4.6",
         modelType: "language",
@@ -144,12 +148,12 @@ describe("/api/models context window enrichment", () => {
         modelType: "language",
       },
     );
-    currentSession = {
+    state.currentSession = {
       authProvider: "vercel",
       user: { id: "user-1", email: "person@example.com" },
     };
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(
       new Request("https://viben-web.vercel.app/api/models"),
     );
@@ -163,13 +167,13 @@ describe("/api/models context window enrichment", () => {
   });
 
   test("keeps gateway context window when models.dev only has related ids", async () => {
-    gatewayModels.push({
+    state.gatewayModels.push({
       id: "openai/gpt-5.3-codex-2026-02-15",
       modelType: "language",
       context_window: 200_000,
     });
 
-    modelsDevApiData = {
+    state.modelsDevApiData = {
       openai: {
         models: {
           "gpt-5": {
@@ -182,7 +186,7 @@ describe("/api/models context window enrichment", () => {
       },
     };
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(new Request("http://localhost/api/models"));
 
     expect(response.ok).toBe(true);
@@ -196,13 +200,13 @@ describe("/api/models context window enrichment", () => {
   });
 
   test("keeps valid models.dev metadata when sibling fields are invalid", async () => {
-    gatewayModels.push({
+    state.gatewayModels.push({
       id: "openai/gpt-5.3-codex",
       modelType: "language",
       context_window: 200_000,
     });
 
-    modelsDevApiData = {
+    state.modelsDevApiData = {
       invalidProvider: "bad",
       openai: {
         models: {
@@ -224,7 +228,7 @@ describe("/api/models context window enrichment", () => {
       },
     };
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(new Request("http://localhost/api/models"));
 
     expect(response.ok).toBe(true);
@@ -258,7 +262,7 @@ describe("/api/models context window enrichment", () => {
   });
 
   test("recovers from gateway validation errors when response still includes models", async () => {
-    gatewayError = {
+    state.gatewayError = {
       response: {
         models: [
           {
@@ -281,7 +285,7 @@ describe("/api/models context window enrichment", () => {
       },
     };
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(new Request("http://localhost/api/models"));
 
     expect(response.ok).toBe(true);

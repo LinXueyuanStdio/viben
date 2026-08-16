@@ -1,51 +1,68 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { GET } from "./route";
 
-mock.module("server-only", () => ({}));
-
-const updateCalls: Array<{
-  sessionId: string;
-  patch: Record<string, unknown>;
-}> = [];
-
-let probeResult: {
-  success: boolean;
-  stdout: string;
-  stderr: string;
-};
-
-let sessionRecord: {
-  id: string;
-  userId: string;
-  snapshotUrl: string | null;
-  lifecycleState: "failed" | "active" | "hibernated";
-  lifecycleError: string | null;
-  sandboxState: {
-    type: "vercel";
-    sandboxName?: string;
-    expiresAt?: number;
-  };
-  lastActivityAt: Date | null;
-  hibernateAfter: Date | null;
-  sandboxExpiresAt: Date | null;
-};
-
-mock.module("@/app/api/sessions/_lib/session-context", () => ({
-  requireAuthenticatedUser: async () => ({ ok: true, userId: "user-1" }),
-  requireOwnedSession: async () => ({ ok: true, sessionRecord }),
-}));
-
-mock.module("@/lib/db/sessions", () => ({
-  updateSession: async (sessionId: string, patch: Record<string, unknown>) => {
-    updateCalls.push({ sessionId, patch });
-    sessionRecord = {
-      ...sessionRecord,
-      ...patch,
-    } as typeof sessionRecord;
-    return sessionRecord;
+const state = vi.hoisted(() => ({
+  updateCalls: [] as Array<{
+    sessionId: string;
+    patch: Record<string, unknown>;
+  }>,
+  probeResult: {
+    success: true,
+    stdout: "ok",
+    stderr: "",
+  } as {
+    success: boolean;
+    stdout: string;
+    stderr: string;
+  },
+  sessionRecord: {
+    id: "session-1",
+    userId: "user-1",
+    snapshotUrl: null,
+    lifecycleState: "failed",
+    lifecycleError: null,
+    sandboxState: {
+      type: "vercel",
+    },
+    lastActivityAt: null,
+    hibernateAfter: null,
+    sandboxExpiresAt: null,
+  } as {
+    id: string;
+    userId: string;
+    snapshotUrl: string | null;
+    lifecycleState: "failed" | "active" | "hibernated";
+    lifecycleError: string | null;
+    sandboxState: {
+      type: "vercel";
+      sandboxName?: string;
+      expiresAt?: number;
+    };
+    lastActivityAt: Date | null;
+    hibernateAfter: Date | null;
+    sandboxExpiresAt: Date | null;
   },
 }));
 
-mock.module("@/lib/sandbox/lifecycle", () => ({
+vi.mock("server-only", () => ({}));
+
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
+  requireAuthenticatedUser: async () => ({ ok: true, userId: "user-1" }),
+  requireOwnedSession: async () => ({ ok: true, sessionRecord: state.sessionRecord }),
+}));
+
+vi.mock("@/lib/db/sessions", () => ({
+  updateSession: async (sessionId: string, patch: Record<string, unknown>) => {
+    state.updateCalls.push({ sessionId, patch });
+    state.sessionRecord = {
+      ...state.sessionRecord,
+      ...patch,
+    } as typeof state.sessionRecord;
+    return state.sessionRecord;
+  },
+}));
+
+vi.mock("@/lib/sandbox/lifecycle", () => ({
   buildHibernatedLifecycleUpdate: () => ({
     lifecycleState: "hibernated",
     sandboxExpiresAt: null,
@@ -54,13 +71,15 @@ mock.module("@/lib/sandbox/lifecycle", () => ({
     lifecycleError: null,
   }),
   getSandboxExpiresAtDate: (
-    state: { expiresAt?: unknown } | null | undefined,
+    sandboxState: { expiresAt?: unknown } | null | undefined,
   ) =>
-    typeof state?.expiresAt === "number" ? new Date(state.expiresAt) : null,
+    typeof sandboxState?.expiresAt === "number"
+      ? new Date(sandboxState.expiresAt)
+      : null,
 }));
 
-mock.module("@viben/sandbox", () => ({
-  connectSandbox: async (state: {
+vi.mock("@viben/sandbox", () => ({
+  connectSandbox: async (sandboxState: {
     type: "vercel";
     sandboxName?: string;
     expiresAt?: number;
@@ -69,29 +88,29 @@ mock.module("@viben/sandbox", () => ({
     return {
       workingDirectory: "/vercel/sandbox",
       expiresAt,
-      exec: async () => probeResult,
+      exec: async () => state.probeResult,
       getState: () => ({
-        ...state,
-        ...(state.sandboxName ? { sandboxName: state.sandboxName } : {}),
+        ...sandboxState,
+        ...(sandboxState.sandboxName
+          ? { sandboxName: sandboxState.sandboxName }
+          : {}),
         expiresAt,
       }),
     };
   },
 }));
 
-const routeModulePromise = import("./route");
-
 describe("/api/sandbox/reconnect", () => {
   beforeEach(() => {
-    updateCalls.length = 0;
-    probeResult = {
+    state.updateCalls.length = 0;
+    state.probeResult = {
       success: true,
       stdout: "ok",
       stderr: "",
     };
 
     const now = Date.now();
-    sessionRecord = {
+    state.sessionRecord = {
       id: "session-1",
       userId: "user-1",
       snapshotUrl: "snap-1",
@@ -109,8 +128,6 @@ describe("/api/sandbox/reconnect", () => {
   });
 
   test("recovers failed lifecycle state when reconnect succeeds", async () => {
-    const { GET } = await routeModulePromise;
-
     const response = await GET(
       new Request("http://localhost/api/sandbox/reconnect?sessionId=session-1"),
     );
@@ -127,16 +144,14 @@ describe("/api/sandbox/reconnect", () => {
     expect(payload.lifecycle.state).toBe("active");
     expect(typeof payload.expiresAt).toBe("number");
 
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]?.sessionId).toBe("session-1");
-    expect(updateCalls[0]?.patch.lifecycleState).toBe("active");
-    expect(updateCalls[0]?.patch.lifecycleError).toBeNull();
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]?.sessionId).toBe("session-1");
+    expect(state.updateCalls[0]?.patch.lifecycleState).toBe("active");
+    expect(state.updateCalls[0]?.patch.lifecycleError).toBeNull();
   });
 
   test("marks sandbox expired when the reconnect probe hits a 410", async () => {
-    const { GET } = await routeModulePromise;
-
-    probeResult = {
+    state.probeResult = {
       success: false,
       stdout: "",
       stderr: "Status code 410 is not ok",
@@ -154,21 +169,19 @@ describe("/api/sandbox/reconnect", () => {
     expect(payload.status).toBe("expired");
     expect(payload.lifecycle.state).toBe("hibernated");
 
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]?.sessionId).toBe("session-1");
-    expect(updateCalls[0]?.patch.lifecycleState).toBe("hibernated");
-    expect(updateCalls[0]?.patch.lifecycleError).toBeNull();
-    expect(updateCalls[0]?.patch.sandboxState).toEqual({
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]?.sessionId).toBe("session-1");
+    expect(state.updateCalls[0]?.patch.lifecycleState).toBe("hibernated");
+    expect(state.updateCalls[0]?.patch.lifecycleError).toBeNull();
+    expect(state.updateCalls[0]?.patch.sandboxState).toEqual({
       type: "vercel",
       sandboxName: "session_session-1",
     });
   });
 
   test("drops a missing sandbox resume handle when the reconnect probe hits a 404", async () => {
-    const { GET } = await routeModulePromise;
-
-    sessionRecord.snapshotUrl = null;
-    probeResult = {
+    state.sessionRecord.snapshotUrl = null;
+    state.probeResult = {
       success: false,
       stdout: "",
       stderr: "Status code 404 is not ok",
@@ -188,11 +201,11 @@ describe("/api/sandbox/reconnect", () => {
     expect(payload.hasSnapshot).toBe(false);
     expect(payload.lifecycle.state).toBe("hibernated");
 
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]?.sessionId).toBe("session-1");
-    expect(updateCalls[0]?.patch.lifecycleState).toBe("hibernated");
-    expect(updateCalls[0]?.patch.lifecycleError).toBeNull();
-    expect(updateCalls[0]?.patch.sandboxState).toEqual({
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]?.sessionId).toBe("session-1");
+    expect(state.updateCalls[0]?.patch.lifecycleState).toBe("hibernated");
+    expect(state.updateCalls[0]?.patch.lifecycleError).toBeNull();
+    expect(state.updateCalls[0]?.patch.sandboxState).toEqual({
       type: "vercel",
     });
   });

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 type AuthSession = {
   user: {
@@ -8,61 +8,66 @@ type AuthSession = {
   };
 } | null;
 
-let authSession: AuthSession;
-let hasLinkedGitHub = false;
-let installations: Array<{ installationId: number }>;
-let userToken: string | null;
-let githubUsername: string | null;
-let syncedInstallationsCount = 0;
-let syncError: Error | null;
-let syncErrorIsAuth = false;
+const state = vi.hoisted(() => {
+  const s = {
+    authSession: null as AuthSession,
+    hasLinkedGitHub: false,
+    installations: [] as Array<{ installationId: number }>,
+    userToken: null as string | null,
+    githubUsername: null as string | null,
+    syncedInstallationsCount: 0,
+    syncError: null as Error | null,
+    syncErrorIsAuth: false,
+  };
+  return s;
+});
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => authSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.authSession,
 }));
 
-mock.module("@/lib/github/token", () => ({
-  getGitHubRepoOAuthToken: async () => userToken,
+vi.mock("@/lib/github/token", () => ({
+  getGitHubRepoOAuthToken: async () => state.userToken,
 }));
 
-mock.module("@/lib/github/users", () => ({
-  hasGitHubAccount: async () => hasLinkedGitHub,
-  getGitHubUsernameForToken: async () => githubUsername,
+vi.mock("@/lib/github/users", () => ({
+  hasGitHubAccount: async () => state.hasLinkedGitHub,
+  getGitHubUsernameForToken: async () => state.githubUsername,
   getGitHubAccountId: async () => null,
 }));
 
-mock.module("@/lib/db/installations", () => ({
-  getInstallationsByUserId: async () => installations,
+vi.mock("@/lib/db/installations", () => ({
+  getInstallationsByUserId: async () => state.installations,
 }));
 
-mock.module("@/lib/github/sync", () => ({
+vi.mock("@/lib/github/sync", () => ({
   syncUserInstallations: async () => {
-    if (syncError) {
-      throw syncError;
+    if (state.syncError) {
+      throw state.syncError;
     }
 
-    return syncedInstallationsCount;
+    return state.syncedInstallationsCount;
   },
-  isGitHubInstallationsAuthError: () => syncErrorIsAuth,
+  isGitHubInstallationsAuthError: () => state.syncErrorIsAuth,
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 describe("GET /api/github/connection-status", () => {
   beforeEach(() => {
-    authSession = { user: { id: "user-1" } };
-    hasLinkedGitHub = true;
-    installations = [{ installationId: 1 }];
-    userToken = "ghu_user";
-    githubUsername = "octocat";
-    syncedInstallationsCount = 1;
-    syncError = null;
-    syncErrorIsAuth = false;
+    state.authSession = { user: { id: "user-1" } };
+    state.hasLinkedGitHub = true;
+    state.installations = [{ installationId: 1 }];
+    state.userToken = "ghu_user";
+    state.githubUsername = "octocat";
+    state.syncedInstallationsCount = 1;
+    state.syncError = null;
+    state.syncErrorIsAuth = false;
   });
 
   test("returns 401 when unauthenticated", async () => {
-    authSession = null;
-    const { GET } = await routeModulePromise;
+    state.authSession = null;
+    const { GET } = route;
 
     const response = await GET();
 
@@ -71,9 +76,9 @@ describe("GET /api/github/connection-status", () => {
   });
 
   test("returns not_connected when no GitHub account is linked", async () => {
-    hasLinkedGitHub = false;
-    installations = [];
-    const { GET } = await routeModulePromise;
+    state.hasLinkedGitHub = false;
+    state.installations = [];
+    const { GET } = route;
 
     const response = await GET();
 
@@ -87,8 +92,8 @@ describe("GET /api/github/connection-status", () => {
   });
 
   test("requires reconnect when no usable token is available", async () => {
-    userToken = null;
-    const { GET } = await routeModulePromise;
+    state.userToken = null;
+    const { GET } = route;
 
     const response = await GET();
 
@@ -102,8 +107,8 @@ describe("GET /api/github/connection-status", () => {
   });
 
   test("requires reconnect when live sync drops cached installations to zero", async () => {
-    syncedInstallationsCount = 0;
-    const { GET } = await routeModulePromise;
+    state.syncedInstallationsCount = 0;
+    const { GET } = route;
 
     const response = await GET();
 
@@ -117,8 +122,8 @@ describe("GET /api/github/connection-status", () => {
   });
 
   test("stays connected when sync succeeds with installations", async () => {
-    syncedInstallationsCount = 2;
-    const { GET } = await routeModulePromise;
+    state.syncedInstallationsCount = 2;
+    const { GET } = route;
 
     const response = await GET();
 
@@ -132,9 +137,9 @@ describe("GET /api/github/connection-status", () => {
   });
 
   test("stays connected when the account has no installations yet", async () => {
-    installations = [];
-    syncedInstallationsCount = 0;
-    const { GET } = await routeModulePromise;
+    state.installations = [];
+    state.syncedInstallationsCount = 0;
+    const { GET } = route;
 
     const response = await GET();
 
@@ -148,9 +153,9 @@ describe("GET /api/github/connection-status", () => {
   });
 
   test("requires reconnect when GitHub rejects installation sync auth", async () => {
-    syncError = new Error("GitHub auth failed");
-    syncErrorIsAuth = true;
-    const { GET } = await routeModulePromise;
+    state.syncError = new Error("GitHub auth failed");
+    state.syncErrorIsAuth = true;
+    const { GET } = route;
 
     const response = await GET();
 

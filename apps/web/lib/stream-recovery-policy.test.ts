@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import {
   STREAM_RECOVERY_MIN_INTERVAL_MS,
   STREAM_RECOVERY_STALL_MS,

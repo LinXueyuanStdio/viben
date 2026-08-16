@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 type ChatRecord = { id: string };
 type MessageRecord = {
@@ -6,25 +6,33 @@ type MessageRecord = {
   parts: unknown[];
 };
 
-let chats: ChatRecord[] = [];
-let messagesByChatId: Record<string, MessageRecord[]> = {};
-
-mock.module("@/lib/db/sessions", () => ({
-  getChatsBySessionId: async () => chats,
-  getChatMessages: async (chatId: string) => messagesByChatId[chatId] ?? [],
+const state = vi.hoisted(() => ({
+  chats: [] as ChatRecord[],
+  messagesByChatId: {} as Record<string, MessageRecord[]>,
 }));
 
-const helpersModulePromise = import("./generate-pr-helpers");
+vi.mock("@/lib/db/sessions", () => ({
+  getChatsBySessionId: async () => state.chats,
+  getChatMessages: async (chatId: string) =>
+    state.messagesByChatId[chatId] ?? [],
+}));
+
+import {
+  extractGitHubOwnerFromRemoteUrl,
+  generateBranchName,
+  getConversationContext,
+  isPermissionPushError,
+  looksLikeCommitHash,
+  redactGitHubToken,
+} from "./generate-pr-helpers";
 
 describe("generate-pr helpers", () => {
   beforeEach(() => {
-    chats = [];
-    messagesByChatId = {};
+    state.chats = [];
+    state.messagesByChatId = {};
   });
 
   test("generateBranchName uses initials and 8-char random suffix", async () => {
-    const { generateBranchName } = await helpersModulePromise;
-
     const fromName = generateBranchName("octocat", "Alice Bob");
     const fromUsername = generateBranchName("xyUser", null);
 
@@ -33,23 +41,17 @@ describe("generate-pr helpers", () => {
   });
 
   test("looksLikeCommitHash detects commit-looking strings", async () => {
-    const { looksLikeCommitHash } = await helpersModulePromise;
-
     expect(looksLikeCommitHash("abc1234")).toBe(true);
     expect(looksLikeCommitHash("ABCDEF1234567")).toBe(true);
     expect(looksLikeCommitHash("feature/branch")).toBe(false);
   });
 
   test("isPermissionPushError detects permission errors", async () => {
-    const { isPermissionPushError } = await helpersModulePromise;
-
     expect(isPermissionPushError("Permission denied to repository")).toBe(true);
     expect(isPermissionPushError("all good")).toBe(false);
   });
 
   test("redactGitHubToken removes token from authenticated URLs", async () => {
-    const { redactGitHubToken } = await helpersModulePromise;
-
     const redacted = redactGitHubToken(
       "fatal: could not access https://x-access-token:secret@github.com/org/repo.git",
     );
@@ -59,8 +61,6 @@ describe("generate-pr helpers", () => {
   });
 
   test("extractGitHubOwnerFromRemoteUrl handles https and ssh remotes", async () => {
-    const { extractGitHubOwnerFromRemoteUrl } = await helpersModulePromise;
-
     expect(
       extractGitHubOwnerFromRemoteUrl("https://github.com/acme/widgets.git"),
     ).toBe("acme");
@@ -71,10 +71,8 @@ describe("generate-pr helpers", () => {
   });
 
   test("getConversationContext returns only text parts with role labels", async () => {
-    const { getConversationContext } = await helpersModulePromise;
-
-    chats = [{ id: "chat-1" }];
-    messagesByChatId["chat-1"] = [
+    state.chats = [{ id: "chat-1" }];
+    state.messagesByChatId["chat-1"] = [
       {
         role: "user",
         parts: [

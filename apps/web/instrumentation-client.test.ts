@@ -1,17 +1,18 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
+import { botIdProtectedRoutes } from "./instrumentation-client";
 
-const initBotIdCalls: unknown[] = [];
+const state = vi.hoisted(() => ({
+  initBotIdCalls: [] as unknown[],
+}));
 
-mock.module("botid/client/core", () => ({
+vi.mock("botid/client/core", () => ({
   initBotId: (config: unknown) => {
-    initBotIdCalls.push(config);
+    state.initBotIdCalls.push(config);
   },
 }));
 
 describe("BotID client instrumentation", () => {
-  test("protects session creation to match the server-side BotID gate", async () => {
-    const { botIdProtectedRoutes } = await import("./instrumentation-client");
-
+  test("protects session creation to match the server-side BotID gate", () => {
     expect(botIdProtectedRoutes).toContainEqual({
       path: "/api/sessions",
       method: "POST",
@@ -20,7 +21,7 @@ describe("BotID client instrumentation", () => {
       path: "/api/page-sessions",
       method: "POST",
     });
-    expect(initBotIdCalls).toContainEqual({
+    expect(state.initBotIdCalls).toContainEqual({
       protect: botIdProtectedRoutes,
     });
   });

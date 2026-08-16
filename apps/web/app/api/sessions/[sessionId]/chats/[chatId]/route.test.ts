@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { DELETE, GET, PATCH } from "./route";
 
 type AuthResult =
   | {
@@ -38,68 +39,65 @@ type ChatRecord = {
   modelId: string;
 };
 
-let authResult: AuthResult = { ok: true, userId: "user-1" };
-let ownedSessionChatResult: OwnedSessionChatResult = {
-  ok: true,
-  sessionRecord: { id: "session-1" },
-  chat: {
+const state = vi.hoisted(() => ({
+  authResult: { ok: true, userId: "user-1" } as AuthResult,
+  ownedSessionChatResult: {
+    ok: true,
+    sessionRecord: { id: "session-1" },
+    chat: {
+      id: "chat-1",
+      sessionId: "session-1",
+      modelId: "model-1",
+      activeStreamId: null,
+    },
+  } as OwnedSessionChatResult,
+  currentSession: {
+    user: { id: "user-1" },
+  } as {
+    authProvider?: "vercel" | "github";
+    user: { id: string; email?: string; username?: string; avatar?: string };
+  } | null,
+  chatMessages: [
+    {
+      id: "message-1",
+      parts: [{ type: "text", text: "Hello" }],
+    },
+  ] as ChatMessageRecord[],
+  updatedChat: {
     id: "chat-1",
     sessionId: "session-1",
-    modelId: "model-1",
-    activeStreamId: null,
-  },
-};
-let currentSession: {
-  authProvider?: "vercel" | "github";
-  user: { id: string; email?: string; username?: string; avatar?: string };
-} | null = {
-  user: { id: "user-1" },
-};
-let chatMessages: ChatMessageRecord[] = [
-  {
-    id: "message-1",
-    parts: [{ type: "text", text: "Hello" }],
-  },
-];
-
-let updatedChat: ChatRecord | null = {
-  id: "chat-1",
-  sessionId: "session-1",
-  title: "Updated",
-  modelId: "model-updated",
-};
-let chatsInSession: Array<{ id: string }> = [
-  { id: "chat-1" },
-  { id: "chat-2" },
-];
-
-const updateChatCalls: Array<{
-  chatId: string;
-  patch: { title?: string; modelId?: string };
-}> = [];
-const deleteChatCalls: string[] = [];
-
-mock.module("@/app/api/sessions/_lib/session-context", () => ({
-  requireAuthenticatedUser: async () => authResult,
-  requireOwnedSessionChat: async () => ownedSessionChatResult,
+    title: "Updated",
+    modelId: "model-updated",
+  } as ChatRecord | null,
+  chatsInSession: [{ id: "chat-1" }, { id: "chat-2" }] as Array<{ id: string }>,
+  updateChatCalls: [] as Array<{
+    chatId: string;
+    patch: { title?: string; modelId?: string };
+  }>,
+  deleteChatCalls: [] as string[],
 }));
 
-mock.module("@/lib/db/sessions", () => ({
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
+  requireAuthenticatedUser: async () => state.authResult,
+  requireOwnedSessionChat: async () => state.ownedSessionChatResult,
+}));
+
+vi.mock("@/lib/db/sessions", () => ({
   updateChat: async (
     chatId: string,
     patch: { title?: string; modelId?: string },
   ) => {
-    updateChatCalls.push({ chatId, patch });
-    return updatedChat;
+    state.updateChatCalls.push({ chatId, patch });
+    return state.updatedChat;
   },
-  getChatMessages: async () => chatMessages,
-  getChatsBySessionId: async () => chatsInSession,
+  getChatMessages: async () => state.chatMessages,
+  getChatsBySessionId: async () => state.chatsInSession,
   deleteChat: async (chatId: string) => {
-    deleteChatCalls.push(chatId);
+    state.deleteChatCalls.push(chatId);
   },
 }));
 
-mock.module("@/lib/db/user-preferences", () => ({
+vi.mock("@/lib/db/user-preferences", () => ({
   getUserPreferences: async () => ({
     defaultModelId: "model-default",
     defaultSubagentModelId: null,
@@ -116,11 +114,9 @@ mock.module("@/lib/db/user-preferences", () => ({
   }),
 }));
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => currentSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.currentSession,
 }));
-
-const routeModulePromise = import("./route");
 
 function createContext(sessionId = "session-1", chatId = "chat-1") {
   return {
@@ -142,8 +138,8 @@ function createPatchRequest(body: unknown): Request {
 
 describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
   beforeEach(() => {
-    authResult = { ok: true, userId: "user-1" };
-    ownedSessionChatResult = {
+    state.authResult = { ok: true, userId: "user-1" };
+    state.ownedSessionChatResult = {
       ok: true,
       sessionRecord: { id: "session-1" },
       chat: {
@@ -153,30 +149,29 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
         activeStreamId: null,
       },
     };
-    currentSession = { user: { id: "user-1" } };
-    chatMessages = [
+    state.currentSession = { user: { id: "user-1" } };
+    state.chatMessages = [
       {
         id: "message-1",
         parts: [{ type: "text", text: "Hello" }],
       },
     ];
-    updatedChat = {
+    state.updatedChat = {
       id: "chat-1",
       sessionId: "session-1",
       title: "Updated",
       modelId: "model-updated",
     };
-    chatsInSession = [{ id: "chat-1" }, { id: "chat-2" }];
-    updateChatCalls.length = 0;
-    deleteChatCalls.length = 0;
+    state.chatsInSession = [{ id: "chat-1" }, { id: "chat-2" }];
+    state.updateChatCalls.length = 0;
+    state.deleteChatCalls.length = 0;
   });
 
   test("GET returns auth error from guard", async () => {
-    authResult = {
+    state.authResult = {
       ok: false,
       response: Response.json({ error: "Not authenticated" }, { status: 401 }),
     };
-    const { GET } = await routeModulePromise;
 
     const response = await GET(createGetRequest(), createContext());
 
@@ -184,7 +179,7 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
   });
 
   test("GET returns the latest chat snapshot", async () => {
-    ownedSessionChatResult = {
+    state.ownedSessionChatResult = {
       ok: true,
       sessionRecord: { id: "session-1" },
       chat: {
@@ -194,7 +189,7 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
         activeStreamId: "stream-1",
       },
     };
-    chatMessages = [
+    state.chatMessages = [
       {
         id: "message-1",
         parts: [{ type: "text", text: "Hello" }],
@@ -204,7 +199,6 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
         parts: [{ type: "text", text: "World" }],
       },
     ];
-    const { GET } = await routeModulePromise;
 
     const response = await GET(createGetRequest(), createContext());
     const body = (await response.json()) as {
@@ -220,15 +214,16 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
       activeStreamId: "stream-1",
     });
     expect(body.isStreaming).toBe(true);
-    expect(body.messages).toEqual(chatMessages.map((message) => message.parts));
+    expect(body.messages).toEqual(
+      state.chatMessages.map((message) => message.parts),
+    );
   });
 
   test("PATCH returns auth error from guard", async () => {
-    authResult = {
+    state.authResult = {
       ok: false,
       response: Response.json({ error: "Not authenticated" }, { status: 401 }),
     };
-    const { PATCH } = await routeModulePromise;
 
     const response = await PATCH(
       createPatchRequest({ title: "x" }),
@@ -236,15 +231,14 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(updateChatCalls).toHaveLength(0);
+    expect(state.updateChatCalls).toHaveLength(0);
   });
 
   test("PATCH returns ownership error from guard", async () => {
-    ownedSessionChatResult = {
+    state.ownedSessionChatResult = {
       ok: false,
       response: Response.json({ error: "Chat not found" }, { status: 404 }),
     };
-    const { PATCH } = await routeModulePromise;
 
     const response = await PATCH(
       createPatchRequest({ title: "x" }),
@@ -252,12 +246,10 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(updateChatCalls).toHaveLength(0);
+    expect(state.updateChatCalls).toHaveLength(0);
   });
 
   test("PATCH returns 400 for invalid JSON", async () => {
-    const { PATCH } = await routeModulePromise;
-
     const response = await PATCH(
       new Request("http://localhost/api/sessions/session-1/chats/chat-1", {
         method: "PATCH",
@@ -273,8 +265,6 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
   });
 
   test("PATCH returns 400 when neither title nor modelId is provided", async () => {
-    const { PATCH } = await routeModulePromise;
-
     const response = await PATCH(
       createPatchRequest({ title: "   " }),
       createContext(),
@@ -283,12 +273,10 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("At least one field is required");
-    expect(updateChatCalls).toHaveLength(0);
+    expect(state.updateChatCalls).toHaveLength(0);
   });
 
   test("PATCH trims fields and updates chat", async () => {
-    const { PATCH } = await routeModulePromise;
-
     const response = await PATCH(
       createPatchRequest({ title: "  New title  ", modelId: "  model-2  " }),
       createContext(),
@@ -296,7 +284,7 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
     const body = (await response.json()) as { chat: ChatRecord };
 
     expect(response.status).toBe(200);
-    expect(updateChatCalls).toEqual([
+    expect(state.updateChatCalls).toEqual([
       {
         chatId: "chat-1",
         patch: { title: "New title", modelId: "model-2" },
@@ -306,8 +294,7 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
   });
 
   test("PATCH returns 404 when updateChat returns null", async () => {
-    updatedChat = null;
-    const { PATCH } = await routeModulePromise;
+    state.updatedChat = null;
 
     const response = await PATCH(
       createPatchRequest({ title: "New" }),
@@ -320,8 +307,7 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
   });
 
   test("DELETE returns 400 when attempting to delete the only chat", async () => {
-    chatsInSession = [{ id: "chat-1" }];
-    const { DELETE } = await routeModulePromise;
+    state.chatsInSession = [{ id: "chat-1" }];
 
     const response = await DELETE(
       new Request("http://localhost/api/sessions/session-1/chats/chat-1", {
@@ -333,12 +319,10 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Cannot delete the only chat in a session");
-    expect(deleteChatCalls).toHaveLength(0);
+    expect(state.deleteChatCalls).toHaveLength(0);
   });
 
   test("DELETE removes chat when more than one chat exists", async () => {
-    const { DELETE } = await routeModulePromise;
-
     const response = await DELETE(
       new Request("http://localhost/api/sessions/session-1/chats/chat-1", {
         method: "DELETE",
@@ -349,6 +333,6 @@ describe("/api/sessions/[sessionId]/chats/[chatId]", () => {
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(deleteChatCalls).toEqual(["chat-1"]);
+    expect(state.deleteChatCalls).toEqual(["chat-1"]);
   });
 });

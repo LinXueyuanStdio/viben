@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { installGlobalSkills } from "./global-skill-installer";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 interface ExecCall {
   command: string;
@@ -12,7 +13,7 @@ const execCalls: ExecCall[] = [];
 
 const sandbox = {
   workingDirectory: "/workspace",
-  exec: mock(async (command: string, cwd: string, timeoutMs: number) => {
+  exec: vi.fn(async (command: string, cwd: string, timeoutMs: number) => {
     execCalls.push({ command, cwd, timeoutMs });
 
     if (command === 'printf %s "$HOME"') {
@@ -35,8 +36,6 @@ const sandbox = {
   }),
 };
 
-const installerModulePromise = import("./global-skill-installer");
-
 describe("installGlobalSkills", () => {
   beforeEach(() => {
     execCalls.length = 0;
@@ -44,8 +43,6 @@ describe("installGlobalSkills", () => {
   });
 
   test("installs each requested global skill", async () => {
-    const { installGlobalSkills } = await installerModulePromise;
-
     await installGlobalSkills({
       sandbox: sandbox as never,
       globalSkillRefs: [
@@ -76,8 +73,6 @@ describe("installGlobalSkills", () => {
   });
 
   test("does nothing when the skill list is empty", async () => {
-    const { installGlobalSkills } = await installerModulePromise;
-
     await installGlobalSkills({
       sandbox: sandbox as never,
       globalSkillRefs: [],

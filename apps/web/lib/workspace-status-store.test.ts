@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import {
   clearChatWorkspaceStatus,
   getChatWorkspaceStatusSnapshot,
@@ -34,7 +34,7 @@ describe("workspace status store", () => {
   test("notifies subscribers when status changes", () => {
     clearChatWorkspaceStatus("chat-store-subscribe");
 
-    const listener = mock(() => {});
+    const listener = vi.fn(() => {});
     const unsubscribe = subscribeChatWorkspaceStatus(
       "chat-store-subscribe",
       listener,
@@ -57,7 +57,7 @@ describe("workspace status store", () => {
   test("does not notify after unsubscribe", () => {
     clearChatWorkspaceStatus("chat-store-unsubscribe");
 
-    const listener = mock(() => {});
+    const listener = vi.fn(() => {});
     const unsubscribe = subscribeChatWorkspaceStatus(
       "chat-store-unsubscribe",
       listener,

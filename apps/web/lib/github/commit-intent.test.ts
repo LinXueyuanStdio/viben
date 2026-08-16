@@ -1,11 +1,10 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
+import { getRepoRelativePathError } from "./commit-intent";
+import { buildCommitMessageWithCoAuthor } from "./commit";
 
-mock.module("./users", () => ({
+vi.mock("./users", () => ({
   getGitHubUserProfile: async () => null,
 }));
-
-const { getRepoRelativePathError } = await import("./commit-intent");
-const { buildCommitMessageWithCoAuthor } = await import("./commit");
 
 describe("commit intent path validation", () => {
   test("accepts normal repo-relative paths", () => {

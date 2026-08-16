@@ -1,48 +1,49 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-let currentSession: {
-  authProvider?: "vercel" | "github";
-  user: { id: string; email?: string };
-} | null = {
-  user: { id: "user-1" },
-};
+const state = vi.hoisted(() => {
+  const s = {
+    currentSession: { user: { id: "user-1" } } as {
+      authProvider?: "vercel" | "github";
+      user: { id: string; email?: string };
+    } | null,
+    preferencesState: {
+      defaultModelId: "anthropic/claude-haiku-4.5",
+      defaultSubagentModelId: null as string | null,
+      defaultSandboxType: "vercel" as const,
+      defaultDiffMode: "unified" as const,
+      autoCommitPush: false,
+      autoCreatePr: false,
+      alertsEnabled: true,
+      alertSoundEnabled: true,
+      publicUsageEnabled: false,
+      globalSkillRefs: [] as Array<{ source: string; skillName: string }>,
+      modelVariants: [] as Array<Record<string, unknown>>,
+      enabledModelIds: [] as string[],
+    },
+    updateCalls: [] as Array<Record<string, unknown>>,
+  };
+  return s;
+});
 
-const preferencesState = {
-  defaultModelId: "anthropic/claude-haiku-4.5",
-  defaultSubagentModelId: null as string | null,
-  defaultSandboxType: "vercel" as const,
-  defaultDiffMode: "unified" as const,
-  autoCommitPush: false,
-  autoCreatePr: false,
-  alertsEnabled: true,
-  alertSoundEnabled: true,
-  publicUsageEnabled: false,
-  globalSkillRefs: [] as Array<{ source: string; skillName: string }>,
-  modelVariants: [] as Array<Record<string, unknown>>,
-  enabledModelIds: [] as string[],
-};
-
-const updateCalls: Array<Record<string, unknown>> = [];
-
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => currentSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.currentSession,
 }));
 
-mock.module("@/lib/db/user-preferences", () => ({
-  getUserPreferences: async (_userId: string) => preferencesState,
+vi.mock("@/lib/db/user-preferences", () => ({
+  getUserPreferences: async (_userId: string) => state.preferencesState,
   updateUserPreferences: async (
     _userId: string,
     updates: Record<string, unknown>,
   ) => {
-    updateCalls.push(updates);
+    state.updateCalls.push(updates);
     return {
-      ...preferencesState,
+      ...state.preferencesState,
       ...updates,
     };
   },
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 function createJsonRequest(method: "PATCH" | "GET", body?: unknown): Request {
   return new Request("http://localhost/api/settings/preferences", {
@@ -54,17 +55,17 @@ function createJsonRequest(method: "PATCH" | "GET", body?: unknown): Request {
 
 describe("/api/settings/preferences", () => {
   beforeEach(() => {
-    currentSession = { user: { id: "user-1" } };
-    preferencesState.defaultModelId = "anthropic/claude-haiku-4.5";
-    preferencesState.defaultSubagentModelId = null;
-    preferencesState.modelVariants = [];
-    preferencesState.enabledModelIds = [];
-    updateCalls.length = 0;
+    state.currentSession = { user: { id: "user-1" } };
+    state.preferencesState.defaultModelId = "anthropic/claude-haiku-4.5";
+    state.preferencesState.defaultSubagentModelId = null;
+    state.preferencesState.modelVariants = [];
+    state.preferencesState.enabledModelIds = [];
+    state.updateCalls.length = 0;
   });
 
   test("GET returns 401 when unauthenticated", async () => {
-    currentSession = null;
-    const { GET } = await routeModulePromise;
+    state.currentSession = null;
+    const { GET } = route;
 
     const response = await GET(createJsonRequest("GET"));
     const body = (await response.json()) as { error: string };
@@ -74,11 +75,11 @@ describe("/api/settings/preferences", () => {
   });
 
   test("GET returns preferences including autoCommitPush and autoCreatePr", async () => {
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
 
     const response = await GET(createJsonRequest("GET"));
     const body = (await response.json()) as {
-      preferences: typeof preferencesState;
+      preferences: typeof state.preferencesState;
     };
 
     expect(response.status).toBe(200);
@@ -89,16 +90,16 @@ describe("/api/settings/preferences", () => {
   });
 
   test("GET hides Opus defaults for managed trial users", async () => {
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
 
-    currentSession = {
+    state.currentSession = {
       authProvider: "vercel",
       user: { id: "user-1", email: "person@example.com" },
     };
-    preferencesState.defaultModelId = "anthropic/claude-opus-4.6";
-    preferencesState.defaultSubagentModelId =
+    state.preferencesState.defaultModelId = "anthropic/claude-opus-4.6";
+    state.preferencesState.defaultSubagentModelId =
       "variant:builtin:claude-opus-4.6-high";
-    preferencesState.modelVariants = [
+    state.preferencesState.modelVariants = [
       {
         id: "variant:user-opus",
         name: "User Opus",
@@ -111,7 +112,7 @@ describe("/api/settings/preferences", () => {
       new Request("https://viben-web.vercel.app/api/settings/preferences"),
     );
     const body = (await response.json()) as {
-      preferences: typeof preferencesState;
+      preferences: typeof state.preferencesState;
     };
 
     expect(body.preferences.defaultModelId).toBe("openai/gpt-5.4");
@@ -120,7 +121,7 @@ describe("/api/settings/preferences", () => {
   });
 
   test("PATCH rejects invalid sandbox types", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { defaultSandboxType: "invalid" }),
@@ -129,11 +130,11 @@ describe("/api/settings/preferences", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid sandbox type");
-    expect(updateCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(0);
   });
 
   test("PATCH rejects invalid autoCommitPush values", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { autoCommitPush: "yes" }),
@@ -142,27 +143,27 @@ describe("/api/settings/preferences", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid autoCommitPush value");
-    expect(updateCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(0);
   });
 
   test("PATCH updates autoCommitPush when boolean is provided", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { autoCommitPush: true }),
     );
     const body = (await response.json()) as {
-      preferences: typeof preferencesState;
+      preferences: typeof state.preferencesState;
     };
 
     expect(response.status).toBe(200);
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]).toEqual({ autoCommitPush: true });
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]).toEqual({ autoCommitPush: true });
     expect(body.preferences.autoCommitPush).toBe(true);
   });
 
   test("PATCH rejects invalid autoCreatePr values", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { autoCreatePr: "yes" }),
@@ -171,27 +172,27 @@ describe("/api/settings/preferences", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid autoCreatePr value");
-    expect(updateCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(0);
   });
 
   test("PATCH updates autoCreatePr when boolean is provided", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { autoCreatePr: true }),
     );
     const body = (await response.json()) as {
-      preferences: typeof preferencesState;
+      preferences: typeof state.preferencesState;
     };
 
     expect(response.status).toBe(200);
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]).toEqual({ autoCreatePr: true });
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]).toEqual({ autoCreatePr: true });
     expect(body.preferences.autoCreatePr).toBe(true);
   });
 
   test("PATCH rejects invalid publicUsageEnabled values", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { publicUsageEnabled: "yes" }),
@@ -200,27 +201,27 @@ describe("/api/settings/preferences", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid publicUsageEnabled value");
-    expect(updateCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(0);
   });
 
   test("PATCH updates publicUsageEnabled when boolean is provided", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", { publicUsageEnabled: true }),
     );
     const body = (await response.json()) as {
-      preferences: typeof preferencesState;
+      preferences: typeof state.preferencesState;
     };
 
     expect(response.status).toBe(200);
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]).toEqual({ publicUsageEnabled: true });
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]).toEqual({ publicUsageEnabled: true });
     expect(body.preferences.publicUsageEnabled).toBe(true);
   });
 
   test("PATCH rejects invalid globalSkillRefs values", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", {
@@ -231,11 +232,11 @@ describe("/api/settings/preferences", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid globalSkillRefs value");
-    expect(updateCalls).toHaveLength(0);
+    expect(state.updateCalls).toHaveLength(0);
   });
 
   test("PATCH updates globalSkillRefs when valid refs are provided", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       createJsonRequest("PATCH", {
@@ -246,12 +247,12 @@ describe("/api/settings/preferences", () => {
       }),
     );
     const body = (await response.json()) as {
-      preferences: typeof preferencesState;
+      preferences: typeof state.preferencesState;
     };
 
     expect(response.status).toBe(200);
-    expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]).toEqual({
+    expect(state.updateCalls).toHaveLength(1);
+    expect(state.updateCalls[0]).toEqual({
       globalSkillRefs: [{ source: "vercel/ai", skillName: "ai-sdk" }],
     });
     expect(body.preferences.globalSkillRefs).toEqual([
@@ -260,7 +261,7 @@ describe("/api/settings/preferences", () => {
   });
 
   test("PATCH returns 400 for invalid JSON", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
 
     const response = await PATCH(
       new Request("http://localhost/api/settings/preferences", {

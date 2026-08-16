@@ -1,36 +1,37 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const generateTextCalls: Array<{ prompt: string }> = [];
+const state = vi.hoisted(() => {
+  const s = {
+    generateTextCalls: [] as Array<{ prompt: string }>,
+    currentSession: { user: { id: "user-1" } } as { user: { id: string } } | null,
+    generateTextResult: { text: "Generated session title" } as
+      | { text: string }
+      | Error,
+  };
+  return s;
+});
 
-let currentSession: { user: { id: string } } | null = {
-  user: { id: "user-1" },
-};
-
-let generateTextResult: { text: string } | Error = {
-  text: "Generated session title",
-};
-
-mock.module("@viben/agent", () => ({
+vi.mock("@viben/agent", () => ({
   gateway: (modelId: string) => modelId,
 }));
 
-mock.module("ai", () => ({
+vi.mock("ai", () => ({
   generateText: async (input: { prompt: string }) => {
-    generateTextCalls.push(input);
+    state.generateTextCalls.push(input);
 
-    if (generateTextResult instanceof Error) {
-      throw generateTextResult;
+    if (state.generateTextResult instanceof Error) {
+      throw state.generateTextResult;
     }
 
-    return generateTextResult;
+    return state.generateTextResult;
   },
 }));
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => currentSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.currentSession,
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 function createJsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/generate-title", {
@@ -42,14 +43,14 @@ function createJsonRequest(body: unknown): Request {
 
 describe("/api/generate-title", () => {
   beforeEach(() => {
-    currentSession = { user: { id: "user-1" } };
-    generateTextResult = { text: "Generated session title" };
-    generateTextCalls.length = 0;
+    state.currentSession = { user: { id: "user-1" } };
+    state.generateTextResult = { text: "Generated session title" };
+    state.generateTextCalls.length = 0;
   });
 
   test("returns 401 when user is not authenticated", async () => {
-    currentSession = null;
-    const { POST } = await routeModulePromise;
+    state.currentSession = null;
+    const { POST } = route;
 
     const response = await POST(createJsonRequest({ message: "hello" }));
     const body = (await response.json()) as { error: string };
@@ -59,7 +60,7 @@ describe("/api/generate-title", () => {
   });
 
   test("returns 400 for invalid JSON", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       new Request("http://localhost/api/generate-title", {
@@ -75,7 +76,7 @@ describe("/api/generate-title", () => {
   });
 
   test("returns 400 when message is missing or blank", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const missingResponse = await POST(createJsonRequest({}));
     const missingBody = (await missingResponse.json()) as { error: string };
@@ -91,11 +92,11 @@ describe("/api/generate-title", () => {
   });
 
   test("returns generated title when request is valid", async () => {
-    generateTextResult = {
+    state.generateTextResult = {
       text: "  Fix API Validation\nIgnore this line",
     };
 
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       createJsonRequest({ message: "  hello world  " }),
@@ -104,36 +105,38 @@ describe("/api/generate-title", () => {
 
     expect(response.status).toBe(200);
     expect(body.title).toBe("Fix API Validation");
-    expect(generateTextCalls).toHaveLength(1);
-    expect(generateTextCalls[0]?.prompt).toContain("hello world");
+    expect(state.generateTextCalls).toHaveLength(1);
+    expect(state.generateTextCalls[0]?.prompt).toContain("hello world");
   });
 
   test("injects language hint into prompt when language is provided", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       createJsonRequest({ message: "hello world", language: "zh-CN" }),
     );
 
     expect(response.status).toBe(200);
-    expect(generateTextCalls).toHaveLength(1);
-    expect(generateTextCalls[0]?.prompt).toContain(
+    expect(state.generateTextCalls).toHaveLength(1);
+    expect(state.generateTextCalls[0]?.prompt).toContain(
       "Generate the title in Chinese (Simplified)",
     );
   });
 
   test("does not inject language hint when language is omitted", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(createJsonRequest({ message: "hello world" }));
 
     expect(response.status).toBe(200);
-    expect(generateTextCalls[0]?.prompt).not.toContain("Generate the title in");
+    expect(state.generateTextCalls[0]?.prompt).not.toContain(
+      "Generate the title in",
+    );
   });
 
   test("returns 500 when title generation fails", async () => {
-    generateTextResult = new Error("failed");
-    const { POST } = await routeModulePromise;
+    state.generateTextResult = new Error("failed");
+    const { POST } = route;
 
     const response = await POST(createJsonRequest({ message: "hello" }));
     const body = (await response.json()) as { error: string };

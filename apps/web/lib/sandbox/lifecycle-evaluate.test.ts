@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { evaluateSandboxLifecycle } from "./lifecycle";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 interface TestSessionRecord {
   id: string;
@@ -24,36 +25,42 @@ interface TestSessionRecord {
   updatedAt: Date;
 }
 
-let sessionRecord: TestSessionRecord | null = null;
-let chatsInSession: Array<{ id: string; activeStreamId: string | null }> = [];
+const state = vi.hoisted(() => {
+  const stopSpy = vi.fn(async () => undefined);
 
-const stopSpy = mock(async () => undefined);
+  const s = {
+    sessionRecord: null as TestSessionRecord | null,
+    chatsInSession: [] as Array<{ id: string; activeStreamId: string | null }>,
+    stopSpy,
+    spies: {
+      getChatsBySessionId: vi.fn(
+        async (_sessionId: string) => s.chatsInSession as never,
+      ),
+      getSessionById: vi.fn(
+        async (_sessionId: string) => s.sessionRecord as never,
+      ),
+      updateSession: vi.fn(
+        async (_sessionId: string, patch: Record<string, unknown>) => patch,
+      ),
+      connectSandbox: vi.fn(async () => ({
+        stop: stopSpy,
+      })),
+      stop: stopSpy,
+    },
+  };
 
-const spies = {
-  getChatsBySessionId: mock(
-    async (_sessionId: string) => chatsInSession as never,
-  ),
-  getSessionById: mock(async (_sessionId: string) => sessionRecord as never),
-  updateSession: mock(
-    async (_sessionId: string, patch: Record<string, unknown>) => patch,
-  ),
-  connectSandbox: mock(async () => ({
-    stop: stopSpy,
-  })),
-  stop: stopSpy,
-};
+  return s;
+});
 
-mock.module("@/lib/db/sessions", () => ({
-  getChatsBySessionId: spies.getChatsBySessionId,
-  getSessionById: spies.getSessionById,
-  updateSession: spies.updateSession,
+vi.mock("@/lib/db/sessions", () => ({
+  getChatsBySessionId: state.spies.getChatsBySessionId,
+  getSessionById: state.spies.getSessionById,
+  updateSession: state.spies.updateSession,
 }));
 
-mock.module("@viben/sandbox", () => ({
-  connectSandbox: spies.connectSandbox,
+vi.mock("@viben/sandbox", () => ({
+  connectSandbox: state.spies.connectSandbox,
 }));
-
-const { evaluateSandboxLifecycle } = await import("./lifecycle");
 
 function makeDueSession(): TestSessionRecord {
   const nowMs = Date.now();
@@ -75,15 +82,15 @@ function makeDueSession(): TestSessionRecord {
 }
 
 beforeEach(() => {
-  sessionRecord = makeDueSession();
-  chatsInSession = [];
+  state.sessionRecord = makeDueSession();
+  state.chatsInSession = [];
 
-  Object.values(spies).forEach((spy) => spy.mockClear());
+  Object.values(state.spies).forEach((spy) => spy.mockClear());
 });
 
 describe("evaluateSandboxLifecycle", () => {
   test("skips hibernation whenever any chat still has an activeStreamId", async () => {
-    chatsInSession = [{ id: "chat-1", activeStreamId: "wrun-running-1" }];
+    state.chatsInSession = [{ id: "chat-1", activeStreamId: "wrun-running-1" }];
 
     const result = await evaluateSandboxLifecycle(
       "session-1",
@@ -91,16 +98,16 @@ describe("evaluateSandboxLifecycle", () => {
     );
 
     expect(result).toEqual({ action: "skipped", reason: "active-workflow" });
-    expect(spies.connectSandbox).not.toHaveBeenCalled();
-    expect(spies.updateSession).not.toHaveBeenCalled();
-    expect(spies.stop).not.toHaveBeenCalled();
+    expect(state.spies.connectSandbox).not.toHaveBeenCalled();
+    expect(state.spies.updateSession).not.toHaveBeenCalled();
+    expect(state.spies.stop).not.toHaveBeenCalled();
   });
 
   test("rechecks for activeStreamId before stopping and restores active lifecycle state", async () => {
-    spies.connectSandbox.mockImplementationOnce(async () => {
-      chatsInSession = [{ id: "chat-1", activeStreamId: "wrun-raced-in-1" }];
+    state.spies.connectSandbox.mockImplementationOnce(async () => {
+      state.chatsInSession = [{ id: "chat-1", activeStreamId: "wrun-raced-in-1" }];
       return {
-        stop: stopSpy,
+        stop: state.stopSpy,
       };
     });
 
@@ -110,10 +117,10 @@ describe("evaluateSandboxLifecycle", () => {
     );
 
     expect(result).toEqual({ action: "skipped", reason: "active-workflow" });
-    expect(spies.getChatsBySessionId).toHaveBeenCalledTimes(2);
-    expect(spies.stop).not.toHaveBeenCalled();
+    expect(state.spies.getChatsBySessionId).toHaveBeenCalledTimes(2);
+    expect(state.spies.stop).not.toHaveBeenCalled();
 
-    const updateCalls = spies.updateSession.mock.calls as unknown[][];
+    const updateCalls = state.spies.updateSession.mock.calls as unknown[][];
     const firstPatch = updateCalls[0]?.[1] as Record<string, unknown>;
     const finalPatch = updateCalls.at(-1)?.[1] as Record<string, unknown>;
 
@@ -129,20 +136,20 @@ describe("evaluateSandboxLifecycle", () => {
   });
 
   test("skips hibernation when lifecycle timing is refreshed before stopping", async () => {
-    spies.connectSandbox.mockImplementationOnce(async () => {
-      if (!sessionRecord) {
+    state.spies.connectSandbox.mockImplementationOnce(async () => {
+      if (!state.sessionRecord) {
         throw new Error("sessionRecord must be set");
       }
 
       const refreshedAt = new Date();
-      sessionRecord = {
-        ...sessionRecord,
+      state.sessionRecord = {
+        ...state.sessionRecord,
         lastActivityAt: refreshedAt,
         hibernateAfter: new Date(refreshedAt.getTime() + 60_000),
       };
 
       return {
-        stop: stopSpy,
+        stop: state.stopSpy,
       };
     });
 
@@ -152,9 +159,9 @@ describe("evaluateSandboxLifecycle", () => {
     );
 
     expect(result).toEqual({ action: "skipped", reason: "not-due-yet" });
-    expect(spies.stop).not.toHaveBeenCalled();
+    expect(state.spies.stop).not.toHaveBeenCalled();
 
-    const updateCalls = spies.updateSession.mock.calls as unknown[][];
+    const updateCalls = state.spies.updateSession.mock.calls as unknown[][];
     const firstPatch = updateCalls[0]?.[1] as Record<string, unknown>;
     const finalPatch = updateCalls.at(-1)?.[1] as Record<string, unknown>;
 
@@ -176,10 +183,10 @@ describe("evaluateSandboxLifecycle", () => {
     );
 
     expect(result).toEqual({ action: "hibernated" });
-    expect(spies.connectSandbox).toHaveBeenCalledTimes(1);
-    expect(spies.stop).toHaveBeenCalledTimes(1);
+    expect(state.spies.connectSandbox).toHaveBeenCalledTimes(1);
+    expect(state.spies.stop).toHaveBeenCalledTimes(1);
 
-    const updateCalls = spies.updateSession.mock.calls as unknown[][];
+    const updateCalls = state.spies.updateSession.mock.calls as unknown[][];
     const firstPatch = updateCalls[0]?.[1] as Record<string, unknown>;
     const finalPatch = updateCalls.at(-1)?.[1] as Record<string, unknown>;
 

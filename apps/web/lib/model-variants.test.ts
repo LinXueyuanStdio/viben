@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import {
   BUILT_IN_VARIANT_ID_PREFIX,
   BUILT_IN_VARIANTS,

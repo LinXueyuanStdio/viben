@@ -1,4 +1,10 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  requireAuthenticatedUser,
+  requireOwnedSession,
+  requireOwnedSessionChat,
+  requireOwnedSessionWithSandboxGuard,
+} from "./session-context";
 
 type AuthSession = { user: { id: string } } | null;
 
@@ -14,28 +20,28 @@ type ChatRecord = {
   activeStreamId: string | null;
 };
 
-let authSession: AuthSession = { user: { id: "user-1" } };
-let sessionRecord: SessionRecord | null = {
-  id: "session-1",
-  userId: "user-1",
-  sandboxState: { type: "vercel" },
-};
-let chatRecord: ChatRecord | null = {
-  id: "chat-1",
-  sessionId: "session-1",
-  activeStreamId: null,
-};
-
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => authSession,
+const state = vi.hoisted(() => ({
+  authSession: { user: { id: "user-1" } } as AuthSession,
+  sessionRecord: {
+    id: "session-1",
+    userId: "user-1",
+    sandboxState: { type: "vercel" },
+  } as SessionRecord | null,
+  chatRecord: {
+    id: "chat-1",
+    sessionId: "session-1",
+    activeStreamId: null,
+  } as ChatRecord | null,
 }));
 
-mock.module("@/lib/db/sessions", () => ({
-  getSessionById: async () => sessionRecord,
-  getChatById: async () => chatRecord,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.authSession,
 }));
 
-const sessionContextModulePromise = import("./session-context");
+vi.mock("@/lib/db/sessions", () => ({
+  getSessionById: async () => state.sessionRecord,
+  getChatById: async () => state.chatRecord,
+}));
 
 async function getErrorMessage(
   response: Response,
@@ -46,13 +52,13 @@ async function getErrorMessage(
 
 describe("session context guards", () => {
   beforeEach(() => {
-    authSession = { user: { id: "user-1" } };
-    sessionRecord = {
+    state.authSession = { user: { id: "user-1" } };
+    state.sessionRecord = {
       id: "session-1",
       userId: "user-1",
       sandboxState: { type: "vercel" },
     };
-    chatRecord = {
+    state.chatRecord = {
       id: "chat-1",
       sessionId: "session-1",
       activeStreamId: null,
@@ -60,8 +66,7 @@ describe("session context guards", () => {
   });
 
   test("requireAuthenticatedUser returns 401 when unauthenticated", async () => {
-    authSession = null;
-    const { requireAuthenticatedUser } = await sessionContextModulePromise;
+    state.authSession = null;
 
     const result = await requireAuthenticatedUser();
 
@@ -73,16 +78,13 @@ describe("session context guards", () => {
   });
 
   test("requireAuthenticatedUser returns user id when authenticated", async () => {
-    const { requireAuthenticatedUser } = await sessionContextModulePromise;
-
     const result = await requireAuthenticatedUser();
 
     expect(result).toEqual({ ok: true, userId: "user-1" });
   });
 
   test("requireOwnedSession returns 404 when session is missing", async () => {
-    sessionRecord = null;
-    const { requireOwnedSession } = await sessionContextModulePromise;
+    state.sessionRecord = null;
 
     const result = await requireOwnedSession({
       userId: "user-1",
@@ -97,12 +99,11 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSession returns 403 when user does not own session", async () => {
-    sessionRecord = {
+    state.sessionRecord = {
       id: "session-1",
       userId: "other-user",
       sandboxState: { type: "vercel" },
     };
-    const { requireOwnedSession } = await sessionContextModulePromise;
 
     const result = await requireOwnedSession({
       userId: "user-1",
@@ -117,12 +118,11 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSession allows custom forbidden message", async () => {
-    sessionRecord = {
+    state.sessionRecord = {
       id: "session-1",
       userId: "other-user",
       sandboxState: { type: "vercel" },
     };
-    const { requireOwnedSession } = await sessionContextModulePromise;
 
     const result = await requireOwnedSession({
       userId: "user-1",
@@ -138,8 +138,6 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSession returns session when owned", async () => {
-    const { requireOwnedSession } = await sessionContextModulePromise;
-
     const result = await requireOwnedSession({
       userId: "user-1",
       sessionId: "session-1",
@@ -152,9 +150,7 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSessionWithSandboxGuard forwards ownership errors", async () => {
-    sessionRecord = null;
-    const { requireOwnedSessionWithSandboxGuard } =
-      await sessionContextModulePromise;
+    state.sessionRecord = null;
 
     const result = await requireOwnedSessionWithSandboxGuard({
       userId: "user-1",
@@ -170,9 +166,6 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSessionWithSandboxGuard returns sandbox error when guard fails", async () => {
-    const { requireOwnedSessionWithSandboxGuard } =
-      await sessionContextModulePromise;
-
     const result = await requireOwnedSessionWithSandboxGuard({
       userId: "user-1",
       sessionId: "session-1",
@@ -189,8 +182,7 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSessionChat returns 404 when chat is missing", async () => {
-    chatRecord = null;
-    const { requireOwnedSessionChat } = await sessionContextModulePromise;
+    state.chatRecord = null;
 
     const result = await requireOwnedSessionChat({
       userId: "user-1",
@@ -206,12 +198,11 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSessionChat returns 404 when chat belongs to another session", async () => {
-    chatRecord = {
+    state.chatRecord = {
       id: "chat-1",
       sessionId: "session-2",
       activeStreamId: null,
     };
-    const { requireOwnedSessionChat } = await sessionContextModulePromise;
 
     const result = await requireOwnedSessionChat({
       userId: "user-1",
@@ -227,12 +218,11 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSessionChat returns 403 when user does not own session", async () => {
-    sessionRecord = {
+    state.sessionRecord = {
       id: "session-1",
       userId: "other-user",
       sandboxState: { type: "vercel" },
     };
-    const { requireOwnedSessionChat } = await sessionContextModulePromise;
 
     const result = await requireOwnedSessionChat({
       userId: "user-1",
@@ -248,8 +238,6 @@ describe("session context guards", () => {
   });
 
   test("requireOwnedSessionChat returns session and chat when owned", async () => {
-    const { requireOwnedSessionChat } = await sessionContextModulePromise;
-
     const result = await requireOwnedSessionChat({
       userId: "user-1",
       sessionId: "session-1",

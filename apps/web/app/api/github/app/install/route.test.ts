@@ -1,42 +1,49 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { NextRequest } from "next/server";
 
-let authSession: {
-  authProvider: "vercel";
-  user: { id: string; email?: string };
-} | null;
-let hasLinkedGitHub = false;
-let installations: Array<{ installationId: number }> = [];
+const state = vi.hoisted(() => {
+  const s = {
+    authSession: null as {
+      authProvider: "vercel";
+      user: { id: string; email?: string };
+    } | null,
+    hasLinkedGitHub: false,
+    installations: [] as Array<{ installationId: number }>,
+  };
+  return s;
+});
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
-mock.module("arctic", () => ({
+vi.mock("arctic", () => ({
   generateState: () => "state-123",
 }));
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => authSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.authSession,
 }));
 
-mock.module("@/lib/github/token", () => ({
-  getGitHubRepoOAuthToken: async () => (hasLinkedGitHub ? "ghu_test" : null),
+vi.mock("@/lib/github/token", () => ({
+  getGitHubRepoOAuthToken: async () =>
+    state.hasLinkedGitHub ? "ghu_test" : null,
 }));
 
-mock.module("@/lib/github/users", () => ({
-  hasGitHubAccount: async () => hasLinkedGitHub,
-  getGitHubUsernameForToken: async () => (hasLinkedGitHub ? "testuser" : null),
-  getGitHubAccountId: async () => (hasLinkedGitHub ? "12345" : null),
+vi.mock("@/lib/github/users", () => ({
+  hasGitHubAccount: async () => state.hasLinkedGitHub,
+  getGitHubUsernameForToken: async () =>
+    state.hasLinkedGitHub ? "testuser" : null,
+  getGitHubAccountId: async () => (state.hasLinkedGitHub ? "12345" : null),
 }));
 
-mock.module("@/lib/db/installations", () => ({
-  getInstallationsByUserId: async () => installations,
+vi.mock("@/lib/db/installations", () => ({
+  getInstallationsByUserId: async () => state.installations,
 }));
 
-mock.module("@/lib/github/sync", () => ({
-  syncUserInstallations: async () => installations.length,
+vi.mock("@/lib/github/sync", () => ({
+  syncUserInstallations: async () => state.installations.length,
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 const originalEnv = {
   NEXT_PUBLIC_GITHUB_APP_SLUG: process.env.NEXT_PUBLIC_GITHUB_APP_SLUG,
@@ -57,12 +64,12 @@ function createRequest(url: string): NextRequest {
 
 describe("GET /api/github/app/install", () => {
   beforeEach(() => {
-    authSession = {
+    state.authSession = {
       authProvider: "vercel",
       user: { id: "user-1", email: "person@vercel.com" },
     };
-    hasLinkedGitHub = true;
-    installations = [{ installationId: 1 }];
+    state.hasLinkedGitHub = true;
+    state.installations = [{ installationId: 1 }];
 
     Object.assign(process.env, {
       NEXT_PUBLIC_GITHUB_APP_SLUG: "viben-agent",
@@ -78,9 +85,9 @@ describe("GET /api/github/app/install", () => {
   });
 
   test("redirects to github install when github not linked", async () => {
-    hasLinkedGitHub = false;
-    installations = [];
-    const { GET } = await routeModulePromise;
+    state.hasLinkedGitHub = false;
+    state.installations = [];
+    const { GET } = route;
 
     const response = await GET(
       createRequest(
@@ -97,8 +104,8 @@ describe("GET /api/github/app/install", () => {
   });
 
   test("redirects to github install when linked but no installations", async () => {
-    installations = [];
-    const { GET } = await routeModulePromise;
+    state.installations = [];
+    const { GET } = route;
 
     const response = await GET(
       createRequest("http://localhost/api/github/app/install?next=/sessions"),
@@ -113,11 +120,11 @@ describe("GET /api/github/app/install", () => {
   });
 
   test("blocks managed template trial users", async () => {
-    authSession = {
+    state.authSession = {
       authProvider: "vercel",
       user: { id: "user-1", email: "person@example.com" },
     };
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
 
     const response = await GET(
       createRequest(

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { FetchError, fetcher } from "./swr";
 
 // Store the original global fetch so we can restore it.
@@ -31,7 +31,7 @@ describe("fetcher", () => {
     statusText: string;
     json?: () => Promise<unknown>;
   }) {
-    globalThis.fetch = mock(() =>
+    globalThis.fetch = vi.fn(() =>
       Promise.resolve(response as Response),
     ) as unknown as typeof fetch;
   }

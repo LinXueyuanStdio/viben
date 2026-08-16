@@ -1,65 +1,68 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { VercelProjectSelection } from "@/lib/vercel/types";
 
-let currentSession: { user: { id: string } } | null = {
-  user: { id: "user-1" },
-};
-let currentToken: string | null = "token";
-let savedLink: VercelProjectSelection | null = null;
-let projects: VercelProjectSelection[] = [];
-let projectsError: Error | null = null;
+const state = vi.hoisted(() => {
+  const s = {
+    currentSession: { user: { id: "user-1" } } as { user: { id: string } } | null,
+    currentToken: "token" as string | null,
+    savedLink: null as VercelProjectSelection | null,
+    projects: [] as VercelProjectSelection[],
+    projectsError: null as Error | null,
+  };
+  return s;
+});
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => currentSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.currentSession,
 }));
 
-mock.module("@/lib/vercel/token", () => ({
-  getUserVercelToken: async () => currentToken,
+vi.mock("@/lib/vercel/token", () => ({
+  getUserVercelToken: async () => state.currentToken,
 }));
 
-mock.module("@/lib/db/vercel-project-links", () => ({
-  getVercelProjectLinkByRepo: async () => savedLink,
+vi.mock("@/lib/db/vercel-project-links", () => ({
+  getVercelProjectLinkByRepo: async () => state.savedLink,
 }));
 
-mock.module("@/lib/vercel/projects", () => ({
+vi.mock("@/lib/vercel/projects", () => ({
   isVercelInvalidTokenError: (error: unknown) =>
-    projectsError !== null && error === projectsError,
+    state.projectsError !== null && error === state.projectsError,
   listMatchingVercelProjects: async () => {
-    if (projectsError) {
-      throw projectsError;
+    if (state.projectsError) {
+      throw state.projectsError;
     }
-    return projects;
+    return state.projects;
   },
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 describe("/api/vercel/repo-projects", () => {
   beforeEach(() => {
-    currentSession = { user: { id: "user-1" } };
-    currentToken = "token";
-    savedLink = null;
-    projects = [];
-    projectsError = null;
+    state.currentSession = { user: { id: "user-1" } };
+    state.currentToken = "token";
+    state.savedLink = null;
+    state.projects = [];
+    state.projectsError = null;
   });
 
   test("returns the remembered default when it still exists in live candidates", async () => {
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
 
-    savedLink = {
+    state.savedLink = {
       projectId: "project-2",
       projectName: "marketing",
       teamId: "team-1",
       teamSlug: "acme",
     };
-    projects = [
+    state.projects = [
       {
         projectId: "project-1",
         projectName: "app",
         teamId: null,
         teamSlug: null,
       },
-      savedLink,
+      state.savedLink,
     ];
 
     const response = await GET(
@@ -73,14 +76,14 @@ describe("/api/vercel/repo-projects", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(body.projects).toEqual(projects);
+    expect(body.projects).toEqual(state.projects);
     expect(body.selectedProjectId).toBe("project-2");
   });
 
   test("auto-selects the lone matching live project when there is no saved default", async () => {
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
 
-    projects = [
+    state.projects = [
       {
         projectId: "project-1",
         projectName: "app",
@@ -103,9 +106,9 @@ describe("/api/vercel/repo-projects", () => {
   });
 
   test("asks the client to reconnect Vercel when the token is invalid", async () => {
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
 
-    projectsError = new Error("invalid Vercel token");
+    state.projectsError = new Error("invalid Vercel token");
 
     const response = await GET(
       new Request(

@@ -1,19 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
-
-const DEV_SERVER_PID_FILE =
-  "/vercel/sandbox/apps/web/.viben-agent-dev-server-3000.pid";
-const DEV_SERVER_STATE_FILE =
-  "/vercel/sandbox/.viben-agent-dev-server-state.json";
-const RUNNING_PID = "4242";
-
-const currentSessionRecord = {
-  userId: "user-1",
-  sandboxState: {
-    type: "vercel" as const,
-    sandboxId: "sandbox-1",
-    expiresAt: Date.now() + 60_000,
-  },
-};
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 type MockPathEntry = {
   type: "file" | "directory";
@@ -21,197 +6,237 @@ type MockPathEntry = {
   size: number;
 };
 
-let currentFindOutput = "./package.json\n./apps/web/package.json\n";
-let fileContents = new Map<string, string>();
-let existingPaths = new Set<string>();
-let pathEntries = new Map<string, MockPathEntry>();
-let runningPids = new Set<string>();
-let lastLaunchCommand: string | null = null;
-let lastLaunchCwd: string | null = null;
-let currentMtimeMs = 1_000;
+const state = vi.hoisted(() => {
+  const DEV_SERVER_PID_FILE =
+    "/vercel/sandbox/apps/web/.viben-agent-dev-server-3000.pid";
+  const DEV_SERVER_STATE_FILE =
+    "/vercel/sandbox/.viben-agent-dev-server-state.json";
+  const RUNNING_PID = "4242";
 
-function successResult(stdout = "") {
-  return {
-    success: true,
-    exitCode: 0,
-    stdout,
-    stderr: "",
-    truncated: false,
+  const currentSessionRecord = {
+    userId: "user-1",
+    sandboxState: {
+      type: "vercel" as const,
+      sandboxId: "sandbox-1",
+      expiresAt: Date.now() + 60_000,
+    },
   };
-}
 
-function failureResult(stderr: string) {
-  return {
-    success: false,
-    exitCode: 1,
-    stdout: "",
-    stderr,
-    truncated: false,
+  const s = {
+    currentFindOutput: "./package.json\n./apps/web/package.json\n",
+    fileContents: new Map<string, string>(),
+    existingPaths: new Set<string>(),
+    pathEntries: new Map<string, MockPathEntry>(),
+    runningPids: new Set<string>(),
+    lastLaunchCommand: null as string | null,
+    lastLaunchCwd: null as string | null,
+    currentMtimeMs: 1_000,
   };
-}
 
-function nextMtime(): number {
-  currentMtimeMs += 100;
-  return currentMtimeMs;
-}
-
-function setMockFile(filePath: string, content: string, mtimeMs = nextMtime()) {
-  fileContents.set(filePath, content);
-  existingPaths.add(filePath);
-  pathEntries.set(filePath, {
-    type: "file",
-    mtimeMs,
-    size: content.length,
-  });
-}
-
-function setMockDirectory(dirPath: string, mtimeMs = nextMtime()) {
-  existingPaths.add(dirPath);
-  pathEntries.set(dirPath, {
-    type: "directory",
-    mtimeMs,
-    size: 0,
-  });
-}
-
-function removeMockPath(targetPath: string) {
-  existingPaths.delete(targetPath);
-  fileContents.delete(targetPath);
-  pathEntries.delete(targetPath);
-}
-
-function seedDefaultWorkspace() {
-  currentFindOutput = "./package.json\n./apps/web/package.json\n";
-
-  setMockDirectory("/vercel/sandbox");
-  setMockDirectory("/vercel/sandbox/apps");
-  setMockDirectory("/vercel/sandbox/apps/web");
-
-  setMockFile(
-    "/vercel/sandbox/package.json",
-    JSON.stringify({
-      packageManager: "bun@1.2.14",
-      scripts: {
-        dev: "turbo dev",
-      },
-    }),
-  );
-  setMockFile(
-    "/vercel/sandbox/apps/web/package.json",
-    JSON.stringify({
-      scripts: {
-        dev: "next dev",
-      },
-      dependencies: {
-        next: "15.0.0",
-      },
-    }),
-  );
-  setMockFile("/vercel/sandbox/bun.lock", "");
-}
-
-const requireAuthenticatedUserMock = mock(async () => ({
-  ok: true as const,
-  userId: "user-1",
-}));
-const requireOwnedSessionWithSandboxGuardMock = mock(async () => ({
-  ok: true as const,
-  sessionRecord: currentSessionRecord,
-}));
-const execMock = mock(async (command: string) => {
-  if (command.includes("find .")) {
-    return successResult(currentFindOutput);
+  function successResult(stdout = "") {
+    return {
+      success: true,
+      exitCode: 0,
+      stdout,
+      stderr: "",
+      truncated: false,
+    };
   }
 
-  if (command.startsWith("kill -0 ")) {
-    const pid = command.slice("kill -0 ".length).trim();
-    return runningPids.has(pid)
-      ? successResult()
-      : failureResult(`No such process: ${pid}`);
+  function failureResult(stderr: string) {
+    return {
+      success: false,
+      exitCode: 1,
+      stdout: "",
+      stderr,
+      truncated: false,
+    };
   }
 
-  if (command.startsWith("kill ")) {
-    const pid = command.match(/^kill ([0-9]+)/)?.[1];
-    if (pid) {
-      runningPids.delete(pid);
+  function nextMtime(): number {
+    s.currentMtimeMs += 100;
+    return s.currentMtimeMs;
+  }
+
+  function setMockFile(filePath: string, content: string, mtimeMs = nextMtime()) {
+    s.fileContents.set(filePath, content);
+    s.existingPaths.add(filePath);
+    s.pathEntries.set(filePath, {
+      type: "file",
+      mtimeMs,
+      size: content.length,
+    });
+  }
+
+  function setMockDirectory(dirPath: string, mtimeMs = nextMtime()) {
+    s.existingPaths.add(dirPath);
+    s.pathEntries.set(dirPath, {
+      type: "directory",
+      mtimeMs,
+      size: 0,
+    });
+  }
+
+  function removeMockPath(targetPath: string) {
+    s.existingPaths.delete(targetPath);
+    s.fileContents.delete(targetPath);
+    s.pathEntries.delete(targetPath);
+  }
+
+  function seedDefaultWorkspace() {
+    s.currentFindOutput = "./package.json\n./apps/web/package.json\n";
+
+    setMockDirectory("/vercel/sandbox");
+    setMockDirectory("/vercel/sandbox/apps");
+    setMockDirectory("/vercel/sandbox/apps/web");
+
+    setMockFile(
+      "/vercel/sandbox/package.json",
+      JSON.stringify({
+        packageManager: "bun@1.2.14",
+        scripts: {
+          dev: "turbo dev",
+        },
+      }),
+    );
+    setMockFile(
+      "/vercel/sandbox/apps/web/package.json",
+      JSON.stringify({
+        scripts: {
+          dev: "next dev",
+        },
+        dependencies: {
+          next: "15.0.0",
+        },
+      }),
+    );
+    setMockFile("/vercel/sandbox/bun.lock", "");
+  }
+
+  const requireAuthenticatedUserMock = vi.fn(async () => ({
+    ok: true as const,
+    userId: "user-1",
+  }));
+  const requireOwnedSessionWithSandboxGuardMock = vi.fn(async () => ({
+    ok: true as const,
+    sessionRecord: currentSessionRecord,
+  }));
+  const execMock = vi.fn(async (command: string) => {
+    if (command.includes("find .")) {
+      return successResult(s.currentFindOutput);
     }
-    return successResult();
-  }
 
-  if (command.startsWith("rm -f ")) {
-    const filePath = command.match(/^rm -f '(.+)'$/)?.[1];
-    if (filePath) {
-      removeMockPath(filePath);
+    if (command.startsWith("kill -0 ")) {
+      const pid = command.slice("kill -0 ".length).trim();
+      return s.runningPids.has(pid)
+        ? successResult()
+        : failureResult(`No such process: ${pid}`);
     }
-    return successResult();
-  }
 
-  throw new Error(`Unexpected exec command: ${command}`);
-});
-const readFileMock = mock(async (filePath: string) => {
-  const content = fileContents.get(filePath);
-  if (content === undefined) {
-    throw new Error(`Missing file: ${filePath}`);
-  }
-  return content;
-});
-const writeFileMock = mock(async (filePath: string, content: string) => {
-  setMockFile(filePath, content);
-});
-const statMock = mock(async (filePath: string) => {
-  const entry = pathEntries.get(filePath);
-  if (!entry) {
-    throw new Error(`ENOENT: ${filePath}`);
-  }
+    if (command.startsWith("kill ")) {
+      const pid = command.match(/^kill ([0-9]+)/)?.[1];
+      if (pid) {
+        s.runningPids.delete(pid);
+      }
+      return successResult();
+    }
 
-  return {
-    isDirectory: () => entry.type === "directory",
-    isFile: () => entry.type === "file",
-    size: entry.size,
-    mtimeMs: entry.mtimeMs,
-  };
-});
-const accessMock = mock(async (filePath: string) => {
-  if (!existingPaths.has(filePath)) {
-    throw new Error(`ENOENT: ${filePath}`);
-  }
-});
-const execDetachedMock = mock(async (command: string, cwd: string) => {
-  lastLaunchCommand = command;
-  lastLaunchCwd = cwd;
+    if (command.startsWith("rm -f ")) {
+      const filePath = command.match(/^rm -f '(.+)'$/)?.[1];
+      if (filePath) {
+        removeMockPath(filePath);
+      }
+      return successResult();
+    }
 
-  const pidFilePath = command.match(
-    /> '([^']+\.viben-agent-dev-server-[0-9]+\.pid)'/,
-  )?.[1];
-  if (pidFilePath) {
-    setMockFile(pidFilePath, `${RUNNING_PID}\n`);
-    runningPids.add(RUNNING_PID);
-  }
+    throw new Error(`Unexpected exec command: ${command}`);
+  });
+  const readFileMock = vi.fn(async (filePath: string) => {
+    const content = s.fileContents.get(filePath);
+    if (content === undefined) {
+      throw new Error(`Missing file: ${filePath}`);
+    }
+    return content;
+  });
+  const writeFileMock = vi.fn(async (filePath: string, content: string) => {
+    setMockFile(filePath, content);
+  });
+  const statMock = vi.fn(async (filePath: string) => {
+    const entry = s.pathEntries.get(filePath);
+    if (!entry) {
+      throw new Error(`ENOENT: ${filePath}`);
+    }
 
-  return { commandId: "cmd-1" };
+    return {
+      isDirectory: () => entry.type === "directory",
+      isFile: () => entry.type === "file",
+      size: entry.size,
+      mtimeMs: entry.mtimeMs,
+    };
+  });
+  const accessMock = vi.fn(async (filePath: string) => {
+    if (!s.existingPaths.has(filePath)) {
+      throw new Error(`ENOENT: ${filePath}`);
+    }
+  });
+  const execDetachedMock = vi.fn(async (command: string, cwd: string) => {
+    s.lastLaunchCommand = command;
+    s.lastLaunchCwd = cwd;
+
+    const pidFilePath = command.match(
+      /> '([^']+\.viben-agent-dev-server-[0-9]+\.pid)'/,
+    )?.[1];
+    if (pidFilePath) {
+      setMockFile(pidFilePath, `${RUNNING_PID}\n`);
+      s.runningPids.add(RUNNING_PID);
+    }
+
+    return { commandId: "cmd-1" };
+  });
+  const domainMock = vi.fn((port: number) => `https://sb-${port}.vercel.run`);
+  const connectSandboxMock = vi.fn(async () => ({
+    workingDirectory: "/vercel/sandbox",
+    exec: execMock,
+    readFile: readFileMock,
+    writeFile: writeFileMock,
+    stat: statMock,
+    access: accessMock,
+    execDetached: execDetachedMock,
+    domain: domainMock,
+  }));
+
+  return Object.assign(s, {
+    DEV_SERVER_PID_FILE,
+    DEV_SERVER_STATE_FILE,
+    RUNNING_PID,
+    currentSessionRecord,
+    seedDefaultWorkspace,
+    setMockFile,
+    setMockDirectory,
+    requireAuthenticatedUserMock,
+    requireOwnedSessionWithSandboxGuardMock,
+    execMock,
+    readFileMock,
+    writeFileMock,
+    statMock,
+    accessMock,
+    execDetachedMock,
+    domainMock,
+    connectSandboxMock,
+  });
 });
-const domainMock = mock((port: number) => `https://sb-${port}.vercel.run`);
-const connectSandboxMock = mock(async () => ({
-  workingDirectory: "/vercel/sandbox",
-  exec: execMock,
-  readFile: readFileMock,
-  writeFile: writeFileMock,
-  stat: statMock,
-  access: accessMock,
-  execDetached: execDetachedMock,
-  domain: domainMock,
+
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
+  requireAuthenticatedUser: state.requireAuthenticatedUserMock,
+  requireOwnedSessionWithSandboxGuard:
+    state.requireOwnedSessionWithSandboxGuardMock,
 }));
 
-mock.module("@/app/api/sessions/_lib/session-context", () => ({
-  requireAuthenticatedUser: requireAuthenticatedUserMock,
-  requireOwnedSessionWithSandboxGuard: requireOwnedSessionWithSandboxGuardMock,
+vi.mock("@viben/sandbox", () => ({
+  connectSandbox: state.connectSandboxMock,
 }));
 
-mock.module("@viben/sandbox", () => ({
-  connectSandbox: connectSandboxMock,
-}));
-
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 function createRouteContext(sessionId = "session-1") {
   return {
@@ -221,29 +246,29 @@ function createRouteContext(sessionId = "session-1") {
 
 describe("/api/sessions/[sessionId]/dev-server", () => {
   beforeEach(() => {
-    currentMtimeMs = 1_000;
-    fileContents = new Map();
-    existingPaths = new Set<string>();
-    pathEntries = new Map<string, MockPathEntry>();
-    seedDefaultWorkspace();
-    runningPids = new Set<string>();
-    lastLaunchCommand = null;
-    lastLaunchCwd = null;
-    currentSessionRecord.sandboxState.expiresAt = Date.now() + 60_000;
-    requireAuthenticatedUserMock.mockClear();
-    requireOwnedSessionWithSandboxGuardMock.mockClear();
-    connectSandboxMock.mockClear();
-    execMock.mockClear();
-    readFileMock.mockClear();
-    writeFileMock.mockClear();
-    statMock.mockClear();
-    accessMock.mockClear();
-    execDetachedMock.mockClear();
-    domainMock.mockClear();
+    state.currentMtimeMs = 1_000;
+    state.fileContents = new Map();
+    state.existingPaths = new Set<string>();
+    state.pathEntries = new Map<string, MockPathEntry>();
+    state.seedDefaultWorkspace();
+    state.runningPids = new Set<string>();
+    state.lastLaunchCommand = null;
+    state.lastLaunchCwd = null;
+    state.currentSessionRecord.sandboxState.expiresAt = Date.now() + 60_000;
+    state.requireAuthenticatedUserMock.mockClear();
+    state.requireOwnedSessionWithSandboxGuardMock.mockClear();
+    state.connectSandboxMock.mockClear();
+    state.execMock.mockClear();
+    state.readFileMock.mockClear();
+    state.writeFileMock.mockClear();
+    state.statMock.mockClear();
+    state.accessMock.mockClear();
+    state.execDetachedMock.mockClear();
+    state.domainMock.mockClear();
   });
 
   test("prefers a direct app dev script over a root workspace orchestrator and returns its preview URL", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       new Request("http://localhost/api/sessions/session-1/dev-server", {
@@ -263,39 +288,39 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
       port: 3000,
       url: "https://sb-3000.vercel.run",
     });
-    expect(connectSandboxMock).toHaveBeenCalledWith(
-      currentSessionRecord.sandboxState,
+    expect(state.connectSandboxMock).toHaveBeenCalledWith(
+      state.currentSessionRecord.sandboxState,
       { ports: [3000, 5173, 4321, 8000] },
     );
-    expect(execDetachedMock).toHaveBeenCalledTimes(1);
-    expect(lastLaunchCwd).toBe("/vercel/sandbox/apps/web");
-    expect(lastLaunchCommand).not.toBeNull();
-    expect(existingPaths.has(DEV_SERVER_PID_FILE)).toBe(true);
-    expect(existingPaths.has(DEV_SERVER_STATE_FILE)).toBe(true);
-    expect(fileContents.get(DEV_SERVER_STATE_FILE)).toBe(
+    expect(state.execDetachedMock).toHaveBeenCalledTimes(1);
+    expect(state.lastLaunchCwd).toBe("/vercel/sandbox/apps/web");
+    expect(state.lastLaunchCommand).not.toBeNull();
+    expect(state.existingPaths.has(state.DEV_SERVER_PID_FILE)).toBe(true);
+    expect(state.existingPaths.has(state.DEV_SERVER_STATE_FILE)).toBe(true);
+    expect(state.fileContents.get(state.DEV_SERVER_STATE_FILE)).toBe(
       JSON.stringify({ packageDir: "apps/web", port: 3000 }),
     );
-    expect(runningPids.has(RUNNING_PID)).toBe(true);
+    expect(state.runningPids.has(state.RUNNING_PID)).toBe(true);
 
-    if (!lastLaunchCommand) {
+    if (!state.lastLaunchCommand) {
       throw new Error("Expected execDetached to receive a launch command");
     }
 
-    expect(lastLaunchCommand).toContain(DEV_SERVER_PID_FILE);
-    expect(lastLaunchCommand).toContain("bun install");
-    expect(lastLaunchCommand).toContain("bun run dev");
-    expect(lastLaunchCommand).toContain("--hostname 0.0.0.0 --port 3000");
+    expect(state.lastLaunchCommand).toContain(state.DEV_SERVER_PID_FILE);
+    expect(state.lastLaunchCommand).toContain("bun install");
+    expect(state.lastLaunchCommand).toContain("bun run dev");
+    expect(state.lastLaunchCommand).toContain("--hostname 0.0.0.0 --port 3000");
   });
 
   test("returns the existing preview URL without relaunching when the dev server is already running", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
-    setMockFile(DEV_SERVER_PID_FILE, `${RUNNING_PID}\n`);
-    setMockFile(
-      DEV_SERVER_STATE_FILE,
+    state.setMockFile(state.DEV_SERVER_PID_FILE, `${state.RUNNING_PID}\n`);
+    state.setMockFile(
+      state.DEV_SERVER_STATE_FILE,
       JSON.stringify({ packageDir: "apps/web", port: 3000 }),
     );
-    runningPids.add(RUNNING_PID);
+    state.runningPids.add(state.RUNNING_PID);
 
     const response = await POST(
       new Request("http://localhost/api/sessions/session-1/dev-server", {
@@ -315,11 +340,11 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
       port: 3000,
       url: "https://sb-3000.vercel.run",
     });
-    expect(execDetachedMock).toHaveBeenCalledTimes(0);
+    expect(state.execDetachedMock).toHaveBeenCalledTimes(0);
   });
 
   test("keeps using the launched app when package discovery later prefers another app", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const firstResponse = await POST(
       new Request("http://localhost/api/sessions/session-1/dev-server", {
@@ -329,8 +354,8 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
     );
     expect(firstResponse.status).toBe(200);
 
-    setMockDirectory("/vercel/sandbox/apps/admin");
-    setMockFile(
+    state.setMockDirectory("/vercel/sandbox/apps/admin");
+    state.setMockFile(
       "/vercel/sandbox/apps/admin/package.json",
       JSON.stringify({
         scripts: {
@@ -341,7 +366,7 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
         },
       }),
     );
-    currentFindOutput =
+    state.currentFindOutput =
       "./apps/admin/package.json\n./apps/web/package.json\n./package.json\n";
 
     const response = await POST(
@@ -362,11 +387,11 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
       port: 3000,
       url: "https://sb-3000.vercel.run",
     });
-    expect(execDetachedMock).toHaveBeenCalledTimes(1);
+    expect(state.execDetachedMock).toHaveBeenCalledTimes(1);
   });
 
   test("stops the running dev server even when package discovery later prefers another app", async () => {
-    const { DELETE, POST } = await routeModulePromise;
+    const { DELETE, POST } = route;
 
     const launchResponse = await POST(
       new Request("http://localhost/api/sessions/session-1/dev-server", {
@@ -376,8 +401,8 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
     );
     expect(launchResponse.status).toBe(200);
 
-    setMockDirectory("/vercel/sandbox/apps/admin");
-    setMockFile(
+    state.setMockDirectory("/vercel/sandbox/apps/admin");
+    state.setMockFile(
       "/vercel/sandbox/apps/admin/package.json",
       JSON.stringify({
         scripts: {
@@ -388,7 +413,7 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
         },
       }),
     );
-    currentFindOutput =
+    state.currentFindOutput =
       "./apps/admin/package.json\n./apps/web/package.json\n./package.json\n";
 
     const response = await DELETE(
@@ -409,16 +434,16 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
       packagePath: "apps/web",
       port: 3000,
     });
-    expect(runningPids.has(RUNNING_PID)).toBe(false);
-    expect(existingPaths.has(DEV_SERVER_PID_FILE)).toBe(false);
-    expect(existingPaths.has(DEV_SERVER_STATE_FILE)).toBe(false);
+    expect(state.runningPids.has(state.RUNNING_PID)).toBe(false);
+    expect(state.existingPaths.has(state.DEV_SERVER_PID_FILE)).toBe(false);
+    expect(state.existingPaths.has(state.DEV_SERVER_STATE_FILE)).toBe(false);
   });
 
   test("reinstalls dependencies when a package manifest changed after node_modules was created", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
-    setMockDirectory("/vercel/sandbox/node_modules", 5_000);
-    setMockFile(
+    state.setMockDirectory("/vercel/sandbox/node_modules", 5_000);
+    state.setMockFile(
       "/vercel/sandbox/apps/web/package.json",
       JSON.stringify({
         scripts: {
@@ -440,19 +465,19 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(lastLaunchCommand).not.toBeNull();
+    expect(state.lastLaunchCommand).not.toBeNull();
 
-    if (!lastLaunchCommand) {
+    if (!state.lastLaunchCommand) {
       throw new Error("Expected execDetached to receive a launch command");
     }
 
-    expect(lastLaunchCommand).toContain("bun install");
+    expect(state.lastLaunchCommand).toContain("bun install");
   });
 
   test("skips dependency install when node_modules is newer than manifests and lockfiles", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
-    setMockDirectory("/vercel/sandbox/node_modules", 10_000);
+    state.setMockDirectory("/vercel/sandbox/node_modules", 10_000);
 
     const response = await POST(
       new Request("http://localhost/api/sessions/session-1/dev-server", {
@@ -462,23 +487,23 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(lastLaunchCommand).not.toBeNull();
+    expect(state.lastLaunchCommand).not.toBeNull();
 
-    if (!lastLaunchCommand) {
+    if (!state.lastLaunchCommand) {
       throw new Error("Expected execDetached to receive a launch command");
     }
 
-    expect(lastLaunchCommand).not.toContain("bun install");
+    expect(state.lastLaunchCommand).not.toContain("bun install");
   });
 
   test("returns 404 when no supported dev script is found", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
-    fileContents = new Map();
-    existingPaths = new Set<string>();
-    pathEntries = new Map<string, MockPathEntry>();
-    setMockDirectory("/vercel/sandbox");
-    setMockFile(
+    state.fileContents = new Map();
+    state.existingPaths = new Set<string>();
+    state.pathEntries = new Map<string, MockPathEntry>();
+    state.setMockDirectory("/vercel/sandbox");
+    state.setMockFile(
       "/vercel/sandbox/package.json",
       JSON.stringify({
         scripts: {
@@ -486,7 +511,7 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
         },
       }),
     );
-    currentFindOutput = "./package.json\n";
+    state.currentFindOutput = "./package.json\n";
 
     const response = await POST(
       new Request("http://localhost/api/sessions/session-1/dev-server", {
@@ -500,6 +525,6 @@ describe("/api/sessions/[sessionId]/dev-server", () => {
     expect(body.error).toBe(
       "No supported dev script found in package.json files",
     );
-    expect(execDetachedMock).toHaveBeenCalledTimes(0);
+    expect(state.execDetachedMock).toHaveBeenCalledTimes(0);
   });
 });

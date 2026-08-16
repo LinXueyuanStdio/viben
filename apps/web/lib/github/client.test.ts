@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { getMergeReadiness, mergePullRequest } from "./pulls";
 
 type MockPullRequest = {
   number: number;
@@ -30,132 +31,133 @@ type MockStatus = {
   target_url?: string | null;
 };
 
-const mockState: {
-  pullRequestResponses: MockPullRequest[];
-  repositoryResponse: {
-    allow_squash_merge: boolean;
-    allow_merge_commit: boolean;
-    allow_rebase_merge: boolean;
-  };
-  checkRuns: MockCheckRun[];
-  statuses: MockStatus[];
-  requiredContexts: string[];
-  mergeError: unknown;
-  mergeResponseSha: string;
-} = {
-  pullRequestResponses: [],
-  repositoryResponse: {
-    allow_squash_merge: true,
-    allow_merge_commit: true,
-    allow_rebase_merge: true,
-  },
-  checkRuns: [],
-  statuses: [],
-  requiredContexts: [],
-  mergeError: null,
-  mergeResponseSha: "merged-sha",
-};
-
-function createMockPullRequest(
-  overrides: Partial<MockPullRequest> = {},
-): MockPullRequest {
-  return {
-    number: 42,
-    state: "open",
-    draft: false,
-    title: "Test PR",
-    body: null,
-    base: { ref: "main" },
-    head: {
-      ref: "feature/test",
-      sha: "abc1234",
-      repo: { owner: { login: "acme" } },
+const state = vi.hoisted(() => {
+  const mockState: {
+    pullRequestResponses: MockPullRequest[];
+    repositoryResponse: {
+      allow_squash_merge: boolean;
+      allow_merge_commit: boolean;
+      allow_rebase_merge: boolean;
+    };
+    checkRuns: MockCheckRun[];
+    statuses: MockStatus[];
+    requiredContexts: string[];
+    mergeError: unknown;
+    mergeResponseSha: string;
+  } = {
+    pullRequestResponses: [],
+    repositoryResponse: {
+      allow_squash_merge: true,
+      allow_merge_commit: true,
+      allow_rebase_merge: true,
     },
-    mergeable: true,
-    mergeable_state: "clean",
-    ...overrides,
+    checkRuns: [],
+    statuses: [],
+    requiredContexts: [],
+    mergeError: null,
+    mergeResponseSha: "merged-sha",
   };
-}
 
-function resetMockState() {
-  mockState.pullRequestResponses = [createMockPullRequest()];
-  mockState.repositoryResponse = {
-    allow_squash_merge: true,
-    allow_merge_commit: true,
-    allow_rebase_merge: true,
-  };
-  mockState.checkRuns = [];
-  mockState.statuses = [];
-  mockState.requiredContexts = [];
-  mockState.mergeError = null;
-  mockState.mergeResponseSha = "merged-sha";
-}
-
-class MockOctokit {
-  rest = {
-    pulls: {
-      get: async ({ pull_number }: { pull_number: number }) => {
-        const response =
-          mockState.pullRequestResponses.shift() ?? createMockPullRequest();
-        return {
-          data: {
-            ...response,
-            number: pull_number,
-          },
-        };
+  function createMockPullRequest(
+    overrides: Partial<MockPullRequest> = {},
+  ): MockPullRequest {
+    return {
+      number: 42,
+      state: "open",
+      draft: false,
+      title: "Test PR",
+      body: null,
+      base: { ref: "main" },
+      head: {
+        ref: "feature/test",
+        sha: "abc1234",
+        repo: { owner: { login: "acme" } },
       },
-      merge: async () => {
-        if (mockState.mergeError) {
-          throw mockState.mergeError;
-        }
+      mergeable: true,
+      mergeable_state: "clean",
+      ...overrides,
+    };
+  }
 
-        return {
-          data: {
-            sha: mockState.mergeResponseSha,
-          },
-        };
+  const graphqlMock = vi.fn(async () => ({}));
+
+  class MockOctokit {
+    rest = {
+      pulls: {
+        get: async ({ pull_number }: { pull_number: number }) => {
+          const response =
+            mockState.pullRequestResponses.shift() ?? createMockPullRequest();
+          return {
+            data: {
+              ...response,
+              number: pull_number,
+            },
+          };
+        },
+        merge: async () => {
+          if (mockState.mergeError) {
+            throw mockState.mergeError;
+          }
+
+          return {
+            data: {
+              sha: mockState.mergeResponseSha,
+            },
+          };
+        },
       },
-    },
-    repos: {
-      get: async () => ({
-        data: mockState.repositoryResponse,
-      }),
-      getCombinedStatusForRef: async () => ({
-        data: {
-          statuses: mockState.statuses,
-        },
-      }),
-      getStatusChecksProtection: async () => ({
-        data: {
-          contexts: mockState.requiredContexts,
-        },
-      }),
-    },
-    checks: {
-      listForRef: async () => ({
-        data: {
-          check_runs: mockState.checkRuns,
-        },
-      }),
-    },
-  };
+      repos: {
+        get: async () => ({
+          data: mockState.repositoryResponse,
+        }),
+        getCombinedStatusForRef: async () => ({
+          data: {
+            statuses: mockState.statuses,
+          },
+        }),
+        getStatusChecksProtection: async () => ({
+          data: {
+            contexts: mockState.requiredContexts,
+          },
+        }),
+      },
+      checks: {
+        listForRef: async () => ({
+          data: {
+            check_runs: mockState.checkRuns,
+          },
+        }),
+      },
+    };
 
-  graphql = mock(async () => ({}));
-}
+    graphql = graphqlMock;
+  }
 
-mock.module("@octokit/rest", () => ({
-  Octokit: MockOctokit,
+  return { mockState, createMockPullRequest, MockOctokit };
+});
+
+vi.mock("@octokit/rest", () => ({
+  Octokit: state.MockOctokit,
 }));
 
-mock.module("./user-token", () => ({
+vi.mock("./user-token", () => ({
   getGithubOAuthToken: async () => "token-from-mock",
 }));
 
-let moduleVersion = 0;
+vi.mock("server-only", () => ({}));
 
-async function loadClientModule() {
-  moduleVersion += 1;
-  return import(`./pulls?test=${moduleVersion}`);
+function resetMockState() {
+  state.mockState.pullRequestResponses = [state.createMockPullRequest()];
+  state.mockState.repositoryResponse = {
+    allow_squash_merge: true,
+    allow_merge_commit: true,
+    allow_rebase_merge: true,
+  };
+  state.mockState.checkRuns = [];
+  state.mockState.statuses = [];
+  state.mockState.requiredContexts = [];
+  state.mockState.mergeError = null;
+  state.mockState.mergeResponseSha = "merged-sha";
 }
 
 describe("github client merge readiness", () => {
@@ -164,13 +166,13 @@ describe("github client merge readiness", () => {
   });
 
   test("adds missing required contexts as expected pending checks", async () => {
-    mockState.pullRequestResponses = [
-      createMockPullRequest({
+    state.mockState.pullRequestResponses = [
+      state.createMockPullRequest({
         mergeable: true,
         mergeable_state: "blocked",
       }),
     ];
-    mockState.checkRuns = [
+    state.mockState.checkRuns = [
       {
         id: 1,
         name: "lint-and-typecheck",
@@ -178,9 +180,8 @@ describe("github client merge readiness", () => {
         conclusion: "success",
       },
     ];
-    mockState.requiredContexts = ["lint-and-typecheck", "Vercel"];
+    state.mockState.requiredContexts = ["lint-and-typecheck", "Vercel"];
 
-    const { getMergeReadiness } = await loadClientModule();
     const readiness = await getMergeReadiness({
       repoUrl: "https://github.com/acme/rocket.git",
       prNumber: 42,
@@ -207,17 +208,17 @@ describe("github client merge readiness", () => {
   });
 
   test("retries stale blocked mergeability after all required checks pass", async () => {
-    mockState.pullRequestResponses = [
-      createMockPullRequest({
+    state.mockState.pullRequestResponses = [
+      state.createMockPullRequest({
         mergeable: true,
         mergeable_state: "blocked",
       }),
-      createMockPullRequest({
+      state.createMockPullRequest({
         mergeable: true,
         mergeable_state: "clean",
       }),
     ];
-    mockState.checkRuns = [
+    state.mockState.checkRuns = [
       {
         id: 1,
         name: "Vercel",
@@ -225,9 +226,8 @@ describe("github client merge readiness", () => {
         conclusion: "success",
       },
     ];
-    mockState.requiredContexts = ["Vercel"];
+    state.mockState.requiredContexts = ["Vercel"];
 
-    const { getMergeReadiness } = await loadClientModule();
     const readiness = await getMergeReadiness({
       repoUrl: "https://github.com/acme/rocket.git",
       prNumber: 42,
@@ -241,7 +241,7 @@ describe("github client merge readiness", () => {
   });
 
   test("surfaces GitHub's specific 405 merge rule message", async () => {
-    mockState.mergeError = {
+    state.mockState.mergeError = {
       status: 405,
       response: {
         data: {
@@ -251,7 +251,6 @@ describe("github client merge readiness", () => {
       },
     };
 
-    const { mergePullRequest } = await loadClientModule();
     const result = await mergePullRequest({
       repoUrl: "https://github.com/acme/rocket.git",
       prNumber: 42,

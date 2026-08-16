@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { LanguageModelUsage } from "ai";
 import type { WebAgentUIMessage } from "@/app/types";
 
@@ -26,59 +26,61 @@ function makeAssistantMessage(
   } as WebAgentUIMessage;
 }
 
-const spies = {
-  recordUsage: mock(() => Promise.resolve()),
-  recordWorkflowRun: mock(() => Promise.resolve()),
-  collectTaskToolUsageEvents: mock(
-    (_message?: unknown) =>
-      [] as Array<{
-        modelId?: string;
-        toolCallId?: string;
-        usage: LanguageModelUsage;
-      }>,
-  ),
-  sumLanguageModelUsage: mock(
-    (a: LanguageModelUsage | undefined, b: LanguageModelUsage) => ({
-      inputTokens: (a?.inputTokens ?? 0) + (b?.inputTokens ?? 0),
-      outputTokens: (a?.outputTokens ?? 0) + (b?.outputTokens ?? 0),
-    }),
-  ),
-};
-
-mock.module("@/lib/db/sessions", () => ({
-  claimChatActiveStreamId: mock(() => Promise.resolve(true)),
-  compareAndSetChatActiveStreamId: mock(() => Promise.resolve(true)),
-  createChatMessageIfNotExists: mock(() => Promise.resolve(undefined)),
-  touchChat: mock(() => Promise.resolve()),
-  updateChat: mock(() => Promise.resolve()),
-  updateSession: mock(() => Promise.resolve()),
-  isFirstChatMessage: mock(() => Promise.resolve(false)),
-  upsertChatMessageScoped: mock(() => Promise.resolve({ status: "inserted" })),
-  updateChatAssistantActivity: mock(() => Promise.resolve()),
+const state = vi.hoisted(() => ({
+  spies: {
+    recordUsage: vi.fn(() => Promise.resolve()),
+    recordWorkflowRun: vi.fn(() => Promise.resolve()),
+    collectTaskToolUsageEvents: vi.fn(
+      (_message?: unknown) =>
+        [] as Array<{
+          modelId?: string;
+          toolCallId?: string;
+          usage: LanguageModelUsage;
+        }>,
+    ),
+    sumLanguageModelUsage: vi.fn(
+      (a: LanguageModelUsage | undefined, b: LanguageModelUsage) => ({
+        inputTokens: (a?.inputTokens ?? 0) + (b?.inputTokens ?? 0),
+        outputTokens: (a?.outputTokens ?? 0) + (b?.outputTokens ?? 0),
+      }),
+    ),
+  },
 }));
 
-mock.module("@/lib/sandbox/lifecycle", () => ({
-  buildActiveLifecycleUpdate: mock(() => ({})),
-  buildLifecycleActivityUpdate: mock(() => ({})),
+vi.mock("@/lib/db/sessions", () => ({
+  claimChatActiveStreamId: vi.fn(() => Promise.resolve(true)),
+  compareAndSetChatActiveStreamId: vi.fn(() => Promise.resolve(true)),
+  createChatMessageIfNotExists: vi.fn(() => Promise.resolve(undefined)),
+  touchChat: vi.fn(() => Promise.resolve()),
+  updateChat: vi.fn(() => Promise.resolve()),
+  updateSession: vi.fn(() => Promise.resolve()),
+  isFirstChatMessage: vi.fn(() => Promise.resolve(false)),
+  upsertChatMessageScoped: vi.fn(() => Promise.resolve({ status: "inserted" })),
+  updateChatAssistantActivity: vi.fn(() => Promise.resolve()),
 }));
 
-mock.module("@/lib/db/usage", () => ({
-  recordUsage: spies.recordUsage,
+vi.mock("@/lib/sandbox/lifecycle", () => ({
+  buildActiveLifecycleUpdate: vi.fn(() => ({})),
+  buildLifecycleActivityUpdate: vi.fn(() => ({})),
 }));
 
-mock.module("@/lib/db/workflow-runs", () => ({
-  recordWorkflowRun: spies.recordWorkflowRun,
+vi.mock("@/lib/db/usage", () => ({
+  recordUsage: state.spies.recordUsage,
 }));
 
-mock.module("@viben/agent", () => ({
-  collectTaskToolUsageEvents: spies.collectTaskToolUsageEvents,
-  sumLanguageModelUsage: spies.sumLanguageModelUsage,
+vi.mock("@/lib/db/workflow-runs", () => ({
+  recordWorkflowRun: state.spies.recordWorkflowRun,
 }));
 
-const { recordWorkflowUsage } = await import("./chat-post-finish");
+vi.mock("@viben/agent", () => ({
+  collectTaskToolUsageEvents: state.spies.collectTaskToolUsageEvents,
+  sumLanguageModelUsage: state.spies.sumLanguageModelUsage,
+}));
+
+import { recordWorkflowUsage } from "./chat-post-finish";
 
 beforeEach(() => {
-  Object.values(spies).forEach((spy) => spy.mockClear());
+  Object.values(state.spies).forEach((spy) => spy.mockClear());
 });
 
 describe("recordWorkflowUsage", () => {
@@ -92,8 +94,8 @@ describe("recordWorkflowUsage", () => {
 
     await recordWorkflowUsage("user-1", "gpt-4", usage, makeAssistantMessage());
 
-    expect(spies.recordUsage).toHaveBeenCalledTimes(1);
-    const calls = spies.recordUsage.mock.calls as unknown[][];
+    expect(state.spies.recordUsage).toHaveBeenCalledTimes(1);
+    const calls = state.spies.recordUsage.mock.calls as unknown[][];
     expect(calls[0][0]).toBe("user-1");
     expect(calls[0][1]).toMatchObject({
       source: "web",
@@ -138,8 +140,8 @@ describe("recordWorkflowUsage", () => {
       },
     );
 
-    expect(spies.recordWorkflowRun).toHaveBeenCalledTimes(1);
-    const calls = spies.recordWorkflowRun.mock.calls as unknown[][];
+    expect(state.spies.recordWorkflowRun).toHaveBeenCalledTimes(1);
+    const calls = state.spies.recordWorkflowRun.mock.calls as unknown[][];
     expect(calls[0][0]).toMatchObject({
       id: "wrun-1",
       chatId: "chat-1",
@@ -156,7 +158,7 @@ describe("recordWorkflowUsage", () => {
   });
 
   test("continues recording usage when workflow run persistence fails", async () => {
-    spies.recordWorkflowRun.mockImplementationOnce(() =>
+    state.spies.recordWorkflowRun.mockImplementationOnce(() =>
       Promise.reject(new Error("workflow runs table missing")),
     );
 
@@ -184,9 +186,11 @@ describe("recordWorkflowUsage", () => {
       },
     );
 
-    expect(spies.recordWorkflowRun).toHaveBeenCalledTimes(1);
-    expect(spies.recordUsage).toHaveBeenCalledTimes(1);
-    expect((spies.recordUsage.mock.calls as unknown[][])[0][1]).toMatchObject({
+    expect(state.spies.recordWorkflowRun).toHaveBeenCalledTimes(1);
+    expect(state.spies.recordUsage).toHaveBeenCalledTimes(1);
+    expect(
+      (state.spies.recordUsage.mock.calls as unknown[][])[0][1],
+    ).toMatchObject({
       agentType: "main",
       model: "gpt-4",
     });
@@ -200,7 +204,7 @@ describe("recordWorkflowUsage", () => {
       makeAssistantMessage(),
     );
 
-    expect(spies.recordUsage).not.toHaveBeenCalled();
+    expect(state.spies.recordUsage).not.toHaveBeenCalled();
   });
 
   test("records subagent usage grouped by model", async () => {
@@ -229,7 +233,7 @@ describe("recordWorkflowUsage", () => {
         }),
       },
     ];
-    spies.collectTaskToolUsageEvents.mockReturnValueOnce(subEvents);
+    state.spies.collectTaskToolUsageEvents.mockReturnValueOnce(subEvents);
 
     const usage = makeUsage({
       inputTokens: 100,
@@ -239,9 +243,9 @@ describe("recordWorkflowUsage", () => {
 
     await recordWorkflowUsage("user-1", "gpt-4", usage, makeAssistantMessage());
 
-    expect(spies.recordUsage).toHaveBeenCalledTimes(3);
+    expect(state.spies.recordUsage).toHaveBeenCalledTimes(3);
 
-    const calls = spies.recordUsage.mock.calls as unknown[][];
+    const calls = state.spies.recordUsage.mock.calls as unknown[][];
     const subCalls = calls.filter(
       (c) => (c[1] as { agentType: string }).agentType === "subagent",
     );
@@ -288,19 +292,21 @@ describe("recordWorkflowUsage", () => {
       usage: makeUsage({ inputTokens: 7, outputTokens: 3, totalTokens: 10 }),
     };
 
-    spies.collectTaskToolUsageEvents.mockImplementation((message?: unknown) => {
-      const messageId = (message as { id?: string } | undefined)?.id;
+    state.spies.collectTaskToolUsageEvents.mockImplementation(
+      (message?: unknown) => {
+        const messageId = (message as { id?: string } | undefined)?.id;
 
-      if (messageId === "msg-prev") {
-        return [existingEvent];
-      }
+        if (messageId === "msg-prev") {
+          return [existingEvent];
+        }
 
-      if (messageId === "msg-next") {
-        return [existingEvent, newEvent];
-      }
+        if (messageId === "msg-next") {
+          return [existingEvent, newEvent];
+        }
 
-      return [];
-    });
+        return [];
+      },
+    );
 
     await recordWorkflowUsage(
       "user-1",
@@ -310,8 +316,8 @@ describe("recordWorkflowUsage", () => {
       previousMessage,
     );
 
-    expect(spies.recordUsage).toHaveBeenCalledTimes(1);
-    const calls = spies.recordUsage.mock.calls as unknown[][];
+    expect(state.spies.recordUsage).toHaveBeenCalledTimes(1);
+    const calls = state.spies.recordUsage.mock.calls as unknown[][];
     expect(calls[0][1]).toMatchObject({
       source: "web",
       agentType: "subagent",
@@ -325,7 +331,7 @@ describe("recordWorkflowUsage", () => {
   });
 
   test("falls back to main modelId when event has no modelId", async () => {
-    spies.collectTaskToolUsageEvents.mockReturnValueOnce([
+    state.spies.collectTaskToolUsageEvents.mockReturnValueOnce([
       {
         modelId: undefined,
         usage: makeUsage({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
@@ -339,13 +345,13 @@ describe("recordWorkflowUsage", () => {
       makeAssistantMessage(),
     );
 
-    expect(spies.recordUsage).toHaveBeenCalledTimes(1);
-    const calls = spies.recordUsage.mock.calls as unknown[][];
+    expect(state.spies.recordUsage).toHaveBeenCalledTimes(1);
+    const calls = state.spies.recordUsage.mock.calls as unknown[][];
     expect((calls[0][1] as { model: string }).model).toBe("gpt-4");
   });
 
   test("does not throw on error", async () => {
-    spies.recordUsage.mockImplementationOnce(() =>
+    state.spies.recordUsage.mockImplementationOnce(() =>
       Promise.reject(new Error("Usage DB down")),
     );
 

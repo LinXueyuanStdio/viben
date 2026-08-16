@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 type AuthResult =
   | {
@@ -37,70 +37,78 @@ type TestStats = {
   size: number;
 };
 
-const connectCalls: TestSandboxState[] = [];
-const statCalls: string[] = [];
-const readFileCalls: Array<{ path: string; encoding: "utf-8" }> = [];
-const updateCalls: Array<{
-  sessionId: string;
-  patch: Record<string, unknown>;
-}> = [];
+const state = vi.hoisted(() => {
+  const s = {
+    connectCalls: [] as TestSandboxState[],
+    statCalls: [] as string[],
+    readFileCalls: [] as Array<{ path: string; encoding: "utf-8" }>,
+    updateCalls: [] as Array<{
+      sessionId: string;
+      patch: Record<string, unknown>;
+    }>,
+    authResult: { ok: true, userId: "user-1" } as AuthResult,
+    ownedSessionResult: {
+      ok: true,
+      sessionRecord: {
+        id: "session-1",
+        userId: "user-1",
+        sandboxState: {
+          type: "vercel",
+          sandboxId: "sbx-1",
+        },
+      },
+    } as OwnedSessionResult,
+    connectSandboxError: null as Error | null,
+    statImplementation: (async () => ({
+      isDirectory: () => false,
+      isFile: () => true,
+      size: 42,
+    })) as (path: string) => Promise<TestStats>,
+    readFileImplementation: (async () => "export const answer = 42;\n") as (
+      path: string,
+      encoding: "utf-8",
+    ) => Promise<string>,
+  };
+  return s;
+});
 
-let authResult: AuthResult = { ok: true, userId: "user-1" };
-let ownedSessionResult: OwnedSessionResult = {
-  ok: true,
-  sessionRecord: {
-    id: "session-1",
-    userId: "user-1",
-    sandboxState: {
-      type: "vercel",
-      sandboxId: "sbx-1",
-    },
-  },
-};
-let connectSandboxError: Error | null = null;
-let statImplementation: (path: string) => Promise<TestStats>;
-let readFileImplementation: (
-  path: string,
-  encoding: "utf-8",
-) => Promise<string>;
-
-mock.module("@/app/api/sessions/_lib/session-context", () => ({
-  requireAuthenticatedUser: async () => authResult,
-  requireOwnedSessionWithSandboxGuard: async () => ownedSessionResult,
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
+  requireAuthenticatedUser: async () => state.authResult,
+  requireOwnedSessionWithSandboxGuard: async () => state.ownedSessionResult,
 }));
 
-mock.module("@viben/sandbox", () => ({
+vi.mock("@viben/sandbox", () => ({
   connectSandbox: async (sandboxState: TestSandboxState) => {
-    if (connectSandboxError) {
-      throw connectSandboxError;
+    if (state.connectSandboxError) {
+      throw state.connectSandboxError;
     }
 
-    connectCalls.push(sandboxState);
+    state.connectCalls.push(sandboxState);
     return {
       workingDirectory: "/workspace",
       stat: async (path: string) => {
-        statCalls.push(path);
-        return statImplementation(path);
+        state.statCalls.push(path);
+        return state.statImplementation(path);
       },
       readFile: async (path: string, encoding: "utf-8") => {
-        readFileCalls.push({ path, encoding });
-        return readFileImplementation(path, encoding);
+        state.readFileCalls.push({ path, encoding });
+        return state.readFileImplementation(path, encoding);
       },
     };
   },
 }));
 
-mock.module("@/lib/db/sessions", () => ({
+vi.mock("@/lib/db/sessions", () => ({
   updateSession: async (sessionId: string, patch: Record<string, unknown>) => {
-    updateCalls.push({ sessionId, patch });
+    state.updateCalls.push({ sessionId, patch });
   },
 }));
 
-mock.module("@/lib/sandbox/lifecycle", () => ({
+vi.mock("@/lib/sandbox/lifecycle", () => ({
   buildHibernatedLifecycleUpdate: () => ({ lifecycleState: "hibernated" }),
 }));
 
-mock.module("@/lib/sandbox/utils", () => ({
+vi.mock("@/lib/sandbox/utils", () => ({
   clearSandboxState: () => null,
   clearUnavailableSandboxState: () => null,
   hasRuntimeSandboxState: (state: TestSandboxState | null) =>
@@ -109,12 +117,7 @@ mock.module("@/lib/sandbox/utils", () => ({
     message.toLowerCase().includes("sandbox unavailable"),
 }));
 
-let routeImportVersion = 0;
-
-async function loadRouteModule() {
-  routeImportVersion += 1;
-  return import(`./route?test=${routeImportVersion}`);
-}
+import * as route from "./route";
 
 function createContext(sessionId = "session-1") {
   return {
@@ -124,13 +127,13 @@ function createContext(sessionId = "session-1") {
 
 describe("/api/sessions/[sessionId]/files/content", () => {
   beforeEach(() => {
-    connectCalls.length = 0;
-    statCalls.length = 0;
-    readFileCalls.length = 0;
-    updateCalls.length = 0;
-    connectSandboxError = null;
-    authResult = { ok: true, userId: "user-1" };
-    ownedSessionResult = {
+    state.connectCalls.length = 0;
+    state.statCalls.length = 0;
+    state.readFileCalls.length = 0;
+    state.updateCalls.length = 0;
+    state.connectSandboxError = null;
+    state.authResult = { ok: true, userId: "user-1" };
+    state.ownedSessionResult = {
       ok: true,
       sessionRecord: {
         id: "session-1",
@@ -141,20 +144,20 @@ describe("/api/sessions/[sessionId]/files/content", () => {
         },
       },
     };
-    statImplementation = async () => ({
+    state.statImplementation = async () => ({
       isDirectory: () => false,
       isFile: () => true,
       size: 42,
     });
-    readFileImplementation = async () => "export const answer = 42;\n";
+    state.readFileImplementation = async () => "export const answer = 42;\n";
   });
 
   test("returns auth failures from the session guard", async () => {
-    authResult = {
+    state.authResult = {
       ok: false,
       response: Response.json({ error: "Not authenticated" }, { status: 401 }),
     };
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
 
     const response = await GET(
       new Request(
@@ -164,11 +167,11 @@ describe("/api/sessions/[sessionId]/files/content", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(connectCalls).toHaveLength(0);
+    expect(state.connectCalls).toHaveLength(0);
   });
 
   test("rejects invalid or traversing paths before connecting to the sandbox", async () => {
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
 
     const response = await GET(
       new Request(
@@ -180,12 +183,12 @@ describe("/api/sessions/[sessionId]/files/content", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid file path");
-    expect(connectCalls).toHaveLength(0);
-    expect(statCalls).toHaveLength(0);
+    expect(state.connectCalls).toHaveLength(0);
+    expect(state.statCalls).toHaveLength(0);
   });
 
   test("returns a normalized file preview for valid workspace files", async () => {
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
 
     const response = await GET(
       new Request(
@@ -205,14 +208,14 @@ describe("/api/sessions/[sessionId]/files/content", () => {
       content: "export const answer = 42;\n",
       size: 42,
     });
-    expect(connectCalls).toEqual([
+    expect(state.connectCalls).toEqual([
       {
         type: "vercel",
         sandboxId: "sbx-1",
       },
     ]);
-    expect(statCalls).toEqual(["/workspace/apps/web/lib/test file.ts"]);
-    expect(readFileCalls).toEqual([
+    expect(state.statCalls).toEqual(["/workspace/apps/web/lib/test file.ts"]);
+    expect(state.readFileCalls).toEqual([
       {
         path: "/workspace/apps/web/lib/test file.ts",
         encoding: "utf-8",
@@ -221,12 +224,12 @@ describe("/api/sessions/[sessionId]/files/content", () => {
   });
 
   test("rejects directories instead of trying to read them", async () => {
-    statImplementation = async () => ({
+    state.statImplementation = async () => ({
       isDirectory: () => true,
       isFile: () => false,
       size: 0,
     });
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
 
     const response = await GET(
       new Request(
@@ -238,16 +241,16 @@ describe("/api/sessions/[sessionId]/files/content", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Directories cannot be previewed");
-    expect(readFileCalls).toHaveLength(0);
+    expect(state.readFileCalls).toHaveLength(0);
   });
 
   test("returns not found when the file is missing", async () => {
-    statImplementation = async () => {
+    state.statImplementation = async () => {
       throw new Error(
         "ENOENT: no such file or directory, stat '/workspace/missing.ts'",
       );
     };
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
 
     const response = await GET(
       new Request(
@@ -259,12 +262,12 @@ describe("/api/sessions/[sessionId]/files/content", () => {
 
     expect(response.status).toBe(404);
     expect(body.error).toBe("File not found");
-    expect(readFileCalls).toHaveLength(0);
+    expect(state.readFileCalls).toHaveLength(0);
   });
 
   test("marks the session hibernated when the sandbox is unavailable", async () => {
-    connectSandboxError = new Error("sandbox unavailable: connection closed");
-    const { GET } = await loadRouteModule();
+    state.connectSandboxError = new Error("sandbox unavailable: connection closed");
+    const { GET } = route;
 
     const response = await GET(
       new Request(
@@ -276,7 +279,7 @@ describe("/api/sessions/[sessionId]/files/content", () => {
 
     expect(response.status).toBe(409);
     expect(body.error).toBe("Sandbox is unavailable. Please resume sandbox.");
-    expect(updateCalls).toEqual([
+    expect(state.updateCalls).toEqual([
       {
         sessionId: "session-1",
         patch: {

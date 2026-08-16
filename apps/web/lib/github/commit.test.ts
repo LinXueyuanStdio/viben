@@ -1,14 +1,13 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import type { CommitIntentFile } from "./commit-intent";
 import type { CommitOctokit } from "./commit";
+import { createCommit } from "./commit";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
-mock.module("./users", () => ({
+vi.mock("./users", () => ({
   getGitHubUserProfile: async () => null,
 }));
-
-const { createCommit } = await import("./commit");
 
 type GitApi = CommitOctokit["rest"]["git"];
 type GetRefParams = Parameters<GitApi["getRef"]>[0];

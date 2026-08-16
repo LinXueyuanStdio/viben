@@ -1,10 +1,15 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  findLatestPreviewDeploymentUrlForBranch,
+  isVercelInvalidTokenError,
+  listMatchingVercelProjects,
+  selectDevelopmentEnvVars,
+  serializeEnvVarsToDotenv,
+} from "./projects";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 const originalFetch = globalThis.fetch;
-
-const projectsModulePromise = import("./projects");
 
 describe("Vercel project helpers", () => {
   beforeEach(() => {
@@ -16,7 +21,7 @@ describe("Vercel project helpers", () => {
   });
 
   test("listMatchingVercelProjects dedupes projects and tolerates partial scope failures", async () => {
-    const fetchMock = mock(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
 
       if (url.pathname === "/v2/teams") {
@@ -56,7 +61,6 @@ describe("Vercel project helpers", () => {
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const { listMatchingVercelProjects } = await projectsModulePromise;
     const projects = await listMatchingVercelProjects({
       token: "token",
       repoOwner: "vercel",
@@ -87,7 +91,7 @@ describe("Vercel project helpers", () => {
   });
 
   test("identifies invalid token API responses", async () => {
-    const fetchMock = mock(async () =>
+    const fetchMock = vi.fn(async () =>
       Response.json(
         {
           error: {
@@ -103,8 +107,6 @@ describe("Vercel project helpers", () => {
       preconnect: originalFetch.preconnect,
     });
 
-    const { isVercelInvalidTokenError, listMatchingVercelProjects } =
-      await projectsModulePromise;
     let thrownError: unknown = null;
     try {
       await listMatchingVercelProjects({
@@ -120,8 +122,6 @@ describe("Vercel project helpers", () => {
   });
 
   test("selectDevelopmentEnvVars prefers more specific development targets and newer values", async () => {
-    const { selectDevelopmentEnvVars } = await projectsModulePromise;
-
     const envVars = selectDevelopmentEnvVars([
       {
         key: "PREVIEW_ONLY",
@@ -161,9 +161,6 @@ describe("Vercel project helpers", () => {
   });
 
   test("serializeEnvVarsToDotenv escapes values and keeps alphabetical order from selection", async () => {
-    const { selectDevelopmentEnvVars, serializeEnvVarsToDotenv } =
-      await projectsModulePromise;
-
     const envVars = selectDevelopmentEnvVars([
       {
         key: "MULTILINE",
@@ -183,7 +180,7 @@ describe("Vercel project helpers", () => {
   });
 
   test("findLatestPreviewDeploymentUrlForBranch prefers the newest non-production branch deployment", async () => {
-    const fetchMock = mock(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
 
       if (url.pathname === "/v6/deployments") {
@@ -223,8 +220,6 @@ describe("Vercel project helpers", () => {
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const { findLatestPreviewDeploymentUrlForBranch } =
-      await projectsModulePromise;
     const deploymentUrl = await findLatestPreviewDeploymentUrlForBranch({
       token: "token",
       projectIdOrName: "project-1",

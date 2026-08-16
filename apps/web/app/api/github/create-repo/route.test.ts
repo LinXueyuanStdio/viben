@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 type AuthSession = {
   user: {
@@ -8,13 +8,15 @@ type AuthSession = {
   };
 } | null;
 
-let authSession: AuthSession;
-
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => authSession,
+const state = vi.hoisted(() => ({
+  authSession: null as AuthSession,
 }));
 
-const routeModulePromise = import("./route");
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.authSession,
+}));
+
+import * as route from "./route";
 
 function createRequest(body: Record<string, unknown>): Request {
   return new Request("http://localhost/api/github/create-repo", {
@@ -26,7 +28,7 @@ function createRequest(body: Record<string, unknown>): Request {
 
 describe("/api/github/create-repo", () => {
   beforeEach(() => {
-    authSession = {
+    state.authSession = {
       user: {
         id: "user-1",
       },
@@ -34,8 +36,8 @@ describe("/api/github/create-repo", () => {
   });
 
   test("returns 401 when unauthenticated", async () => {
-    authSession = null;
-    const { POST } = await routeModulePromise;
+    state.authSession = null;
+    const { POST } = route;
 
     const response = await POST(createRequest({ sessionId: "session-1" }));
 
@@ -44,7 +46,7 @@ describe("/api/github/create-repo", () => {
   });
 
   test("returns 400 for invalid JSON", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       new Request("http://localhost/api/github/create-repo", {
@@ -59,7 +61,7 @@ describe("/api/github/create-repo", () => {
   });
 
   test("returns disabled response for authenticated users", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       createRequest({

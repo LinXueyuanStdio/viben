@@ -1,23 +1,27 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WebAgentUIMessage } from "@/app/types";
 
-let upsertResult: { status: "inserted" | "updated" | "conflict" } = {
-  status: "inserted",
-};
+const state = vi.hoisted(() => {
+  const s = {
+    upsertResult: { status: "inserted" } as {
+      status: "inserted" | "updated" | "conflict";
+    },
+    upsertSpy: vi.fn(),
+  };
+  s.upsertSpy.mockImplementation(() => Promise.resolve(s.upsertResult));
+  return s;
+});
 
-const upsertSpy = mock(() => Promise.resolve(upsertResult));
-
-mock.module("ai", () => ({
+vi.mock("ai", () => ({
   isToolUIPart: (part: { type: string }) =>
     part.type.startsWith("tool-") || part.type === "dynamic-tool",
 }));
 
-mock.module("@/lib/db/sessions", () => ({
-  upsertChatMessageScoped: upsertSpy,
+vi.mock("@/lib/db/sessions", () => ({
+  upsertChatMessageScoped: state.upsertSpy,
 }));
 
-const { persistAssistantMessagesWithToolResults } =
-  await import("./persist-tool-results");
+import { persistAssistantMessagesWithToolResults } from "./persist-tool-results";
 
 function assistantWithToolResult(
   overrides?: Partial<WebAgentUIMessage>,
@@ -44,8 +48,8 @@ function assistantWithToolResult(
 
 describe("persistAssistantMessagesWithToolResults", () => {
   beforeEach(() => {
-    upsertResult = { status: "inserted" };
-    upsertSpy.mockClear();
+    state.upsertResult = { status: "inserted" };
+    state.upsertSpy.mockClear();
   });
 
   test("persists assistant message with tool results", async () => {
@@ -54,8 +58,8 @@ describe("persistAssistantMessagesWithToolResults", () => {
       assistantWithToolResult(),
     );
 
-    expect(upsertSpy).toHaveBeenCalledTimes(1);
-    const calls = upsertSpy.mock.calls as unknown[][];
+    expect(state.upsertSpy).toHaveBeenCalledTimes(1);
+    const calls = state.upsertSpy.mock.calls as unknown[][];
     expect(calls[0]![0]).toMatchObject({
       id: "assistant-1",
       chatId: "chat-1",
@@ -72,7 +76,7 @@ describe("persistAssistantMessagesWithToolResults", () => {
       } as WebAgentUIMessage,
     ]);
 
-    expect(upsertSpy).not.toHaveBeenCalled();
+    expect(state.upsertSpy).not.toHaveBeenCalled();
   });
 
   test("skips when assistant message has no tool results", async () => {
@@ -84,28 +88,28 @@ describe("persistAssistantMessagesWithToolResults", () => {
       } as WebAgentUIMessage,
     ]);
 
-    expect(upsertSpy).not.toHaveBeenCalled();
+    expect(state.upsertSpy).not.toHaveBeenCalled();
   });
 
   test("skips when messages array is empty", async () => {
     await persistAssistantMessagesWithToolResults("chat-1", []);
 
-    expect(upsertSpy).not.toHaveBeenCalled();
+    expect(state.upsertSpy).not.toHaveBeenCalled();
   });
 
   test("logs warning on conflict", async () => {
-    upsertResult = { status: "conflict" };
+    state.upsertResult = { status: "conflict" };
 
     await persistAssistantMessagesWithToolResults(
       "chat-1",
       assistantWithToolResult(),
     );
 
-    expect(upsertSpy).toHaveBeenCalledTimes(1);
+    expect(state.upsertSpy).toHaveBeenCalledTimes(1);
   });
 
   test("does not throw on db error", async () => {
-    upsertSpy.mockImplementationOnce(() =>
+    state.upsertSpy.mockImplementationOnce(() =>
       Promise.reject(new Error("DB down")),
     );
 
@@ -114,6 +118,6 @@ describe("persistAssistantMessagesWithToolResults", () => {
       assistantWithToolResult(),
     );
 
-    expect(upsertSpy).toHaveBeenCalledTimes(1);
+    expect(state.upsertSpy).toHaveBeenCalledTimes(1);
   });
 });

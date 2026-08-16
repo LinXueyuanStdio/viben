@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { SkillMetadata } from "@viben/agent";
 import { createSkillsCache, getSkillsCacheKey } from "./skills-cache";
 

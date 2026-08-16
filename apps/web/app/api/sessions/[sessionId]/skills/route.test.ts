@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { SkillMetadata } from "@viben/agent";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 interface TestSandboxState {
   type: string;
@@ -16,160 +16,157 @@ interface TestSessionRecord {
   sandboxState: TestSandboxState | null;
 }
 
-const cacheReadCalls: Array<{
-  sessionId: string;
-  sandboxState: TestSandboxState | null;
-}> = [];
-const cacheWriteCalls: Array<{
-  sessionId: string;
-  sandboxState: TestSandboxState | null;
-  skills: SkillMetadata[];
-}> = [];
-const connectCalls: TestSandboxState[] = [];
-const discoverCalls: Array<{ skillDirs: string[] }> = [];
-const updateCalls: Array<Record<string, unknown>> = [];
-
-let sessionRecord: TestSessionRecord;
-let cachedSkills: SkillMetadata[] | null;
-let discoveredSkills: SkillMetadata[];
-let isAuthenticated = true;
-
-function registerRouteMocks() {
-  mock.module("@/app/api/sessions/_lib/session-context", () => ({
-    requireAuthenticatedUser: async () =>
-      isAuthenticated
-        ? {
-            ok: true as const,
-            userId: "user-1",
-          }
-        : {
-            ok: false as const,
-            response: Response.json(
-              { error: "Not authenticated" },
-              { status: 401 },
-            ),
-          },
-    requireOwnedSession: async ({
-      userId,
-      sessionId,
-    }: {
-      userId: string;
+const state = vi.hoisted(() => {
+  const s = {
+    cacheReadCalls: [] as Array<{
       sessionId: string;
-    }) => {
-      if (!sessionRecord || sessionRecord.id !== sessionId) {
-        return {
+      sandboxState: TestSandboxState | null;
+    }>,
+    cacheWriteCalls: [] as Array<{
+      sessionId: string;
+      sandboxState: TestSandboxState | null;
+      skills: SkillMetadata[];
+    }>,
+    connectCalls: [] as TestSandboxState[],
+    discoverCalls: [] as Array<{ skillDirs: string[] }>,
+    updateCalls: [] as Array<Record<string, unknown>>,
+    sessionRecord: null as TestSessionRecord | null,
+    cachedSkills: null as SkillMetadata[] | null,
+    discoveredSkills: [] as SkillMetadata[],
+    isAuthenticated: true,
+  };
+  return s;
+});
+
+vi.mock("@/app/api/sessions/_lib/session-context", () => ({
+  requireAuthenticatedUser: async () =>
+    state.isAuthenticated
+      ? {
+          ok: true as const,
+          userId: "user-1",
+        }
+      : {
           ok: false as const,
           response: Response.json(
-            { error: "Session not found" },
-            { status: 404 },
+            { error: "Not authenticated" },
+            { status: 401 },
           ),
-        };
-      }
-
-      if (sessionRecord.userId !== userId) {
-        return {
-          ok: false as const,
-          response: Response.json({ error: "Forbidden" }, { status: 403 }),
-        };
-      }
-
+        },
+  requireOwnedSession: async ({
+    userId,
+    sessionId,
+  }: {
+    userId: string;
+    sessionId: string;
+  }) => {
+    if (!state.sessionRecord || state.sessionRecord.id !== sessionId) {
       return {
-        ok: true as const,
-        sessionRecord,
+        ok: false as const,
+        response: Response.json(
+          { error: "Session not found" },
+          { status: 404 },
+        ),
       };
-    },
-  }));
+    }
 
-  mock.module("@/lib/db/sessions", () => ({
-    updateSession: async (
-      _sessionId: string,
-      patch: Record<string, unknown>,
-    ) => {
-      updateCalls.push(patch);
+    if (state.sessionRecord.userId !== userId) {
       return {
-        ...sessionRecord,
-        ...patch,
+        ok: false as const,
+        response: Response.json({ error: "Forbidden" }, { status: 403 }),
       };
-    },
-  }));
+    }
 
-  mock.module("@/lib/skills-cache", () => ({
-    getCachedSkills: async (
-      sessionId: string,
-      sandboxState: TestSandboxState | null,
-    ) => {
-      cacheReadCalls.push({ sessionId, sandboxState });
-      return cachedSkills;
-    },
-    setCachedSkills: async (
-      sessionId: string,
-      sandboxState: TestSandboxState | null,
-      skills: SkillMetadata[],
-    ) => {
-      cacheWriteCalls.push({ sessionId, sandboxState, skills });
-    },
-  }));
+    return {
+      ok: true as const,
+      sessionRecord: state.sessionRecord,
+    };
+  },
+}));
 
-  mock.module("@/lib/sandbox/lifecycle", () => ({
-    buildHibernatedLifecycleUpdate: () => ({ lifecycleState: "hibernated" }),
-  }));
+vi.mock("@/lib/db/sessions", () => ({
+  updateSession: async (
+    _sessionId: string,
+    patch: Record<string, unknown>,
+  ) => {
+    state.updateCalls.push(patch);
+    return {
+      ...state.sessionRecord,
+      ...patch,
+    };
+  },
+}));
 
-  mock.module("@/lib/sandbox/utils", () => ({
-    clearSandboxState: () => null,
-    clearUnavailableSandboxState: () => null,
-    hasRuntimeSandboxState: (state: TestSandboxState | null) => {
-      if (!state) {
-        return false;
-      }
+vi.mock("@/lib/skills-cache", () => ({
+  getCachedSkills: async (
+    sessionId: string,
+    sandboxState: TestSandboxState | null,
+  ) => {
+    state.cacheReadCalls.push({ sessionId, sandboxState });
+    return state.cachedSkills;
+  },
+  setCachedSkills: async (
+    sessionId: string,
+    sandboxState: TestSandboxState | null,
+    skills: SkillMetadata[],
+  ) => {
+    state.cacheWriteCalls.push({ sessionId, sandboxState, skills });
+  },
+}));
 
-      return (
-        (typeof state.sandboxId === "string" && state.sandboxId.length > 0) ||
-        state.files !== undefined
-      );
-    },
-    isSandboxUnavailableError: () => false,
-  }));
+vi.mock("@/lib/sandbox/lifecycle", () => ({
+  buildHibernatedLifecycleUpdate: () => ({ lifecycleState: "hibernated" }),
+}));
 
-  mock.module("@viben/sandbox", () => ({
-    connectSandbox: async (sandboxState: TestSandboxState) => {
-      connectCalls.push(sandboxState);
-      return {
-        workingDirectory: "/workspace",
-        exec: async (command: string) => ({
-          success: command === 'printf %s "$HOME"',
-          exitCode: 0,
-          stdout: command === 'printf %s "$HOME"' ? "/root" : "",
-          stderr: "",
-          truncated: false,
-        }),
-      };
-    },
-  }));
+vi.mock("@/lib/sandbox/utils", () => ({
+  clearSandboxState: () => null,
+  clearUnavailableSandboxState: () => null,
+  hasRuntimeSandboxState: (state: TestSandboxState | null) => {
+    if (!state) {
+      return false;
+    }
 
-  mock.module("@viben/agent", () => ({
-    discoverSkills: async (_sandbox: unknown, skillDirs: string[]) => {
-      discoverCalls.push({ skillDirs });
-      return discoveredSkills;
-    },
-  }));
-}
+    return (
+      (typeof state.sandboxId === "string" && state.sandboxId.length > 0) ||
+      state.files !== undefined
+    );
+  },
+  isSandboxUnavailableError: () => false,
+}));
 
-let routeImportVersion = 0;
+vi.mock("@viben/sandbox", () => ({
+  connectSandbox: async (sandboxState: TestSandboxState) => {
+    state.connectCalls.push(sandboxState);
+    return {
+      workingDirectory: "/workspace",
+      exec: async (command: string) => ({
+        success: command === 'printf %s "$HOME"',
+        exitCode: 0,
+        stdout: command === 'printf %s "$HOME"' ? "/root" : "",
+        stderr: "",
+        truncated: false,
+      }),
+    };
+  },
+}));
 
-async function loadRouteModule() {
-  routeImportVersion += 1;
-  return import(`./route?test=${routeImportVersion}`);
-}
+vi.mock("@viben/agent", () => ({
+  discoverSkills: async (_sandbox: unknown, skillDirs: string[]) => {
+    state.discoverCalls.push({ skillDirs });
+    return state.discoveredSkills;
+  },
+}));
+
+import * as route from "./route";
 
 describe("/api/sessions/[sessionId]/skills", () => {
   beforeEach(() => {
-    cacheReadCalls.length = 0;
-    cacheWriteCalls.length = 0;
-    connectCalls.length = 0;
-    discoverCalls.length = 0;
-    updateCalls.length = 0;
-    isAuthenticated = true;
-    sessionRecord = {
+    state.cacheReadCalls.length = 0;
+    state.cacheWriteCalls.length = 0;
+    state.connectCalls.length = 0;
+    state.discoverCalls.length = 0;
+    state.updateCalls.length = 0;
+    state.isAuthenticated = true;
+    state.sessionRecord = {
       id: "session-1",
       userId: "user-1",
       sandboxState: {
@@ -177,17 +174,16 @@ describe("/api/sessions/[sessionId]/skills", () => {
         sandboxId: "sbx-123",
       },
     };
-    cachedSkills = null;
-    discoveredSkills = [];
-    registerRouteMocks();
+    state.cachedSkills = null;
+    state.discoveredSkills = [];
   });
 
   test("returns cached suggestions without connecting to the sandbox", async () => {
-    sessionRecord.sandboxState = {
+    state.sessionRecord!.sandboxState = {
       type: "vercel",
       snapshotId: "snap-123",
     };
-    cachedSkills = [
+    state.cachedSkills = [
       {
         name: "ship",
         description: "Deploy the current project",
@@ -206,7 +202,7 @@ describe("/api/sessions/[sessionId]/skills", () => {
       },
     ];
 
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
     const response = await GET(
       new Request("http://localhost/api/sessions/session-1/skills"),
       {
@@ -223,7 +219,7 @@ describe("/api/sessions/[sessionId]/skills", () => {
         },
       ],
     });
-    expect(cacheReadCalls).toEqual([
+    expect(state.cacheReadCalls).toEqual([
       {
         sessionId: "session-1",
         sandboxState: {
@@ -232,13 +228,13 @@ describe("/api/sessions/[sessionId]/skills", () => {
         },
       },
     ]);
-    expect(connectCalls).toHaveLength(0);
-    expect(discoverCalls).toHaveLength(0);
-    expect(cacheWriteCalls).toHaveLength(0);
+    expect(state.connectCalls).toHaveLength(0);
+    expect(state.discoverCalls).toHaveLength(0);
+    expect(state.cacheWriteCalls).toHaveLength(0);
   });
 
   test("refresh bypasses the cache and repopulates it from discovery", async () => {
-    cachedSkills = [
+    state.cachedSkills = [
       {
         name: "stale",
         description: "Old cached skill",
@@ -247,7 +243,7 @@ describe("/api/sessions/[sessionId]/skills", () => {
         options: {},
       },
     ];
-    discoveredSkills = [
+    state.discoveredSkills = [
       {
         name: "fresh",
         description: "Freshly discovered skill",
@@ -257,7 +253,7 @@ describe("/api/sessions/[sessionId]/skills", () => {
       },
     ];
 
-    const { GET } = await loadRouteModule();
+    const { GET } = route;
     const response = await GET(
       new Request("http://localhost/api/sessions/session-1/skills?refresh=1"),
       {
@@ -274,14 +270,14 @@ describe("/api/sessions/[sessionId]/skills", () => {
         },
       ],
     });
-    expect(cacheReadCalls).toHaveLength(0);
-    expect(connectCalls).toEqual([
+    expect(state.cacheReadCalls).toHaveLength(0);
+    expect(state.connectCalls).toEqual([
       {
         type: "vercel",
         sandboxId: "sbx-123",
       },
     ]);
-    expect(discoverCalls).toEqual([
+    expect(state.discoverCalls).toEqual([
       {
         skillDirs: [
           "/workspace/.claude/skills",
@@ -290,14 +286,14 @@ describe("/api/sessions/[sessionId]/skills", () => {
         ],
       },
     ]);
-    expect(cacheWriteCalls).toEqual([
+    expect(state.cacheWriteCalls).toEqual([
       {
         sessionId: "session-1",
         sandboxState: {
           type: "vercel",
           sandboxId: "sbx-123",
         },
-        skills: discoveredSkills,
+        skills: state.discoveredSkills,
       },
     ]);
   });

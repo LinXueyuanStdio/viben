@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { dedupeMessageReasoning } from "./dedupe-message-reasoning";
 import type { WebAgentUIMessage } from "@/app/types";
 

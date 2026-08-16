@@ -1,24 +1,9 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { ModelVariant } from "@/lib/model-variants";
 
-mock.module("server-only", () => ({}));
+vi.mock("server-only", () => ({}));
 
 const PROVIDER_OPTIONS_MAX_BYTES = 16 * 1024;
-
-let currentSession: {
-  authProvider?: "vercel" | "github";
-  user: {
-    id: string;
-    username: string;
-    email?: string;
-  };
-} | null = {
-  user: {
-    id: "user-1",
-    username: "alice",
-    email: "alice@example.com",
-  },
-};
 
 interface MockPreferences {
   defaultModelId: string;
@@ -28,10 +13,29 @@ interface MockPreferences {
   modelVariants: ModelVariant[];
 }
 
-let preferences: MockPreferences;
+const state = vi.hoisted(() => {
+  const s = {
+    currentSession: {
+      user: {
+        id: "user-1",
+        username: "alice",
+        email: "alice@example.com",
+      },
+    } as {
+      authProvider?: "vercel" | "github";
+      user: {
+        id: string;
+        username: string;
+        email?: string;
+      };
+    } | null,
+    preferences: {} as MockPreferences,
+  };
+  return s;
+});
 
 function resetPreferences() {
-  preferences = {
+  state.preferences = {
     defaultModelId: "anthropic/claude-haiku-4.5",
     defaultSubagentModelId: null,
     defaultSandboxType: "vercel",
@@ -54,30 +58,30 @@ function createProviderOptionsWithExactSize(
   };
 }
 
-mock.module("@/lib/session/get-server-session", () => ({
-  getServerSession: async () => currentSession,
+vi.mock("@/lib/session/get-server-session", () => ({
+  getServerSession: async () => state.currentSession,
 }));
 
-mock.module("@/lib/db/user-preferences", () => ({
-  getUserPreferences: async () => preferences,
+vi.mock("@/lib/db/user-preferences", () => ({
+  getUserPreferences: async () => state.preferences,
   updateUserPreferences: async (
     _userId: string,
     updates: Partial<MockPreferences>,
   ) => {
-    preferences = {
-      ...preferences,
+    state.preferences = {
+      ...state.preferences,
       ...updates,
-      modelVariants: updates.modelVariants ?? preferences.modelVariants,
+      modelVariants: updates.modelVariants ?? state.preferences.modelVariants,
     };
-    return preferences;
+    return state.preferences;
   },
 }));
 
-const routeModulePromise = import("./route");
+import * as route from "./route";
 
 describe("/api/settings/model-variants", () => {
   beforeEach(() => {
-    currentSession = {
+    state.currentSession = {
       user: {
         id: "user-1",
         username: "alice",
@@ -88,9 +92,9 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("GET returns 401 when unauthenticated", async () => {
-    currentSession = null;
+    state.currentSession = null;
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(
       new Request("http://localhost/api/settings/model-variants"),
     );
@@ -99,7 +103,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("GET hides Opus-backed variants for managed trial users", async () => {
-    preferences.modelVariants = [
+    state.preferences.modelVariants = [
       {
         id: "variant:user-opus",
         name: "User Opus",
@@ -107,7 +111,7 @@ describe("/api/settings/model-variants", () => {
         providerOptions: {},
       },
     ];
-    currentSession = {
+    state.currentSession = {
       authProvider: "vercel",
       user: {
         id: "user-1",
@@ -116,7 +120,7 @@ describe("/api/settings/model-variants", () => {
       },
     };
 
-    const { GET } = await routeModulePromise;
+    const { GET } = route;
     const response = await GET(
       new Request("https://viben-web.vercel.app/api/settings/model-variants"),
     );
@@ -128,7 +132,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("POST rejects invalid JSON body", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       new Request("http://localhost/api/settings/model-variants", {
@@ -142,7 +146,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("POST creates a model variant and returns full list", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       new Request("http://localhost/api/settings/model-variants", {
@@ -167,7 +171,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("POST rejects Opus-backed variants for managed trial users", async () => {
-    currentSession = {
+    state.currentSession = {
       authProvider: "vercel",
       user: {
         id: "user-1",
@@ -176,7 +180,7 @@ describe("/api/settings/model-variants", () => {
       },
     };
 
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
     const response = await POST(
       new Request("https://viben-web.vercel.app/api/settings/model-variants", {
         method: "POST",
@@ -193,7 +197,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("POST accepts provider options exactly at 16KB", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const exactProviderOptions = createProviderOptionsWithExactSize(
       PROVIDER_OPTIONS_MAX_BYTES,
@@ -215,7 +219,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("POST rejects provider options larger than 16KB", async () => {
-    const { POST } = await routeModulePromise;
+    const { POST } = route;
 
     const response = await POST(
       new Request("http://localhost/api/settings/model-variants", {
@@ -238,7 +242,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("PATCH rejects payloads without fields to update", async () => {
-    preferences.modelVariants = [
+    state.preferences.modelVariants = [
       {
         id: "variant:openai-medium",
         name: "OpenAI Medium",
@@ -247,7 +251,7 @@ describe("/api/settings/model-variants", () => {
       },
     ];
 
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
     const response = await PATCH(
       new Request("http://localhost/api/settings/model-variants", {
         method: "PATCH",
@@ -262,7 +266,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("PATCH returns 403 for built-in variant", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
     const response = await PATCH(
       new Request("http://localhost/api/settings/model-variants", {
         method: "PATCH",
@@ -278,7 +282,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("PATCH returns 404 when variant does not exist", async () => {
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
     const response = await PATCH(
       new Request("http://localhost/api/settings/model-variants", {
         method: "PATCH",
@@ -294,7 +298,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("PATCH updates a model variant and returns full list", async () => {
-    preferences.modelVariants = [
+    state.preferences.modelVariants = [
       {
         id: "variant:openai-medium",
         name: "OpenAI Medium",
@@ -303,7 +307,7 @@ describe("/api/settings/model-variants", () => {
       },
     ];
 
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
     const response = await PATCH(
       new Request("http://localhost/api/settings/model-variants", {
         method: "PATCH",
@@ -324,7 +328,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("PATCH rejects provider options larger than 16KB", async () => {
-    preferences.modelVariants = [
+    state.preferences.modelVariants = [
       {
         id: "variant:openai-medium",
         name: "OpenAI Medium",
@@ -333,7 +337,7 @@ describe("/api/settings/model-variants", () => {
       },
     ];
 
-    const { PATCH } = await routeModulePromise;
+    const { PATCH } = route;
     const response = await PATCH(
       new Request("http://localhost/api/settings/model-variants", {
         method: "PATCH",
@@ -351,7 +355,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("DELETE returns 403 for built-in variant", async () => {
-    const { DELETE } = await routeModulePromise;
+    const { DELETE } = route;
 
     const response = await DELETE(
       new Request("http://localhost/api/settings/model-variants", {
@@ -365,7 +369,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("DELETE returns 404 when variant does not exist", async () => {
-    const { DELETE } = await routeModulePromise;
+    const { DELETE } = route;
 
     const response = await DELETE(
       new Request("http://localhost/api/settings/model-variants", {
@@ -379,7 +383,7 @@ describe("/api/settings/model-variants", () => {
   });
 
   test("DELETE removes a model variant and returns full list", async () => {
-    preferences.modelVariants = [
+    state.preferences.modelVariants = [
       {
         id: "variant:remove-me",
         name: "To remove",
@@ -388,7 +392,7 @@ describe("/api/settings/model-variants", () => {
       },
     ];
 
-    const { DELETE } = await routeModulePromise;
+    const { DELETE } = route;
     const response = await DELETE(
       new Request("http://localhost/api/settings/model-variants", {
         method: "DELETE",

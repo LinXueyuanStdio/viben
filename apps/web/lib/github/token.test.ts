@@ -1,46 +1,39 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { getGithubOAuthToken } from "./token";
 
-let getAccessTokenResult: { accessToken?: string | null } | null;
-let getAccessTokenError: Error | null;
-
-const getAccessTokenSpy = mock(
-  async (_input: { body: { providerId: string; userId: string } }) => {
-    if (getAccessTokenError) throw getAccessTokenError;
-    return getAccessTokenResult;
-  },
-);
-
-mock.module("server-only", () => ({}));
-
-mock.module("next/headers", () => ({
-  headers: async () => { throw new Error("headers should not be called"); },
+const state = vi.hoisted(() => ({
+  oauthConn: null as { accessToken: string | null } | null,
 }));
 
-mock.module("@/lib/auth/config", () => ({
-  auth: { api: { getAccessToken: getAccessTokenSpy } },
-}));
+vi.mock("server-only", () => ({}));
 
-mock.module("@/lib/db/client", () => ({ db: {} }));
-mock.module("@/lib/db/schema", () => ({ accounts: {} }));
+vi.mock("@/lib/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/db")>();
 
-const tokenModulePromise = import("./token");
+  return {
+    ...actual,
+    db: {
+      query: {
+        oauthConnections: {
+          findFirst: async () => state.oauthConn,
+        },
+      },
+    },
+  };
+});
 
 describe("getGithubOAuthToken", () => {
   beforeEach(() => {
-    getAccessTokenSpy.mockClear();
-    getAccessTokenResult = { accessToken: "ghu_test" };
-    getAccessTokenError = null;
+    state.oauthConn = { accessToken: "ghu_test" };
   });
 
   test("looks up access tokens by user id", async () => {
-    const { getGithubOAuthToken } = await tokenModulePromise;
     const token = await getGithubOAuthToken("user-1");
     expect(token).toBe("ghu_test");
   });
 
   test("returns null when token lookup fails", async () => {
-    const { getGithubOAuthToken } = await tokenModulePromise;
-    getAccessTokenError = new Error("boom");
+    state.oauthConn = null;
     const token = await getGithubOAuthToken("user-1");
     expect(token).toBeNull();
   });
