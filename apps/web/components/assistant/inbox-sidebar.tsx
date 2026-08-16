@@ -142,39 +142,68 @@ function DiffStats({
   );
 }
 
-function getSessionStatusIcon(session: SessionWithUnread) {
+function getSessionStatusIcon(session: SessionWithUnread, isActive = false) {
+  const iconColor = (base: string) =>
+    isActive ? "text-accent-foreground" : base;
+
   // Actively streaming / waiting for LLM
   if (session.hasStreaming) {
     return (
-      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+      <Loader2
+        className={cn(
+          "h-3.5 w-3.5 shrink-0 animate-spin",
+          iconColor("text-muted-foreground"),
+        )}
+      />
     );
   }
 
   // PR merged → purple merge icon
   if (session.prNumber && session.prStatus === "merged") {
-    return <GitMerge className="h-3.5 w-3.5 shrink-0 text-purple-500" />;
+    return (
+      <GitMerge
+        className={cn("h-3.5 w-3.5 shrink-0", iconColor("text-purple-500"))}
+      />
+    );
   }
 
   // PR open → green PR icon (awaiting review)
   if (session.prNumber && session.prStatus === "open") {
-    return <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />;
+    return (
+      <GitPullRequest
+        className={cn("h-3.5 w-3.5 shrink-0", iconColor("text-green-500"))}
+      />
+    );
   }
 
   // PR closed (not merged)
   if (session.prNumber && session.prStatus === "closed") {
-    return <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-red-500" />;
+    return (
+      <GitPullRequest
+        className={cn("h-3.5 w-3.5 shrink-0", iconColor("text-red-500"))}
+      />
+    );
   }
 
   // Has a branch with code changes → needs human follow-up
   const hasDiff = session.linesAdded || session.linesRemoved;
   if (session.branch && hasDiff) {
-    return <GitBranch className="h-3.5 w-3.5 shrink-0 text-amber-500" />;
+    return (
+      <GitBranch
+        className={cn("h-3.5 w-3.5 shrink-0", iconColor("text-amber-500"))}
+      />
+    );
   }
 
   // Has a branch but no changes yet → new session, still getting started
   if (session.branch) {
     return (
-      <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+      <GitBranch
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          iconColor("text-muted-foreground/70"),
+        )}
+      />
     );
   }
 
@@ -182,35 +211,105 @@ function getSessionStatusIcon(session: SessionWithUnread) {
   const isChat = !session.repoName?.trim();
   if (isChat) {
     if (session.lifecycleState === "provisioning") {
-      return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />;
+      return (
+        <Loader2
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 animate-spin",
+            iconColor("text-muted-foreground/50"),
+          )}
+        />
+      );
     }
     if (session.lifecycleState === "failed") {
-      return <CircleAlert className="h-3.5 w-3.5 shrink-0 text-destructive/70" />;
+      return (
+        <CircleAlert
+          className={cn(
+            "h-3.5 w-3.5 shrink-0",
+            iconColor("text-destructive/70"),
+          )}
+        />
+      );
     }
-    return <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />;
+    return (
+      <CircleDashed
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          iconColor("text-muted-foreground/60"),
+        )}
+      />
+    );
   }
 
   // Repo session — show sandbox provisioning/restoring state
-  if (session.lifecycleState === "provisioning" || session.lifecycleState === "restoring") {
-    return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />;
+  if (
+    session.lifecycleState === "provisioning" ||
+    session.lifecycleState === "restoring"
+  ) {
+    return (
+      <Loader2
+        className={cn(
+          "h-3.5 w-3.5 shrink-0 animate-spin",
+          iconColor("text-muted-foreground/50"),
+        )}
+      />
+    );
   }
   if (session.lifecycleState === "active") {
-    return <Monitor className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />;
+    return (
+      <Monitor
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          iconColor("text-emerald-500/80"),
+        )}
+      />
+    );
   }
   if (session.lifecycleState === "hibernating") {
-    return <Moon className="h-3.5 w-3.5 shrink-0 text-amber-500/70" />;
+    return (
+      <Moon
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          iconColor("text-amber-500/70"),
+        )}
+      />
+    );
   }
   if (session.lifecycleState === "hibernated") {
-    return <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" />;
+    return (
+      <TriangleAlert
+        className={cn("h-3.5 w-3.5 shrink-0", iconColor("text-amber-500"))}
+      />
+    );
   }
   if (session.lifecycleState === "failed") {
-    return <CircleAlert className="h-3.5 w-3.5 shrink-0 text-destructive/70" />;
+    return (
+      <CircleAlert
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          iconColor("text-destructive/70"),
+        )}
+      />
+    );
   }
   if (session.status === "running") {
-    return <Monitor className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />;
+    return (
+      <Monitor
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          iconColor("text-muted-foreground/70"),
+        )}
+      />
+    );
   }
 
-  return <Monitor className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />;
+  return (
+    <Monitor
+      className={cn(
+        "h-3.5 w-3.5 shrink-0",
+        iconColor("text-muted-foreground/50"),
+      )}
+    />
+  );
 }
 
 function getSessionStatusLabel(
@@ -583,7 +682,10 @@ const SessionRow = memo(function SessionRow({
           <button
             type="button"
             className={cn(
-              "flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 transition-all hover:text-muted-foreground",
+              "flex h-5 w-5 items-center justify-center rounded transition-all",
+              isActive
+                ? "text-accent-foreground/70 hover:text-accent-foreground"
+                : "text-muted-foreground/60 hover:text-muted-foreground",
               !isHovered && !moreMenuOpen ? "hidden" : "",
             )}
             aria-label={t("assistant.sidebar.moreActions")}
@@ -670,7 +772,12 @@ const SessionRow = memo(function SessionRow({
       </DropdownMenu>
       {/* Pin icon — shown when not hovering and item is pinned */}
       {isPinned && !isHovered && !moreMenuOpen && (
-        <Pin className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+        <Pin
+          className={cn(
+            "h-3 w-3 shrink-0",
+            isActive ? "text-accent-foreground/60" : "text-muted-foreground/50",
+          )}
+        />
       )}
     </span>
   );
@@ -679,7 +786,7 @@ const SessionRow = memo(function SessionRow({
     <button
       type="button"
       className={`group relative flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left outline-none transition-[background-color,opacity] cursor-pointer ${
-        isActive ? "bg-sidebar-active" : "hover:bg-muted/50"
+        isActive ? "bg-accent" : "hover:bg-muted/50"
       } ${isPending ? "opacity-80" : "opacity-100"}`}
       onClick={() => onSessionClick(session)}
       onFocus={() => onSessionPrefetch(session)}
@@ -688,9 +795,11 @@ const SessionRow = memo(function SessionRow({
       <span className="min-w-0 flex-1 text-left">
         <p
           className={`truncate text-[13px] leading-5 ${
-            session.hasUnread && !isActive
-              ? "font-semibold text-foreground"
-              : "font-normal text-foreground/85"
+            isActive
+              ? "font-semibold text-accent-foreground"
+              : session.hasUnread
+                ? "font-semibold text-foreground"
+                : "font-normal text-foreground/85"
           }`}
         >
           {session.title}
@@ -698,7 +807,7 @@ const SessionRow = memo(function SessionRow({
       </span>
       {!isHovered && !moreMenuOpen && (
         <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-          {getSessionStatusIcon(session)}
+          {getSessionStatusIcon(session, isActive)}
         </span>
       )}
     </button>
@@ -707,14 +816,14 @@ const SessionRow = memo(function SessionRow({
   const rowButton = isRenaming ? (
     <div
       className={`group relative flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left outline-none transition-[background-color,opacity] ${
-        isActive ? "bg-sidebar-active" : "bg-muted/50"
+        isActive ? "bg-accent" : "bg-muted/50"
       } ${renamePending ? "opacity-80" : "opacity-100"}`}
       style={sessionRowPerformanceStyle}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        {getSessionStatusIcon(session)}
+        {getSessionStatusIcon(session, isActive)}
       </span>
       <span className="min-w-0 flex-1 text-left">
         <input
@@ -735,7 +844,7 @@ const SessionRow = memo(function SessionRow({
           }}
           disabled={renamePending}
           maxLength={120}
-          className="h-5 w-full rounded border-0 bg-transparent p-0 text-[13px] leading-5 text-foreground outline-none"
+          className={`h-5 w-full rounded border-0 bg-transparent p-0 text-[13px] leading-5 outline-none ${isActive ? "text-accent-foreground" : "text-foreground"}`}
         />
       </span>
     </div>

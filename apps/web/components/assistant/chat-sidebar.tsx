@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import type { SessionChatListItem } from "@/hooks/assistant/use-session-chats";
 import { formatRelativeTime } from "@/lib/format-relative-time";
+import { cn } from "@/lib/utils";
 
 type ChatSidebarProps = {
   sessionTitle: string;
@@ -210,7 +211,7 @@ export function ChatSidebar({
             <div
               key={c.id}
               className={`group relative flex items-center rounded-md ${
-                c.id === activeChatId ? "bg-sidebar-active" : "hover:bg-muted"
+                c.id === activeChatId ? "bg-accent" : "hover:bg-muted"
               }`}
             >
               {editingChatId === c.id ? (
@@ -238,7 +239,7 @@ export function ChatSidebar({
                   onClick={() => closeMobileAndSwitchChat(c.id)}
                   className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 pr-10 text-left text-sm transition-colors ${
                     c.id === activeChatId
-                      ? "text-secondary-foreground"
+                      ? "text-accent-foreground"
                       : "text-muted-foreground group-hover:text-foreground"
                   }`}
                 >
@@ -247,7 +248,7 @@ export function ChatSidebar({
                   <span
                     className={`shrink-0 text-[11px] transition-opacity group-hover:opacity-0 ${
                       c.id === activeChatId
-                        ? "text-secondary-foreground/70"
+                        ? "text-accent-foreground/70"
                         : "text-muted-foreground"
                     }`}
                   >
@@ -257,7 +258,12 @@ export function ChatSidebar({
               )}
               {c.isStreaming && (
                 <span
-                  className="pointer-events-none absolute top-1/2 right-3 size-2 -translate-y-1/2 rounded-full bg-zinc-600 animate-pulse transition-opacity group-hover:opacity-0 dark:bg-white"
+                  className={cn(
+                    "pointer-events-none absolute top-1/2 right-3 size-2 -translate-y-1/2 rounded-full animate-pulse transition-opacity group-hover:opacity-0",
+                    c.id === activeChatId
+                      ? "bg-accent-foreground"
+                      : "bg-zinc-600 dark:bg-white",
+                  )}
                   aria-label={t("assistant.chat.streamingResponse")}
                 />
               )}
@@ -278,7 +284,12 @@ export function ChatSidebar({
                       setEditingChatId(c.id);
                       setEditingChatTitle(c.title);
                     }}
-                    className="rounded p-1.5 text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                    className={cn(
+                      "rounded p-1.5",
+                      c.id === activeChatId
+                        ? "text-accent-foreground/70 hover:bg-accent-foreground/15 hover:text-accent-foreground"
+                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                    )}
                     aria-label={t("assistant.chat.renameChatAria", { title: c.title })}
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -289,7 +300,12 @@ export function ChatSidebar({
                       void onDeleteChat(c.id);
                     }}
                     disabled={chats.length <= 1}
-                    className="rounded p-1.5 text-muted-foreground hover:bg-background/60 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                    className={cn(
+                      "rounded p-1.5 disabled:cursor-not-allowed disabled:opacity-40",
+                      c.id === activeChatId
+                        ? "text-accent-foreground/70 hover:bg-accent-foreground/15 hover:text-destructive"
+                        : "text-muted-foreground hover:bg-background/60 hover:text-destructive",
+                    )}
                     aria-label={t("assistant.chat.deleteChatAria", { title: c.title })}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
