@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
-  findPublishedPage: vi.fn(),
+  findEditablePage: vi.fn(),
   findRecordsMany: vi.fn(),
   execute: vi.fn(),
   requireAuth: vi.fn(),
@@ -22,20 +22,17 @@ vi.mock('@/lib/db/published-pages', () => ({
   ensurePublishedPagesTable: mocks.execute,
 }));
 
+vi.mock('@/lib/db/page-auth', () => ({
+  findEditablePage: mocks.findEditablePage,
+}));
+
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
-      publishedPages: {
-        findFirst: mocks.findPublishedPage,
-      },
       publishedPageRecords: {
         findMany: mocks.findRecordsMany,
       },
     },
-  },
-  publishedPages: {
-    uid: 'uid',
-    userId: 'userId',
   },
   publishedPageRecords: {
     uid: 'recordUid',
@@ -71,11 +68,12 @@ describe('POST /api/pages/publish-history', () => {
       role: 'developer',
       expiresAt: Date.now() + 3600000,
     });
-    mocks.findPublishedPage.mockResolvedValue({
+    mocks.findEditablePage.mockResolvedValue({
       id: 'published-1',
       uid: 'demo',
       userId: 'user-1',
       currentVersion: 2,
+      authorSlug: 'alice',
     });
     mocks.findRecordsMany.mockResolvedValue([
       {
@@ -150,7 +148,7 @@ describe('POST /api/pages/publish-history', () => {
   });
 
   it('returns 404 when the current user has not published the page', async () => {
-    mocks.findPublishedPage.mockResolvedValue(null);
+    mocks.findEditablePage.mockResolvedValue(null);
 
     const response = await POST(requestWithBody({ uid: 'missing' }));
 

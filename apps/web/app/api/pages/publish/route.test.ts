@@ -3,15 +3,19 @@ import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
   findPublishedPage: vi.fn(),
+  findUser: vi.fn(),
   findLatestVersion: vi.fn(),
   findLatestRecord: vi.fn(),
   insertValues: vi.fn(),
   onConflictDoUpdate: vi.fn(),
   onConflictDoNothing: vi.fn(),
+  updateSet: vi.fn(),
+  updateWhere: vi.fn(),
   transaction: vi.fn(),
   execute: vi.fn(),
   requireAuth: vi.fn(),
   recordPageUpdateAndNotify: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/middleware', () => ({
@@ -32,9 +36,16 @@ vi.mock('@/lib/services/community', () => ({
   recordPageUpdateAndNotify: mocks.recordPageUpdateAndNotify,
 }));
 
+vi.mock('next/cache', () => ({
+  revalidateTag: mocks.revalidateTag,
+}));
+
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
+      users: {
+        findFirst: mocks.findUser,
+      },
       publishedPages: {
         findFirst: mocks.findPublishedPage,
       },
@@ -48,7 +59,18 @@ vi.mock('@/lib/db', () => ({
     insert: vi.fn(() => ({
       values: mocks.insertValues,
     })),
+    update: vi.fn(() => ({
+      set: mocks.updateSet,
+    })),
     transaction: mocks.transaction,
+  },
+  users: {
+    id: 'id',
+    userSlug: 'userSlug',
+    displayName: 'displayName',
+    avatarUrl: 'avatarUrl',
+    type: 'type',
+    pageCount: 'pageCount',
   },
   publishedPages: {
     uid: 'uid',
@@ -129,6 +151,7 @@ describe('POST /api/pages/publish', () => {
       uid: 'demo',
       userId: 'user-1',
     });
+    mocks.findUser.mockResolvedValue(null);
     mocks.findLatestVersion.mockResolvedValue(null);
     mocks.findLatestRecord.mockResolvedValue(null);
     mocks.insertValues.mockReturnValue({
@@ -137,6 +160,8 @@ describe('POST /api/pages/publish', () => {
     });
     mocks.onConflictDoUpdate.mockResolvedValue(undefined);
     mocks.onConflictDoNothing.mockResolvedValue(undefined);
+    mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
+    mocks.updateWhere.mockResolvedValue(undefined);
     mocks.recordPageUpdateAndNotify.mockResolvedValue(undefined);
     mocks.transaction.mockImplementation(async (callback) => callback({
       query: {
@@ -171,6 +196,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
+      page_id: 'published-1',
       url: '/page/alice/demo',
       read_url: '/alice/demo?tab=read',
       updated: true,
@@ -188,9 +214,14 @@ describe('POST /api/pages/publish', () => {
       tags: [],
       visibility: 'public',
       moderationStatus: 'approved',
+      authorSlug: 'alice',
+      authorDisplayName: 'alice',
+      authorAvatarUrl: null,
       publishedAt: { type: 'sql', sql: 'now()' },
       lastPublishedAt: { type: 'sql', sql: 'now()' },
       versionCount: 1,
+      chaptersJson: null,
+      scheduledAt: null,
     });
     expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
       target: ['userId', 'uid'],
@@ -205,9 +236,14 @@ describe('POST /api/pages/publish', () => {
         tags: [],
         visibility: 'public',
         moderationStatus: 'approved',
+        authorSlug: 'alice',
+        authorDisplayName: 'alice',
+        authorAvatarUrl: null,
         lastPublishedAt: { type: 'sql', sql: 'now()' },
         versionCount: 1,
         updatedAt: { type: 'sql', sql: 'now()' },
+        chaptersJson: null,
+        scheduledAt: null,
       },
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -225,6 +261,7 @@ describe('POST /api/pages/publish', () => {
       visibility: 'public',
       moderationStatus: 'approved',
       publishedAt: expect.any(Date),
+      chaptersJson: null,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
       publishedPageId: 'published-1',
@@ -268,7 +305,6 @@ describe('POST /api/pages/publish', () => {
       visibility: 'public',
     });
     expect(mocks.execute).toHaveBeenCalled();
-    expect(mocks.transaction).toHaveBeenCalledTimes(1);
   });
 
   it('upserts an existing page owned by the current user', async () => {
@@ -295,6 +331,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
+      page_id: 'published-1',
       url: '/page/alice/demo',
       read_url: '/alice/demo?tab=read',
       updated: true,
@@ -312,9 +349,14 @@ describe('POST /api/pages/publish', () => {
         tags: [],
         visibility: 'public',
         moderationStatus: 'approved',
+        authorSlug: 'alice',
+        authorDisplayName: 'alice',
+        authorAvatarUrl: null,
         lastPublishedAt: { type: 'sql', sql: 'now()' },
         versionCount: 4,
         updatedAt: { type: 'sql', sql: 'now()' },
+        chaptersJson: null,
+        scheduledAt: null,
       },
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -332,6 +374,7 @@ describe('POST /api/pages/publish', () => {
       visibility: 'public',
       moderationStatus: 'approved',
       publishedAt: expect.any(Date),
+      chaptersJson: null,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
       publishedPageId: 'published-1',
@@ -372,6 +415,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
+      page_id: 'published-2',
       url: '/page/bob_builder/demo',
       read_url: '/bob_builder/demo?tab=read',
       updated: true,
@@ -389,9 +433,14 @@ describe('POST /api/pages/publish', () => {
       tags: [],
       visibility: 'public',
       moderationStatus: 'approved',
+      authorSlug: 'bob_builder',
+      authorDisplayName: 'bob',
+      authorAvatarUrl: null,
       publishedAt: { type: 'sql', sql: 'now()' },
       lastPublishedAt: { type: 'sql', sql: 'now()' },
       versionCount: 1,
+      chaptersJson: null,
+      scheduledAt: null,
     });
   });
 

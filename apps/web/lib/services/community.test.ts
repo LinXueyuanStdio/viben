@@ -1060,15 +1060,18 @@ describe('community service permissions', () => {
   });
 
   it('lets the entity owner delete a top-level comment and active replies', async () => {
-    const tx = createTransactionMock() as {
-      query: {
-        communityComments: {
-          findFirst: typeof mocks.txFindCommunityComment;
-          findMany: ReturnType<typeof vi.fn>;
-        };
-      };
-    };
-    tx.query.communityComments.findMany = vi.fn().mockResolvedValue([
+    mocks.findCommunityComment.mockResolvedValueOnce({
+      id: 'comment-1',
+      userId: 'comment-author-1',
+      communityEntityId: 'entity-1',
+      parentCommentId: null,
+      status: 'active',
+    });
+    mocks.findCommunityEntity.mockResolvedValueOnce({
+      id: 'entity-1',
+      ownerUserId: 'page-author-1',
+    });
+    mocks.findCommunityComments.mockResolvedValueOnce([
       {
         id: 'reply-1',
         userId: 'reply-author-1',
@@ -1084,18 +1087,6 @@ describe('community service permissions', () => {
         status: 'active',
       },
     ]);
-    mocks.txFindCommunityComment.mockResolvedValueOnce({
-      id: 'comment-1',
-      userId: 'comment-author-1',
-      communityEntityId: 'entity-1',
-      parentCommentId: null,
-      status: 'active',
-    });
-    mocks.txFindCommunityEntity.mockResolvedValueOnce({
-      id: 'entity-1',
-      ownerUserId: 'page-author-1',
-    });
-    mocks.transaction.mockImplementationOnce(async (callback) => callback(tx));
 
     const result = await deleteCommunityComment({
       commentId: 'comment-1',
@@ -1110,8 +1101,8 @@ describe('community service permissions', () => {
     });
 
     expect(result).toEqual({ success: true, deleted_count: 3 });
-    expect(tx.query.communityComments.findMany).toHaveBeenCalled();
-    expect(mocks.txUpdateSet).toHaveBeenCalledWith(
+    expect(mocks.findCommunityComments).toHaveBeenCalled();
+    expect(mocks.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         commentsCount: { type: 'sql', sql: 'greatest(? - ?, 0)' },
       })

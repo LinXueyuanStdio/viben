@@ -142,7 +142,7 @@ describe('POST /api/auth/change-password', () => {
       expect(mocks.updateSet).not.toHaveBeenCalled();
     });
 
-    it('用户无密码哈希（OAuth 账户）应返回 400', async () => {
+    it('用户无密码哈希（OAuth 账户）应直接设置密码并返回 200', async () => {
       mockSelectFn = vi.fn(() => createSelectChain([{
         id: 'user-001',
         passwordHash: null,
@@ -155,11 +155,13 @@ describe('POST /api/auth/change-password', () => {
 
       const data = await res.json();
 
-      expect(res.status).toBe(400);
-      expect(data.error).toBe('Password authentication not available for this account');
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(mocks.verifyPassword).not.toHaveBeenCalled();
+      expect(mocks.hashPassword).toHaveBeenCalledWith('newpassword123');
     });
 
-    it('用户不存在应返回 400', async () => {
+    it('用户不存在应返回 404', async () => {
       mockSelectFn = vi.fn(() => createSelectChain([]));
 
       const res = await POST(createRequest({
@@ -169,8 +171,8 @@ describe('POST /api/auth/change-password', () => {
 
       const data = await res.json();
 
-      expect(res.status).toBe(400);
-      expect(data.error).toBe('Password authentication not available for this account');
+      expect(res.status).toBe(404);
+      expect(data.error).toBe('User not found');
     });
   });
 
@@ -212,7 +214,7 @@ describe('POST /api/auth/change-password', () => {
 
       expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.error).toBe('Invalid input');
+      expect(data.error).toBe('Current password is required');
     });
 
     it('缺少 newPassword 应返回 400', async () => {

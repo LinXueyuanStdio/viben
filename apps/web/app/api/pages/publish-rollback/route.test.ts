@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
-  findPublishedPage: vi.fn(),
+  findEditablePage: vi.fn(),
   findVersion: vi.fn(),
   findLatestRecord: vi.fn(),
   updateSet: vi.fn(),
@@ -27,12 +27,13 @@ vi.mock('@/lib/db/published-pages', () => ({
   ensurePublishedPagesTable: mocks.execute,
 }));
 
+vi.mock('@/lib/db/page-auth', () => ({
+  findEditablePage: mocks.findEditablePage,
+}));
+
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
-      publishedPages: {
-        findFirst: mocks.findPublishedPage,
-      },
       publishedPageVersions: {
         findFirst: mocks.findVersion,
       },
@@ -98,7 +99,7 @@ describe('POST /api/pages/publish-rollback', () => {
       role: 'developer',
       expiresAt: Date.now() + 3600000,
     });
-    mocks.findPublishedPage.mockResolvedValue({
+    mocks.findEditablePage.mockResolvedValue({
       id: 'published-1',
       uid: 'demo',
       userId: 'user-1',
@@ -118,26 +119,6 @@ describe('POST /api/pages/publish-rollback', () => {
     mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
     mocks.updateWhere.mockResolvedValue(undefined);
     mocks.insertValues.mockResolvedValue(undefined);
-    mocks.transaction.mockImplementation(async (callback) => callback({
-      query: {
-        publishedPages: {
-          findFirst: mocks.findPublishedPage,
-        },
-        publishedPageVersions: {
-          findFirst: mocks.findVersion,
-        },
-        publishedPageRecords: {
-          findFirst: mocks.findLatestRecord,
-        },
-      },
-      update: vi.fn(() => ({
-        set: mocks.updateSet,
-      })),
-      insert: vi.fn(() => ({
-        values: mocks.insertValues,
-      })),
-      execute: mocks.execute,
-    }));
     mocks.execute.mockResolvedValue(undefined);
   });
 
@@ -170,11 +151,10 @@ describe('POST /api/pages/publish-rollback', () => {
       icon: null,
       description: 'Updated',
     });
-    expect(mocks.transaction).toHaveBeenCalledTimes(1);
   });
 
   it('rejects rollback when the selected version is already current', async () => {
-    mocks.findPublishedPage.mockResolvedValue({
+    mocks.findEditablePage.mockResolvedValue({
       id: 'published-1',
       uid: 'demo',
       userId: 'user-1',

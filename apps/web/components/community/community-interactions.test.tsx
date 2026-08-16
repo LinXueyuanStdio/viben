@@ -27,7 +27,7 @@ const baseSummary = {
   viewer: {
     is_authenticated: true,
     has_reacted: false,
-    has_favorited: false,
+    has_bookmarked: false,
     can_comment: true,
     can_moderate: false,
   },
@@ -91,7 +91,7 @@ describe('CommunityInteractions', () => {
           )
         );
       }
-      if (url === '/api/community/favorites/toggle') {
+      if (url === '/api/community/bookmarks/toggle') {
         expect(JSON.parse(String(init?.body))).toEqual({
           entity_type: 'published_page',
           entity_id: 'page-row-1',
@@ -99,7 +99,7 @@ describe('CommunityInteractions', () => {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              has_favorited: true,
+              has_bookmarked: true,
               bookmarks_count: 2,
             }),
             { status: 200 }
@@ -113,11 +113,15 @@ describe('CommunityInteractions', () => {
 
     renderInteractions();
 
-    fireEvent.click(screen.getByRole('button', { name: /like/i }));
-    await waitFor(() => expect(screen.getByText('3')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /点赞/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '点赞：3' })).toBeInTheDocument()
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: /favorite/i }));
-    await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /收藏/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '收藏：2' })).toBeInTheDocument()
+    );
   });
 
   it('loads comments and submits a new comment with snake_case payload', async () => {
@@ -198,7 +202,7 @@ describe('CommunityInteractions', () => {
         viewer: {
           is_authenticated: false,
           has_reacted: false,
-          has_favorited: false,
+          has_bookmarked: false,
           can_comment: false,
           can_moderate: false,
         },
@@ -206,27 +210,27 @@ describe('CommunityInteractions', () => {
       viewer: {
         is_authenticated: false,
         has_reacted: false,
-        has_favorited: false,
+        has_bookmarked: false,
         can_comment: false,
         can_moderate: false,
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /like/i }));
-    fireEvent.click(screen.getByRole('button', { name: /favorite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /点赞/ }));
+    fireEvent.click(screen.getByRole('button', { name: /收藏/ }));
     fireEvent.focus(screen.getByLabelText('添加评论'));
     fireEvent.click(screen.getByRole('button', { name: '发布评论' }));
 
     expect(toast.error).toHaveBeenCalledWith('登录后才能与此页面互动。');
     expect(fetchMock).not.toHaveBeenCalledWith('/api/community/reactions/toggle', expect.anything());
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/community/favorites/toggle', expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/community/bookmarks/toggle', expect.anything());
     expect(fetchMock).not.toHaveBeenCalledWith('/api/community/comments', expect.anything());
   });
 
   it('copies the read URL from the share button', async () => {
     renderInteractions();
 
-    fireEvent.click(screen.getByRole('button', { name: /share/i }));
+    fireEvent.click(screen.getByRole('button', { name: /分享/ }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:3000/alice/demo?tab=read');
@@ -241,7 +245,7 @@ describe('CommunityInteractions', () => {
         viewer: {
           is_authenticated: true,
           has_reacted: false,
-          has_favorited: false,
+          has_bookmarked: false,
           can_comment: false,
           can_moderate: false,
         },
@@ -249,7 +253,7 @@ describe('CommunityInteractions', () => {
       viewer: {
         is_authenticated: true,
         has_reacted: false,
-        has_favorited: false,
+        has_bookmarked: false,
         can_comment: false,
         can_moderate: false,
       },

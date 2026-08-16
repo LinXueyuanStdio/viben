@@ -77,6 +77,34 @@ vi.mock("@/components/assistant/branch-picker-dialog", () => ({
   BranchPickerDialog: () => null,
 }))
 
+// Node 22.4+ (and Node 25+, where it is unflagged) exposes a stub `localStorage`
+// global that shadows jsdom's Storage and lacks clear/getItem/setItem. Provide a
+// complete in-memory Storage so the sidebar's pinned-session reads and this
+// beforeEach reset behave like a real browser.
+function createStorageMock(): Storage {
+  let store: Record<string, string> = {}
+  return {
+    get length() {
+      return Object.keys(store).length
+    },
+    clear() {
+      store = {}
+    },
+    getItem(key: string) {
+      return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null
+    },
+    key(index: number) {
+      return Object.keys(store)[index] ?? null
+    },
+    removeItem(key: string) {
+      delete store[key]
+    },
+    setItem(key: string, value: string) {
+      store[key] = String(value)
+    },
+  } as Storage
+}
+
 function makeSession(
   overrides: Partial<SessionWithUnread>,
 ): SessionWithUnread {
@@ -138,7 +166,11 @@ function renderSidebar(sessions: SessionWithUnread[]) {
 
 describe("InboxSidebar page groups", () => {
   beforeEach(() => {
-    window.localStorage.clear()
+    Object.defineProperty(window, "localStorage", {
+      value: createStorageMock(),
+      configurable: true,
+      writable: true,
+    })
   })
 
   test("renders Pages independently from Chats and repo groups", () => {

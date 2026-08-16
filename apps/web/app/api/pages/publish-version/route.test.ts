@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
+  findEditablePage: vi.fn(),
   findVersion: vi.fn(),
   execute: vi.fn(),
   requireAuth: vi.fn(),
@@ -19,6 +20,10 @@ vi.mock('@/lib/auth/middleware', () => ({
 
 vi.mock('@/lib/db/published-pages', () => ({
   ensurePublishedPagesTable: mocks.execute,
+}));
+
+vi.mock('@/lib/db/page-auth', () => ({
+  findEditablePage: mocks.findEditablePage,
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -61,6 +66,11 @@ describe('POST /api/pages/publish-version', () => {
       email: 'alice@example.com',
       role: 'developer',
       expiresAt: Date.now() + 3600000,
+    });
+    mocks.findEditablePage.mockResolvedValue({
+      id: 'page-1',
+      uid: 'demo',
+      userId: 'user-1',
     });
     mocks.findVersion.mockResolvedValue({
       id: 'version-2',

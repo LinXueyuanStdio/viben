@@ -29,6 +29,7 @@ vi.mock('@/lib/db', () => ({
     visibility: 'visibility',
     moderationStatus: 'moderationStatus',
     updatedAt: 'updatedAt',
+    scheduledAt: 'scheduledAt',
   },
 }));
 
@@ -36,6 +37,13 @@ vi.mock('drizzle-orm', () => ({
   and: vi.fn((...conditions) => ({ type: 'and', conditions })),
   desc: vi.fn((field) => ({ direction: 'desc', field })),
   eq: vi.fn((field, value) => ({ field, value })),
+  or: vi.fn((...conditions) => ({ type: 'or', conditions })),
+  isNull: vi.fn((field) => ({ type: 'isNull', field })),
+  sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({
+    type: 'sql',
+    strings: [...strings],
+    values,
+  })),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -78,13 +86,20 @@ describe('/page/[user_slug]', () => {
           { field: 'userId', value: 'user-1' },
           { field: 'visibility', value: 'public' },
           { field: 'moderationStatus', value: 'approved' },
+          {
+            type: 'or',
+            conditions: [
+              { type: 'isNull', field: 'scheduledAt' },
+              { type: 'sql', strings: ['', ' <= now()'], values: ['scheduledAt'] },
+            ],
+          },
         ],
       },
       orderBy: [{ direction: 'desc', field: 'updatedAt' }],
     });
     expect(screen.getByRole('link', { name: /Demo Demo description/i })).toHaveAttribute(
       'href',
-      '/read/alice/demo'
+      '/alice/demo?tab=read'
     );
   });
 

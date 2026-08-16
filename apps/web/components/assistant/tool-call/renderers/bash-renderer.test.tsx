@@ -1,8 +1,30 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { ToolRenderState } from "@viben/shared/lib/tool-state";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ToolRendererProps } from "@/lib/render-tool";
 import { BashRenderer } from "./bash-renderer";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) => {
+      const labels: Record<string, string> = {
+        "assistant.toolCall.toolBash": "Bash",
+        "assistant.toolCall.bashExitCode": "Exit code {{code}}",
+        "assistant.toolCall.exitMeta": "exit {{code}}",
+        "assistant.toolCall.unknown": "unknown",
+        "assistant.toolCall.detached": "detached",
+        "assistant.toolCall.noOutput": "(No output)",
+        "assistant.toolCall.placeholder": "...",
+      };
+      const template = labels[key] ?? key;
+      if (!opts) return template;
+      return Object.entries(opts).reduce(
+        (acc, [k, v]) => acc.replaceAll(`{{${k}}}`, String(v)),
+        template,
+      );
+    },
+  }),
+}));
 
 const baseState: ToolRenderState = {
   running: false,

@@ -63,6 +63,10 @@ vi.mock('@/lib/db', () => {
   return { db, rankingSnapshots: {}, rankingItems: {}, publishedPages: {} };
 });
 
+vi.mock('next/cache', () => ({
+  revalidateTag: vi.fn(),
+}));
+
 import { POST } from './route';
 
 const adminSession = {
