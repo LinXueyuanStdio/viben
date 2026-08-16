@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => {
     oauthConnections,
     githubConnections,
     insertedRepoConnection: undefined as Record<string, unknown> | undefined,
-    setSessionCookie: vi.fn(),
+    setAuthCookies: vi.fn(),
+    createSession: vi.fn().mockResolvedValue({ sessionId: 's-1', refreshToken: 'rt-1' }),
   };
 });
 
@@ -74,7 +75,11 @@ vi.mock("drizzle-orm", () => ({
 
 vi.mock("@/lib/auth/cookies", () => ({
   getSession: async () => null,
-  setSessionCookie: mocks.setSessionCookie,
+  setAuthCookies: mocks.setAuthCookies,
+}));
+
+vi.mock("@/lib/auth/session-service", () => ({
+  createSession: mocks.createSession,
 }));
 
 vi.mock("@/lib/auth/token-encryption", () => ({
@@ -111,7 +116,8 @@ const routeModulePromise = import("./route");
 describe("GET /api/auth/github/callback", () => {
   beforeEach(() => {
     mocks.insertedRepoConnection = undefined;
-    mocks.setSessionCookie.mockClear();
+    mocks.setAuthCookies.mockClear();
+    mocks.createSession.mockClear();
     process.env.NEXT_PUBLIC_APP_URL = "https://viben.example";
 
     const responses = [

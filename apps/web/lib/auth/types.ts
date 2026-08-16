@@ -23,3 +23,11 @@ export interface OAuthProfile {
   displayName: string;
   avatarUrl?: string;
 }
+
+export interface AccessTokenPayload {
+  userId: string;
+  role: string;
+  sessionId: string;
+  iat: number;
+  exp: number;
+}

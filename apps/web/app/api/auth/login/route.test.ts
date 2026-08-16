@@ -12,7 +12,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   verifyPassword: vi.fn().mockResolvedValue(true),
-  setSessionCookie: vi.fn().mockResolvedValue(undefined),
+  setAuthCookies: vi.fn().mockResolvedValue(undefined),
+  createSession: vi.fn().mockResolvedValue({ sessionId: 's-1', refreshToken: 'rt-1' }),
   findFirstResult: null as any,
   updateSet: vi.fn(),
   updateWhere: vi.fn().mockResolvedValue(undefined),
@@ -23,7 +24,11 @@ vi.mock('@/lib/auth/password', () => ({
 }));
 
 vi.mock('@/lib/auth/cookies', () => ({
-  setSessionCookie: mocks.setSessionCookie,
+  setAuthCookies: mocks.setAuthCookies,
+}));
+
+vi.mock('@/lib/auth/session-service', () => ({
+  createSession: mocks.createSession,
 }));
 
 const mockUpdateChain = {
@@ -98,15 +103,12 @@ describe('POST /api/auth/login', () => {
         'hashed_password_xyz'
       );
 
-      // 验证设置了 session cookie
-      expect(mocks.setSessionCookie).toHaveBeenCalledWith({
-        userId: 'user-001',
-        username: 'testuser',
-        userSlug: 'testuser',
-        email: 'test@example.com',
-        role: 'developer',
-        avatarUrl: undefined,
-      });
+      // 验证创建了会话并设置了双 token cookie
+      expect(mocks.createSession).toHaveBeenCalledWith('user-001', expect.any(Object));
+      expect(mocks.setAuthCookies).toHaveBeenCalledWith(
+        { userId: 'user-001', role: 'developer', sessionId: 's-1' },
+        'rt-1'
+      );
 
       // 验证更新了最后登录时间
       expect(mocks.updateSet).toHaveBeenCalled();
@@ -127,7 +129,7 @@ describe('POST /api/auth/login', () => {
 
       expect(res.status).toBe(401);
       expect(data.error).toBe('Invalid credentials');
-      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+      expect(mocks.setAuthCookies).not.toHaveBeenCalled();
     });
 
     it('不存在的用户应返回 401', async () => {
@@ -142,7 +144,7 @@ describe('POST /api/auth/login', () => {
 
       expect(res.status).toBe(401);
       expect(data.error).toBe('Invalid credentials');
-      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+      expect(mocks.setAuthCookies).not.toHaveBeenCalled();
     });
 
     it('无密码哈希的用户（OAuth 账户）应返回 401', async () => {

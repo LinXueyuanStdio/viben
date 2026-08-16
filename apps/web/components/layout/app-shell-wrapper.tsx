@@ -7,32 +7,27 @@ import { GoogleOneTap } from '@/components/auth/google-one-tap';
 import type { Session } from '@/lib/auth/types';
 
 const SESSION_CACHE_KEY = 'viben_session';
-const SESSION_CACHE_TTL = 3 * 24 * 60 * 60 * 1000; // 3 天
+// 本地缓存的乐观过期点（略短于 access token 的 15 分钟，避免显示已登录却 token 已失效）
+const SESSION_CACHE_MAX_AGE = 14 * 60 * 1000; // 14 分钟
 
 interface CachedSession {
   session: Session;
-  ts: number;
+  expiresAt: number; // 绝对过期时间戳（ms）
 }
 
 // 模块级内存缓存，同 SPA session 内避免重复请求
 let __sessionCache: CachedSession | null = null;
 
 function readCache(): CachedSession | null {
-  if (__sessionCache && Date.now() - __sessionCache.ts < SESSION_CACHE_TTL) {
-    // 命中后刷新过期时间，活跃用户永不过期
-    __sessionCache.ts = Date.now();
-    try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(__sessionCache)); } catch { /* ignore */ }
+  if (__sessionCache && __sessionCache.expiresAt > Date.now()) {
     return __sessionCache;
   }
   try {
     const raw = localStorage.getItem(SESSION_CACHE_KEY);
     if (raw) {
       const cached: CachedSession = JSON.parse(raw);
-      if (Date.now() - cached.ts < SESSION_CACHE_TTL) {
-        // 命中后刷新过期时间
-        cached.ts = Date.now();
+      if (cached.expiresAt > Date.now()) {
         __sessionCache = cached;
-        try { localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cached)); } catch { /* ignore */ }
         return cached;
       }
     }
@@ -41,11 +36,27 @@ function readCache(): CachedSession | null {
 }
 
 function writeCache(session: Session): void {
-  const cached: CachedSession = { session, ts: Date.now() };
+  const cached: CachedSession = { session, expiresAt: Date.now() + SESSION_CACHE_MAX_AGE };
   __sessionCache = cached;
   try {
     localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cached));
   } catch { /* ignore */ }
+}
+
+async function fetchMe(): Promise<Session | null> {
+  const meRes = await fetch('/api/users/me');
+  if (!meRes.ok) return null;
+  const { user } = await meRes.json();
+  return {
+    userId: user.id,
+    username: user.username,
+    userSlug: user.userSlug,
+    displayName: user.displayName,
+    email: user.email,
+    role: user.role,
+    avatarUrl: user.avatarUrl,
+    expiresAt: Date.now() + SESSION_CACHE_MAX_AGE,
+  };
 }
 
 interface AppShellWrapperProps {
@@ -66,17 +77,42 @@ export function AppShellWrapper({ children, isLoggedIn }: AppShellWrapperProps) 
 
   useEffect(() => {
     if (isLoggedIn === false) {
-      // 后端读不到 session cookie（未登录）：清掉 stale 的本地缓存，
-      // 保持前端 UI 与后端登录态一致，避免「已登录却被踢回首页」。
-      __sessionCache = null;
-      try {
-        localStorage.removeItem(SESSION_CACHE_KEY);
-      } catch {
-        // ignore
+      // 后端读到 access token 失效。可能是「真未登录」，也可能是 access 过期
+      // 而 refresh 仍有效（middleware 未 refresh 或软导航未经过 middleware）。
+      // 若本地曾有缓存，先尝试 refresh 恢复；失败才清缓存。
+      if (!readCache()) {
+        __sessionCache = null;
+        setSession(null);
+        setReady(true);
+        return;
       }
-      setSession(null);
-      setReady(true);
-      return;
+
+      let cancelled = false;
+      (async () => {
+        try {
+          await fetch('/api/auth/refresh', { method: 'POST' });
+          const s = await fetchMe();
+          if (cancelled) return;
+          if (s) {
+            writeCache(s);
+            setSession(s);
+            setReady(true);
+            return;
+          }
+        } catch {
+          // ignore — refresh 失败走清缓存
+        }
+        if (cancelled) return;
+        __sessionCache = null;
+        try {
+          localStorage.removeItem(SESSION_CACHE_KEY);
+        } catch {
+          // ignore
+        }
+        setSession(null);
+        setReady(true);
+      })();
+      return () => { cancelled = true; };
     }
 
     // 已有有效缓存则跳过请求
@@ -89,26 +125,25 @@ export function AppShellWrapper({ children, isLoggedIn }: AppShellWrapperProps) 
 
     async function init() {
       try {
-        const meRes = await fetch('/api/users/me');
-        if (!meRes.ok) {
-          if (!cancelled) setReady(true);
-          return;
+        let s = await fetchMe();
+
+        // 401（access token 缺失/过期）→ 先刷新一次再重试，缓解 middleware
+        // 刷新后当前请求 RSC 读不到新 cookie 的一次性「未登录」闪烁。
+        if (!s) {
+          try {
+            await fetch('/api/auth/refresh', { method: 'POST' });
+            s = await fetchMe();
+          } catch {
+            // refresh 失败则保持未登录
+          }
         }
-        const { user } = await meRes.json();
+
         if (cancelled) return;
 
-        const s: Session = {
-          userId: user.id,
-          username: user.username,
-          userSlug: user.userSlug,
-          displayName: user.displayName,
-          email: user.email,
-          role: user.role,
-          avatarUrl: user.avatarUrl,
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-        };
-        writeCache(s);
-        setSession(s);
+        if (s) {
+          writeCache(s);
+          setSession(s);
+        }
       } catch {
         // Session fetch failed — remain logged out
       } finally {

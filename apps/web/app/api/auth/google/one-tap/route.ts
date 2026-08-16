@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db, users, oauthConnections } from '@/lib/db';
 import { uploadImageFromUrl } from '@/lib/media';
-import { setSessionCookie } from '@/lib/auth/cookies';
+import { setAuthCookies } from '@/lib/auth/cookies';
+import { createSession } from '@/lib/auth/session-service';
 import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
 import { eq, and } from 'drizzle-orm';
@@ -49,9 +50,28 @@ export async function POST(request: Request) {
 
     const tokenInfo: GoogleTokenInfo = await tokenInfoRes.json();
 
-    // 验证 audience（必须匹配当前应用的 client ID）
+    // 验证 issuer（必须是 Google）
+    if (
+      tokenInfo.iss !== 'https://accounts.google.com' &&
+      tokenInfo.iss !== 'accounts.google.com'
+    ) {
+      console.error('[OneTap] issuer mismatch:', tokenInfo.iss);
+      return NextResponse.json(
+        { error: 'Invalid issuer' },
+        { status: 400 }
+      );
+    }
+
+    // 验证 audience（必须匹配当前应用的 client ID，且 client ID 必须已配置）
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (clientId && tokenInfo.aud !== clientId) {
+    if (!clientId) {
+      console.error('[OneTap] NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured');
+      return NextResponse.json(
+        { error: 'Server misconfigured' },
+        { status: 500 }
+      );
+    }
+    if (tokenInfo.aud !== clientId) {
       console.error('[OneTap] audience mismatch:', { aud: tokenInfo.aud, expected: clientId });
       return NextResponse.json(
         { error: 'Invalid audience' },
@@ -153,15 +173,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // 设置 session cookie
-    await setSessionCookie({
-      userId: user.id,
-      username: user.username,
-      userSlug: user.userSlug,
-      email: user.email,
-      role: (user.role as 'user' | 'developer' | 'admin') || 'developer',
-      avatarUrl: user.avatarUrl ?? undefined,
+    // 签发双 token：access + refresh（refresh 哈希落库）
+    const { sessionId, refreshToken } = await createSession(user.id, {
+      userAgent: request.headers.get('user-agent'),
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
     });
+    await setAuthCookies(
+      { userId: user.id, role: (user.role as 'user' | 'developer' | 'admin') || 'developer', sessionId },
+      refreshToken,
+    );
 
     return NextResponse.json({ success: true, userId: user.id });
   } catch (error) {

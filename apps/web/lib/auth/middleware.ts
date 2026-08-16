@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decryptSession } from './jwe';
+import { resolveSessionFromAccessToken } from './session-service';
+import { ACCESS_COOKIE } from './token';
 import { validateApiKey } from './api-key';
 import type { Session } from './types';
 
 export async function authMiddleware(request: NextRequest) {
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const session = await decryptSession(token);
+  const session = await resolveSessionFromAccessToken(token);
 
   if (!session) {
     return NextResponse.json({ error: 'Session expired' }, { status: 401 });
@@ -60,14 +62,14 @@ export async function requireAuth(request: NextRequest): Promise<Session> {
     throw new AuthError('Invalid token', 401);
   }
 
-  // 2. Check Cookie Session (existing logic)
-  const token = request.cookies.get('session')?.value;
+  // 2. Check access token cookie
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
     throw new AuthError('Unauthorized', 401);
   }
 
-  const session = await decryptSession(token);
+  const session = await resolveSessionFromAccessToken(token);
 
   if (!session) {
     throw new AuthError('Session expired', 401);
@@ -80,9 +82,9 @@ export async function requireAuth(request: NextRequest): Promise<Session> {
 export async function getOptionalSession(
   request: NextRequest
 ): Promise<Session | null> {
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
   if (!token) return null;
-  return decryptSession(token);
+  return resolveSessionFromAccessToken(token);
 }
 
 export class AuthError extends Error {

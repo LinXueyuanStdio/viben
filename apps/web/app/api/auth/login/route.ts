@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { db, users } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth/password';
-import { setSessionCookie } from '@/lib/auth/cookies';
+import { setAuthCookies } from '@/lib/auth/cookies';
+import { createSession } from '@/lib/auth/session-service';
 import { LoginBody } from '@/lib/validations/user';
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
@@ -48,15 +49,12 @@ export async function POST(request: Request) {
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, user.id));
 
-    // Set session
-    await setSessionCookie({
-      userId: user.id,
-      username: user.username,
-      userSlug: user.userSlug,
-      email: user.email,
-      role: user.role as 'user' | 'developer' | 'admin',
-      avatarUrl: user.avatarUrl ?? undefined,
+    // 签发双 token：access + refresh（refresh 哈希落库）
+    const { sessionId, refreshToken } = await createSession(user.id, {
+      userAgent: request.headers.get('user-agent'),
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
     });
+    await setAuthCookies({ userId: user.id, role: user.role, sessionId }, refreshToken);
 
     return NextResponse.json({ success: true });
   } catch (error) {

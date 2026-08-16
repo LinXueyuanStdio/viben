@@ -41,8 +41,9 @@ const mocks = vi.hoisted(() => ({
   insertOAuthValuesFn: vi.fn().mockResolvedValue(undefined),
   insertUserValuesFn: vi.fn().mockResolvedValue(undefined),
 
-  // setSessionCookie mock
-  setSessionCookie: vi.fn().mockResolvedValue(undefined),
+  // 双 token cookie mock
+  setAuthCookies: vi.fn().mockResolvedValue(undefined),
+  createSession: vi.fn().mockResolvedValue({ sessionId: 's-1', refreshToken: 'rt-1' }),
 
   // uploadImageFromUrl mock
   uploadImageFromUrl: vi.fn().mockResolvedValue(
@@ -80,7 +81,11 @@ vi.stubGlobal('fetch', vi.fn(() => {
 
 // ---- mock modules ----
 vi.mock('@/lib/auth/cookies', () => ({
-  setSessionCookie: mocks.setSessionCookie,
+  setAuthCookies: mocks.setAuthCookies,
+}));
+
+vi.mock('@/lib/auth/session-service', () => ({
+  createSession: mocks.createSession,
 }));
 
 vi.mock('@/lib/media', () => ({
@@ -214,7 +219,7 @@ describe('POST /api/auth/google/one-tap', () => {
     mocks.fetchOk = true;
     mocks.fetchStatus = 200;
     mocks.fetchJson = { ...mocks.validTokenInfo };
-    mocks.setSessionCookie.mockResolvedValue(undefined);
+    mocks.setAuthCookies.mockResolvedValue(undefined);
     mocks.uploadImageFromUrl.mockResolvedValue('https://lh3.googleusercontent.com/photo.jpg');
     mocks.insertOAuthValuesFn.mockResolvedValue(undefined);
     mocks.insertUserValuesFn.mockResolvedValue(undefined);
@@ -242,15 +247,12 @@ describe('POST /api/auth/google/one-tap', () => {
         expect.stringContaining('https://oauth2.googleapis.com/tokeninfo?id_token=')
       );
 
-      // 验证 setSessionCookie 被调用
-      expect(mocks.setSessionCookie).toHaveBeenCalledWith({
-        userId: 'new-user-id',
-        username: 'test',
-        userSlug: 'test',
-        email: 'test@gmail.com',
-        role: 'developer',
-        avatarUrl: 'https://lh3.googleusercontent.com/photo.jpg',
-      });
+      // 验证创建了会话并设置了双 token cookie
+      expect(mocks.createSession).toHaveBeenCalledWith('new-user-id', expect.any(Object));
+      expect(mocks.setAuthCookies).toHaveBeenCalledWith(
+        { userId: 'new-user-id', role: 'developer', sessionId: 's-1' },
+        'rt-1'
+      );
 
       // 验证插入了用户和 OAuth 连接
       expect(lastUserInsertValues).toBeTruthy();
@@ -276,14 +278,11 @@ describe('POST /api/auth/google/one-tap', () => {
       expect(data.success).toBe(true);
       expect(data.userId).toBe('existing-user-id');
 
-      expect(mocks.setSessionCookie).toHaveBeenCalledWith({
-        userId: 'existing-user-id',
-        username: 'existinguser',
-        userSlug: 'existinguser',
-        email: 'test@gmail.com',
-        role: 'developer',
-        avatarUrl: undefined,
-      });
+      expect(mocks.createSession).toHaveBeenCalledWith('existing-user-id', expect.any(Object));
+      expect(mocks.setAuthCookies).toHaveBeenCalledWith(
+        { userId: 'existing-user-id', role: 'developer', sessionId: 's-1' },
+        'rt-1'
+      );
     });
 
     it('已有邮箱用户：应链接 OAuth 返回 200', async () => {
@@ -320,7 +319,7 @@ describe('POST /api/auth/google/one-tap', () => {
 
       expect(res.status).toBe(400);
       expect(data.error).toBe('Invalid credential');
-      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+      expect(mocks.setAuthCookies).not.toHaveBeenCalled();
     });
 
     it('audience 不匹配应返回 400', async () => {

@@ -8,13 +8,18 @@ vi.mock('../jwe', () => ({
   decryptSession: vi.fn(),
 }));
 
+vi.mock('../session-service', () => ({
+  resolveSessionFromAccessToken: vi.fn(),
+}));
+
 import { requireAuth, AuthError } from '../middleware';
 import { validateApiKey } from '../api-key';
 import { decryptSession } from '../jwe';
+import { resolveSessionFromAccessToken } from '../session-service';
 
 function createMockRequest(options: {
   authorization?: string;
-  sessionCookie?: string;
+  accessTokenCookie?: string;
 }): Request {
   const headers = new Headers();
   if (options.authorization) {
@@ -25,8 +30,8 @@ function createMockRequest(options: {
     headers,
     cookies: {
       get: (name: string) => {
-        if (name === 'session' && options.sessionCookie) {
-          return { value: options.sessionCookie };
+        if (name === 'access_token' && options.accessTokenCookie) {
+          return { value: options.accessTokenCookie };
         }
         return undefined;
       },
@@ -41,7 +46,7 @@ describe('requireAuth', () => {
     vi.clearAllMocks();
   });
 
-  it('should authenticate with valid Bearer token', async () => {
+  it('should authenticate with valid Bearer token (API key)', async () => {
     const mockUser = {
       id: 'user_123',
       username: 'testuser',
@@ -73,7 +78,7 @@ describe('requireAuth', () => {
     await expect(requireAuth(request as any)).rejects.toThrow('Invalid token');
   });
 
-  it('should fall back to cookie session when no Bearer token', async () => {
+  it('should fall back to access token cookie when no Bearer token', async () => {
     const mockSession = {
       userId: 'user_456',
       username: 'cookieuser',
@@ -81,16 +86,16 @@ describe('requireAuth', () => {
       role: 'user',
       expiresAt: Date.now() + 3600000,
     };
-    vi.mocked(decryptSession).mockResolvedValue(mockSession);
+    vi.mocked(resolveSessionFromAccessToken).mockResolvedValue(mockSession as any);
 
     const request = createMockRequest({
-      sessionCookie: 'encrypted_session_token',
+      accessTokenCookie: 'access_token_value',
     });
 
     const session = await requireAuth(request as any);
 
     expect(session.userId).toBe('user_456');
-    expect(decryptSession).toHaveBeenCalledWith('encrypted_session_token');
+    expect(resolveSessionFromAccessToken).toHaveBeenCalledWith('access_token_value');
     expect(validateApiKey).not.toHaveBeenCalled();
   });
 

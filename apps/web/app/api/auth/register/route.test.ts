@@ -12,7 +12,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   hashPassword: vi.fn().mockResolvedValue('hashed_password_123'),
-  setSessionCookie: vi.fn().mockResolvedValue(undefined),
+  setAuthCookies: vi.fn().mockResolvedValue(undefined),
+  createSession: vi.fn().mockResolvedValue({ sessionId: 's-1', refreshToken: 'rt-1' }),
   findFirstResult: null as any,
   insertValues: vi.fn().mockResolvedValue(undefined),
   normalizeUserSlug: vi.fn((name: string) => name.toLowerCase()),
@@ -24,7 +25,11 @@ vi.mock('@/lib/auth/password', () => ({
 }));
 
 vi.mock('@/lib/auth/cookies', () => ({
-  setSessionCookie: mocks.setSessionCookie,
+  setAuthCookies: mocks.setAuthCookies,
+}));
+
+vi.mock('@/lib/auth/session-service', () => ({
+  createSession: mocks.createSession,
 }));
 
 vi.mock('@/lib/utils/user-slug', () => ({
@@ -93,14 +98,12 @@ describe('POST /api/auth/register', () => {
       // 验证调用了 hashPassword
       expect(mocks.hashPassword).toHaveBeenCalledWith('password123');
 
-      // 验证调用了 setSessionCookie
-      expect(mocks.setSessionCookie).toHaveBeenCalledWith({
-        userId: 'new-user-id-001',
-        username: 'testuser',
-        userSlug: 'testuser',
-        email: 'test@example.com',
-        role: 'developer',
-      });
+      // 验证创建了会话并设置了双 token cookie
+      expect(mocks.createSession).toHaveBeenCalledWith('new-user-id-001', expect.any(Object));
+      expect(mocks.setAuthCookies).toHaveBeenCalledWith(
+        { userId: 'new-user-id-001', role: 'developer', sessionId: 's-1' },
+        'rt-1'
+      );
 
       // 验证插入了数据库
       expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -135,7 +138,7 @@ describe('POST /api/auth/register', () => {
       expect(res.status).toBe(400);
       expect(data.error).toBe('Email or username already taken');
       expect(mocks.insertValues).not.toHaveBeenCalled();
-      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+      expect(mocks.setAuthCookies).not.toHaveBeenCalled();
     });
 
     it('已存在的用户名应返回 400', async () => {

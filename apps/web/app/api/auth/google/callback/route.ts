@@ -5,7 +5,8 @@ import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { db, users, oauthConnections } from '@/lib/db';
 import { uploadImageFromUrl } from '@/lib/media';
-import { getSession, setSessionCookie } from '@/lib/auth/cookies';
+import { getSession, setAuthCookies } from '@/lib/auth/cookies';
+import { createSession } from '@/lib/auth/session-service';
 import { encryptSession } from '@/lib/auth/jwe';
 import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri, renderDesktopOAuthCallbackPage } from '@/lib/auth/desktop-redirect';
 import { generateId } from '@/lib/utils';
@@ -256,14 +257,11 @@ export async function GET(request: NextRequest) {
       hasWebRedirect: Boolean(webRedirect),
       webRedirect,
     });
-    await setSessionCookie({
-      userId: user.id,
-      username: user.username,
-      userSlug: user.userSlug,
-      email: user.email,
-      role: user.role as 'user' | 'developer' | 'admin',
-      avatarUrl: user.avatarUrl ?? undefined,
+    const { sessionId, refreshToken } = await createSession(user.id, {
+      userAgent: request.headers.get('user-agent'),
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
     });
+    await setAuthCookies({ userId: user.id, role: user.role, sessionId }, refreshToken);
 
     if (webRedirect && webRedirect.startsWith('/') && !webRedirect.startsWith('//')) {
       console.info('[OAuth][Google] redirecting to stored webRedirect', { webRedirect });

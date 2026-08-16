@@ -6,7 +6,8 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { decryptSession } from './jwe';
+import { resolveSessionFromAccessToken } from './session-service';
+import { ACCESS_COOKIE } from './token';
 import { validateApiKey } from './api-key';
 import { AuthError } from './middleware';
 import type { Session } from './types';
@@ -116,9 +117,9 @@ export function getRoleLevel(role: string): number {
  */
 async function authenticateRequest(request: NextRequest): Promise<Session | null> {
   // 1. Session cookie
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
   if (token) {
-    const session = await decryptSession(token);
+    const session = await resolveSessionFromAccessToken(token);
     if (session) return session;
   }
 
@@ -175,13 +176,13 @@ export async function requireAdmin(
   request: NextRequest,
   minLevel: number = 25
 ): Promise<Session> {
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
     throw new AuthError('Authentication required', 401);
   }
 
-  const session = await decryptSession(token);
+  const session = await resolveSessionFromAccessToken(token);
 
   if (!session) {
     throw new AuthError('Session expired', 401);
@@ -252,13 +253,13 @@ export async function requireAnyPermission(
   request: NextRequest,
   permissions: AdminPermission[]
 ): Promise<Session> {
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
     throw new AuthError('Authentication required', 401);
   }
 
-  const session = await decryptSession(token);
+  const session = await resolveSessionFromAccessToken(token);
 
   if (!session) {
     throw new AuthError('Session expired', 401);
@@ -297,13 +298,13 @@ export async function requireAllPermissions(
   request: NextRequest,
   permissions: AdminPermission[]
 ): Promise<Session> {
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
     throw new AuthError('Authentication required', 401);
   }
 
-  const session = await decryptSession(token);
+  const session = await resolveSessionFromAccessToken(token);
 
   if (!session) {
     throw new AuthError('Session expired', 401);
@@ -331,13 +332,13 @@ export async function requireAllPermissions(
 export async function getAdminSession(
   request: NextRequest
 ): Promise<Session | null> {
-  const token = request.cookies.get('session')?.value;
+  const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
     return null;
   }
 
-  const session = await decryptSession(token);
+  const session = await resolveSessionFromAccessToken(token);
 
   if (!session) {
     return null;

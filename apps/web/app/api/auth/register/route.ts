@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db, users } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/password';
-import { setSessionCookie } from '@/lib/auth/cookies';
+import { setAuthCookies } from '@/lib/auth/cookies';
+import { createSession } from '@/lib/auth/session-service';
 import { generateId } from '@/lib/utils';
 import { normalizeUserSlug } from '@/lib/utils/user-slug';
 import { RegisterBody } from '@/lib/validations/user';
@@ -47,14 +48,12 @@ export async function POST(request: Request) {
       role: 'developer',
     });
 
-    // Set session
-    await setSessionCookie({
-      userId,
-      username,
-      userSlug: normalizeUserSlug(username, userId),
-      email,
-      role: 'developer',
+    // 签发双 token：access + refresh（refresh 哈希落库）
+    const { sessionId, refreshToken } = await createSession(userId, {
+      userAgent: request.headers.get('user-agent'),
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
     });
+    await setAuthCookies({ userId, role: 'developer', sessionId }, refreshToken);
 
     return NextResponse.json({ success: true, userId });
   } catch (error) {
