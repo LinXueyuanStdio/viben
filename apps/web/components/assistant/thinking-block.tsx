@@ -1,7 +1,7 @@
 "use client";
 
 import { Brain } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ToolRenderState } from "@viben/shared/lib/tool-state";
 import { ToolLayout } from "./tool-call/tool-layout";
@@ -28,7 +28,7 @@ const STREAMING_STATE: ToolRenderState = {
   isActiveApproval: false,
 };
 
-export function ThinkingBlock({
+export const ThinkingBlock = memo(function ThinkingBlock({
   text,
   isStreaming = false,
   partCount = 1,
@@ -103,4 +103,4 @@ export function ThinkingBlock({
       expandedContent={expandedContent}
     />
   );
-}
+});

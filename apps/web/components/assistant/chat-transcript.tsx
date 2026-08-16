@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -76,12 +77,6 @@ type MessageRenderGroup =
       startIndex: number;
       renderKey: string;
     };
-
-type GroupedRenderMessage = {
-  message: WebAgentUIMessage;
-  groups: MessageRenderGroup[];
-  isStreaming: boolean;
-};
 
 export type ChatTranscriptProps = {
   messages: WebAgentUIMessage[];
@@ -151,6 +146,66 @@ function getAssistantText(message: WebAgentUIMessage): string {
     )
     .map((part) => part.text)
     .join("");
+}
+
+/**
+ * Groups a single message's parts into stable render groups (reasoning parts
+ * are coalesced into one group; every other part is its own group). Extracted
+ * from the transcript so each `MessageItem` can memoize its groups against the
+ * message reference — historical messages keep the same reference while the
+ * latest message streams, so they never recompute or re-render.
+ */
+function computeMessageGroups(message: WebAgentUIMessage): MessageRenderGroup[] {
+  const groups: MessageRenderGroup[] = [];
+  let currentReasoningGroup: ReasoningMessagePart[] = [];
+  let reasoningGroupStartIndex = 0;
+  const partIdentityCounts = new Map<string, number>();
+
+  const getStablePartRenderKey = (part: WebAgentUIMessagePart): string => {
+    const identity = getPartIdentity(part);
+
+    if (isToolUIPart(part) && part.toolCallId) {
+      return identity;
+    }
+
+    const count = partIdentityCounts.get(identity) ?? 0;
+    partIdentityCounts.set(identity, count + 1);
+    return `${identity}:${count}`;
+  };
+
+  const flushReasoningGroup = () => {
+    if (currentReasoningGroup.length === 0) return;
+
+    groups.push({
+      type: "reasoning-group",
+      parts: currentReasoningGroup,
+      startIndex: reasoningGroupStartIndex,
+      renderKey: `reasoning-group:${getStablePartRenderKey(currentReasoningGroup[0])}`,
+    });
+    currentReasoningGroup = [];
+  };
+
+  message.parts.forEach((part, index) => {
+    if (isReasoningUIPart(part)) {
+      if (currentReasoningGroup.length === 0) {
+        reasoningGroupStartIndex = index;
+      }
+      currentReasoningGroup.push(part);
+      return;
+    }
+
+    flushReasoningGroup();
+    groups.push({
+      type: "part",
+      part,
+      index,
+      renderKey: getStablePartRenderKey(part),
+    });
+  });
+
+  flushReasoningGroup();
+
+  return groups;
 }
 
 function GitDataPartCard({
@@ -283,6 +338,425 @@ function GitDataPartCard({
   );
 }
 
+type MessageItemProps = {
+  message: WebAgentUIMessage;
+  isStreaming: boolean;
+  durationMs: number | null;
+  startedAt: string | null;
+  streamdownComponents: {
+    a: (props: AssistantFileLinkProps) => ReactNode;
+  };
+  onCopyMessage: (message: WebAgentUIMessage) => void;
+  onRetryMessage?: (message: WebAgentUIMessage) => void;
+  onForkMessage?: (message: WebAgentUIMessage) => void;
+  onDeleteMessage?: (message: WebAgentUIMessage) => void;
+  onApproveTool?: (id: string) => void;
+  onDenyTool?: (id: string, reason?: string) => void;
+  modelOptions?: ModelOption[];
+  actionDisabled?: boolean;
+  deletingMessageId?: string | null;
+  resendingMessageId?: string | null;
+  forkingMessageId?: string | null;
+};
+
+/**
+ * Renders a single message's groups. Wrapped in `React.memo` so that historical
+ * messages (whose object reference is stable across stream updates) skip
+ * re-rendering entirely while the latest message streams in.
+ */
+const MessageItem = memo(function MessageItem({
+  message: m,
+  isStreaming: isMessageStreaming,
+  durationMs,
+  startedAt,
+  streamdownComponents,
+  onCopyMessage,
+  onRetryMessage,
+  onForkMessage,
+  onDeleteMessage,
+  onApproveTool,
+  onDenyTool,
+  modelOptions,
+  actionDisabled,
+  deletingMessageId,
+  resendingMessageId,
+  forkingMessageId,
+}: MessageItemProps) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const copyResetTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current !== null) {
+        window.clearTimeout(copyResetTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const groups = useMemo(() => computeMessageGroups(m), [m]);
+
+  const handleCopy = useCallback(async () => {
+    onCopyMessage(m);
+    const text = getAssistantText(m).trim();
+    if (text.length === 0) {
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      if (copyResetTimeoutRef.current !== null) {
+        window.clearTimeout(copyResetTimeoutRef.current);
+      }
+      copyResetTimeoutRef.current = window.setTimeout(() => {
+        setCopied(false);
+        copyResetTimeoutRef.current = null;
+      }, 2000);
+    } catch (copyError) {
+      console.error("Failed to copy assistant message:", copyError);
+    }
+  }, [m, onCopyMessage]);
+
+  const renderGroups = (isToolCallsExpanded: boolean) =>
+    groups.map((group) => {
+      if (group.type === "reasoning-group") {
+        if (!isToolCallsExpanded) return null;
+        const hasRenderableContentAfterGroup = m.parts
+          .slice(group.startIndex + group.parts.length)
+          .some(hasRenderableAssistantPart);
+
+        return (
+          <div
+            key={`${m.id}-${group.renderKey}`}
+            className="max-w-full pl-[22px]"
+          >
+            <ThinkingBlock
+              text={getReasoningGroupText(group.parts)}
+              isStreaming={shouldKeepCollapsedReasoningStreaming({
+                isMessageStreaming,
+                hasStreamingReasoningPart: group.parts.some(
+                  (part) => part.state === "streaming",
+                ),
+                hasRenderableContentAfterGroup,
+              })}
+              partCount={group.parts.length}
+            />
+          </div>
+        );
+      }
+
+      const p = group.part;
+
+      if (isReasoningUIPart(p)) {
+        if (!isToolCallsExpanded) return null;
+        const hasRenderableContentAfterGroup = m.parts
+          .slice(group.index + 1)
+          .some(hasRenderableAssistantPart);
+
+        return (
+          <div
+            key={`${m.id}-${group.renderKey}`}
+            className="max-w-full pl-[22px]"
+          >
+            <ThinkingBlock
+              text={p.text}
+              isStreaming={shouldKeepCollapsedReasoningStreaming({
+                isMessageStreaming,
+                hasStreamingReasoningPart: p.state === "streaming",
+                hasRenderableContentAfterGroup,
+              })}
+            />
+          </div>
+        );
+      }
+
+      if (p.type === "text") {
+        if (p.text.length === 0) {
+          return null;
+        }
+
+        const isFinalAssistantTextPart =
+          m.role === "assistant" &&
+          !m.parts
+            .slice(group.index + 1)
+            .some((messagePart) => messagePart.type === "text");
+
+        if (
+          !isToolCallsExpanded &&
+          m.role === "assistant" &&
+          !isFinalAssistantTextPart
+        ) {
+          return null;
+        }
+
+        const canCopyAssistantMessage =
+          isFinalAssistantTextPart &&
+          !isMessageStreaming &&
+          p.text.trim().length > 0;
+
+        return (
+          <div
+            key={`${m.id}-${group.renderKey}`}
+            className={cn(
+              "flex min-w-0 py-2",
+              m.role === "user" ? "justify-end" : "justify-start",
+              isFinalAssistantTextPart && group.index > 0 && "mt-4",
+              m.role === "assistant" &&
+                !isFinalAssistantTextPart &&
+                "pl-[22px]",
+            )}
+          >
+            {m.role === "user" ? (
+              <div className="group relative w-fit min-w-0 max-w-[80%]">
+                <div className="rounded-3xl bg-secondary px-4 py-2">
+                  <p className="whitespace-pre-wrap break-words">{p.text}</p>
+                </div>
+                {group.index === 0 && (onRetryMessage || onDeleteMessage) && (
+                  <div className="absolute -left-20 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-background/80 p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100">
+                    {onRetryMessage && (
+                      <button
+                        type="button"
+                        onClick={() => onRetryMessage(m)}
+                        disabled={actionDisabled}
+                        aria-label={t(
+                          "assistant.chatContent.resendMessageAria",
+                        )}
+                        className="rounded p-1 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {resendingMessageId === m.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                    {onDeleteMessage && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteMessage(m)}
+                        disabled={actionDisabled}
+                        aria-label={t(
+                          "assistant.chatContent.deleteMessageAria",
+                        )}
+                        className="rounded p-1 transition hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {deletingMessageId === m.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="group min-w-0 w-full overflow-hidden">
+                <LazyStreamdown
+                  animated={
+                    isMessageStreaming
+                      ? {
+                          animation: "fadeIn",
+                          duration: 250,
+                          easing: "ease-out",
+                        }
+                      : undefined
+                  }
+                  mode={isMessageStreaming ? "streaming" : "static"}
+                  isAnimating={isMessageStreaming}
+                  components={streamdownComponents}
+                >
+                  {p.text}
+                </LazyStreamdown>
+                {(canCopyAssistantMessage ||
+                  (!isMessageStreaming &&
+                    isFinalAssistantTextPart &&
+                    m.metadata)) && (
+                  <div className="mt-1 flex items-center justify-start">
+                    {canCopyAssistantMessage && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleCopy()}
+                          aria-label={t(
+                            "assistant.chatContent.copyAssistantResponseAria",
+                          )}
+                          className="rounded p-1 text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+                        >
+                          {copied ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </button>
+                        {onForkMessage && (
+                          <button
+                            type="button"
+                            onClick={() => onForkMessage(m)}
+                            disabled={forkingMessageId !== null}
+                            aria-label={t(
+                              "assistant.chatContent.forkConversationAria",
+                            )}
+                            className={cn(
+                              "rounded p-1 text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-40",
+                              forkingMessageId === m.id && "opacity-100",
+                            )}
+                          >
+                            {forkingMessageId === m.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <GitBranch className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {!isMessageStreaming &&
+                      isFinalAssistantTextPart &&
+                      m.metadata && (
+                        <span className="opacity-0 transition group-hover:opacity-100">
+                          <MessageModelPill
+                            metadata={m.metadata}
+                            modelOptions={modelOptions ?? []}
+                          />
+                        </span>
+                      )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      if (isToolUIPart(p)) {
+        if (!isToolCallsExpanded) return null;
+        return (
+          <div
+            key={`${m.id}-${group.renderKey}`}
+            className="max-w-full pl-[22px]"
+          >
+            <ToolCall
+              part={p as WebAgentUIToolPart}
+              isStreaming={isMessageStreaming}
+              onApprove={(id: string) => onApproveTool?.(id)}
+              onDeny={(id: string, reason?: string) =>
+                onDenyTool?.(id, reason)
+              }
+            />
+          </div>
+        );
+      }
+
+      if (isGitDataPart(p)) {
+        if (!shouldRenderGitDataPart(p)) {
+          return null;
+        }
+
+        return (
+          <div key={`${m.id}-${group.renderKey}`} className="max-w-full">
+            <GitDataPartCard part={p} />
+          </div>
+        );
+      }
+
+      if (p.type === "file" && p.mediaType?.startsWith("image/")) {
+        if (!isToolCallsExpanded && m.role === "assistant") {
+          return null;
+        }
+        return (
+          <div
+            key={`${m.id}-${group.renderKey}`}
+            className="flex justify-end"
+          >
+            <div className="group relative w-fit max-w-[80%]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- Data URLs are user attachments. */}
+              <img
+                src={p.url}
+                alt={p.filename ?? t("assistant.chatContent.attachedImageAlt")}
+                className="max-h-64 rounded-lg"
+              />
+              {m.role === "user" && onDeleteMessage && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteMessage(m)}
+                  disabled={actionDisabled}
+                  aria-label={t("assistant.chatContent.deleteMessageAria")}
+                  className="absolute -left-10 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {deletingMessageId === m.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      if (p.type === "data-snippet") {
+        if (!isToolCallsExpanded && m.role === "assistant") {
+          return null;
+        }
+        return (
+          <div
+            key={`${m.id}-${group.renderKey}`}
+            className={cn(
+              "flex",
+              m.role === "user" ? "justify-end" : "justify-start",
+            )}
+          >
+            <div className="group relative w-fit max-w-[80%]">
+              <SnippetChip
+                filename={(p as WebAgentSnippetDataPart).data.filename}
+                content={(p as WebAgentSnippetDataPart).data.content}
+              />
+              {m.role === "user" && onDeleteMessage && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteMessage(m)}
+                  disabled={actionDisabled}
+                  aria-label={t("assistant.chatContent.deleteMessageAria")}
+                  className="absolute -left-10 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {deletingMessageId === m.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    });
+
+  if (m.role === "assistant") {
+    return (
+      <AssistantMessageGroups
+        message={m}
+        isStreaming={isMessageStreaming}
+        durationMs={durationMs}
+        startedAt={startedAt}
+      >
+        {renderGroups}
+      </AssistantMessageGroups>
+    );
+  }
+
+  return <div className="flex flex-col gap-1">{renderGroups(true)}</div>;
+});
+
 export function ChatTranscript({
   messages,
   status,
@@ -309,82 +783,11 @@ export function ChatTranscript({
   forkingMessageId,
 }: ChatTranscriptProps) {
   const { t } = useTranslation();
-  const [copiedAssistantMessageId, setCopiedAssistantMessageId] = useState<
-    string | null
-  >(null);
-  const copyResetTimeoutRef = useRef<number | null>(null);
   const { containerRef, isAtBottom, scrollToBottom } =
     useScrollToBottom<HTMLDivElement>();
 
   const streaming =
     isChatInFlight ?? isChatInFlightStatus(status as Parameters<typeof isChatInFlightStatus>[0]);
-
-  useEffect(() => {
-    return () => {
-      if (copyResetTimeoutRef.current !== null) {
-        window.clearTimeout(copyResetTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const groupedRenderMessages = useMemo<GroupedRenderMessage[]>(() => {
-    return messages.map((message, messageIndex) => {
-      const groups: MessageRenderGroup[] = [];
-      let currentReasoningGroup: ReasoningMessagePart[] = [];
-      let reasoningGroupStartIndex = 0;
-      const partIdentityCounts = new Map<string, number>();
-
-      const getStablePartRenderKey = (part: WebAgentUIMessagePart): string => {
-        const identity = getPartIdentity(part);
-
-        if (isToolUIPart(part) && part.toolCallId) {
-          return identity;
-        }
-
-        const count = partIdentityCounts.get(identity) ?? 0;
-        partIdentityCounts.set(identity, count + 1);
-        return `${identity}:${count}`;
-      };
-
-      const flushReasoningGroup = () => {
-        if (currentReasoningGroup.length === 0) return;
-
-        groups.push({
-          type: "reasoning-group",
-          parts: currentReasoningGroup,
-          startIndex: reasoningGroupStartIndex,
-          renderKey: `reasoning-group:${getStablePartRenderKey(currentReasoningGroup[0])}`,
-        });
-        currentReasoningGroup = [];
-      };
-
-      message.parts.forEach((part, index) => {
-        if (isReasoningUIPart(part)) {
-          if (currentReasoningGroup.length === 0) {
-            reasoningGroupStartIndex = index;
-          }
-          currentReasoningGroup.push(part);
-          return;
-        }
-
-        flushReasoningGroup();
-        groups.push({
-          type: "part",
-          part,
-          index,
-          renderKey: getStablePartRenderKey(part),
-        });
-      });
-
-      flushReasoningGroup();
-
-      return {
-        message,
-        groups,
-        isStreaming: streaming && messageIndex === messages.length - 1,
-      };
-    });
-  }, [messages, streaming]);
 
   const streamdownComponents = useMemo(
     () => ({
@@ -393,37 +796,6 @@ export function ChatTranscript({
       ),
     }),
     [onOpenFile],
-  );
-
-  const handleCopyAssistantMessage = useCallback(
-    async (message: WebAgentUIMessage) => {
-      onCopyMessage(message);
-      const text = getAssistantText(message).trim();
-      if (text.length === 0) {
-        return;
-      }
-
-      if (typeof navigator === "undefined" || !navigator.clipboard) {
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopiedAssistantMessageId(message.id);
-        if (copyResetTimeoutRef.current !== null) {
-          window.clearTimeout(copyResetTimeoutRef.current);
-        }
-        copyResetTimeoutRef.current = window.setTimeout(() => {
-          setCopiedAssistantMessageId((currentMessageId) =>
-            currentMessageId === message.id ? null : currentMessageId,
-          );
-          copyResetTimeoutRef.current = null;
-        }, 2000);
-      } catch (copyError) {
-        console.error("Failed to copy assistant message:", copyError);
-      }
-    },
-    [onCopyMessage],
   );
 
   const renderContainerClassName = compact
@@ -436,7 +808,7 @@ export function ChatTranscript({
         <div className={renderContainerClassName}>
           <OpenFileProvider onOpenFile={onOpenFile ?? (() => {})}>
             <div className="space-y-6">
-              {groupedRenderMessages.length === 0 &&
+              {messages.length === 0 &&
                 showThinkingIndicator !== true &&
                 (emptyState ?? (
                   <div className="flex h-full min-h-[40vh] items-center justify-center">
@@ -445,381 +817,36 @@ export function ChatTranscript({
                     </p>
                   </div>
                 ))}
-              {groupedRenderMessages.map(
-                ({ message: m, groups, isStreaming: isMessageStreaming }) => {
-                  const renderGroups = (isToolCallsExpanded: boolean) =>
-                    groups.map((group) => {
-                      if (group.type === "reasoning-group") {
-                        if (!isToolCallsExpanded) return null;
-                        const hasRenderableContentAfterGroup = m.parts
-                          .slice(group.startIndex + group.parts.length)
-                          .some(hasRenderableAssistantPart);
-
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className="max-w-full pl-[22px]"
-                          >
-                            <ThinkingBlock
-                              text={getReasoningGroupText(group.parts)}
-                              isStreaming={shouldKeepCollapsedReasoningStreaming(
-                                {
-                                  isMessageStreaming,
-                                  hasStreamingReasoningPart: group.parts.some(
-                                    (part) => part.state === "streaming",
-                                  ),
-                                  hasRenderableContentAfterGroup,
-                                },
-                              )}
-                              partCount={group.parts.length}
-                            />
-                          </div>
-                        );
-                      }
-
-                      const p = group.part;
-
-                      if (isReasoningUIPart(p)) {
-                        if (!isToolCallsExpanded) return null;
-                        const hasRenderableContentAfterGroup = m.parts
-                          .slice(group.index + 1)
-                          .some(hasRenderableAssistantPart);
-
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className="max-w-full pl-[22px]"
-                          >
-                            <ThinkingBlock
-                              text={p.text}
-                              isStreaming={shouldKeepCollapsedReasoningStreaming(
-                                {
-                                  isMessageStreaming,
-                                  hasStreamingReasoningPart:
-                                    p.state === "streaming",
-                                  hasRenderableContentAfterGroup,
-                                },
-                              )}
-                            />
-                          </div>
-                        );
-                      }
-
-                      if (p.type === "text") {
-                        if (p.text.length === 0) {
-                          return null;
-                        }
-
-                        const isFinalAssistantTextPart =
-                          m.role === "assistant" &&
-                          !m.parts
-                            .slice(group.index + 1)
-                            .some((messagePart) => messagePart.type === "text");
-
-                        if (
-                          !isToolCallsExpanded &&
-                          m.role === "assistant" &&
-                          !isFinalAssistantTextPart
-                        ) {
-                          return null;
-                        }
-
-                        const canCopyAssistantMessage =
-                          isFinalAssistantTextPart &&
-                          !isMessageStreaming &&
-                          p.text.trim().length > 0;
-
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className={cn(
-                              "flex min-w-0 py-2",
-                              m.role === "user"
-                                ? "justify-end"
-                                : "justify-start",
-                              isFinalAssistantTextPart &&
-                                group.index > 0 &&
-                                "mt-4",
-                              m.role === "assistant" &&
-                                !isFinalAssistantTextPart &&
-                                "pl-[22px]",
-                            )}
-                          >
-                            {m.role === "user" ? (
-                              <div className="group relative w-fit min-w-0 max-w-[80%]">
-                                <div className="rounded-3xl bg-secondary px-4 py-2">
-                                  <p className="whitespace-pre-wrap break-words">
-                                    {p.text}
-                                  </p>
-                                </div>
-                                {group.index === 0 &&
-                                  (onRetryMessage || onDeleteMessage) && (
-                                    <div className="absolute -left-20 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-background/80 p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100">
-                                      {onRetryMessage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onRetryMessage(m)}
-                                          disabled={actionDisabled}
-                                          aria-label={t(
-                                            "assistant.chatContent.resendMessageAria",
-                                          )}
-                                          className="rounded p-1 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                                        >
-                                          {resendingMessageId === m.id ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <RotateCcw className="h-4 w-4" />
-                                          )}
-                                        </button>
-                                      )}
-                                      {onDeleteMessage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onDeleteMessage(m)}
-                                          disabled={actionDisabled}
-                                          aria-label={t(
-                                            "assistant.chatContent.deleteMessageAria",
-                                          )}
-                                          className="rounded p-1 transition hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
-                                        >
-                                          {deletingMessageId === m.id ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <Trash2 className="h-4 w-4" />
-                                          )}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                              </div>
-                            ) : (
-                              <div className="group min-w-0 w-full overflow-hidden">
-                                <LazyStreamdown
-                                  animated={
-                                    isMessageStreaming
-                                      ? {
-                                          animation: "fadeIn",
-                                          duration: 250,
-                                          easing: "ease-out",
-                                        }
-                                      : undefined
-                                  }
-                                  mode={isMessageStreaming ? "streaming" : "static"}
-                                  isAnimating={isMessageStreaming}
-                                  components={streamdownComponents}
-                                >
-                                  {p.text}
-                                </LazyStreamdown>
-                                {(canCopyAssistantMessage ||
-                                  (!isMessageStreaming &&
-                                    isFinalAssistantTextPart &&
-                                    m.metadata)) && (
-                                  <div className="mt-1 flex items-center justify-start">
-                                    {canCopyAssistantMessage && (
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            void handleCopyAssistantMessage(m)
-                                          }
-                                          aria-label={t(
-                                            "assistant.chatContent.copyAssistantResponseAria",
-                                          )}
-                                          className="rounded p-1 text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
-                                        >
-                                          {copiedAssistantMessageId === m.id ? (
-                                            <Check className="h-4 w-4" />
-                                          ) : (
-                                            <Copy className="h-4 w-4" />
-                                          )}
-                                        </button>
-                                        {onForkMessage && (
-                                          <button
-                                            type="button"
-                                            onClick={() => onForkMessage(m)}
-                                            disabled={forkingMessageId !== null}
-                                            aria-label={t(
-                                              "assistant.chatContent.forkConversationAria",
-                                            )}
-                                            className={cn(
-                                              "rounded p-1 text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-40",
-                                              forkingMessageId === m.id &&
-                                                "opacity-100",
-                                            )}
-                                          >
-                                            {forkingMessageId === m.id ? (
-                                              <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                              <GitBranch className="h-4 w-4" />
-                                            )}
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                    {!isMessageStreaming &&
-                                      isFinalAssistantTextPart &&
-                                      m.metadata && (
-                                        <span className="opacity-0 transition group-hover:opacity-100">
-                                          <MessageModelPill
-                                            metadata={m.metadata}
-                                            modelOptions={modelOptions ?? []}
-                                          />
-                                        </span>
-                                      )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      if (isToolUIPart(p)) {
-                        if (!isToolCallsExpanded) return null;
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className="max-w-full pl-[22px]"
-                          >
-                            <ToolCall
-                              part={p as WebAgentUIToolPart}
-                              isStreaming={isMessageStreaming}
-                              onApprove={(id: string) => onApproveTool?.(id)}
-                              onDeny={(id: string, reason?: string) =>
-                                onDenyTool?.(id, reason)
-                              }
-                            />
-                          </div>
-                        );
-                      }
-
-                      if (isGitDataPart(p)) {
-                        if (!shouldRenderGitDataPart(p)) {
-                          return null;
-                        }
-
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className="max-w-full"
-                          >
-                            <GitDataPartCard part={p} />
-                          </div>
-                        );
-                      }
-
-                      if (
-                        p.type === "file" &&
-                        p.mediaType?.startsWith("image/")
-                      ) {
-                        if (!isToolCallsExpanded && m.role === "assistant") {
-                          return null;
-                        }
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className="flex justify-end"
-                          >
-                            <div className="group relative w-fit max-w-[80%]">
-                              {/* eslint-disable-next-line @next/next/no-img-element -- Data URLs are user attachments. */}
-                              <img
-                                src={p.url}
-                                alt={
-                                  p.filename ??
-                                  t("assistant.chatContent.attachedImageAlt")
-                                }
-                                className="max-h-64 rounded-lg"
-                              />
-                              {m.role === "user" && onDeleteMessage && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteMessage(m)}
-                                  disabled={actionDisabled}
-                                  aria-label={t(
-                                    "assistant.chatContent.deleteMessageAria",
-                                  )}
-                                  className="absolute -left-10 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                  {deletingMessageId === m.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      if (p.type === "data-snippet") {
-                        if (!isToolCallsExpanded && m.role === "assistant") {
-                          return null;
-                        }
-                        return (
-                          <div
-                            key={`${m.id}-${group.renderKey}`}
-                            className={cn(
-                              "flex",
-                              m.role === "user" ? "justify-end" : "justify-start",
-                            )}
-                          >
-                            <div className="group relative w-fit max-w-[80%]">
-                              <SnippetChip
-                                filename={(p as WebAgentSnippetDataPart).data.filename}
-                                content={(p as WebAgentSnippetDataPart).data.content}
-                              />
-                              {m.role === "user" && onDeleteMessage && (
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteMessage(m)}
-                                  disabled={actionDisabled}
-                                  aria-label={t(
-                                    "assistant.chatContent.deleteMessageAria",
-                                  )}
-                                  className="absolute -left-10 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                  {deletingMessageId === m.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return null;
-                    });
-
-                  if (m.role === "assistant") {
-                    return (
-                      <AssistantMessageGroups
-                        key={m.id}
-                        message={m}
-                        isStreaming={isMessageStreaming}
-                        durationMs={messageDurationMap[m.id] ?? null}
-                        startedAt={
-                          messageStartedAtMap[m.id] ??
-                          (isMessageStreaming
-                            ? (lastSendStartedAt ?? lastUserMessageSentAt)
-                            : null)
-                        }
-                      >
-                        {renderGroups}
-                      </AssistantMessageGroups>
-                    );
-                  }
-
-                  return (
-                    <div key={m.id} className="flex flex-col gap-1">
-                      {renderGroups(true)}
-                    </div>
-                  );
-                },
-              )}
+              {messages.map((m, messageIndex) => {
+                const isMessageStreaming =
+                  streaming && messageIndex === messages.length - 1;
+                return (
+                  <MessageItem
+                    key={m.id}
+                    message={m}
+                    isStreaming={isMessageStreaming}
+                    durationMs={messageDurationMap[m.id] ?? null}
+                    startedAt={
+                      messageStartedAtMap[m.id] ??
+                      (isMessageStreaming
+                        ? (lastSendStartedAt ?? lastUserMessageSentAt)
+                        : null)
+                    }
+                    streamdownComponents={streamdownComponents}
+                    onCopyMessage={onCopyMessage}
+                    onRetryMessage={onRetryMessage}
+                    onForkMessage={onForkMessage}
+                    onDeleteMessage={onDeleteMessage}
+                    onApproveTool={onApproveTool}
+                    onDenyTool={onDenyTool}
+                    modelOptions={modelOptions}
+                    actionDisabled={actionDisabled}
+                    deletingMessageId={deletingMessageId}
+                    resendingMessageId={resendingMessageId}
+                    forkingMessageId={forkingMessageId}
+                  />
+                );
+              })}
               {showThinkingIndicator && (
                 <div className="my-1.5 border border-transparent py-0.5">
                   <div className="inline-flex items-center gap-2 rounded-md py-px text-sm text-muted-foreground">

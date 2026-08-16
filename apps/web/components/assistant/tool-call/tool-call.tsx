@@ -3,6 +3,7 @@
 /**
  * Tool call component that renders tool invocations for the web app.
  */
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { WebAgentUIToolPart } from "@/app/types";
 import {
@@ -36,7 +37,7 @@ export type ToolCallProps = {
 /**
  * Render a tool call based on its type.
  */
-export function ToolCall({
+export const ToolCall = memo(function ToolCall({
   part,
   activeApprovalId = null,
   cwd = DEFAULT_WORKING_DIRECTORY,
@@ -88,7 +89,7 @@ export function ToolCall({
         />
       );
   }
-}
+});
 
 function DefaultRenderer({
   part,

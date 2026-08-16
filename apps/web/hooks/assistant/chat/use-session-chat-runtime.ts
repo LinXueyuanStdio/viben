@@ -218,6 +218,15 @@ export function useSessionChatRuntime({
     experimental_throttle: CHAT_UI_UPDATE_THROTTLE_MS,
   });
 
+  // `chat` is a fresh object every render, but `clearError`/`resumeStream` are
+  // stable methods on the underlying Chat instance. Keep their latest references
+  // in refs so `retryChatStream` (a stable callback) is not recreated on every
+  // stream chunk.
+  const clearErrorRef = useRef(chat.clearError);
+  const resumeStreamRef = useRef(chat.resumeStream);
+  clearErrorRef.current = chat.clearError;
+  resumeStreamRef.current = chat.resumeStream;
+
   /**
    * Clear a transient chat error (e.g. iOS "Load failed") and attempt to
    * resume the server-side stream if one is still active.
@@ -237,7 +246,7 @@ export function useSessionChatRuntime({
       // reconnects.
       if (opts?.auto && userStoppedRef.current) {
         // Still clear the error so the UI doesn't show a stale error banner.
-        chat.clearError();
+        clearErrorRef.current();
         return;
       }
       if (retryInFlightRef.current) {
@@ -260,15 +269,15 @@ export function useSessionChatRuntime({
           }
 
           // Clear the error so the chat UI becomes visible again.
-          chat.clearError();
+          clearErrorRef.current();
           // If the server-side stream is still running, reconnect to it.
-          await chat.resumeStream();
+          await resumeStreamRef.current();
         } finally {
           retryInFlightRef.current = false;
         }
       })();
     },
-    [chat, chatId, chatInstance],
+    [chatId, chatInstance],
   );
 
   // Reset the user-stopped flag when a new message is sent so that

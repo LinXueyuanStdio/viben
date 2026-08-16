@@ -3039,6 +3039,42 @@ export function SessionChatContent({
     updateChatModel,
   ]);
 
+  // Stable callbacks for the chat transcript so message-level `React.memo` can
+  // skip re-rendering historical messages while the latest one is streaming.
+  const handleTranscriptFork = useCallback(
+    (message: WebAgentUIMessage) => {
+      void handleForkAssistantMessage(message.id);
+    },
+    [handleForkAssistantMessage],
+  );
+  const handleTranscriptOpenFile = useCallback((filePath: string) => {
+    setSelectedWorkspaceFile(filePath);
+  }, []);
+  const handleTranscriptRetry = useCallback(
+    (message: WebAgentUIMessage) => {
+      void handleResendUserMessage(message.id);
+    },
+    [handleResendUserMessage],
+  );
+  const handleTranscriptDelete = useCallback(
+    (message: WebAgentUIMessage) => {
+      void handleDeleteUserMessage(message.id);
+    },
+    [handleDeleteUserMessage],
+  );
+  const handleTranscriptApprove = useCallback(
+    (id: string) => {
+      addToolApprovalResponse({ id, approved: true });
+    },
+    [addToolApprovalResponse],
+  );
+  const handleTranscriptDeny = useCallback(
+    (id: string, reason?: string) => {
+      addToolApprovalResponse({ id, approved: false, reason });
+    },
+    [addToolApprovalResponse],
+  );
+
   const gitPanelElement = gitPanelOpen ? (
     <GitPanel
       session={session}
@@ -3329,22 +3365,17 @@ export function SessionChatContent({
                   </div>
                 }
                 transcriptActions={{
-                  onForkMessage: (message) =>
-                    void handleForkAssistantMessage(message.id),
-                  onOpenFile: (filePath) => setSelectedWorkspaceFile(filePath),
+                  onForkMessage: handleTranscriptFork,
+                  onOpenFile: handleTranscriptOpenFile,
                 }}
                 transcriptProps={{
                   messages: renderMessages,
                   status: effectiveStatus,
                   error: error ?? undefined,
-                  onRetryMessage: (message) =>
-                    void handleResendUserMessage(message.id),
-                  onDeleteMessage: (message) =>
-                    void handleDeleteUserMessage(message.id),
-                  onApproveTool: (id) =>
-                    addToolApprovalResponse({ id, approved: true }),
-                  onDenyTool: (id, reason) =>
-                    addToolApprovalResponse({ id, approved: false, reason }),
+                  onRetryMessage: handleTranscriptRetry,
+                  onDeleteMessage: handleTranscriptDelete,
+                  onApproveTool: handleTranscriptApprove,
+                  onDenyTool: handleTranscriptDeny,
                   messageDurationMap,
                   messageStartedAtMap,
                   lastUserMessageSentAt,
