@@ -62,7 +62,7 @@ jobs:
 
       - name: Setup pnpm
         if: matrix.language == 'javascript-typescript'
-        uses: pnpm/action-setup@v6.0.9
+        uses: pnpm/action-setup@v6.0.10
 
       # Setup for Python analysis
       - name: Setup Python
