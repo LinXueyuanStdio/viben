@@ -81,7 +81,7 @@
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.4.0",
-    "react-i18next": "^17.0.0",
+    "react-i18next": "^17.0.12",
     "react-markdown": "^9.1.0",
     "recharts": "^3.8.1",
     "rehype-highlight": "^7.0.2",
