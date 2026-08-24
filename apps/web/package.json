@@ -55,7 +55,7 @@
     "@viben/sandbox": "workspace:*",
     "@viben/shared": "workspace:*",
     "@workflow/ai": "5.0.0-beta.13",
-    "ai": "^6.0.165",
+    "ai": "^7.0.74",
     "arctic": "^3.7.0",
     "bcrypt": "^6.0.0",
     "botid": "^1.5.11",
