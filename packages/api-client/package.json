@@ -60,7 +60,7 @@
     "fastify-plugin": "^5.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.0"
+    "vitest": "^4.1.10"
   },
   "keywords": [
     "viben",
