@@ -2272,14 +2272,14 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 
 [[package]]
 name = "xlin"
-version = "0.2.25"
+version = "0.2.27"
 description = "toolbox for LinXueyuan"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "xlin-0.2.25-py2.py3-none-any.whl", hash = "sha256:d056cbe2804dba7a1256fbc97e5e164d6ca4cb3b1308e4f6f67b6054f7099066"},
-    {file = "xlin-0.2.25.tar.gz", hash = "sha256:f6a908d07ef24b4cae7495be45066a06c4038ce41fcaf9b550525120f40ebaf8"},
+    {file = "xlin-0.2.27-py2.py3-none-any.whl", hash = "sha256:678a9fb74016459fae0ef1d79e71a7c90a206ef5388c46f6257b162dc12ca310"},
+    {file = "xlin-0.2.27.tar.gz", hash = "sha256:2e186bdaa517141da7420c97b068673f908921fd9e068ac12e15dfc7f901411f"},
 ]
 
 [package.dependencies]
