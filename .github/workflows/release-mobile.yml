@@ -157,7 +157,7 @@ jobs:
           shared-key: android
 
       - name: Setup Gradle cache
-        uses: gradle/actions/setup-gradle@v6.2.0
+        uses: gradle/actions/setup-gradle@v6.3.0
         with:
           cache-read-only: false
 
