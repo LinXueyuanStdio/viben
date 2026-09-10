@@ -99,7 +99,7 @@
     "shell-quote": "^1.8.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "undici": "^7.22.0",
+    "undici": "^8.10.0",
     "ws": "^8.20.1",
     "xstate": "^5.31.1",
     "yaml": "^2.9.0",
