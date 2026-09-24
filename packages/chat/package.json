@@ -29,7 +29,7 @@
     "@viben/ui": "workspace:*",
     "framer-motion": "^12.40.0",
     "streamdown": "^2.5.0",
-    "vanilla-jsoneditor": "^3.12.0"
+    "vanilla-jsoneditor": "^3.13.0"
   },
   "peerDependencies": {
     "i18next": ">=23.0.0",
