@@ -68,7 +68,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^10.0.0",
     "@fastify/otel": "^0.18.1",
-    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger": "^9.9.2",
     "@fastify/websocket": "^11.2.0",
     "@hypothesi/tauri-mcp-server": "^0.11.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
